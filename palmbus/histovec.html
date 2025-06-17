@@ -692,6 +692,7 @@
                 const transitionElement = document.createElement('div');
                 transitionElement.className = 'bus-number-transition';
                 transitionElement.textContent = `Bus ${bus.number}`;
+                transitionElement.style.left = rect.left + 'px';
                 transitionElement.style.top = rect.top + 'px';
                 transitionElement.style.width = rect.width + 'px';
                 transitionElement.style.height = rect.height + 'px';
