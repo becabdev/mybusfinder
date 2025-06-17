@@ -414,6 +414,7 @@
             }
 
             .month-selector {
+                flex-direction: column;
                 gap: 8px;
             }
         }
@@ -672,7 +673,6 @@
                     this.setCachedData(this.activityCache, cacheKey, processedTimeline);
                     return processedTimeline;
                 } catch (error) {
-                    console.warn(`Error fetching activities for bus ${busId}:`, error);
                     return [];
                 }
             }
@@ -711,7 +711,7 @@
                     `La dernière fois qu'on l'a vu, c'était sur la ligne ${bus.lastKnownLine.number}.`;
                 
                 card.innerHTML = `
-                    <div class="bus-number">${bus.number}</div>
+                    <div class="bus-number">Bus ${bus.number}</div>
                     <div class="bus-status">
                         <span class="status-badge ${statusClass}">${statusText}</span>
                     </div>
