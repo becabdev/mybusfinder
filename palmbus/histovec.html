@@ -74,7 +74,7 @@
         }
 
         .bus-card:active {
-            transform: scale(0.98);
+            transform: scale(0.96);
         }
 
         .bus-number {
@@ -623,8 +623,8 @@
                 card.style.animationDelay = `${index * 0.05}s`;
                 
                 if (isOnline) {
-                    card.style.borderLeftColor = lineColor;
-                    card.style.borderLeftWidth = '4px';
+                    card.style.borderColor = lineColor;
+                    card.style.borderWidth = '1px';
                 }
                 
                 card.innerHTML = `
