@@ -2256,7 +2256,7 @@ async function getExtractedFiles() {
     }
 }
 
-await preloadGTFSData(['routes', 'stops']);
+preloadGTFSData(['routes', 'stops']);
 
 // Fonction générique pour charger un type de données à la demande
 async function loadDataOnDemand(dataType, loadFunction) {
