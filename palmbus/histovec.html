@@ -15,12 +15,14 @@
             background: #f3f3f3;
             color: #323130;
             overflow-x: hidden;
+            line-height: 1.6;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            position: relative;
         }
 
         .header {
@@ -28,19 +30,19 @@
             margin-bottom: 40px;
             opacity: 0;
             transform: translateY(-20px);
-            animation: slideInFromTop 0.6s ease-out 0.2s forwards;
+            animation: slideInFade 0.8s ease-out forwards;
         }
 
         .header h1 {
             font-size: 2.5rem;
-            font-weight: 600;
+            font-weight: 300;
             color: #323130;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .header p {
-            font-size: 1.1rem;
             color: #605e5c;
+            font-size: 1.1rem;
         }
 
         .loading {
@@ -49,10 +51,10 @@
             align-items: center;
             height: 200px;
             opacity: 0;
-            animation: fadeIn 0.4s ease-out forwards;
+            animation: fadeIn 0.5s ease-out forwards;
         }
 
-        .loading-spinner {
+        .spinner {
             width: 40px;
             height: 40px;
             border: 3px solid #e1dfdd;
@@ -63,61 +65,49 @@
 
         .bus-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
             opacity: 0;
-            animation: fadeIn 0.6s ease-out 0.4s forwards;
+            animation: fadeIn 0.8s ease-out 0.3s forwards;
         }
 
         .bus-card {
-            background: white;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 24px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             position: relative;
             overflow: hidden;
             transform: translateY(20px);
             opacity: 0;
-            border: 1px solid #e1dfdd;
-        }
-
-        .bus-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--line-color, #0078d4);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-
-        .bus-card:hover::before {
-            transform: scaleX(1);
+            animation: cardSlideIn 0.6s ease-out forwards;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         .bus-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.9);
         }
 
-        .bus-card:active {
-            transform: translateY(-2px) scale(0.98);
+        .bus-card.online {
+            border-left: 4px solid #107c10;
         }
 
-        .bus-card.show {
-            animation: slideInUp 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        .bus-card.offline {
+            border-left: 4px solid #d13438;
         }
 
         .bus-number {
             font-size: 2rem;
-            font-weight: 700;
+            font-weight: 600;
             color: #323130;
             margin-bottom: 8px;
-            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
         }
 
         .bus-status {
@@ -129,235 +119,257 @@
 
         .status-badge {
             padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
             font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .status-online {
-            background: #dff6dd;
+        .status-badge.online {
+            background: rgba(16, 124, 16, 0.1);
             color: #107c10;
         }
 
-        .status-offline {
-            background: #fde7e9;
-            color: #a80000;
+        .status-badge.offline {
+            background: rgba(209, 52, 56, 0.1);
+            color: #d13438;
         }
 
         .bus-line {
-            font-size: 0.95rem;
             color: #605e5c;
+            font-size: 0.95rem;
             margin-bottom: 8px;
         }
 
         .bus-designation {
-            font-size: 0.85rem;
             color: #8a8886;
+            font-size: 0.9rem;
         }
 
         .details-view {
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100%;
             background: #f3f3f3;
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            overflow-y: auto;
         }
 
-        .details-view.show {
+        .details-view.active {
             opacity: 1;
             visibility: visible;
         }
 
+        .details-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            transform: scale(0.95) translateY(20px);
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .details-view.active .details-container {
+            transform: scale(1) translateY(0);
+        }
+
         .details-header {
-            background: white;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             display: flex;
             align-items: center;
-            gap: 20px;
+            margin-bottom: 40px;
+            position: relative;
         }
 
-        .back-button {
-            background: #f3f2f1;
-            border: none;
+        .back-btn {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             border-radius: 6px;
-            width: 40px;
-            height: 40px;
+            padding: 12px 16px;
+            cursor: pointer;
+            margin-right: 20px;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            gap: 8px;
             color: #323130;
-        }
-
-        .back-button:hover {
-            background: #edebe9;
-            transform: translateX(-2px);
-        }
-
-        .details-title {
-            flex: 1;
-        }
-
-        .details-title h2 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            color: #323130;
-            margin-bottom: 4px;
-        }
-
-        .details-title p {
-            color: #605e5c;
             font-size: 0.95rem;
         }
 
-        .month-selector {
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateX(-2px);
+        }
+
+        .details-bus-number {
+            font-size: 3rem;
+            font-weight: 600;
+            color: #323130;
+            margin-right: 20px;
+        }
+
+        .details-status {
             display: flex;
             align-items: center;
             gap: 12px;
-            background: #f3f2f1;
-            border-radius: 6px;
-            padding: 8px;
+        }
+
+        .month-selector {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .month-nav {
-            background: white;
-            border: none;
-            border-radius: 4px;
-            width: 32px;
-            height: 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .month-btn {
+            background: transparent;
+            border: 1px solid rgba(0, 120, 212, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            color: #0078d4;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
         }
 
-        .month-nav:hover {
-            background: #e1dfdd;
+        .month-btn:hover {
+            background: rgba(0, 120, 212, 0.1);
+            transform: scale(1.05);
         }
 
-        .month-nav:disabled {
+        .month-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        .month-display {
+        .current-month {
+            font-size: 1.1rem;
             font-weight: 500;
             color: #323130;
-            min-width: 120px;
+            min-width: 200px;
             text-align: center;
         }
 
-        .details-content {
-            padding: 20px;
-            height: calc(100vh - 100px);
-            overflow-y: auto;
+        .activities-container {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 8px;
+            padding: 30px;
+            min-height: 400px;
         }
 
-        .activities-list {
-            list-style: none;
-            gap: 12px;
+        .activities-title {
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #323130;
+            margin-bottom: 24px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
 
         .activity-item {
-            background: white;
-            border-radius: 8px;
-            padding: 16px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid var(--line-color, #0078d4);
-            opacity: 0;
-            transform: translateX(-20px);
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border-left: 4px solid #0078d4;
             transition: all 0.3s ease;
-        }
-
-        .activity-item.show {
-            opacity: 1;
-            transform: translateX(0);
+            transform: translateX(-10px);
+            opacity: 0;
+            animation: activitySlideIn 0.5s ease-out forwards;
         }
 
         .activity-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transform: translateX(4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         }
 
         .activity-line {
-            font-weight: 600;
             font-size: 1.1rem;
-            color: var(--line-color, #0078d4);
-            margin-bottom: 4px;
+            font-weight: 600;
+            margin-bottom: 8px;
         }
 
         .activity-date {
             color: #605e5c;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
         }
 
         .activity-time {
             color: #8a8886;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            font-style: italic;
         }
 
         .empty-state {
             text-align: center;
             padding: 60px 20px;
-            color: #605e5c;
+            color: #8a8886;
         }
 
         .empty-state .icon {
-            font-size: 3rem;
-            margin-bottom: 16px;
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
         }
 
         .empty-state h3 {
-            font-size: 1.2rem;
-            margin-bottom: 8px;
-            color: #323130;
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #605e5c;
+        }
+
+        .empty-state p {
+            font-size: 1rem;
+            line-height: 1.6;
         }
 
         .error-message {
-            background: #fde7e9;
-            color: #a80000;
+            background: rgba(209, 52, 56, 0.1);
+            border: 1px solid rgba(209, 52, 56, 0.2);
+            border-radius: 6px;
             padding: 16px;
-            border-radius: 8px;
             margin: 20px 0;
-            border-left: 4px solid #a80000;
+            color: #d13438;
+            text-align: center;
+            display: none;
         }
 
-        .zoom-effect {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            font-size: 4rem;
-            font-weight: 700;
-            color: #0078d4;
-            z-index: 999;
-            pointer-events: none;
-            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+        .zoom-transition {
+            transform-origin: var(--click-x, 50%) var(--click-y, 50%);
+            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
-        .zoom-effect.animate {
-            transform: translate(-50%, -50%) scale(1.2);
-            opacity: 0;
+        .zoom-transition.zooming {
+            transform: scale(1.1);
         }
 
-        @keyframes slideInFromTop {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         @keyframes fadeIn {
@@ -366,161 +378,201 @@
             }
         }
 
-        @keyframes slideInUp {
+        @keyframes slideInFade {
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        @keyframes spin {
+        @keyframes cardSlideIn {
             to {
-                transform: rotate(360deg);
+                opacity: 1;
+                transform: translateY(0);
             }
         }
 
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+        @keyframes activitySlideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         @media (max-width: 768px) {
             .container {
-                padding: 16px;
+                padding: 15px;
             }
 
             .bus-grid {
                 grid-template-columns: 1fr;
+                gap: 16px;
             }
 
-            .header h1 {
-                font-size: 2rem;
+            .details-container {
+                padding: 20px 15px;
             }
 
             .details-header {
-                padding: 16px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .details-bus-number {
+                font-size: 2.5rem;
             }
 
             .month-selector {
-                gap: 8px;
+                flex-direction: column;
+                gap: 16px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div id="loading" class="loading">
-            <div class="loading-spinner"></div>
+        <div class="header">
+            <h1>🚌 My Bus History</h1>
         </div>
 
-        <div id="error-message" class="error-message" style="display: none;">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+        </div>
+
+        <div class="error-message" id="error-message">
             Une erreur est survenue lors du chargement des données.
         </div>
 
-        <div id="bus-grid" class="bus-grid" style="display: none;"></div>
+        <div class="bus-grid" id="bus-grid">
+        </div>
     </div>
 
-    <div id="details-view" class="details-view">
-        <div class="details-header">
-            <button id="back-button" class="back-button">
-                ←
-            </button>
-            <div class="details-title">
-                <h2 id="details-bus-number">Bus #</h2>
-                <p id="details-bus-status">Statut</p>
+    <div class="details-view" id="details-view">
+        <div class="details-container">
+            <div class="details-header">
+                <button class="back-btn" id="back-btn">
+                    <span>←</span>
+                    Retour
+                </button>
+                <div class="details-bus-number" id="details-bus-number">000</div>
+                <div class="details-status">
+                    <div class="status-badge" id="details-status-badge">
+                        <span id="details-status-text">Hors service</span>
+                    </div>
+                </div>
             </div>
+
             <div class="month-selector">
-                <button id="prev-month" class="month-nav">‹</button>
-                <div id="month-display" class="month-display">Janvier 2025</div>
-                <button id="next-month" class="month-nav">›</button>
+                <div class="month-nav">
+                    <button class="month-btn" id="prev-month">‹</button>
+                    <div class="current-month" id="current-month">Juin 2025</div>
+                    <button class="month-btn" id="next-month">›</button>
+                </div>
             </div>
-        </div>
-        <div class="details-content">
-            <div id="details-loading" class="loading" style="display: none;">
-                <div class="loading-spinner"></div>
+
+            <div class="activities-container">
+                <div class="activities-title">
+                    📊 Historique d'activité
+                </div>
+                <div id="activities-list">
+                </div>
             </div>
-            <ul id="activities-list" class="activities-list"></ul>
         </div>
     </div>
-
-    <div id="zoom-effect" class="zoom-effect"></div>
 
     <script>
         class BusTracker {
             constructor() {
                 this.API_BASE_URL = "https://dev.bus-tracker.fr/api";
                 this.buses = [];
-                this.lineCache = new Map();
-                this.activityCache = new Map();
-                this.busCache = new Map();
+                this.lineCache = {};
+                this.activityCache = {};
+                this.busCache = {};
                 this.CACHE_DURATION = 5 * 60 * 1000;
-                this.unknownLineDetails = { number: "Inconnue", color: "FFFFFF", textColor: "000000" };
                 this.currentMonth = this.getCurrentMonth();
                 this.selectedBus = null;
-                this.months = [];
-                this.currentMonthIndex = 0;
+                this.monthIndex = 0;
+                this.months = this.generateMonths();
+                this.unknownLineDetails = { number: "Inconnue", color: "FFFFFF", textColor: "000000" };
                 
                 this.initElements();
-                this.initMonths();
-                this.bindEvents();
+                this.initEventListeners();
                 this.init();
             }
 
             initElements() {
-                this.elements = {
-                    loading: document.getElementById('loading'),
-                    errorMessage: document.getElementById('error-message'),
-                    busGrid: document.getElementById('bus-grid'),
-                    detailsView: document.getElementById('details-view'),
-                    backButton: document.getElementById('back-button'),
-                    detailsBusNumber: document.getElementById('details-bus-number'),
-                    detailsBusStatus: document.getElementById('details-bus-status'),
-                    monthDisplay: document.getElementById('month-display'),
-                    prevMonth: document.getElementById('prev-month'),
-                    nextMonth: document.getElementById('next-month'),
-                    detailsLoading: document.getElementById('details-loading'),
-                    activitiesList: document.getElementById('activities-list'),
-                    zoomEffect: document.getElementById('zoom-effect')
-                };
+                this.loadingEl = document.getElementById('loading');
+                this.errorEl = document.getElementById('error-message');
+                this.busGridEl = document.getElementById('bus-grid');
+                this.detailsViewEl = document.getElementById('details-view');
+                this.detailsBusNumberEl = document.getElementById('details-bus-number');
+                this.detailsStatusBadgeEl = document.getElementById('details-status-badge');
+                this.detailsStatusTextEl = document.getElementById('details-status-text');
+                this.currentMonthEl = document.getElementById('current-month');
+                this.activitiesListEl = document.getElementById('activities-list');
+                this.backBtnEl = document.getElementById('back-btn');
+                this.prevMonthBtnEl = document.getElementById('prev-month');
+                this.nextMonthBtnEl = document.getElementById('next-month');
             }
 
-            initMonths() {
-                const now = new Date();
-                for (let i = 0; i < 12; i++) {
-                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    this.months.push({
-                        value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
-                        label: date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
-                    });
+            initEventListeners() {
+                this.backBtnEl.addEventListener('click', () => this.hideDetails());
+                this.prevMonthBtnEl.addEventListener('click', () => this.navigateMonth(-1));
+                this.nextMonthBtnEl.addEventListener('click', () => this.navigateMonth(1));
+            }
+
+            async init() {
+                try {
+                    this.showLoading();
+                    await this.fetchBuses();
+                    this.hideLoading();
+                    this.startAutoRefresh();
+                } catch (error) {
+                    console.error('Erreur d\'initialisation:', error);
+                    this.showError();
                 }
-                this.updateMonthDisplay();
+            }
+
+            showLoading() {
+                this.loadingEl.style.display = 'flex';
+                this.busGridEl.style.display = 'none';
+                this.errorEl.style.display = 'none';
+            }
+
+            hideLoading() {
+                this.loadingEl.style.display = 'none';
+                this.busGridEl.style.display = 'grid';
+            }
+
+            showError() {
+                this.loadingEl.style.display = 'none';
+                this.errorEl.style.display = 'block';
             }
 
             getCurrentMonth() {
                 const now = new Date();
-                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                return `${year}-${month}`;
             }
 
-            updateMonthDisplay() {
-                this.elements.monthDisplay.textContent = this.months[this.currentMonthIndex].label;
-                this.elements.prevMonth.disabled = this.currentMonthIndex >= this.months.length - 1;
-                this.elements.nextMonth.disabled = this.currentMonthIndex <= 0;
+            generateMonths() {
+                const months = [];
+                const now = new Date();
+                for (let i = 0; i < 12; i++) {
+                    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const value = `${year}-${month}`;
+                    const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                    months.push({ value, label });
+                }
+                return months;
             }
 
             getCachedData(cache, key) {
-                const entry = cache.get(key);
+                const entry = cache[key];
                 if (entry && (Date.now() - entry.timestamp < this.CACHE_DURATION)) {
                     return entry.data;
                 }
@@ -528,10 +580,10 @@
             }
 
             setCachedData(cache, key, data) {
-                cache.set(key, {
+                cache[key] = {
                     data,
                     timestamp: Date.now()
-                });
+                };
             }
 
             async safeFetch(url, options = {}, timeoutMs = 10000, maxRetries = 2) {
@@ -569,53 +621,67 @@
                 }
             }
 
-            async fetchNetworkId() {
-                try {
-                    const response = await fetch('setvar/settings/BusTrackerAPI/networkId.txt');
-                    const networkId = await response.text();
-                    return networkId.trim();
-                } catch (error) {
-                    return 'default';
-                }
-            }
-
             async fetchBuses() {
-                try {
-                    const cachedBuses = this.getCachedData(this.busCache, `allBuses-${this.currentMonth}`);
-                    if (cachedBuses) {
-                        this.buses = cachedBuses;
-                        this.displayBuses();
-                        return;
-                    }
+                const cachedBuses = this.getCachedData(this.busCache, `allBuses-${this.currentMonth}`);
+                if (cachedBuses) {
+                    this.buses = cachedBuses;
+                    this.displayBusList();
+                    return;
+                }
 
-                    const networkId = await this.fetchNetworkId();
+                try {
                     const cacheBuster = new Date().getTime();
+                    const response = await fetch('setvar/settings/BusTrackerAPI/networkId.txt');
+                    const setvar = await response.text();  
+                    const networkId = setvar.trim();  
                     const busData = await this.safeFetch(`${this.API_BASE_URL}/vehicles?networkId=${networkId}&_=${cacheBuster}`);
                     
-                    const uniqueLineIds = [...new Set(busData.map(bus => bus.lineId).filter(Boolean))];
-                    const linePromises = uniqueLineIds.map(lineId => this.fetchLineDetails(lineId));
-                    await Promise.all(linePromises);
+                    const uniqueLineIds = new Set();
+                    busData.forEach(bus => {
+                        if (bus.lineId) uniqueLineIds.add(bus.lineId);
+                    });
                     
-                    this.buses = busData.map(bus => ({
-                        ...bus,
-                        lastKnownLine: bus.lineId ? 
+                    const linePromises = [];
+                    for (const lineId of uniqueLineIds) {
+                        const cachedLine = this.getCachedData(this.lineCache, lineId);
+                        if (!cachedLine) {
+                            linePromises.push(this.fetchLineDetails(lineId));
+                        }
+                    }
+                    
+                    if (linePromises.length > 0) {
+                        await Promise.all(linePromises);
+                    }
+                    
+                    this.buses = busData.map(bus => {
+                        const lineDetails = bus.lineId ? 
                             this.getCachedData(this.lineCache, bus.lineId) || this.unknownLineDetails : 
-                            this.unknownLineDetails
-                    }));
+                            this.unknownLineDetails;
+                            
+                        return {
+                            ...bus,
+                            lastKnownLine: lineDetails 
+                        };
+                    });
                     
                     this.setCachedData(this.busCache, `allBuses-${this.currentMonth}`, this.buses);
-                    this.displayBuses();
+                    this.displayBusList();
                     
+                    setTimeout(() => {
+                        this.updateLastKnownLines();
+                    }, 100);
                 } catch (error) {
-                    this.showError();
+                    throw error;
                 }
             }
 
             async fetchLineDetails(lineId) {
-                if (!lineId) return this.unknownLineDetails;
+                if (!lineId) {
+                    return this.unknownLineDetails;
+                }
                 
-                const cached = this.getCachedData(this.lineCache, lineId);
-                if (cached) return cached;
+                const cachedLine = this.getCachedData(this.lineCache, lineId);
+                if (cachedLine) return cachedLine;
                 
                 try {
                     const cacheBuster = new Date().getTime();
@@ -630,209 +696,327 @@
                     this.setCachedData(this.lineCache, lineId, result);
                     return result;
                 } catch (error) {
-                    this.setCachedData(this.lineCache, lineId, this.unknownLineDetails);
-                    return this.unknownLineDetails;
+                    console.warn(`Erreur lors de la récupération de la ligne ${lineId}`, error);
+                    const fallback = { ...this.unknownLineDetails };
+                    this.setCachedData(this.lineCache, lineId, fallback); 
+                    return fallback;
                 }
             }
 
-            async fetchActivities(busId, month = null) {
-                const selectedMonth = month || this.months[this.currentMonthIndex].value;
-                const cacheKey = `${busId}-${selectedMonth}`;
+            async updateLastKnownLines() {
+                const batchSize = 20;
+                const allBusIds = this.buses.map(bus => bus.id);
                 
-                const cached = this.getCachedData(this.activityCache, cacheKey);
-                if (cached) return cached;
+                for (let i = 0; i < allBusIds.length; i += batchSize) {
+                    const batch = allBusIds.slice(i, i + batchSize);
+                    const promises = batch.map(async (busId) => {
+                        const currentBus = this.buses.find(b => b.id === busId);
+                        if (!currentBus) return;
+                        
+                        try {
+                            const lastKnownLine = await this.getLastKnownLineOptimized(busId, currentBus.lineId);
+                            if (lastKnownLine && lastKnownLine.number !== "Inconnue") {
+                                currentBus.lastKnownLine = lastKnownLine;
+                            }
+                        } catch (e) {
+                            console.warn(`Erreur récupération dernière ligne ${busId}`, e);
+                        }
+                    });
+                    
+                    await Promise.all(promises);
+                    
+                    if ((i + batchSize) % (batchSize * 2) === 0 || i + batchSize >= allBusIds.length) {
+                        this.setCachedData(this.busCache, `allBuses-${this.currentMonth}`, this.buses);
+                        this.displayBusList();
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
+            }
+
+            async getLastKnownLineOptimized(busId, currentLineId = null) {
+                if (currentLineId) {
+                    const currentLine = this.getCachedData(this.lineCache, currentLineId);
+                    if (currentLine) return currentLine;
+                }
+                
+                const cachedActivities = this.getCachedData(this.activityCache, `${busId}-${this.currentMonth}`);
+                if (cachedActivities) {
+                    return this.findLastKnownLineFromActivities(cachedActivities);
+                }
+                
+                try {
+                    const activities = await this.fetchActivities(busId);
+                    return this.findLastKnownLineFromActivities(activities);
+                } catch (error) {
+                    console.warn(`Erreur chargement ligne pour ${busId}`, error);
+                    return null;
+                }
+            }
+
+            findLastKnownLineFromActivities(activities) {
+                if (!activities || !activities.length) return null;
+                
+                const allActivities = activities.flatMap(day => day.activities || []);
+                if (!allActivities.length) return null;
+                
+                const lastActivity = allActivities.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+                return lastActivity && lastActivity.lineDetails ? lastActivity.lineDetails : null;
+            }
+
+            displayBusList() {
+                this.busGridEl.innerHTML = "";
+                
+                const filteredBuses = this.buses
+                    .filter(bus => bus.number) 
+                    .sort((a, b) => a.number - b.number);
+                        
+                if (filteredBuses.length === 0) {
+                    this.busGridEl.innerHTML = "<div style='text-align:center;padding:20px;color:#8a8886;'>Chargement en cours...</div>";
+                    return;
+                }
+                
+                filteredBuses.forEach((bus, index) => {
+                    const busCard = this.createBusCard(bus, index);
+                    this.busGridEl.appendChild(busCard);
+                });
+            }
+
+            createBusCard(bus, index) {
+                const busColor = bus.lastKnownLine ? `#${bus.lastKnownLine.color}` : "#FFFFFF";
+                const lineName = bus.lastKnownLine ? bus.lastKnownLine.number : "Inconnue";
+                let busActivityStatus = bus.activity && bus.activity.status ? bus.activity.status : 'offline';
+                const isOnline = busActivityStatus === 'online';
+                
+                const card = document.createElement("div");
+                card.className = `bus-card ${isOnline ? 'online' : 'offline'}`;
+                card.style.animationDelay = `${index * 0.1}s`;
+                
+                card.innerHTML = `
+                    <div class="bus-number">${bus.number}</div>
+                    <div class="bus-status">
+                        <div class="status-badge ${isOnline ? 'online' : 'offline'}">
+                            <span>${isOnline ? '🚌' : '😴'}</span>
+                            <span>${isOnline ? 'En service' : 'Hors service'}</span>
+                        </div>
+                    </div>
+                    <div class="bus-line">
+                        ${isOnline 
+                            ? `Actuellement sur la ligne ${lineName}` 
+                            : `Dernière ligne: ${lineName}`}
+                    </div>
+                    <div class="bus-designation">${bus.designation || ""}</div>
+                `;
+                
+                card.addEventListener('click', (e) => this.showBusDetails(bus, e));
+                
+                return card;
+            }
+
+            async showBusDetails(bus, event) {
+                this.selectedBus = bus;
+                
+                const rect = event.currentTarget.getBoundingClientRect();
+                const clickX = ((event.clientX - rect.left) / rect.width) * 100;
+                const clickY = ((event.clientY - rect.top) / rect.height) * 100;
+                
+                event.currentTarget.style.setProperty('--click-x', `${clickX}%`);
+                event.currentTarget.style.setProperty('--click-y', `${clickY}%`);
+                event.currentTarget.classList.add('zoom-transition', 'zooming');
+                
+                setTimeout(() => {
+                    this.detailsViewEl.classList.add('active');
+                    
+                    this.detailsBusNumberEl.textContent = bus.number;
+                    this.detailsBusNumberEl.style.transform = 'scale(0.8)';
+                    this.detailsBusNumberEl.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        this.detailsBusNumberEl.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                        this.detailsBusNumberEl.style.transform = 'scale(1)';
+                        this.detailsBusNumberEl.style.opacity = '1';
+                    }, 100);
+                    
+                    const isOnline = bus.activity && bus.activity.status === "online";
+                    this.detailsStatusBadgeEl.className = `status-badge ${isOnline ? 'online' : 'offline'}`;
+                    this.detailsStatusTextEl.textContent = isOnline ? 'En service' : 'Hors service';
+                    
+                    this.monthIndex = 0;
+                    this.updateMonthDisplay();
+                    this.loadActivities();
+                    
+                    event.currentTarget.classList.remove('zooming');
+                }, 200);
+            }
+
+            hideDetails() {
+                this.detailsViewEl.classList.remove('active');
+                
+                const zoomedCards = document.querySelectorAll('.zoom-transition');
+                zoomedCards.forEach(card => {
+                    card.classList.remove('zoom-transition', 'zooming');
+                });
+                
+                this.selectedBus = null;
+            }
+
+            navigateMonth(direction) {
+                const newIndex = this.monthIndex + direction;
+                
+                if (newIndex >= 0 && newIndex < this.months.length) {
+                    this.monthIndex = newIndex;
+                    this.updateMonthDisplay();
+                    this.loadActivities();
+                }
+            }
+
+            updateMonthDisplay() {
+                const currentMonth = this.months[this.monthIndex];
+                this.currentMonthEl.textContent = currentMonth.label;
+                
+                this.prevMonthBtnEl.disabled = this.monthIndex >= this.months.length - 1;
+                this.nextMonthBtnEl.disabled = this.monthIndex <= 0;
+            }
+
+            async loadActivities() {
+                if (!this.selectedBus) return;
+                
+                this.activitiesListEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+                
+                try {
+                    const selectedMonth = this.months[this.monthIndex].value;
+                    const activities = await this.fetchActivities(this.selectedBus.id, selectedMonth);
+                    this.displayActivities(activities);
+                } catch (error) {
+                    console.error("Erreur lors du chargement des activités", error);
+                    this.activitiesListEl.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">😔</div>
+                            <h3>Erreur de chargement</h3>
+                            <p>Impossible de charger les activités. Veuillez réessayer.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            async fetchActivities(busId, selectedMonth = null) {
+                const month = selectedMonth || this.currentMonth;
+                const cachedActivities = this.getCachedData(this.activityCache, `${busId}-${month}`);
+                if (cachedActivities) {
+                    return cachedActivities;
+                }
                 
                 try {
                     const cacheBuster = new Date().getTime();
-                    const data = await this.safeFetch(`${this.API_BASE_URL}/vehicles/${busId}/activities?month=${selectedMonth}&_=${cacheBuster}`);
+                    const data = await this.safeFetch(`${this.API_BASE_URL}/vehicles/${busId}/activities?month=${month}&_=${cacheBuster}`);
                     
                     if (!data || !data.timeline || !Array.isArray(data.timeline)) {
                         return [];
                     }
                     
-                    const uniqueLineIds = [...new Set(
-                        data.timeline.flatMap(day => 
-                            (day.activities || []).map(act => act.lineId).filter(Boolean)
-                        )
-                    )];
+                    const uniqueLineIds = new Set();
+                    data.timeline.forEach(day => {
+                        day.activities?.forEach(act => {
+                            if (act.lineId) uniqueLineIds.add(act.lineId);
+                        });
+                    });
                     
-                    const linePromises = uniqueLineIds.map(lineId => this.fetchLineDetails(lineId));
-                    await Promise.all(linePromises);
+                    const linePromises = [];
+                    for (const lineId of uniqueLineIds) {
+                        if (!this.getCachedData(this.lineCache, lineId)) {
+                            linePromises.push(this.fetchLineDetails(lineId));
+                        }
+                    }
                     
-                    const processedTimeline = data.timeline.map(day => ({
-                        date: day.date,
-                        activities: (day.activities || []).map(act => ({
-                            ...act,
-                            lineDetails: act.lineId ? 
+                    if (linePromises.length > 0) {
+                        await Promise.all(linePromises);
+                    }
+                    
+                    const processedTimeline = data.timeline.map(day => {
+                        const activitiesWithDetails = (day.activities || []).map(act => {
+                            act.lineDetails = act.lineId ? 
                                 this.getCachedData(this.lineCache, act.lineId) || this.unknownLineDetails : 
-                                this.unknownLineDetails
-                        }))
-                    }));
+                                this.unknownLineDetails;
+                            return act;
+                        });
+                        return { date: day.date, activities: activitiesWithDetails };
+                    });
                     
-                    this.setCachedData(this.activityCache, cacheKey, processedTimeline);
+                    this.setCachedData(this.activityCache, `${busId}-${month}`, processedTimeline);
                     return processedTimeline;
                 } catch (error) {
+                    console.warn(`Erreur de chargement des activités pour ${busId}`, error);
                     return [];
                 }
             }
 
-            displayBuses() {
-                this.elements.loading.style.display = 'none';
-                this.elements.busGrid.style.display = 'grid';
-                this.elements.busGrid.innerHTML = '';
-                
-                const filteredBuses = this.buses
-                    .filter(bus => bus.number)
-                    .sort((a, b) => a.number - b.number);
-                
-                filteredBuses.forEach((bus, index) => {
-                    const card = this.createBusCard(bus);
-                    this.elements.busGrid.appendChild(card);
-                    
-                    setTimeout(() => {
-                        card.classList.add('show');
-                    }, index * 50);
-                });
-            }
-
-            createBusCard(bus) {
-                const card = document.createElement('div');
-                card.className = 'bus-card';
-                
-                const lineColor = `#${bus.lastKnownLine.color}`;
-                card.style.setProperty('--line-color', lineColor);
-                
-                const isOnline = bus.activity && bus.activity.status === 'online';
-                const statusClass = isOnline ? 'status-online' : 'status-offline';
-                const statusText = isOnline ? '🚌 En service' : '😴 Hors service';
-                const lineText = isOnline ? 
-                    `Il est actuellement sur la ligne ${bus.lastKnownLine.number}.` :
-                    `La dernière fois qu'on l'a vu, c'était sur la ligne ${bus.lastKnownLine.number}.`;
-                
-                card.innerHTML = `
-                    <div class="bus-number">${bus.number}</div>
-                    <div class="bus-status">
-                        <span class="status-badge ${statusClass}">${statusText}</span>
-                    </div>
-                    <div class="bus-designation">${bus.designation || ''}</div>
-                `;
-                
-                card.addEventListener('click', () => this.showBusDetails(bus, card));
-                
-                return card;
-            }
-
-            async showBusDetails(bus, cardElement) {
-                this.selectedBus = bus;
-                
-                this.triggerZoomEffect(bus.number, cardElement);
-                
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                this.elements.detailsBusNumber.textContent = `Bus ${bus.number}`;
-                this.elements.detailsBusStatus.textContent = 
-                    bus.activity && bus.activity.status === 'online' ? 
-                    'Véhicule en service' : 'Véhicule hors service';
-                
-                this.currentMonthIndex = 0;
-                this.updateMonthDisplay();
-                
-                this.elements.detailsView.classList.add('show');
-                
-                await this.loadActivities(bus.id);
-            }
-
-            triggerZoomEffect(busNumber, cardElement) {
-                const rect = cardElement.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                
-                this.elements.zoomEffect.textContent = busNumber;
-                this.elements.zoomEffect.style.left = centerX + 'px';
-                this.elements.zoomEffect.style.top = centerY + 'px';
-                this.elements.zoomEffect.style.transform = 'translate(-50%, -50%) scale(0)';
-                this.elements.zoomEffect.style.opacity = '1';
-                
-                requestAnimationFrame(() => {
-                    this.elements.zoomEffect.classList.add('animate');
-                });
-                
-                setTimeout(() => {
-                    this.elements.zoomEffect.classList.remove('animate');
-                    this.elements.zoomEffect.style.opacity = '0';
-                }, 600);
-            }
-
-            async loadActivities(busId) {
-                this.elements.detailsLoading.style.display = 'flex';
-                this.elements.activitiesList.innerHTML = '';
-                
-                try {
-                    const activities = await this.fetchActivities(busId);
-                    this.displayActivities(activities);
-                } catch (error) {
-                    this.elements.activitiesList.innerHTML = '<li class="error-message">Erreur lors du chargement des services.</li>';
-                } finally {
-                    this.elements.detailsLoading.style.display = 'none';
-                }
-            }
-
             displayActivities(activities) {
-                this.elements.activitiesList.innerHTML = '';
+                this.activitiesListEl.innerHTML = "";
                 
-                const allActivities = activities
-                    .flatMap(day => 
-                        day.activities.map(act => ({
-                            ...act,
-                            dayDate: day.date
-                        }))
-                    )
-                    .sort((a, b) => new Date(b.startedAt) - new Date(a.startedAt));
-                
-                if (allActivities.length === 0) {
-                    this.elements.activitiesList.innerHTML = `
+                if (!activities || activities.length === 0 || !activities.some(day => day.activities && day.activities.length > 0)) {
+                    this.activitiesListEl.innerHTML = `
                         <div class="empty-state">
                             <div class="icon">😴</div>
-                            <h3>Aucun service disponible</h3>
-                            <p>Ce bus n'a effectué aucun service ce mois. Il se cache surement une affectations hors du commun !</p>
+                            <h3>Aucune activité</h3>
+                            <p>Ce bus n'a effectué aucun service ce mois.<br>
+                            Tentez de voir une autre période : il se cache sûrement une affectation intéressante !</p>
                         </div>
                     `;
                     return;
                 }
-                
-                allActivities.forEach((activity, index) => {
-                    const item = this.createActivityItem(activity);
-                    this.elements.activitiesList.appendChild(item);
-                    
-                    setTimeout(() => {
-                        item.classList.add('show');
-                    }, index * 50);
+
+                const allActivities = activities
+                    .reduce((acc, day) => {
+                        if (day.activities && day.activities.length > 0) {
+                            return acc.concat(
+                                day.activities.map(act => ({
+                                    ...act,
+                                    dayDate: day.date
+                                }))
+                            );
+                        }
+                        return acc;
+                    }, [])
+                    .sort((a, b) => {
+                        const dateA = new Date(a.startedAt);
+                        const dateB = new Date(b.startedAt);
+                        return dateB - dateA;
+                    });
+
+                allActivities.forEach((act, index) => {
+                    const activityItem = this.createActivityItem(act, index);
+                    this.activitiesListEl.appendChild(activityItem);
                 });
             }
 
-            createActivityItem(activity) {
-                const item = document.createElement('li');
-                item.className = 'activity-item';
+            createActivityItem(activity, index) {
+                const lineColor = activity.lineDetails ? `#${activity.lineDetails.color}` : '#0078d4';
+                const lineNumber = activity.lineDetails ? activity.lineDetails.number : 'Inconnue';
                 
-                const lineColor = `#${activity.lineDetails.color}`;
-                item.style.setProperty('--line-color', lineColor);
+                const item = document.createElement("div");
+                item.className = "activity-item";
+                item.style.borderLeftColor = lineColor;
+                item.style.animationDelay = `${index * 0.1}s`;
                 
-                const date = new Date(activity.dayDate).toLocaleDateString('fr-FR', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                const dateFormatted = new Date(activity.dayDate).toLocaleDateString('fr-FR', { 
+                    weekday: 'long',
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
                 });
                 
                 const startTime = new Date(activity.startedAt);
                 const endTime = new Date(activity.updatedAt);
-                const duration = Math.round((endTime - startTime) / (1000 * 60));
+                const duration = Math.round((endTime - startTime) / (1000 * 60)); 
                 
                 item.innerHTML = `
-                    <div class="activity-line">Ligne ${activity.lineDetails.number}</div>
-                    <div class="activity-date">${date}</div>
+                    <div class="activity-line" style="color: ${lineColor};">
+                        Ligne ${lineNumber}
+                    </div>
+                    <div class="activity-date">${dateFormatted}</div>
                     <div class="activity-time">
-                        ${startTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})} - 
-                        ${endTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})} 
+                        ${startTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})} 
+                        → ${endTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
                         (${duration} min)
                     </div>
                 `;
@@ -840,105 +1024,15 @@
                 return item;
             }
 
-            hideDetails() {
-                this.elements.detailsView.classList.remove('show');
-                this.selectedBus = null;
-            }
-
-            navigateMonth(direction) {
-                const newIndex = direction === 'prev' ? 
-                    this.currentMonthIndex + 1 : 
-                    this.currentMonthIndex - 1;
-                
-                if (newIndex >= 0 && newIndex < this.months.length) {
-                    this.currentMonthIndex = newIndex;
-                    this.updateMonthDisplay();
-                    
-                    if (this.selectedBus) {
-                        this.loadActivities(this.selectedBus.id);
-                    }
-                }
-            }
-
-            showError() {
-                this.elements.loading.style.display = 'none';
-                this.elements.errorMessage.style.display = 'block';
-            }
-
-            bindEvents() {
-                this.elements.backButton.addEventListener('click', () => this.hideDetails());
-                this.elements.prevMonth.addEventListener('click', () => this.navigateMonth('prev'));
-                this.elements.nextMonth.addEventListener('click', () => this.navigateMonth('next'));
-                
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && this.elements.detailsView.classList.contains('show')) {
-                        this.hideDetails();
-                    }
-                });
-                
-                this.elements.detailsView.addEventListener('click', (e) => {
-                    if (e.target === this.elements.detailsView) {
-                        this.hideDetails();
-                    }
-                });
-            }
-
-            async init() {
-                try {
-                    this.controlParentSpinner(true, '');
-                    await this.fetchBuses();
-                    this.startAutoRefresh();
-                } catch (error) {
-                    console.error('Initialization error:', error);
-                    this.showError();
-                } finally {
-                    this.controlParentSpinner(false);
-                }
-            }
-
-            controlParentSpinner(show, message = '') {
-                try {
-                    window.parent.postMessage({
-                        action: show ? 'showSpinner' : 'hideSpinner',
-                        message: message || (show ? '' : '')
-                    }, '*');
-                } catch (e) {
-                    console.error("Impossible d'envoyer un message à la page parente", e);
-                }
-            }
-
-            startAutoRefresh(intervalMs = 120000) {
-                if (this.refreshInterval) {
-                    clearInterval(this.refreshInterval);
-                }
-                
-                this.refreshInterval = setInterval(async () => {
-                    try {
-                        this.busCache.delete(`allBuses-${this.currentMonth}`);
-                        await this.fetchBuses();
-                    } catch (error) {
-                        console.warn('Auto refresh error:', error);
-                    }
-                }, intervalMs);
-            }
-
-            destroy() {
-                if (this.refreshInterval) {
-                    clearInterval(this.refreshInterval);
-                }
+            startAutoRefresh() {
+                setInterval(() => {
+                    this.fetchBuses().catch(console.error);
+                }, 120000); 
             }
         }
 
-        let busTracker;
-        
         document.addEventListener('DOMContentLoaded', () => {
-            busTracker = new BusTracker();
-        });
-
-        window.addEventListener('beforeunload', () => {
-            if (busTracker) {
-                busTracker.destroy();
-            }
+            new BusTracker();
         });
 
         function controlParentSpinner(show, message) {
@@ -951,6 +1045,10 @@
                 console.error("Impossible d'envoyer un message à la page parente", e);
             }
         }
+
+        window.addEventListener('load', () => {
+            controlParentSpinner(false);
+        });
     </script>
 </body>
 </html>
