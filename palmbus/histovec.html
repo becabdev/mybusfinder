@@ -667,9 +667,9 @@
                 const busNumberElement = sourceCard.querySelector('.bus-number');
                 const rect = busNumberElement.getBoundingClientRect();
                 const numeroparc = document.getElementById('detailsBusNumber');
-                numeroparc.style.opacity = '0';
+                numeroparc.style.display = 'none';
                 setTimeout(() => {
-                    numeroparc.style.opacity = '1';
+                    numeroparc.style.display = 'block';
                 }, 400);
                 
                 const transitionElement = document.createElement('div');
