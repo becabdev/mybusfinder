@@ -326,7 +326,7 @@
             font-size: 24px;
             font-weight: 600;
             pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transition: all 0.4s cubic-bezier(.84,-0.01,.15,1);
         }
 
         @media (max-width: 768px) {
@@ -515,7 +515,7 @@
                     this.updateLastKnownLines();
                     
                 } catch (error) {
-                    console.error('Erreur lors du chargement des bus:', error);
+                    console.error('Erreur lors du chargement des bus', error);
                     this.showError('Erreur lors du chargement des véhicules');
                 }
             }
