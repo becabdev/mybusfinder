@@ -666,6 +666,11 @@
             async performSharedElementTransition(sourceCard, bus) {
                 const busNumberElement = sourceCard.querySelector('.bus-number');
                 const rect = busNumberElement.getBoundingClientRect();
+                const numeroparc = document.getElementById('detailsBusNumber');
+                numeroparc.style.opacity = '0';
+                setTimeout(() => {
+                    numeroparc.style.opacity = '0';
+                }, 400);
                 
                 const transitionElement = document.createElement('div');
                 transitionElement.className = 'bus-number-transition';
