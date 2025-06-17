@@ -1621,12 +1621,7 @@
 
 
     <script>
-        let routes = {};
-        let trips = {};
-        let stopTimes = {};
-        let stops = {};
-        let calendar = {};
-        let calendarDates = {};
+
 
         
         let navigationHistory = [];
@@ -1934,9 +1929,167 @@ function getRealtimeArrival(tripId, stopId) {
     return new Date(stopUpdate.arrival);
 }
 
+async function getSetvar() {
+    try {
+        const response1 = await fetch('setvar/settings/networkname.txt');
+        const setvar1 = await response1.text();
+        const nomdureseau = setvar1.trim();  
+
+        return {nomdureseau};
+
+    } catch (error) {
+        console.error('Erreur chargement setvar ! ', error);
+    }
+}
+
 let DB_NAME;
 let STORE_NAME;
 const DB_VERSION = 4;
+
+// État du système de chargement paresseux
+let dataLoadingState = {
+    routes: { loaded: false, loading: false, data: {} },
+    trips: { loaded: false, loading: false, data: {} },
+    stopTimes: { loaded: false, loading: false, data: {} },
+    stops: { loaded: false, loading: false, data: {} },
+    calendar: { loaded: false, loading: false, data: {} },
+    calendarDates: { loaded: false, loading: false, data: {} },
+    rawFiles: null // Cache des fichiers extraits
+};
+
+// Proxies pour maintenir la rétrocompatibilité
+let routes = new Proxy({}, {
+    get(target, prop) {
+        if (typeof prop === 'string' && !dataLoadingState.routes.loaded) {
+            console.warn('Routes non chargées, chargement automatique...');
+            loadRoutesLazy();
+        }
+        return dataLoadingState.routes.data[prop];
+    },
+    ownKeys() {
+        if (!dataLoadingState.routes.loaded) {
+            console.warn('Routes non chargées pour énumération, chargement automatique...');
+            loadRoutesLazy();
+        }
+        return Object.keys(dataLoadingState.routes.data);
+    },
+    has(target, prop) {
+        if (!dataLoadingState.routes.loaded) {
+            loadRoutesLazy();
+        }
+        return prop in dataLoadingState.routes.data;
+    }
+});
+
+let trips = new Proxy({}, {
+    get(target, prop) {
+        if (typeof prop === 'string' && !dataLoadingState.trips.loaded) {
+            console.warn('Trips non chargés, chargement automatique...');
+            loadTripsLazy();
+        }
+        return dataLoadingState.trips.data[prop];
+    },
+    ownKeys() {
+        if (!dataLoadingState.trips.loaded) {
+            loadTripsLazy();
+        }
+        return Object.keys(dataLoadingState.trips.data);
+    },
+    has(target, prop) {
+        if (!dataLoadingState.trips.loaded) {
+            loadTripsLazy();
+        }
+        return prop in dataLoadingState.trips.data;
+    }
+});
+
+let stopTimes = new Proxy({}, {
+    get(target, prop) {
+        if (typeof prop === 'string' && !dataLoadingState.stopTimes.loaded) {
+            console.warn('StopTimes non chargés, chargement automatique...');
+            loadStopTimesLazy();
+        }
+        return dataLoadingState.stopTimes.data[prop];
+    },
+    ownKeys() {
+        if (!dataLoadingState.stopTimes.loaded) {
+            loadStopTimesLazy();
+        }
+        return Object.keys(dataLoadingState.stopTimes.data);
+    },
+    has(target, prop) {
+        if (!dataLoadingState.stopTimes.loaded) {
+            loadStopTimesLazy();
+        }
+        return prop in dataLoadingState.stopTimes.data;
+    }
+});
+
+let stops = new Proxy({}, {
+    get(target, prop) {
+        if (typeof prop === 'string' && !dataLoadingState.stops.loaded) {
+            console.warn('Stops non chargés, chargement automatique...');
+            loadStopsLazy();
+        }
+        return dataLoadingState.stops.data[prop];
+    },
+    ownKeys() {
+        if (!dataLoadingState.stops.loaded) {
+            loadStopsLazy();
+        }
+        return Object.keys(dataLoadingState.stops.data);
+    },
+    has(target, prop) {
+        if (!dataLoadingState.stops.loaded) {
+            loadStopsLazy();
+        }
+        return prop in dataLoadingState.stops.data;
+    }
+});
+
+let calendar = new Proxy({}, {
+    get(target, prop) {
+        if (typeof prop === 'string' && !dataLoadingState.calendar.loaded) {
+            console.warn('Calendar non chargé, chargement automatique...');
+            loadCalendarLazy();
+        }
+        return dataLoadingState.calendar.data[prop];
+    },
+    ownKeys() {
+        if (!dataLoadingState.calendar.loaded) {
+            loadCalendarLazy();
+        }
+        return Object.keys(dataLoadingState.calendar.data);
+    },
+    has(target, prop) {
+        if (!dataLoadingState.calendar.loaded) {
+            loadCalendarLazy();
+        }
+        return prop in dataLoadingState.calendar.data;
+    }
+});
+
+let calendarDates = new Proxy({}, {
+    get(target, prop) {
+        if (typeof prop === 'string' && !dataLoadingState.calendarDates.loaded) {
+            console.warn('CalendarDates non chargé, chargement automatique...');
+            loadCalendarDatesLazy();
+        }
+        return dataLoadingState.calendarDates.data[prop];
+    },
+    ownKeys() {
+        if (!dataLoadingState.calendarDates.loaded) {
+            loadCalendarDatesLazy();
+        }
+        return Object.keys(dataLoadingState.calendarDates.data);
+    },
+    has(target, prop) {
+        if (!dataLoadingState.calendarDates.loaded) {
+            loadCalendarDatesLazy();
+        }
+        return prop in dataLoadingState.calendarDates.data;
+    }
+});
 
 async function initConstants() {
     try {
@@ -2009,7 +2162,7 @@ async function getFileHash() {
         }
         
         const buffer = await response.arrayBuffer();
-        const partialData = buffer.slice(0, Math.min(buffer.byteLength, 1024 * 50)); // 50KB max
+        const partialData = buffer.slice(0, Math.min(buffer.byteLength, 1024 * 50));
         
         const fileHash = await calculateSHA256(partialData);
         
@@ -2090,6 +2243,183 @@ async function getFromCache() {
     }
 }
 
+// Fonction pour obtenir les fichiers bruts (sans les charger en mémoire)
+async function getRawGTFSFiles() {
+    if (dataLoadingState.rawFiles) {
+        return dataLoadingState.rawFiles;
+    }
+
+    try {
+        const { needsUpdate } = await checkGTFSUpdate();
+        
+        if (needsUpdate) {
+            const result = await extractGTFSFiles();
+            dataLoadingState.rawFiles = result.extractedFiles;
+            await saveToCache(result.extractedFiles, result.metadata);
+        } else {
+            dataLoadingState.rawFiles = await getFromCache();
+            if (!dataLoadingState.rawFiles) {
+                const result = await extractGTFSFiles();
+                dataLoadingState.rawFiles = result.extractedFiles;
+                await saveToCache(result.extractedFiles, result.metadata);
+            }
+        }
+        
+        return dataLoadingState.rawFiles;
+    } catch (error) {
+        console.error('Erreur lors de l\'obtention des fichiers GTFS', error);
+        throw error;
+    }
+}
+
+// Fonctions de chargement paresseux
+async function loadRoutesLazy() {
+    if (dataLoadingState.routes.loaded || dataLoadingState.routes.loading) {
+        return;
+    }
+    
+    dataLoadingState.routes.loading = true;
+    try {
+        const files = await getRawGTFSFiles();
+        if (files['routes.txt']) {
+            await loadRoutes(files['routes.txt'], dataLoadingState.routes.data);
+            dataLoadingState.routes.loaded = true;
+            console.log('Routes chargées en mode paresseux');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paresseux routes:', error);
+    } finally {
+        dataLoadingState.routes.loading = false;
+    }
+}
+
+async function loadTripsLazy() {
+    if (dataLoadingState.trips.loaded || dataLoadingState.trips.loading) {
+        return;
+    }
+    
+    dataLoadingState.trips.loading = true;
+    try {
+        const files = await getRawGTFSFiles();
+        if (files['trips.txt']) {
+            await loadTrips(files['trips.txt'], dataLoadingState.trips.data);
+            dataLoadingState.trips.loaded = true;
+            console.log('Trips chargés en mode paresseux');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paresseux trips:', error);
+    } finally {
+        dataLoadingState.trips.loading = false;
+    }
+}
+
+async function loadStopTimesLazy() {
+    if (dataLoadingState.stopTimes.loaded || dataLoadingState.stopTimes.loading) {
+        return;
+    }
+    
+    dataLoadingState.stopTimes.loading = true;
+    try {
+        const files = await getRawGTFSFiles();
+        if (files['stop_times.txt']) {
+            const result = await loadStopTimes(files['stop_times.txt']);
+            dataLoadingState.stopTimes.data = result;
+            dataLoadingState.stopTimes.loaded = true;
+            console.log('StopTimes chargés en mode paresseux');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paresseux stop_times:', error);
+    } finally {
+        dataLoadingState.stopTimes.loading = false;
+    }
+}
+
+async function loadStopsLazy() {
+    if (dataLoadingState.stops.loaded || dataLoadingState.stops.loading) {
+        return;
+    }
+    
+    dataLoadingState.stops.loading = true;
+    try {
+        const files = await getRawGTFSFiles();
+        if (files['stops.txt']) {
+            await loadStops(files['stops.txt'], dataLoadingState.stops.data);
+            dataLoadingState.stops.loaded = true;
+            console.log('Stops chargés en mode paresseux');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paresseux stops:', error);
+    } finally {
+        dataLoadingState.stops.loading = false;
+    }
+}
+
+async function loadCalendarLazy() {
+    if (dataLoadingState.calendar.loaded || dataLoadingState.calendar.loading) {
+        return;
+    }
+    
+    dataLoadingState.calendar.loading = true;
+    try {
+        const files = await getRawGTFSFiles();
+        if (files['calendar.txt']) {
+            await loadCalendar(files['calendar.txt'], dataLoadingState.calendar.data);
+            dataLoadingState.calendar.loaded = true;
+            console.log('Calendar chargé en mode paresseux');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paresseux calendar:', error);
+    } finally {
+        dataLoadingState.calendar.loading = false;
+    }
+}
+
+async function loadCalendarDatesLazy() {
+    if (dataLoadingState.calendarDates.loaded || dataLoadingState.calendarDates.loading) {
+        return;
+    }
+    
+    dataLoadingState.calendarDates.loading = true;
+    try {
+        const files = await getRawGTFSFiles();
+        if (files['calendar_dates.txt']) {
+            await loadCalendarDates(files['calendar_dates.txt'], dataLoadingState.calendarDates.data);
+            dataLoadingState.calendarDates.loaded = true;
+            console.log('CalendarDates chargées en mode paresseux');
+        }
+    } catch (error) {
+        console.error('Erreur chargement paresseux calendar_dates:', error);
+    } finally {
+        dataLoadingState.calendarDates.loading = false;
+    }
+}
+
+// Fonction pour précharger des données spécifiques
+async function preloadData(types = []) {
+    const loadPromises = [];
+    
+    if (types.includes('routes') || types.length === 0) {
+        loadPromises.push(loadRoutesLazy());
+    }
+    if (types.includes('trips') || types.length === 0) {
+        loadPromises.push(loadTripsLazy());
+    }
+    if (types.includes('stops') || types.length === 0) {
+        loadPromises.push(loadStopsLazy());
+    }
+    if (types.includes('calendar') || types.length === 0) {
+        loadPromises.push(loadCalendarLazy());
+    }
+    if (types.includes('calendarDates') || types.length === 0) {
+        loadPromises.push(loadCalendarDatesLazy());
+    }
+    if (types.includes('stopTimes') || types.length === 0) {
+        loadPromises.push(loadStopTimesLazy());
+    }
+    
+    await Promise.all(loadPromises);
+}
+
 async function extractGTFSFiles() {
     try {
         toastBottomRight.info(t("updatingdynamicdata"));
@@ -2098,12 +2428,11 @@ async function extractGTFSFiles() {
         if (!response.ok) {
             throw new Error(`Échec du téléchargement: ${response.status} ${response.statusText}`);
             toastBottomRight.warning(t("errordynamicdata"));
-
         }
         
         const zipData = await response.arrayBuffer();
         
-        const fileHash = await calculateSHA256(zipData.slice(0, Math.min(zipData.byteLength, 1024 * 50))); // j'utilise les 50 premiers KB
+        const fileHash = await calculateSHA256(zipData.slice(0, Math.min(zipData.byteLength, 1024 * 50)));
         
         const zip = await JSZip.loadAsync(zipData);
         
@@ -2135,16 +2464,15 @@ async function extractGTFSFiles() {
 
 function startWindowsSpinnerAnimation(elementId, interval = 30) {
     const frames = [
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','',''
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','',''
   ];
-
 
   const el = document.getElementById(elementId);
   if (!el) {
@@ -2215,6 +2543,7 @@ function createCloseTabButton() {
 
 document.addEventListener('DOMContentLoaded', createCloseTabButton);
 
+// Version modifiée de loadGtfsData pour le chargement paresseux
 async function loadGtfsData() {
     const loadingOverlay = document.createElement('div');
     loadingOverlay.id = 'loading-overlay';
@@ -2252,7 +2581,7 @@ async function loadGtfsData() {
     
     const loadingText = document.createElement('div');
     loadingText.id = 'gtfs-loading-text';
-    loadingText.textContent = 'Chargement des données GTFS...';
+    loadingText.textContent = 'Préparation des données GTFS...';
     loadingText.style.cssText = `
         font-family: 'League Spartan', sans-serif;
         font-size: 16px;
@@ -2267,80 +2596,33 @@ async function loadGtfsData() {
     const stopSpinner = startWindowsSpinnerAnimation('gtfs-loading-spinner', 30);
     
     try {
-        let extractedFiles;
-        
         const updateLoadingText = (text) => {
             const textElement = document.getElementById('gtfs-loading-text');
             if (textElement) textElement.textContent = text;
         };
         
         updateLoadingText('Vérification des mises à jour GTFS...');
-        const { needsUpdate, fileHash, metadata } = await checkGTFSUpdate();
         
-        if (needsUpdate) {
-            updateLoadingText('Extraction des fichiers GTFS...');
-            const result = await extractGTFSFiles();
-            extractedFiles = result.extractedFiles;
-            
-            updateLoadingText('Sauvegarde des données dans le cache...');
-            await saveToCache(extractedFiles, result.metadata);
-            
-        } else {
-            updateLoadingText('Récupération des données depuis le cache...');
-            extractedFiles = await getFromCache();
-            if (!extractedFiles) {
-                updateLoadingText('Extraction des fichiers GTFS...');
-                const result = await extractGTFSFiles();
-                extractedFiles = result.extractedFiles;
-                updateLoadingText('Sauvegarde des données dans le cache...');
-                await saveToCache(extractedFiles, result.metadata);
-                toastBottomRight.success(t("downloadsuccess"));
-            } 
-        }
+        // On se contente de préparer les fichiers sans les charger
+        await getRawGTFSFiles();
         
-        routes = {};
-        trips = {};
-        stopTimes = {};
-        stops = {};
-        calendar = {};
-        calendarDates = {};
+        updateLoadingText('Données GTFS prêtes pour le chargement paresseux...');
         
-        const loadPromises = [];
-        
-        updateLoadingText('Chargement des routes...');
-        if (extractedFiles['routes.txt']) loadPromises.push(loadRoutes(extractedFiles['routes.txt']));
-        
-        updateLoadingText('Chargement des trajets...');
-        if (extractedFiles['trips.txt']) loadPromises.push(loadTrips(extractedFiles['trips.txt']));
-        
-        updateLoadingText('Chargement des horaires...');
-        if (extractedFiles['stop_times.txt']) loadPromises.push((async () => {
-            stopTimes = await loadStopTimes(extractedFiles['stop_times.txt']);
-        })());
-        
-        updateLoadingText('Chargement des arrêts...');
-        if (extractedFiles['stops.txt']) loadPromises.push(loadStops(extractedFiles['stops.txt']));
-        
-        updateLoadingText('Chargement du calendrier...');
-        if (extractedFiles['calendar.txt']) loadPromises.push(loadCalendar(extractedFiles['calendar.txt']));
-        
-        updateLoadingText('Chargement des dates calendrier...');
-        if (extractedFiles['calendar_dates.txt']) loadPromises.push(loadCalendarDates(extractedFiles['calendar_dates.txt']));
-        
-        updateLoadingText('Finalisation du chargement...');
-        await Promise.all(loadPromises);
+        // Petit délai pour montrer le message
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         stopSpinner();
         const overlay = document.getElementById('loading-overlay');
         if (overlay) overlay.remove();
         
+        console.log('Système de chargement paresseux GTFS initialisé');
         return true;
     } catch (error) {
-        console.error('Erreur lors du chargement des données GTFS', error);
+        console.error('Erreur lors de l\'initialisation du système paresseux', error);
         
         const textElement = document.getElementById('gtfs-loading-text');
         if (textElement) {
-            textElement.textContent = "Erreur lors du chargement des données";
+            textElement.textContent = "Erreur lors de l'initialisation";
             textElement.style.color = "red";
         }
         
@@ -2365,6 +2647,16 @@ async function clearGTFSCache() {
 
             request.onsuccess = () => {
                 console.log('Cache GTFS effacé avec succès');
+                // Réinitialiser l'état du chargement paresseux
+                dataLoadingState = {
+                    routes: { loaded: false, loading: false, data: {} },
+                    trips: { loaded: false, loading: false, data: {} },
+                    stopTimes: { loaded: false, loading: false, data: {} },
+                    stops: { loaded: false, loading: false, data: {} },
+                    calendar: { loaded: false, loading: false, data: {} },
+                    calendarDates: { loaded: false, loading: false, data: {} },
+                    rawFiles: null
+                };
                 resolve();
             };
             request.onerror = () => reject(request.error);
@@ -2375,11 +2667,6 @@ async function clearGTFSCache() {
     }
 }
 
-
-
-
-
-
 function formatDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -2387,11 +2674,9 @@ function formatDate(date) {
     return `${year}${month}${day}`;
 }
 
-
-
-
-
-async function loadRoutes(fileContent) {
+async function loadRoutes(fileContent, targetObject = null) {
+    const target = targetObject || routes;
+    
     try {
         if (!fileContent) {
             console.warn('Aucun contenu de fichier routes fourni');
@@ -2425,7 +2710,7 @@ async function loadRoutes(fileContent) {
             
             const routeId = values[routeIdIndex];
             if (routeId) {
-                routes[routeId] = {
+                target[routeId] = {
                     short_name: shortNameIndex !== -1 && values[shortNameIndex] ? values[shortNameIndex] : '',
                     long_name: longNameIndex !== -1 && values[longNameIndex] ? values[longNameIndex] : '',
                     route_type: routeTypeIndex !== -1 ? parseInt(values[routeTypeIndex] || '0', 10) : 0,
@@ -2436,14 +2721,15 @@ async function loadRoutes(fileContent) {
             }
         });
         
-        console.log(`Routes chargées ${Object.keys(routes).length} itinéraires`);
+        console.log(`Routes chargées ${Object.keys(target).length} itinéraires`);
     } catch (error) {
         console.error('Erreur lors du chargement des itinéraires', error);
     }
 }
 
 
-async function loadTrips(fileContent) {
+async function loadTrips(fileContent, targetObject = null) {
+    const target = targetObject || trips;
     try {
         if (!fileContent) {
             console.warn('Aucun contenu de fichier trips fourni');
@@ -2537,7 +2823,8 @@ function formatDate(date) {
 
 
 
-async function loadCalendarDates(fileContent) {
+async function loadCalendarDates(fileContent, targetObject = null) {
+        const target = targetObject || calendarDates;
     try {
         if (!fileContent) {
             console.warn('Aucun contenu de fichier calendar_dates fourni');
@@ -2622,7 +2909,8 @@ function isServiceActive(serviceId, dateObj) {
 
 
 
-async function loadStopTimes(fileContent) {
+async function loadStopTimes(fileContent, targetObject = null) {
+    const target = targetObject || stopTimes;
     const localStopTimes = {}; 
     
     try {
@@ -2934,7 +3222,8 @@ function formatTimeString(timeStr) {
     return timeStr;
 }
 
-async function loadStops(fileContent) {
+async function loadStops(fileContent, targetObject = null) {
+    const target = targetObject || stops;
     try {
         if (!fileContent) {
             console.warn('Aucun contenu de fichier stops fourni');
@@ -2981,7 +3270,8 @@ async function loadStops(fileContent) {
 }
 
 
-async function loadCalendar(fileContent) {
+async function loadCalendar(fileContent, targetObject = null) {
+    const target = targetObject || calendar;
     try {
         if (!fileContent) {
             console.warn('Aucun contenu de fichier calendar fourni');
