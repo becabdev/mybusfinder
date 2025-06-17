@@ -2256,6 +2256,8 @@ async function getExtractedFiles() {
     }
 }
 
+await preloadGTFSData(['routes', 'stops']);
+
 // Fonction générique pour charger un type de données à la demande
 async function loadDataOnDemand(dataType, loadFunction) {
     const state = loadingState[dataType];
@@ -3354,7 +3356,7 @@ function getActiveServicesForDate(date) {
 
 
 function getActiveTripsForRoute(routeId, date) {
-    const activeServices = getActiveServicesForDate(date);
+    const activeServices = getActiveServicesForDateAsync(date);
     const activeTrips = [];
     
     if (!trips[routeId]) {
