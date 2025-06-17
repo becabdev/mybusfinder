@@ -713,11 +713,6 @@
                 transitionElement.style.left = '60px';
                 transitionElement.style.top = targetRect.top + 'px';
                 transitionElement.style.fontSize = '28px';
-                
-                // Nettoyer après l'animation
-                setTimeout(() => {
-                    document.body.removeChild(transitionElement);
-                }, 400);
             }
 
             showBusList() {
