@@ -168,9 +168,6 @@
             font-size: 28px;
             font-weight: 600;
             margin-bottom: 4px;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: slideInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.2s forwards;
         }
 
         .details-status {
@@ -667,9 +664,9 @@
                 const busNumberElement = sourceCard.querySelector('.bus-number');
                 const rect = busNumberElement.getBoundingClientRect();
                 const numeroparc = document.getElementById('detailsBusNumber');
-                numeroparc.style.display = 'none';
+                numeroparc.style.opacity = '0';
                 setTimeout(() => {
-                    numeroparc.style.display = 'block';
+                    numeroparc.style.opacity = '1';
                 }, 400);
                 
                 const transitionElement = document.createElement('div');
