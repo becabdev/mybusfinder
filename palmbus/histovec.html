@@ -440,8 +440,8 @@
 
             attachEventListeners() {
                 this.backButton.addEventListener('click', () => this.showBusList());
-                this.prevMonthBtn.addEventListener('click', () => this.navigateMonth(-1));
-                this.nextMonthBtn.addEventListener('click', () => this.navigateMonth(1));
+                this.prevMonthBtn.addEventListener('click', () => this.navigateMonth(1));
+                this.nextMonthBtn.addEventListener('click', () => this.navigateMonth(-1));
             }
 
             getCurrentMonth() {
@@ -745,7 +745,7 @@
                     `;
                 }
             }
-            
+
             async loadActivities(busId, month = null) {
                 const selectedMonth = month || this.months[this.currentMonthIndex].value;
                 const cacheKey = `${busId}-${selectedMonth}`;
