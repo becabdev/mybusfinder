@@ -382,7 +382,7 @@
                 </svg>
             </button>
             <div class="details-title">
-                <div class="details-bus-number" id="detailsBusNumber">Bus #123</div>
+                <div class="details-bus-number" id="detailsBusNumber">Bus</div>
                 <div class="details-status" id="detailsStatus">Véhicule en service</div>
             </div>
         </div>
@@ -645,7 +645,7 @@
                 }
                 
                 card.innerHTML = `
-                    <div class="bus-number" data-bus-number="${bus.number}">Bus #${bus.number}</div>
+                    <div class="bus-number" data-bus-number="${bus.number}">Bus ${bus.number}</div>
                     <div class="bus-status">
                         <span class="status-badge ${isOnline ? 'status-online' : 'status-offline'}">
                             ${isOnline ? '🚌 En service' : '😴 Hors service'}
@@ -672,7 +672,7 @@
                 await this.performSharedElementTransition(sourceCard, bus);
                 
                 // Mettre à jour le contenu des détails
-                this.detailsBusNumber.textContent = `Bus #${bus.number}`;
+                this.detailsBusNumber.textContent = `Bus ${bus.number}`;
                 this.detailsStatus.textContent = bus.activity && bus.activity.status === "online" ? 
                     "Véhicule en service" : "Véhicule hors service";
                 
@@ -691,8 +691,7 @@
                 // Créer l'élément de transition
                 const transitionElement = document.createElement('div');
                 transitionElement.className = 'bus-number-transition';
-                transitionElement.textContent = `Bus #${bus.number}`;
-                transitionElement.style.left = rect.left + 'px';
+                transitionElement.textContent = `Bus ${bus.number}`;
                 transitionElement.style.top = rect.top + 'px';
                 transitionElement.style.width = rect.width + 'px';
                 transitionElement.style.height = rect.height + 'px';
