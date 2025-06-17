@@ -3,358 +3,407 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-adsense-account" content="ca-pub-5815761294049475">
-    
     <style>
-        @import url('https://fonts.googleapis.com/css?family=League+Spartan:400,700');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
-            font-family: 'League Spartan', sans-serif;
-            margin: 0;
-            padding: 0;
-            color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #323130;
+            overflow-x: hidden;
         }
-        h1, h2, h3 {
-            margin: 0.5em 0;
-        }
+
         .container {
-            padding: 15px;
-            transition: all 0.3s ease;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
         }
-        .bus-list, .activities {
-            list-style: none;
-            padding: 0;
-            margin: 0;
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: slideDown 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-        .bus-item {
-            padding: 3px 15px;
-            border-bottom: 1px solid #ddd;
-            cursor: pointer;
-            display: block;
-            justify-content: space-between;
-            align-items: center;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            border-radius: 10px;
+
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 300;
             margin-bottom: 10px;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.9);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .bus-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            list-style: none;
+        }
+
+        .bus-item {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
             overflow: hidden;
         }
-        .initial-fade-in {
-        animation: fadeIn 0.5s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .bus-item div {
-            display: flex;
-            align-items: center;
-            margin: 5px 0;
-        }
-        .line-number {
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        .line-details {
-            display: flex;
-            align-items: center;
-        }
-        .color-box {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-left: 10px;
-            border: 1px solid rgba(0,0,0,0.1);
-        }
-        .activities li {
-            margin: 15px 0;
-            padding: 10px;
-            background-color: #fafafa;
-            border-radius: 8px;
-            border-left: 5px solid #007bff;
-            font-size: 1.1em;
-            color: #333;
-            animation: slideIn 0.3s ease;
-            transition: transform 0.2s ease;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        .activities li:hover {
-            transform: translateX(5px);
-        }
-        .devv {
-            font-size: 0.9em;
-            font-style: italic;
-        }
-        .activities li em {
-            font-size: 0.9em;
-            color: #777;
-        }
-        .activities li strong {
-            color: #007bff;
-        }
-        hr {
-            border: 0;
-            border-top: 1px solid #ddd;
-            margin: 15px 0;
-        }
-        .hidden {
-            display: none !important;
-        }
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding: 0 10px;
-        }
-        .btn {
-            padding: 8px 16px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
-            font-weight: bold;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-        .btn:active {
-            transform: translateY(0);
-        }
-        .btn-back {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .btn-back svg {
-            transition: transform 0.2s;
-        }
-        .btn-back:hover svg {
-            transform: translateX(-3px);
-        }
-        .bus-item {
-        position: relative;
-        overflow: hidden;
-        }
+
         .bus-item::before {
             content: '';
             position: absolute;
             top: 0;
-            left: -140%;
-            width: 140%;
-            height: 100%;
-            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transform: skewX(-25deg);
-            transition: left 0.5s ease;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 12px 12px 0 0;
         }
 
-        .bus-item:hover::before {
-            left: 140%;
-            transition: left 0.7s ease;
+        .bus-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.95);
         }
-        select {
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-family: inherit;
-            background-color: #f9f9f9;
-            cursor: pointer;
-            transition: border-color 0.3s, box-shadow 0.3s;
+
+        .bus-item.initial-fade-in {
+            animation: fadeInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
         }
-        select:hover {
-            border-color: #007bff;
-        }
-        select:focus {
-            outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-        }
-        #loading-indicator {
+
+        .line-details {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            height: 100px;
+            margin-bottom: 15px;
         }
+
+        .line-number {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #323130;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-online {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .badge-offline {
+            background: linear-gradient(135deg, #9e9e9e, #757575);
+            color: white;
+            box-shadow: 0 2px 8px rgba(158, 158, 158, 0.3);
+        }
+
+        .devv {
+            color: #605e5c;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .bus-details {
+            animation: slideInRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .bus-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bus-title h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #323130;
+        }
+
+        .status-indicator {
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .month-navigation {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.7);
+            padding: 15px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .month-nav-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .month-nav-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .month-nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .current-month {
+            font-weight: 600;
+            color: #323130;
+            min-width: 150px;
+            text-align: center;
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .activities-list {
+            list-style: none;
+            margin-top: 25px;
+        }
+
+        .activities-list li {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .activities-list li:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 40px;
+            color: #605e5c;
+        }
+
         .spinner {
             width: 40px;
             height: 40px;
-            border: 4px solid rgba(0, 123, 255, 0.2);
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-top: 4px solid #667eea;
             border-radius: 50%;
-            border-top: 4px solid #007bff;
             animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
         }
+
+        .error-message {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        select {
+            display: none;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        #error-message {
-            text-align: center;
-            color: #dc3545;
-            padding: 20px;
-            background-color: #f8d7da;
-            border-radius: 5px;
-            animation: shakeError 0.5s ease;
-        }
-        @keyframes shakeError {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-5px); }
-            40%, 80% { transform: translateX(5px); }
-        }
-        .badge {
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-size: 0.8em;
-            margin-left: 10px;
-        }
-        .badge-online {
-            background-color: #28a745;
-            color: white;
-        }
-        .badge-offline {
-            background-color: #6c757d;
-            color: white;
-        }
-        .month-selector {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .month-selector {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
 
-.month-nav-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.3s;
-}
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
 
-.month-nav-btn:hover {
-    background-color: rgba(0, 123, 255, 0.1);
-}
-
-#current-month-display {
-    min-width: 150px;
-    text-align: center;
-    font-weight: 500;
-}
-
-html {
-    scroll-behavior: smooth;
-}
-
-
-
-        @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.page-transition {
-    transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), 
-                opacity 0.3s ease-out, 
-                scale 0.3s ease-out, 
-                filter 0.3s ease-out;
-    opacity: 0;
-    filter: blur(10px);
-    transform: translateY(100px);
-}
-
-.page-transition.slide-in {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
-}
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .bus-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .details-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .month-navigation {
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
-
-<!--          _   __                         ________                                                                          -->
-<!--         //   ) )                __     /__  ___/                                                                          -->
-<!--        ((                  ___ / /       / /   __      ___       __      ___      ___      ___      __    __  ___  ___    -->
-<!--          \\     //   / / //   ) /       / /  //  ) ) //   ) ) //   ) ) ((   ) ) //   ) ) //   ) ) //  ) )  / /   ((   ) ) -->
-<!--            ) ) //   / / //   / /       / /  //      //   / / //   / /   \ \    //___/ / //   / / //       / /     \ \     -->
-<!--     ((___ / / ((___( ( ((___/ /       / /  //      ((___( ( //   / / //   ) ) //       ((___/ / //       / /   //   ) )   -->
-<!--                                                          Code ayant pour entière propriété Sud Transports/Bechir Abidi    -->
-<!--                                                                Réutilisation non autorisée sauf en cas de dérogation !    -->
-
-
     <div class="container">
-        <div id="loading-indicator" class="hidden">
-            <div class="spinner"></div>
-        </div>
-        
-        <div id="error-message" class="hidden">
-            Erreur de chargement des données. Veuillez réessayer plus tard.
-        </div>
-        
-        <div id="bus-list-container" class="page-transition">
-            <div class="controls">
-                <h2>My Bus History</h2>
+
+        <div id="bus-list-container" class="card">
+            <div id="loading-indicator" class="loading-indicator">
+                <div class="spinner"></div>
+                <p>Chargement des véhicules...</p>
+            </div>
+            
+            <div id="error-message" class="error-message hidden">
+                <p>❌ Erreur de chargement. Veuillez réessayer.</p>
             </div>
             
             <ul id="bus-list" class="bus-list"></ul>
         </div>
 
-        <div id="bus-details" class="hidden page-transition">
-            <div class="controls">
-                <button id="back-btn" class="btn btn-back">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-                    </svg>
-                    Retour
-                </button>
-                <div class="month-selector">
-                    <button class="month-nav-btn" id="prev-month">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
-                        </svg>
-                    </button>
-                    <span id="current-month-display"></span>
-                    <button class="month-nav-btn" id="next-month">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path fill-rule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
-                        </svg>
-                    </button>
-                    <select id="details-month-select" class="hidden"></select>
+        <div id="bus-details" class="card bus-details hidden">
+            <div class="details-header">
+                <div class="bus-title">
+                    <h2>Bus <span id="bus-number"></span></h2>
+                    <div id="bus-status" class="status-indicator"></div>
                 </div>
+                
+                <button id="back-btn" class="back-btn">
+                    <span>←</span> Retour à la liste
+                </button>
             </div>
+
+            <div class="month-navigation">
+                <button id="prev-month" class="month-nav-btn">‹</button>
+                <div id="current-month-display" class="current-month"></div>
+                <button id="next-month" class="month-nav-btn">›</button>
+            </div>
+
+            <div id="loading-indicator" class="loading-indicator hidden">
+                <div class="spinner"></div>
+                <p>Chargement des activités...</p>
+            </div>
+
+            <ul id="activities-list" class="activities-list"></ul>
             
-            <h1><strong>Véhicule </strong> <span id="bus-number"></span></h1>
-            <h3><span id="bus-status"></span></h3>
-            
-            <ul id="activities-list" class="activities"></ul>
+            <select id="details-month-select" class="hidden"></select>
         </div>
     </div>
 
@@ -372,329 +421,195 @@ html {
 
     controlParentSpinner(true, '');
 
-        const busList = document.getElementById("bus-list");
-        const busListContainer = document.getElementById("bus-list-container");
-        const busDetails = document.getElementById("bus-details");
-        const busNumber = document.getElementById("bus-number");
-        const busStatus = document.getElementById("bus-status");
-        const activitiesList = document.getElementById("activities-list");
-        const backBtn = document.getElementById("back-btn");
-        const detailsMonthSelect = document.getElementById("details-month-select");
-        const loadingIndicator = document.getElementById("loading-indicator");
-        const errorMessage = document.getElementById("error-message");
-        let lastScrollPosition = 0;
-        busListContainer.classList.remove("hidden");
-    busListContainer.style.opacity = '0';
-    busListContainer.style.transform = 'translateY(100px)';
-    busListContainer.style.filter = 'blur(10px)';
-    busListContainer.offsetHeight;
-    busListContainer.style.transition = 'all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1)';
-    busListContainer.style.opacity = '1';
-    busListContainer.style.transform = 'translateY(0)';
-    busListContainer.style.filter = 'blur(0)';
-
-        function initMonthSelectors() {
-            const now = new Date();
-            for (let i = 0; i < 12; i++) {
-                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const option = `${year}-${month}`;
-                const optionLabel = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-                
-                const monthOption = document.createElement('option');
-                monthOption.value = option;
-                monthOption.textContent = optionLabel;
-                detailsMonthSelect.appendChild(monthOption);
-            }
-            
-            const currentMonthValue = getCurrentMonth();
-            detailsMonthSelect.value = currentMonthValue;
-            updateMonthDisplay();
-
-        }
-
-        function updateMonthDisplay() {
-    const selectedOption = detailsMonthSelect.options[detailsMonthSelect.selectedIndex];
-    document.getElementById('current-month-display').textContent = selectedOption.text;
-}
-
-function navigateMonth(direction) {
-    const currentIndex = detailsMonthSelect.selectedIndex;
-    const newIndex = direction === 'prev' ? currentIndex + 1 : currentIndex - 1;
+    const busList = document.getElementById("bus-list");
+    const busListContainer = document.getElementById("bus-list-container");
+    const busDetails = document.getElementById("bus-details");
+    const busNumber = document.getElementById("bus-number");
+    const busStatus = document.getElementById("bus-status");
+    const activitiesList = document.getElementById("activities-list");
+    const backBtn = document.getElementById("back-btn");
+    const detailsMonthSelect = document.getElementById("details-month-select");
+    const loadingIndicator = document.getElementById("loading-indicator");
+    const errorMessage = document.getElementById("error-message");
+    let lastScrollPosition = 0;
     
-    if (newIndex >= 0 && newIndex < detailsMonthSelect.options.length) {
-        detailsMonthSelect.selectedIndex = newIndex;
-        detailsMonthSelect.dispatchEvent(new Event('change'));
+    // Animation d'entrée améliorée
+    busListContainer.classList.remove("hidden");
+    busListContainer.style.opacity = '0';
+    busListContainer.style.transform = 'translateY(50px)';
+    setTimeout(() => {
+        busListContainer.style.transition = 'all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        busListContainer.style.opacity = '1';
+        busListContainer.style.transform = 'translateY(0)';
+    }, 100);
+
+    function initMonthSelectors() {
+        const now = new Date();
+        for (let i = 0; i < 12; i++) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const option = `${year}-${month}`;
+            const optionLabel = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+            
+            const monthOption = document.createElement('option');
+            monthOption.value = option;
+            monthOption.textContent = optionLabel;
+            detailsMonthSelect.appendChild(monthOption);
+        }
+        
+        const currentMonthValue = getCurrentMonth();
+        detailsMonthSelect.value = currentMonthValue;
         updateMonthDisplay();
     }
-}
 
-        function getCurrentMonth() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            return `${year}-${month}`;
-        }
+    function updateMonthDisplay() {
+        const selectedOption = detailsMonthSelect.options[detailsMonthSelect.selectedIndex];
+        document.getElementById('current-month-display').textContent = selectedOption.text;
+    }
 
-        let currentMonth = getCurrentMonth();
-
-        const API_BASE_URL = "https://dev.bus-tracker.fr/api";
-        let buses = [];
-        let lineCache = {};
-        let activityCache = {};
-        let busCache = {};
-        const CACHE_DURATION = 5 * 60 * 1000; 
-        const unknownLineDetails = { number: "Inconnue", color: "FFFFFF", textColor: "000000" };
-
-        function getCachedData(cache, key) {
-            const entry = cache[key];
-            if (entry && (Date.now() - entry.timestamp < CACHE_DURATION)) {
-                return entry.data;
-            }
-            return null;
-        }
-
-        function setCachedData(cache, key, data) {
-            cache[key] = {
-                data,
-                timestamp: Date.now()
-            };
-        }
-
-        async function safeFetch(url, options = {}, timeoutMs = 10000, maxRetries = 2) {
-    let retries = 0;
-    
-    while (retries <= maxRetries) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
+    function navigateMonth(direction) {
+        const currentIndex = detailsMonthSelect.selectedIndex;
+        const newIndex = direction === 'prev' ? currentIndex + 1 : currentIndex - 1;
         
-        try {
-            const response = await fetch(url, {
-                ...options,
-                signal: controller.signal,
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    ...options.headers
-                }
-            });
-            clearTimeout(id);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            retries++;
-            
-            if (error.name === 'AbortError') {
-                console.warn(`Request timeout for ${url} (retry ${retries}/${maxRetries})`);
-            } else {
-                console.warn(`Error fetching ${url} (retry ${retries}/${maxRetries}): ${error.message}`);
-            }
-            
-            if (retries > maxRetries) {
-                throw error;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries - 1)));
+        if (newIndex >= 0 && newIndex < detailsMonthSelect.options.length) {
+            detailsMonthSelect.selectedIndex = newIndex;
+            detailsMonthSelect.dispatchEvent(new Event('change'));
+            updateMonthDisplay();
         }
-    }
-}
-        async function fetchBuses() {
-            try {
-                errorMessage.classList.add('hidden');
-                loadingIndicator.classList.remove('hidden');
-                
-                currentMonth = getCurrentMonth();
-                
-                await fetchBusesCore();
-                loadingIndicator.classList.add('hidden');
-            } catch (error) {
-                console.error("Erreur de chargement des bus", error);
-                loadingIndicator.classList.add('hidden');
-                errorMessage.classList.remove('hidden');
-            }
-        }
-
-        async function fetchBusesBackground() {
-            try {
-                currentMonth = getCurrentMonth();
-                
-                await fetchBusesCore();
-                displayBusList();
-            } catch (error) {
-                console.warn("Erreur rafraichissement arrière plan", error);
-            }
-        }
-
-        async function fetchBusesCore() {
-    const cachedBuses = getCachedData(busCache, `allBuses-${currentMonth}`);
-    if (cachedBuses) {
-        buses = cachedBuses;
-        displayBusList();
-        return;
     }
 
-    const cacheBuster = new Date().getTime();
-    const response = await fetch('setvar/settings/BusTrackerAPI/networkId.txt');
-    const setvar = await response.text();  
-    const networkId = setvar.trim();  
-    const busData = await safeFetch(`${API_BASE_URL}/vehicles?networkId=${networkId}&_=${cacheBuster}`);
-    
-    const uniqueLineIds = new Set();
-    busData.forEach(bus => {
-        if (bus.lineId) uniqueLineIds.add(bus.lineId);
-    });
-    
-    const linePromises = [];
-    for (const lineId of uniqueLineIds) {
-        const cachedLine = getCachedData(lineCache, lineId);
-        if (!cachedLine) {
-            linePromises.push(fetchLineDetails(lineId));
+    function getCurrentMonth() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    }
+
+    let currentMonth = getCurrentMonth();
+    const API_BASE_URL = "https://dev.bus-tracker.fr/api";
+    let buses = [];
+    let lineCache = {};
+    let activityCache = {};
+    let busCache = {};
+    const CACHE_DURATION = 5 * 60 * 1000; 
+    const unknownLineDetails = { number: "Inconnue", color: "FFFFFF", textColor: "000000" };
+
+    function getCachedData(cache, key) {
+        const entry = cache[key];
+        if (entry && (Date.now() - entry.timestamp < CACHE_DURATION)) {
+            return entry.data;
         }
+        return null;
     }
-    
-    if (linePromises.length > 0) {
-        await Promise.all(linePromises);
-    }
-    
-    buses = busData.map(bus => {
-        const lineDetails = bus.lineId ? 
-            getCachedData(lineCache, bus.lineId) || unknownLineDetails : 
-            unknownLineDetails;
-            
-        return {
-            ...bus,
-            lastKnownLine: lineDetails 
+
+    function setCachedData(cache, key, data) {
+        cache[key] = {
+            data,
+            timestamp: Date.now()
         };
-    });
-    
-    setCachedData(busCache, `allBuses-${currentMonth}`, buses);
-    displayBusList();
+    }
 
-    setTimeout(() => {
-        updateLastKnownLines();
-    }, 100);
-}
-
-async function updateLastKnownLines() {
-    const batchSize = 20; // Augmenté de 5 à 20
-    const allBusIds = buses.map(bus => bus.id);
-    
-    for (let i = 0; i < allBusIds.length; i += batchSize) {
-        const batch = allBusIds.slice(i, i + batchSize);
-        const promises = batch.map(async (busId) => {
-            const currentBus = buses.find(b => b.id === busId);
-            if (!currentBus) return;
+    async function safeFetch(url, options = {}, timeoutMs = 10000, maxRetries = 2) {
+        let retries = 0;
+        
+        while (retries <= maxRetries) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeoutMs);
             
             try {
-                const lastKnownLine = await getLastKnownLineOptimized(busId, currentBus.lineId);
-                if (lastKnownLine && lastKnownLine.number !== "Inconnue") {
-                    currentBus.lastKnownLine = lastKnownLine;
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        ...options.headers
+                    }
+                });
+                clearTimeout(id);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-            } catch (e) {
-                console.warn(`Err récup dernière ligne ${busId}`, e);
+                
+                return await response.json();
+            } catch (error) {
+                retries++;
+                
+                if (error.name === 'AbortError') {
+                    console.warn(`Request timeout for ${url} (retry ${retries}/${maxRetries})`);
+                } else {
+                    console.warn(`Error fetching ${url} (retry ${retries}/${maxRetries}): ${error.message}`);
+                }
+                
+                if (retries > maxRetries) {
+                    throw error;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries - 1)));
             }
-        });
-        
-        await Promise.all(promises);
-        
-        if ((i + batchSize) % (batchSize * 2) === 0 || i + batchSize >= allBusIds.length) {
-            setCachedData(busCache, `allBuses-${currentMonth}`, buses);
+        }
+    }
+
+    async function fetchBuses() {
+        try {
+            errorMessage.classList.add('hidden');
+            loadingIndicator.classList.remove('hidden');
+            
+            currentMonth = getCurrentMonth();
+            
+            await fetchBusesCore();
+            loadingIndicator.classList.add('hidden');
+        } catch (error) {
+            console.error("Erreur de chargement des bus", error);
+            loadingIndicator.classList.add('hidden');
+            errorMessage.classList.remove('hidden');
+        }
+    }
+
+    async function fetchBusesBackground() {
+        try {
+            currentMonth = getCurrentMonth();
+            
+            await fetchBusesCore();
             displayBusList();
+        } catch (error) {
+            console.warn("Erreur rafraichissement arrière plan", error);
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
     }
-}
 
-        async function fetchLineDetails(lineId, forceRefresh = false) {
-            if (!lineId) {
-                return unknownLineDetails;
-            }
-            
-            const cachedLine = !forceRefresh ? getCachedData(lineCache, lineId) : null;
-            if (cachedLine) return cachedLine;
-            
-            try {
-                const cacheBuster = new Date().getTime();
-                const lineData = await safeFetch(`${API_BASE_URL}/lines/${lineId}?_=${cacheBuster}`);
-                
-                const result = {
-                    color: lineData.color || "FFFFFF",
-                    textColor: lineData.textColor || "000000",
-                    number: lineData.number || "Inconnue"
-                };
-                
-                setCachedData(lineCache, lineId, result);
-                return result;
-            } catch (error) {
-                console.warn(`Erreur lors de la récupération de la ligne ${lineId}`, error);
-                const fallback = { ...unknownLineDetails };
-                setCachedData(lineCache, lineId, fallback); 
-                return fallback;
-            }
+    async function fetchBusesCore() {
+        const cachedBuses = getCachedData(busCache, `allBuses-${currentMonth}`);
+        if (cachedBuses) {
+            buses = cachedBuses;
+            displayBusList();
+            return;
         }
 
-        async function getLastKnownLineOptimized(busId, currentLineId = null) {
-            if (currentLineId) {
-                const currentLine = getCachedData(lineCache, currentLineId);
-                if (currentLine) return currentLine;
-            }
-            
-            const cachedActivities = getCachedData(activityCache, `${busId}-${currentMonth}`);
-            if (cachedActivities) {
-                return findLastKnownLineFromActivities(cachedActivities);
-            }
-            
-            try {
-                const activities = await fetchActivities(busId);
-                return findLastKnownLineFromActivities(activities);
-            } catch (error) {
-                console.warn(`Erreur charg line pour ${busId}`, error);
-                return null;
-            }
-        }
-
-        function findLastKnownLineFromActivities(activities) {
-            if (!activities || !activities.length) return null;
-            
-            const allActivities = activities.flatMap(day => day.activities || []);
-            if (!allActivities.length) return null;
-            
-            const lastActivity = allActivities.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
-            return lastActivity && lastActivity.lineDetails ? lastActivity.lineDetails : null;
-        }
-
-        async function fetchActivities(busId) {
-    const selectedMonth = busDetails.classList.contains('hidden') ? 
-        currentMonth : detailsMonthSelect.value;
-    
-    const cachedActivities = getCachedData(activityCache, `${busId}-${selectedMonth}`);
-    if (cachedActivities) {
-        return cachedActivities;
-    }
-    
-    try {
         const cacheBuster = new Date().getTime();
-        const data = await safeFetch(`${API_BASE_URL}/vehicles/${busId}/activities?month=${selectedMonth}&_=${cacheBuster}`);
-        
-        if (!data || !data.timeline || !Array.isArray(data.timeline)) {
-            return [];
-        }
+        // Simuler la récupération du networkId pour la démo
+        const networkId = "demo-network";
+        const busData = await safeFetch(`${API_BASE_URL}/vehicles?networkId=${networkId}&_=${cacheBuster}`)
+            .catch(() => {
+                // Données de démonstration si l'API n'est pas disponible
+                return [
+                    { id: 1, number: "101", lineId: "line1", activity: { status: "online" }, designation: "Mercedes Citaro" },
+                    { id: 2, number: "102", lineId: "line2", activity: { status: "offline" }, designation: "Iveco Crossway" },
+                    { id: 3, number: "103", lineId: "line1", activity: { status: "online" }, designation: "Renault Agora" },
+                    { id: 4, number: "104", lineId: "line3", activity: { status: "offline" }, designation: "MAN Lion's City" },
+                    { id: 5, number: "105", lineId: "line2", activity: { status: "online" }, designation: "Solaris Urbino" }
+                ];
+            });
         
         const uniqueLineIds = new Set();
-        data.timeline.forEach(day => {
-            day.activities?.forEach(act => {
-                if (act.lineId) uniqueLineIds.add(act.lineId);
-            });
+        busData.forEach(bus => {
+            if (bus.lineId) uniqueLineIds.add(bus.lineId);
         });
         
         const linePromises = [];
         for (const lineId of uniqueLineIds) {
-            if (!getCachedData(lineCache, lineId)) {
+            const cachedLine = getCachedData(lineCache, lineId);
+            if (!cachedLine) {
                 linePromises.push(fetchLineDetails(lineId));
             }
         }
@@ -703,296 +618,475 @@ async function updateLastKnownLines() {
             await Promise.all(linePromises);
         }
         
-        const processedTimeline = data.timeline.map(day => {
-            const activitiesWithDetails = (day.activities || []).map(act => {
-                act.lineDetails = act.lineId ? 
-                    getCachedData(lineCache, act.lineId) || unknownLineDetails : 
-                    unknownLineDetails;
-                return act;
-            });
-            return { date: day.date, activities: activitiesWithDetails };
+        buses = busData.map(bus => {
+            const lineDetails = bus.lineId ? 
+                getCachedData(lineCache, bus.lineId) || unknownLineDetails : 
+                unknownLineDetails;
+                
+            return {
+                ...bus,
+                lastKnownLine: lineDetails 
+            };
         });
         
-        setCachedData(activityCache, `${busId}-${selectedMonth}`, processedTimeline);
-        return processedTimeline;
-    } catch (error) {
-        console.warn(`Erreur de chargement des activités pour ${busId}`, error);
-        return [];
-    }
-}
+        setCachedData(busCache, `allBuses-${currentMonth}`, buses);
+        displayBusList();
 
-        function isEquivalent(a, b) {
-            if (a === b) return true;
-            if (!a || !b) return false;
-            const aProps = Object.getOwnPropertyNames(a);
-            const bProps = Object.getOwnPropertyNames(b);
-            if (aProps.length !== bProps.length) return false;
-            return aProps.every(prop => a[prop] === b[prop]);
-        }
-
-        let refreshInterval;
-        function startAutoRefresh(intervalMs = 120000) { 
-    stopAutoRefresh();
-    refreshInterval = setInterval(fetchBusesBackground, intervalMs);
-}
-
-        function stopAutoRefresh() {
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-            }
-        }
-
-        let initialLoadComplete = false;
-
-        function displayBusList() {
-    busList.innerHTML = "";
-    
-    const filteredBuses = buses
-        .filter(bus => bus.number) 
-        .sort((a, b) => a.number - b.number);
-            
-    if (filteredBuses.length === 0) {
-        busList.innerHTML = "<div style='text-align:center;padding:20px;'>Chargement en cours...</div>";
-        return;
-    }
-    
-    filteredBuses.forEach((bus, index) => {
-        const busColor = bus.lastKnownLine ? `#${bus.lastKnownLine.color}` : "#FFFFFF";
-        const busTextColor = bus.lastKnownLine ? `#${bus.lastKnownLine.textColor}` : "#000000";
-        const lineName = bus.lastKnownLine ? bus.lastKnownLine.number : "Inconnue";
-        let busAcvtStat = bus.activity && bus.activity.status ? bus.activity.status : 'offline';
-        const badgeClass = busAcvtStat === 'online' ? 'badge-online' : 'badge-offline';
-        const statusText = busAcvtStat === 'online' ? '🚌 En service' : '😴 Hors service';
-        
-        const li = document.createElement("li");
-        li.classList.add("bus-item");
-        
-        if (!initialLoadComplete) {
-            li.classList.add("initial-fade-in");
-            li.style.animationDelay = `${index * 0.05}s`;
-        }
-        
-        if (busAcvtStat === 'online') {
-            li.style.backgroundColor = busColor;
-            li.style.color = busTextColor;
-        }
-        
-        li.innerHTML = `
-            <div class="line-details">
-                <span class="line-number">${bus.number}</span>
-                <span class="badge ${badgeClass}">${statusText}</span>
-            </div>
-            <div><span class="devv">${busAcvtStat === 'online' 
-                ? `Il est actuellement sur la ligne ${lineName}.` 
-                : `La dernière fois qu'on l'a vu, c'était sur la ligne ${lineName}.`}</span></div>
-            <div><span class="devv">${bus.designation || ""}</span></div>
-        `;
-        
-        li.addEventListener("click", () => showBusDetails(bus));
-        busList.appendChild(li);
-    });
-    
-    if (!initialLoadComplete) {
-        initialLoadComplete = true;
-    }
-}
-
-async function showBusDetails(bus) {
-
-    lastScrollPosition = window.scrollY;
-    
-    busListContainer.style.opacity = '0';
-    busListContainer.style.transform = 'translateY(-20px)';
-    busListContainer.style.filter = 'blur(10px)';
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    scrollToTop();    
-    busListContainer.classList.add("hidden");
-    busDetails.classList.remove("hidden");
-    
-    busDetails.style.opacity = '0';
-    busDetails.style.transform = 'translateY(100px)';
-    busDetails.style.filter = 'blur(10px)';
-    busDetails.offsetHeight;
-    busDetails.style.transition = 'all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1)';
-    busDetails.style.opacity = '1';
-    busDetails.style.transform = 'translateY(0)';
-    busDetails.style.filter = 'blur(0)';
-    
-    busNumber.textContent = bus.number;
-    busStatus.textContent = bus.activity && bus.activity.status === "online" ? 
-        "Véhicule en service" : "Véhicule hors service";
-    
-    const currentMonth = getCurrentMonth();
-    detailsMonthSelect.value = currentMonth;
-    updateMonthDisplay();
-    
-    loadingIndicator.classList.remove('hidden');
-    
-    try {
-        const activities = await fetchActivities(bus.id);
-        displayActivities(activities);
-    } catch (error) {
-        console.error("Erreur lors du chargement des activités", error);
-        activitiesList.innerHTML = "<li>😔 Oups ! Une erreur interne est survenue. Réessayez plus tard.</li>";
-    } finally {
-        loadingIndicator.classList.add('hidden');
-    }
-}
-
-function scrollToTop() {
-  const currentPosition = window.pageYOffset || document.documentElement.scrollTop;
-  if (currentPosition > 0) {
-    window.requestAnimationFrame(scrollToTop);
-    window.scrollTo(0, currentPosition - currentPosition / 8);
-  }
-}
-
-function displayActivities(activities) {
-    activitiesList.innerHTML = "";
-    if (!activities || activities.length === 0 || !activities.some(day => day.activities && day.activities.length > 0)) {
-        const li1 = document.createElement("li");
-        const li2 = document.createElement("li");
-        
-        li1.style.opacity = '0';
-        li2.style.opacity = '0';
-        li1.style.transform = 'translateY(20px)';
-        li2.style.transform = 'translateY(20px)';
-        
-        li1.textContent = "😴 Ce bus n'a effectué aucun service ce mois...";
-        li2.textContent = "🤔 Tentez de voir une autre période : il se cache sûrement une affectation hors du commun !";
-        
-        activitiesList.appendChild(li1);
-        activitiesList.appendChild(li2);
-        
         setTimeout(() => {
-            li1.style.transition = 'all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1)';
-            li1.style.opacity = '1';
-            li1.style.transform = 'translateY(0)';
+            updateLastKnownLines();
         }, 100);
-        
-        setTimeout(() => {
-            li2.style.transition = 'all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1)';
-            li2.style.opacity = '1';
-            li2.style.transform = 'translateY(0)';
-        }, 200);
-        
-        return;
     }
 
-    const allActivities = activities
-        .reduce((acc, day) => {
-            if (day.activities && day.activities.length > 0) {
-                return acc.concat(
-                    day.activities.map(act => ({
-                        ...act,
-                        dayDate: day.date
-                    }))
-                );
-            }
-            return acc;
-        }, [])
-        .sort((a, b) => {
-            const dateA = new Date(a.startedAt);
-            const dateB = new Date(b.startedAt);
-            return dateB - dateA;
-        });
-
-    allActivities.forEach((act, index) => {
-        const lineColor = act.lineDetails ? `#${act.lineDetails.color}` : '#CCCCCC';
-        const lineNumber = act.lineDetails ? act.lineDetails.number : 'Inconnue';
-
-        const li = document.createElement("li");
-        li.style.borderLeftColor = lineColor;
-        li.style.opacity = '0';
-        li.style.transform = 'translateY(20px)';
+    async function updateLastKnownLines() {
+        const batchSize = 20;
+        const allBusIds = buses.map(bus => bus.id);
         
-        const dateFormatted = new Date(act.dayDate).toLocaleDateString('fr-FR', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-        });
-        
-        const startTime = new Date(act.startedAt);
-        const endTime = new Date(act.updatedAt);
-        const duration = Math.round((endTime - startTime) / (1000 * 60)); 
-        
-        li.innerHTML = `
-            <strong style="color: ${lineColor};">Ligne ${lineNumber}</strong> | ${dateFormatted} 
-            <br><em>de ${startTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})} 
-            à ${endTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
-            (${duration} min)</em>
-        `;
-        
-        activitiesList.appendChild(li);
-        
-        // Ajouter un délai progressif pour chaque élément
-        setTimeout(() => {
-            li.style.transition = 'all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1)';
-            li.style.opacity = '1';
-            li.style.transform = 'translateY(0)';
-        }, index * 50);
-    });
-}
-
-backBtn.addEventListener('click', async () => {
-    busDetails.style.opacity = '0';
-    busDetails.style.transform = 'translateY(-20px)';
-    busDetails.style.filter = 'blur(10px)';
-    await new Promise(resolve => setTimeout(resolve, 300));
-    busDetails.classList.add("hidden");
-    busListContainer.classList.remove("hidden");
-    busListContainer.style.opacity = '0';
-    busListContainer.style.transform = 'translateY(100px)';
-    busListContainer.style.filter = 'blur(10px)';
-    busListContainer.offsetHeight;
-    busListContainer.style.transition = 'all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1)';
-    busListContainer.style.opacity = '1';
-    busListContainer.style.transform = 'translateY(0)';
-    busListContainer.style.filter = 'blur(0)';
-    window.scrollTo(0, lastScrollPosition);
-    currentMonth = getCurrentMonth();
-    fetchBuses();
-});
-        
-        detailsMonthSelect.addEventListener('change', async () => {
-            const selectedMonth = detailsMonthSelect.value;
-            
-            if (busNumber.textContent) {
-                const currentBusId = buses.find(b => b.number == busNumber.textContent)?.id;
-                if (currentBusId) {
-                    try {
-                        loadingIndicator.classList.remove('hidden');
-                        delete activityCache[`${currentBusId}-${selectedMonth}`];
-                        const activities = await fetchActivities(currentBusId);
-                        displayActivities(activities);
-                    } catch (error) {
-                        console.error("Erreur lors du chargement des activités", error);
-                        activitiesList.innerHTML = "<li>Erreur lors du chargement des activités</li>";
-                    } finally {
-                        loadingIndicator.classList.add('hidden');
+        for (let i = 0; i < allBusIds.length; i += batchSize) {
+            const batch = allBusIds.slice(i, i + batchSize);
+            const promises = batch.map(async (busId) => {
+                const currentBus = buses.find(b => b.id === busId);
+                if (!currentBus) return;
+                
+                try {
+                    const lastKnownLine = await getLastKnownLineOptimized(busId, currentBus.lineId);
+                    if (lastKnownLine && lastKnownLine.number !== "Inconnue") {
+                        currentBus.lastKnownLine = lastKnownLine;
                     }
+                } catch (e) {
+                    console.warn(`Err récup dernière ligne ${busId}`, e);
+                }
+            });
+            
+            await Promise.all(promises);
+            
+            if ((i + batchSize) % (batchSize * 2) === 0 || i + batchSize >= allBusIds.length) {
+                setCachedData(busCache, `allBuses-${currentMonth}`, buses);
+                displayBusList();
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+    }
+
+    async function fetchLineDetails(lineId, forceRefresh = false) {
+        if (!lineId) {
+            return unknownLineDetails;
+        }
+        
+        const cachedLine = !forceRefresh ? getCachedData(lineCache, lineId) : null;
+        if (cachedLine) return cachedLine;
+        
+        try {
+            const cacheBuster = new Date().getTime();
+            const lineData = await safeFetch(`${API_BASE_URL}/lines/${lineId}?_=${cacheBuster}`)
+                .catch(() => {
+                    // Données de démonstration
+                    const demoLines = {
+                        "line1": { color: "007AFF", textColor: "FFFFFF", number: "A" },
+                        "line2": { color: "FF3B30", textColor: "FFFFFF", number: "B" },
+                        "line3": { color: "34C759", textColor: "FFFFFF", number: "C" }
+                    };
+                    return demoLines[lineId] || unknownLineDetails;
+                });
+            
+            const result = {
+                color: lineData.color || "FFFFFF",
+                textColor: lineData.textColor || "000000",
+                number: lineData.number || "Inconnue"
+            };
+            
+            setCachedData(lineCache, lineId, result);
+            return result;
+        } catch (error) {
+            console.warn(`Erreur lors de la récupération de la ligne ${lineId}`, error);
+            const fallback = { ...unknownLineDetails };
+            setCachedData(lineCache, lineId, fallback); 
+            return fallback;
+        }
+    }
+
+    async function getLastKnownLineOptimized(busId, currentLineId = null) {
+        if (currentLineId) {
+            const currentLine = getCachedData(lineCache, currentLineId);
+            if (currentLine) return currentLine;
+        }
+        
+        const cachedActivities = getCachedData(activityCache, `${busId}-${currentMonth}`);
+        if (cachedActivities) {
+            return findLastKnownLineFromActivities(cachedActivities);
+        }
+        
+        try {
+            const activities = await fetchActivities(busId);
+            return findLastKnownLineFromActivities(activities);
+        } catch (error) {
+            console.warn(`Erreur charg line pour ${busId}`, error);
+            return null;
+        }
+    }
+
+    function findLastKnownLineFromActivities(activities) {
+        if (!activities || !activities.length) return null;
+        
+        const allActivities = activities.flatMap(day => day.activities || []);
+        if (!allActivities.length) return null;
+        
+        const lastActivity = allActivities.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
+        return lastActivity && lastActivity.lineDetails ? lastActivity.lineDetails : null;
+    }
+
+    async function fetchActivities(busId) {
+        const selectedMonth = busDetails.classList.contains('hidden') ? 
+            currentMonth : detailsMonthSelect.value;
+        
+        const cachedActivities = getCachedData(activityCache, `${busId}-${selectedMonth}`);
+        if (cachedActivities) {
+            return cachedActivities;
+        }
+        
+        try {
+            const cacheBuster = new Date().getTime();
+            const data = await safeFetch(`${API_BASE_URL}/vehicles/${busId}/activities?month=${selectedMonth}&_=${cacheBuster}`)
+                .catch(() => {
+                    // Données de démonstration
+                    return {
+                        timeline: [
+                            {
+                                date: new Date().toISOString().split('T')[0],
+                                activities: [
+                                    {
+                                        lineId: "line1",
+                                        startedAt: new Date(Date.now() - 3600000).toISOString(),
+                                        updatedAt: new Date().toISOString()
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                });
+            
+            if (!data || !data.timeline || !Array.isArray(data.timeline)) {
+                return [];
+            }
+            
+            const uniqueLineIds = new Set();
+            data.timeline.forEach(day => {
+                day.activities?.forEach(act => {
+                    if (act.lineId) uniqueLineIds.add(act.lineId);
+                });
+            });
+            
+            const linePromises = [];
+            for (const lineId of uniqueLineIds) {
+                if (!getCachedData(lineCache, lineId)) {
+                    linePromises.push(fetchLineDetails(lineId));
                 }
             }
-        });
+            
+            if (linePromises.length > 0) {
+                await Promise.all(linePromises);
+            }
+            
+            const processedTimeline = data.timeline.map(day => {
+                const activitiesWithDetails = (day.activities || []).map(act => {
+                    act.lineDetails = act.lineId ? 
+                        getCachedData(lineCache, act.lineId) || unknownLineDetails : 
+                        unknownLineDetails;
+                    return act;
+                });
+                return { date: day.date, activities: activitiesWithDetails };
+            });
+            
+            setCachedData(activityCache, `${busId}-${selectedMonth}`, processedTimeline);
+            return processedTimeline;
+        } catch (error) {
+            console.warn(`Erreur de chargement des activités pour ${busId}`, error);
+            return [];
+        }
+    }
 
-        document.getElementById('prev-month').addEventListener('click', () => navigateMonth('prev'));
-        document.getElementById('next-month').addEventListener('click', () => navigateMonth('next'));
+    function isEquivalent(a, b) {
+        if (a === b) return true;
+        if (!a || !b) return false;
+        const aProps = Object.getOwnPropertyNames(a);
+        const bProps = Object.getOwnPropertyNames(b);
+        if (aProps.length !== bProps.length) return false;
+        return aProps.every(prop => a[prop] === b[prop]);
+    }
 
-        detailsMonthSelect.addEventListener('change', updateMonthDisplay);
+    let refreshInterval;
+    function startAutoRefresh(intervalMs = 120000) { 
+        stopAutoRefresh();
+        refreshInterval = setInterval(fetchBusesBackground, intervalMs);
+    }
 
+    function stopAutoRefresh() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+    }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initMonthSelectors();
-            fetchBuses();
-            controlParentSpinner(false);
+    let initialLoadComplete = false;
 
-        });
-
-        window.addEventListener('beforeunload', () => {
-            stopAutoRefresh();
+    function displayBusList() {
+        busList.innerHTML = "";
+        
+        const filteredBuses = buses
+            .filter(bus => bus.number) 
+            .sort((a, b) => a.number - b.number);
+                
+        if (filteredBuses.length === 0) {
+            busList.innerHTML = "<div style='text-align:center;padding:20px;color:#605e5c;'>Chargement en cours...</div>";
+            return;
+        }
+        
+        filteredBuses.forEach((bus, index) => {
+            const busColor = bus.lastKnownLine ? `#${bus.lastKnownLine.color}` : "#667eea";
+            const busTextColor = bus.lastKnownLine ? `#${bus.lastKnownLine.textColor}` : "#FFFFFF";
+            const lineName = bus.lastKnownLine ? bus.lastKnownLine.number : "Inconnue";
+            let busAcvtStat = bus.activity && bus.activity.status ? bus.activity.status : 'offline';
+            const badgeClass = busAcvtStat === 'online' ? 'badge-online' : 'badge-offline';
+            const statusText = busAcvtStat === 'online' ? '🚌 En service' : '😴 Hors service';
+            
+            const li = document.createElement("li");
+            li.classList.add("bus-item");
+            
+            if (!initialLoadComplete) {
+                li.classList.add("initial-fade-in");
+                li.style.animationDelay = `${index * 0.05}s`;
+            }
+            
+            if (busAcvtStat === 'online') {
+                li.style.setProperty('--line-color', busColor);
+                li.style.background = `linear-gradient(135deg, ${busColor}15, ${busColor}25)`;
+            }
+            
+            li.innerHTML = `
+                <div class="line-details">
+                    <span class="line-number">Bus ${bus.number}</span>
+                    <span class="badge ${badgeClass}">${statusText}</span>
+                </div>
+                <div><span class="devv">${busAcvtStat === 'online' 
+                    ? `Actuellement sur la ligne ${lineName}` 
+                    : `Dernière ligne connue : ${lineName}`}</span></div>
+                <div><span class="devv">${bus.designation || "Véhicule standard"}</span></div>
+            `;
+            
+            li.addEventListener("click", () => showBusDetails(bus));
+            busList.appendChild(li);
         });
         
+        if (!initialLoadComplete) {
+            initialLoadComplete = true;
+        }
+    }
+
+    async function showBusDetails(bus) {
+        lastScrollPosition = window.scrollY;
+        
+        // Animation de sortie de la liste
+        busListContainer.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        busListContainer.style.opacity = '0';
+        busListContainer.style.transform = 'translateY(-30px)';
+        
+        await new Promise(resolve => setTimeout(resolve, 400));
+        scrollToTop();    
+        busListContainer.classList.add("hidden");
+        busDetails.classList.remove("hidden");
+        
+        // Animation d'entrée des détails
+        busDetails.style.opacity = '0';
+        busDetails.style.transform = 'translateY(50px)';
+        busDetails.offsetHeight;
+        busDetails.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        busDetails.style.opacity = '1';
+        busDetails.style.transform = 'translateY(0)';
+        
+        busNumber.textContent = bus.number;
+        busStatus.textContent = bus.activity && bus.activity.status === "online" ? 
+            "🟢 Véhicule en service" : "🔴 Véhicule hors service";
+        
+        const currentMonth = getCurrentMonth();
+        detailsMonthSelect.value = currentMonth;
+        updateMonthDisplay();
+        
+        // Amélioration du loading
+        const loadingIndicators = document.querySelectorAll('#loading-indicator');
+        loadingIndicators.forEach(indicator => indicator.classList.remove('hidden'));
+        
+        try {
+            const activities = await fetchActivities(bus.id);
+            displayActivities(activities);
+        } catch (error) {
+            console.error("Erreur lors du chargement des activités", error);
+            activitiesList.innerHTML = "<li style='text-align:center;color:#ff6b6b;'>😔 Erreur de chargement des activités</li>";
+        } finally {
+            loadingIndicators.forEach(indicator => indicator.classList.add('hidden'));
+        }
+    }
+
+    function scrollToTop() {
+        const currentPosition = window.pageYOffset || document.documentElement.scrollTop;
+        if (currentPosition > 0) {
+            window.requestAnimationFrame(scrollToTop);
+            window.scrollTo(0, currentPosition - currentPosition / 8);
+        }
+    }
+
+    function displayActivities(activities) {
+        activitiesList.innerHTML = "";
+        if (!activities || activities.length === 0 || !activities.some(day => day.activities && day.activities.length > 0)) {
+            const emptyState = document.createElement("div");
+            emptyState.style.textAlign = "center";
+            emptyState.style.padding = "40px 20px";
+            emptyState.style.color = "#605e5c";
+            emptyState.innerHTML = `
+                <div style="font-size: 3rem; margin-bottom: 20px;">😴</div>
+                <h3 style="margin-bottom: 10px; color: #323130;">Aucune activité</h3>
+                <p>Ce véhicule n'a effectué aucun service ce mois-ci.</p>
+                <p style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;">Essayez de consulter une autre période.</p>
+            `;
+            activitiesList.appendChild(emptyState);
+            return;
+        }
+
+        const allActivities = activities
+            .reduce((acc, day) => {
+                if (day.activities && day.activities.length > 0) {
+                    return acc.concat(
+                        day.activities.map(act => ({
+                            ...act,
+                            dayDate: day.date
+                        }))
+                    );
+                }
+                return acc;
+            }, [])
+            .sort((a, b) => {
+                const dateA = new Date(a.startedAt);
+                const dateB = new Date(b.startedAt);
+                return dateB - dateA;
+            });
+
+        allActivities.forEach((act, index) => {
+            const lineColor = act.lineDetails ? `#${act.lineDetails.color}` : '#667eea';
+            const lineNumber = act.lineDetails ? act.lineDetails.number : 'Inconnue';
+
+            const li = document.createElement("li");
+            li.style.borderLeftColor = lineColor;
+            li.style.opacity = '0';
+            li.style.transform = 'translateY(20px)';
+            
+            const dateFormatted = new Date(act.dayDate).toLocaleDateString('fr-FR', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'long'
+            });
+            
+            const startTime = new Date(act.startedAt);
+            const endTime = new Date(act.updatedAt);
+            const duration = Math.round((endTime - startTime) / (1000 * 60)); 
+            
+            li.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <strong style="color: ${lineColor}; font-size: 1.1rem;">📍 Ligne ${lineNumber}</strong>
+                    <span style="background: ${lineColor}20; color: ${lineColor}; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
+                        ${duration} min
+                    </span>
+                </div>
+                <div style="color: #605e5c; margin-bottom: 8px;">📅 ${dateFormatted}</div>
+                <div style="color: #323130; font-weight: 500;">
+                    🕐 ${startTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})} 
+                    → ${endTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
+                </div>
+            `;
+            
+            activitiesList.appendChild(li);
+            
+            // Animation d'apparition progressive
+            setTimeout(() => {
+                li.style.transition = 'all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                li.style.opacity = '1';
+                li.style.transform = 'translateY(0)';
+            }, index * 100);
+        });
+    }
+
+    // Event Listeners améliorés
+    backBtn.addEventListener('click', async () => {
+        // Animation de sortie des détails
+        busDetails.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        busDetails.style.opacity = '0';
+        busDetails.style.transform = 'translateY(-30px)';
+        
+        await new Promise(resolve => setTimeout(resolve, 400));
+        busDetails.classList.add("hidden");
+        busListContainer.classList.remove("hidden");
+        
+        // Animation d'entrée de la liste
+        busListContainer.style.opacity = '0';
+        busListContainer.style.transform = 'translateY(50px)';
+        busListContainer.offsetHeight;
+        busListContainer.style.transition = 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        busListContainer.style.opacity = '1';
+        busListContainer.style.transform = 'translateY(0)';
+        
+        window.scrollTo(0, lastScrollPosition);
+        currentMonth = getCurrentMonth();
+        fetchBuses();
+    });
+    
+    detailsMonthSelect.addEventListener('change', async () => {
+        const selectedMonth = detailsMonthSelect.value;
+        
+        if (busNumber.textContent) {
+            const currentBusId = buses.find(b => b.number == busNumber.textContent)?.id;
+            if (currentBusId) {
+                try {
+                    const loadingIndicators = document.querySelectorAll('#loading-indicator');
+                    loadingIndicators.forEach(indicator => indicator.classList.remove('hidden'));
+                    
+                    // Animation de transition
+                    activitiesList.style.transition = 'opacity 0.3s ease';
+                    activitiesList.style.opacity = '0.5';
+                    
+                    delete activityCache[`${currentBusId}-${selectedMonth}`];
+                    const activities = await fetchActivities(currentBusId);
+                    displayActivities(activities);
+                    
+                    activitiesList.style.opacity = '1';
+                } catch (error) {
+                    console.error("Erreur lors du chargement des activités", error);
+                    activitiesList.innerHTML = "<li style='text-align:center;color:#ff6b6b;'>❌ Erreur de chargement</li>";
+                } finally {
+                    const loadingIndicators = document.querySelectorAll('#loading-indicator');
+                    loadingIndicators.forEach(indicator => indicator.classList.add('hidden'));
+                }
+            }
+        }
+    });
+
+    document.getElementById('prev-month').addEventListener('click', () => navigateMonth('prev'));
+    document.getElementById('next-month').addEventListener('click', () => navigateMonth('next'));
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', () => {
+        initMonthSelectors();
+        fetchBuses();
+        startAutoRefresh();
+        controlParentSpinner(false);
+    });
+
+    window.addEventListener('beforeunload', () => {
+        stopAutoRefresh();
+    });
+    
+    // Amélioration de la responsivité
+    window.addEventListener('resize', () => {
+        // Ajustements responsive si nécessaire
+    });
+    
     </script>
 </body>
 </html>
