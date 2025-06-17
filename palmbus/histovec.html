@@ -737,6 +737,7 @@
                     const activities = await this.loadActivities(this.currentBus.id, selectedMonth);
                     this.renderActivities(activities);
                 } catch (error) {
+                    console.error('Erreur lors du chargement des activités', error);
                     this.activitiesList.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">😔</div>
