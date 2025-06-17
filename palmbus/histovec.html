@@ -710,9 +710,14 @@
                 
                 // Animer l'élément de transition vers sa position finale
                 const targetRect = this.detailsBusNumber.getBoundingClientRect();
-                transitionElement.style.left = '60px';
+                transitionElement.style.left = '65px';
                 transitionElement.style.top = targetRect.top + 'px';
                 transitionElement.style.fontSize = '28px';
+                
+                // Nettoyer après l'animation
+                setTimeout(() => {
+                    document.body.removeChild(transitionElement);
+                }, 400);
             }
 
             showBusList() {
