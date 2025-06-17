@@ -3,480 +3,487 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bus Tracker</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap');
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f3f3f3;
-            color: #323130;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            min-height: 100vh;
             overflow-x: hidden;
-            line-height: 1.6;
         }
-
+        
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            position: relative;
         }
-
+        
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            opacity: 0;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             transform: translateY(-20px);
-            animation: slideInFade 0.8s ease-out forwards;
+            opacity: 0;
+            animation: slideInDown 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-
+        
         .header h1 {
-            font-size: 2.5rem;
-            font-weight: 300;
+            font-size: 32px;
+            font-weight: 600;
             color: #323130;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
-
+        
         .header p {
             color: #605e5c;
-            font-size: 1.1rem;
+            font-size: 16px;
+            font-weight: 400;
         }
-
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 200px;
-            opacity: 0;
-            animation: fadeIn 0.5s ease-out forwards;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e1dfdd;
-            border-top: 3px solid #0078d4;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
+        
         .bus-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 20px;
-            opacity: 0;
-            animation: fadeIn 0.8s ease-out 0.3s forwards;
+            margin-bottom: 24px;
         }
-
+        
         .bus-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
             padding: 24px;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
             position: relative;
             overflow: hidden;
             transform: translateY(20px);
             opacity: 0;
-            animation: cardSlideIn 0.6s ease-out forwards;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
-
+        
+        .bus-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--line-color, #0078d4), var(--line-color, #0078d4));
+            border-radius: 16px 16px 0 0;
+        }
+        
         .bus-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
         }
-
-        .bus-card.online {
-            border-left: 4px solid #107c10;
+        
+        .bus-card.animate-in {
+            animation: slideInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-
-        .bus-card.offline {
-            border-left: 4px solid #d13438;
-        }
-
+        
         .bus-number {
-            font-size: 2rem;
-            font-weight: 600;
+            font-size: 28px;
+            font-weight: 700;
             color: #323130;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             position: relative;
             z-index: 2;
         }
-
+        
         .bus-status {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
-
+        
         .status-badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
             font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-
-        .status-badge.online {
+        
+        .status-online {
             background: rgba(16, 124, 16, 0.1);
             color: #107c10;
+            border: 1px solid rgba(16, 124, 16, 0.2);
         }
-
-        .status-badge.offline {
+        
+        .status-offline {
             background: rgba(209, 52, 56, 0.1);
             color: #d13438;
+            border: 1px solid rgba(209, 52, 56, 0.2);
         }
-
+        
         .bus-line {
             color: #605e5c;
-            font-size: 0.95rem;
-            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.4;
         }
-
+        
         .bus-designation {
             color: #8a8886;
-            font-size: 0.9rem;
+            font-size: 13px;
+            margin-top: 8px;
         }
-
+        
         .details-view {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: #f3f3f3;
+            right: 0;
+            bottom: 0;
+            background: rgba(243, 242, 241, 0.95);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
             z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: none;
             overflow-y: auto;
         }
-
-        .details-view.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
+        
         .details-container {
             max-width: 800px;
             margin: 0 auto;
             padding: 40px 20px;
-            transform: scale(0.95) translateY(20px);
-            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-
-        .details-view.active .details-container {
-            transform: scale(1) translateY(0);
-        }
-
+        
         .details-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 40px;
-            position: relative;
-        }
-
-        .back-btn {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 6px;
-            padding: 12px 16px;
-            cursor: pointer;
-            margin-right: 20px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #323130;
-            font-size: 0.95rem;
-        }
-
-        .back-btn:hover {
             background: rgba(255, 255, 255, 0.9);
-            transform: translateX(-2px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
         }
-
+        
+        .details-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--line-color, #0078d4), var(--line-color, #0078d4));
+            border-radius: 16px 16px 0 0;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #605e5c;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.1);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        
         .details-bus-number {
-            font-size: 3rem;
-            font-weight: 600;
+            font-size: 48px;
+            font-weight: 700;
             color: #323130;
-            margin-right: 20px;
+            margin-bottom: 16px;
         }
-
+        
         .details-status {
             display: flex;
             align-items: center;
             gap: 12px;
+            margin-bottom: 24px;
         }
-
+        
         .month-selector {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .month-nav {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .month-btn {
-            background: transparent;
-            border: 1px solid rgba(0, 120, 212, 0.3);
-            border-radius: 6px;
-            padding: 8px 12px;
-            cursor: pointer;
-            color: #0078d4;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .month-btn:hover {
-            background: rgba(0, 120, 212, 0.1);
-            transform: scale(1.05);
-        }
-
-        .month-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .current-month {
-            font-size: 1.1rem;
-            font-weight: 500;
-            color: #323130;
-            min-width: 200px;
-            text-align: center;
-        }
-
-        .activities-container {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 8px;
-            padding: 30px;
-            min-height: 400px;
-        }
-
-        .activities-title {
-            font-size: 1.4rem;
-            font-weight: 500;
-            color: #323130;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 16px 24px;
             margin-bottom: 24px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
         }
-
+        
+        .month-nav {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #605e5c;
+        }
+        
+        .month-nav:hover {
+            background: rgba(255, 255, 255, 1);
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .month-display {
+            font-size: 16px;
+            font-weight: 500;
+            color: #323130;
+            text-transform: capitalize;
+        }
+        
+        .activities-list {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
         .activity-item {
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 6px;
             padding: 20px;
+            border-left: 4px solid var(--line-color, #0078d4);
             margin-bottom: 16px;
-            border-left: 4px solid #0078d4;
-            transition: all 0.3s ease;
-            transform: translateX(-10px);
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 0 12px 12px 0;
+            transform: translateX(-20px);
             opacity: 0;
-            animation: activitySlideIn 0.5s ease-out forwards;
+            transition: all 0.3s ease;
         }
-
-        .activity-item:hover {
-            transform: translateX(4px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        
+        .activity-item.animate-in {
+            animation: slideInLeft 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
-
+        
+        .activity-item:last-child {
+            margin-bottom: 0;
+        }
+        
         .activity-line {
-            font-size: 1.1rem;
+            font-size: 18px;
             font-weight: 600;
+            color: var(--line-color, #0078d4);
             margin-bottom: 8px;
         }
-
+        
         .activity-date {
             color: #605e5c;
-            font-size: 0.95rem;
+            font-size: 14px;
             margin-bottom: 4px;
         }
-
+        
         .activity-time {
             color: #8a8886;
-            font-size: 0.9rem;
+            font-size: 13px;
             font-style: italic;
         }
-
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #605e5c;
+            font-size: 16px;
+        }
+        
+        .loading::before {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e1dfdd;
+            border-top: 2px solid #0078d4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+        
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            color: #8a8886;
-        }
-
-        .empty-state .icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .empty-state h3 {
-            font-size: 1.3rem;
-            font-weight: 500;
-            margin-bottom: 12px;
+            padding: 40px;
             color: #605e5c;
+            font-size: 16px;
         }
-
-        .empty-state p {
-            font-size: 1rem;
-            line-height: 1.6;
+        
+        .empty-state .emoji {
+            font-size: 48px;
+            margin-bottom: 16px;
         }
-
+        
         .error-message {
-            background: rgba(209, 52, 56, 0.1);
-            border: 1px solid rgba(209, 52, 56, 0.2);
-            border-radius: 6px;
+            background: rgba(255, 244, 206, 0.9);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 12px;
             padding: 16px;
-            margin: 20px 0;
-            color: #d13438;
+            margin-bottom: 24px;
+            color: #8a6d3b;
             text-align: center;
             display: none;
         }
-
-        .zoom-transition {
-            transform-origin: var(--click-x, 50%) var(--click-y, 50%);
-            transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        
+        @keyframes slideInDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
-
-        .zoom-transition.zooming {
-            transform: scale(1.1);
+        
+        @keyframes slideInUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
-
+        
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
+        
+        @keyframes zoomTransition {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
             }
         }
-
-        @keyframes slideInFade {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        
+        .zoom-animation {
+            animation: zoomTransition 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-
-        @keyframes cardSlideIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes activitySlideIn {
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
+        
         @media (max-width: 768px) {
             .container {
-                padding: 15px;
+                padding: 16px;
             }
-
+            
             .bus-grid {
                 grid-template-columns: 1fr;
                 gap: 16px;
             }
-
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 28px;
+            }
+            
             .details-container {
-                padding: 20px 15px;
+                padding: 20px 16px;
             }
-
-            .details-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 16px;
-            }
-
+            
             .details-bus-number {
-                font-size: 2.5rem;
-            }
-
-            .month-selector {
-                flex-direction: column;
-                gap: 16px;
+                font-size: 36px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🚌 My Bus History</h1>
+        
+        <div class="error-message" id="errorMessage">
+            Une erreur est survenue lors du chargement des données
         </div>
-
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-        </div>
-
-        <div class="error-message" id="error-message">
-            Une erreur est survenue lors du chargement des données.
-        </div>
-
-        <div class="bus-grid" id="bus-grid">
+        
+        <div class="bus-grid" id="busGrid">
+            <div class="loading">Chargement des bus...</div>
         </div>
     </div>
-
-    <div class="details-view" id="details-view">
+    
+    <div class="details-view" id="detailsView">
         <div class="details-container">
             <div class="details-header">
-                <button class="back-btn" id="back-btn">
-                    <span>←</span>
-                    Retour
-                </button>
-                <div class="details-bus-number" id="details-bus-number">000</div>
-                <div class="details-status">
-                    <div class="status-badge" id="details-status-badge">
-                        <span id="details-status-text">Hors service</span>
-                    </div>
+                <div class="back-button" id="backButton">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                    </svg>
+                </div>
+                <div class="details-bus-number" id="detailsBusNumber">Bus #42</div>
+                <div class="details-status" id="detailsStatus">
+                    <div class="status-badge status-online">En service</div>
                 </div>
             </div>
-
+            
             <div class="month-selector">
-                <div class="month-nav">
-                    <button class="month-btn" id="prev-month">‹</button>
-                    <div class="current-month" id="current-month">Juin 2025</div>
-                    <button class="month-btn" id="next-month">›</button>
+                <div class="month-nav" id="prevMonth">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+                    </svg>
+                </div>
+                <div class="month-display" id="monthDisplay">Juin 2025</div>
+                <div class="month-nav" id="nextMonth">
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="m4.646 1.646.708.708L10.207 8l-4.853 4.854-.708-.708L9.793 8z"/>
+                    </svg>
                 </div>
             </div>
-
-            <div class="activities-container">
-                <div class="activities-title">
-                    📊 Historique d'activité
-                </div>
-                <div id="activities-list">
-                </div>
+            
+            <div class="activities-list" id="activitiesList">
+                <div class="loading">Chargement des activités...</div>
             </div>
         </div>
     </div>
@@ -492,85 +499,83 @@
                 this.CACHE_DURATION = 5 * 60 * 1000;
                 this.currentMonth = this.getCurrentMonth();
                 this.selectedBus = null;
-                this.monthIndex = 0;
-                this.months = this.generateMonths();
-                this.unknownLineDetails = { number: "Inconnue", color: "FFFFFF", textColor: "000000" };
+                this.availableMonths = [];
+                this.currentMonthIndex = 0;
                 
-                this.initElements();
-                this.initEventListeners();
                 this.init();
             }
-
-            initElements() {
-                this.loadingEl = document.getElementById('loading');
-                this.errorEl = document.getElementById('error-message');
-                this.busGridEl = document.getElementById('bus-grid');
-                this.detailsViewEl = document.getElementById('details-view');
-                this.detailsBusNumberEl = document.getElementById('details-bus-number');
-                this.detailsStatusBadgeEl = document.getElementById('details-status-badge');
-                this.detailsStatusTextEl = document.getElementById('details-status-text');
-                this.currentMonthEl = document.getElementById('current-month');
-                this.activitiesListEl = document.getElementById('activities-list');
-                this.backBtnEl = document.getElementById('back-btn');
-                this.prevMonthBtnEl = document.getElementById('prev-month');
-                this.nextMonthBtnEl = document.getElementById('next-month');
+            
+            init() {
+                this.setupEventListeners();
+                this.initMonthSelectors();
+                this.fetchBuses();
+                this.startAutoRefresh();
+                this.controlParentSpinner(false);
             }
-
-            initEventListeners() {
-                this.backBtnEl.addEventListener('click', () => this.hideDetails());
-                this.prevMonthBtnEl.addEventListener('click', () => this.navigateMonth(-1));
-                this.nextMonthBtnEl.addEventListener('click', () => this.navigateMonth(1));
+            
+            setupEventListeners() {
+                document.getElementById('backButton').addEventListener('click', () => this.hideDetails());
+                document.getElementById('prevMonth').addEventListener('click', () => this.navigateMonth(-1));
+                document.getElementById('nextMonth').addEventListener('click', () => this.navigateMonth(1));
+                
+                window.addEventListener('beforeunload', () => this.stopAutoRefresh());
             }
-
-            async init() {
+            
+            controlParentSpinner(show, message = '') {
                 try {
-                    this.showLoading();
-                    await this.fetchBuses();
-                    this.hideLoading();
-                    this.startAutoRefresh();
-                } catch (error) {
-                    console.error('Erreur d\'initialisation:', error);
-                    this.showError();
+                    window.parent.postMessage({
+                        action: show ? 'showSpinner' : 'hideSpinner',
+                        message: message || ''
+                    }, '*');
+                } catch (e) {
+                    console.error("Impossible d'envoyer un message à la page parente", e);
                 }
             }
-
-            showLoading() {
-                this.loadingEl.style.display = 'flex';
-                this.busGridEl.style.display = 'none';
-                this.errorEl.style.display = 'none';
-            }
-
-            hideLoading() {
-                this.loadingEl.style.display = 'none';
-                this.busGridEl.style.display = 'grid';
-            }
-
-            showError() {
-                this.loadingEl.style.display = 'none';
-                this.errorEl.style.display = 'block';
-            }
-
+            
             getCurrentMonth() {
                 const now = new Date();
                 const year = now.getFullYear();
                 const month = String(now.getMonth() + 1).padStart(2, '0');
                 return `${year}-${month}`;
             }
-
-            generateMonths() {
-                const months = [];
+            
+            initMonthSelectors() {
                 const now = new Date();
+                this.availableMonths = [];
+                
                 for (let i = 0; i < 12; i++) {
                     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
                     const year = date.getFullYear();
                     const month = String(date.getMonth() + 1).padStart(2, '0');
                     const value = `${year}-${month}`;
                     const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-                    months.push({ value, label });
+                    
+                    this.availableMonths.push({ value, label });
                 }
-                return months;
+                
+                this.currentMonthIndex = 0;
+                this.updateMonthDisplay();
             }
-
+            
+            updateMonthDisplay() {
+                const monthDisplay = document.getElementById('monthDisplay');
+                if (this.availableMonths[this.currentMonthIndex]) {
+                    monthDisplay.textContent = this.availableMonths[this.currentMonthIndex].label;
+                }
+            }
+            
+            navigateMonth(direction) {
+                const newIndex = this.currentMonthIndex + direction;
+                if (newIndex >= 0 && newIndex < this.availableMonths.length) {
+                    this.currentMonthIndex = newIndex;
+                    this.updateMonthDisplay();
+                    
+                    if (this.selectedBus) {
+                        this.loadActivities(this.selectedBus.id);
+                    }
+                }
+            }
+            
             getCachedData(cache, key) {
                 const entry = cache[key];
                 if (entry && (Date.now() - entry.timestamp < this.CACHE_DURATION)) {
@@ -578,14 +583,14 @@
                 }
                 return null;
             }
-
+            
             setCachedData(cache, key, data) {
                 cache[key] = {
                     data,
                     timestamp: Date.now()
                 };
             }
-
+            
             async safeFetch(url, options = {}, timeoutMs = 10000, maxRetries = 2) {
                 let retries = 0;
                 
@@ -620,20 +625,22 @@
                     }
                 }
             }
-
+            
             async fetchBuses() {
-                const cachedBuses = this.getCachedData(this.busCache, `allBuses-${this.currentMonth}`);
-                if (cachedBuses) {
-                    this.buses = cachedBuses;
-                    this.displayBusList();
-                    return;
-                }
-
                 try {
+                    this.hideError();
+                    
+                    const cachedBuses = this.getCachedData(this.busCache, `allBuses-${this.currentMonth}`);
+                    if (cachedBuses) {
+                        this.buses = cachedBuses;
+                        this.displayBusList();
+                        return;
+                    }
+                    
                     const cacheBuster = new Date().getTime();
                     const response = await fetch('setvar/settings/BusTrackerAPI/networkId.txt');
-                    const setvar = await response.text();  
-                    const networkId = setvar.trim();  
+                    const setvar = await response.text();
+                    const networkId = setvar.trim();
                     const busData = await this.safeFetch(`${this.API_BASE_URL}/vehicles?networkId=${networkId}&_=${cacheBuster}`);
                     
                     const uniqueLineIds = new Set();
@@ -655,54 +662,26 @@
                     
                     this.buses = busData.map(bus => {
                         const lineDetails = bus.lineId ? 
-                            this.getCachedData(this.lineCache, bus.lineId) || this.unknownLineDetails : 
-                            this.unknownLineDetails;
+                            this.getCachedData(this.lineCache, bus.lineId) || this.getUnknownLineDetails() : 
+                            this.getUnknownLineDetails();
                             
                         return {
                             ...bus,
-                            lastKnownLine: lineDetails 
+                            lastKnownLine: lineDetails
                         };
                     });
                     
                     this.setCachedData(this.busCache, `allBuses-${this.currentMonth}`, this.buses);
                     this.displayBusList();
                     
-                    setTimeout(() => {
-                        this.updateLastKnownLines();
-                    }, 100);
+                    setTimeout(() => this.updateLastKnownLines(), 100);
+                    
                 } catch (error) {
-                    throw error;
+                    console.error("Erreur de chargement des bus", error);
+                    this.showError();
                 }
             }
-
-            async fetchLineDetails(lineId) {
-                if (!lineId) {
-                    return this.unknownLineDetails;
-                }
-                
-                const cachedLine = this.getCachedData(this.lineCache, lineId);
-                if (cachedLine) return cachedLine;
-                
-                try {
-                    const cacheBuster = new Date().getTime();
-                    const lineData = await this.safeFetch(`${this.API_BASE_URL}/lines/${lineId}?_=${cacheBuster}`);
-                    
-                    const result = {
-                        color: lineData.color || "FFFFFF",
-                        textColor: lineData.textColor || "000000",
-                        number: lineData.number || "Inconnue"
-                    };
-                    
-                    this.setCachedData(this.lineCache, lineId, result);
-                    return result;
-                } catch (error) {
-                    console.warn(`Erreur lors de la récupération de la ligne ${lineId}`, error);
-                    const fallback = { ...this.unknownLineDetails };
-                    this.setCachedData(this.lineCache, lineId, fallback); 
-                    return fallback;
-                }
-            }
-
+            
             async updateLastKnownLines() {
                 const batchSize = 20;
                 const allBusIds = this.buses.map(bus => bus.id);
@@ -733,7 +712,39 @@
                     await new Promise(resolve => setTimeout(resolve, 300));
                 }
             }
-
+            
+            async fetchLineDetails(lineId) {
+                if (!lineId) {
+                    return this.getUnknownLineDetails();
+                }
+                
+                const cachedLine = this.getCachedData(this.lineCache, lineId);
+                if (cachedLine) return cachedLine;
+                
+                try {
+                    const cacheBuster = new Date().getTime();
+                    const lineData = await this.safeFetch(`${this.API_BASE_URL}/lines/${lineId}?_=${cacheBuster}`);
+                    
+                    const result = {
+                        color: lineData.color || "0078d4",
+                        textColor: lineData.textColor || "ffffff",
+                        number: lineData.number || "Inconnue"
+                    };
+                    
+                    this.setCachedData(this.lineCache, lineId, result);
+                    return result;
+                } catch (error) {
+                    console.warn(`Erreur lors de la récupération de la ligne ${lineId}`, error);
+                    const fallback = this.getUnknownLineDetails();
+                    this.setCachedData(this.lineCache, lineId, fallback);
+                    return fallback;
+                }
+            }
+            
+            getUnknownLineDetails() {
+                return { number: "Inconnue", color: "8a8886", textColor: "ffffff" };
+            }
+            
             async getLastKnownLineOptimized(busId, currentLineId = null) {
                 if (currentLineId) {
                     const currentLine = this.getCachedData(this.lineCache, currentLineId);
@@ -753,7 +764,7 @@
                     return null;
                 }
             }
-
+            
             findLastKnownLineFromActivities(activities) {
                 if (!activities || !activities.length) return null;
                 
@@ -763,152 +774,18 @@
                 const lastActivity = allActivities.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))[0];
                 return lastActivity && lastActivity.lineDetails ? lastActivity.lineDetails : null;
             }
-
-            displayBusList() {
-                this.busGridEl.innerHTML = "";
+            
+            async fetchActivities(busId) {
+                const selectedMonth = this.availableMonths[this.currentMonthIndex]?.value || this.currentMonth;
                 
-                const filteredBuses = this.buses
-                    .filter(bus => bus.number) 
-                    .sort((a, b) => a.number - b.number);
-                        
-                if (filteredBuses.length === 0) {
-                    this.busGridEl.innerHTML = "<div style='text-align:center;padding:20px;color:#8a8886;'>Chargement en cours...</div>";
-                    return;
-                }
-                
-                filteredBuses.forEach((bus, index) => {
-                    const busCard = this.createBusCard(bus, index);
-                    this.busGridEl.appendChild(busCard);
-                });
-            }
-
-            createBusCard(bus, index) {
-                const busColor = bus.lastKnownLine ? `#${bus.lastKnownLine.color}` : "#FFFFFF";
-                const lineName = bus.lastKnownLine ? bus.lastKnownLine.number : "Inconnue";
-                let busActivityStatus = bus.activity && bus.activity.status ? bus.activity.status : 'offline';
-                const isOnline = busActivityStatus === 'online';
-                
-                const card = document.createElement("div");
-                card.className = `bus-card ${isOnline ? 'online' : 'offline'}`;
-                card.style.animationDelay = `${index * 0.1}s`;
-                
-                card.innerHTML = `
-                    <div class="bus-number">${bus.number}</div>
-                    <div class="bus-status">
-                        <div class="status-badge ${isOnline ? 'online' : 'offline'}">
-                            <span>${isOnline ? '🚌' : '😴'}</span>
-                            <span>${isOnline ? 'En service' : 'Hors service'}</span>
-                        </div>
-                    </div>
-                    <div class="bus-line">
-                        ${isOnline 
-                            ? `Actuellement sur la ligne ${lineName}` 
-                            : `Dernière ligne: ${lineName}`}
-                    </div>
-                    <div class="bus-designation">${bus.designation || ""}</div>
-                `;
-                
-                card.addEventListener('click', (e) => this.showBusDetails(bus, e));
-                
-                return card;
-            }
-
-            async showBusDetails(bus, event) {
-                this.selectedBus = bus;
-                
-                const rect = event.currentTarget.getBoundingClientRect();
-                const clickX = ((event.clientX - rect.left) / rect.width) * 100;
-                const clickY = ((event.clientY - rect.top) / rect.height) * 100;
-                
-                event.currentTarget.style.setProperty('--click-x', `${clickX}%`);
-                event.currentTarget.style.setProperty('--click-y', `${clickY}%`);
-                event.currentTarget.classList.add('zoom-transition', 'zooming');
-                
-                setTimeout(() => {
-                    this.detailsViewEl.classList.add('active');
-                    
-                    this.detailsBusNumberEl.textContent = bus.number;
-                    this.detailsBusNumberEl.style.transform = 'scale(0.8)';
-                    this.detailsBusNumberEl.style.opacity = '0';
-                    
-                    setTimeout(() => {
-                        this.detailsBusNumberEl.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-                        this.detailsBusNumberEl.style.transform = 'scale(1)';
-                        this.detailsBusNumberEl.style.opacity = '1';
-                    }, 100);
-                    
-                    const isOnline = bus.activity && bus.activity.status === "online";
-                    this.detailsStatusBadgeEl.className = `status-badge ${isOnline ? 'online' : 'offline'}`;
-                    this.detailsStatusTextEl.textContent = isOnline ? 'En service' : 'Hors service';
-                    
-                    this.monthIndex = 0;
-                    this.updateMonthDisplay();
-                    this.loadActivities();
-                    
-                    event.currentTarget.classList.remove('zooming');
-                }, 200);
-            }
-
-            hideDetails() {
-                this.detailsViewEl.classList.remove('active');
-                
-                const zoomedCards = document.querySelectorAll('.zoom-transition');
-                zoomedCards.forEach(card => {
-                    card.classList.remove('zoom-transition', 'zooming');
-                });
-                
-                this.selectedBus = null;
-            }
-
-            navigateMonth(direction) {
-                const newIndex = this.monthIndex + direction;
-                
-                if (newIndex >= 0 && newIndex < this.months.length) {
-                    this.monthIndex = newIndex;
-                    this.updateMonthDisplay();
-                    this.loadActivities();
-                }
-            }
-
-            updateMonthDisplay() {
-                const currentMonth = this.months[this.monthIndex];
-                this.currentMonthEl.textContent = currentMonth.label;
-                
-                this.prevMonthBtnEl.disabled = this.monthIndex >= this.months.length - 1;
-                this.nextMonthBtnEl.disabled = this.monthIndex <= 0;
-            }
-
-            async loadActivities() {
-                if (!this.selectedBus) return;
-                
-                this.activitiesListEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-                
-                try {
-                    const selectedMonth = this.months[this.monthIndex].value;
-                    const activities = await this.fetchActivities(this.selectedBus.id, selectedMonth);
-                    this.displayActivities(activities);
-                } catch (error) {
-                    console.error("Erreur lors du chargement des activités", error);
-                    this.activitiesListEl.innerHTML = `
-                        <div class="empty-state">
-                            <div class="icon">😔</div>
-                            <h3>Erreur de chargement</h3>
-                            <p>Impossible de charger les activités. Veuillez réessayer.</p>
-                        </div>
-                    `;
-                }
-            }
-
-            async fetchActivities(busId, selectedMonth = null) {
-                const month = selectedMonth || this.currentMonth;
-                const cachedActivities = this.getCachedData(this.activityCache, `${busId}-${month}`);
+                const cachedActivities = this.getCachedData(this.activityCache, `${busId}-${selectedMonth}`);
                 if (cachedActivities) {
                     return cachedActivities;
                 }
                 
                 try {
                     const cacheBuster = new Date().getTime();
-                    const data = await this.safeFetch(`${this.API_BASE_URL}/vehicles/${busId}/activities?month=${month}&_=${cacheBuster}`);
+                    const data = await this.safeFetch(`${this.API_BASE_URL}/vehicles/${busId}/activities?month=${selectedMonth}&_=${cacheBuster}`);
                     
                     if (!data || !data.timeline || !Array.isArray(data.timeline)) {
                         return [];
@@ -935,36 +812,144 @@
                     const processedTimeline = data.timeline.map(day => {
                         const activitiesWithDetails = (day.activities || []).map(act => {
                             act.lineDetails = act.lineId ? 
-                                this.getCachedData(this.lineCache, act.lineId) || this.unknownLineDetails : 
-                                this.unknownLineDetails;
+                                this.getCachedData(this.lineCache, act.lineId) || this.getUnknownLineDetails() : 
+                                this.getUnknownLineDetails();
                             return act;
                         });
                         return { date: day.date, activities: activitiesWithDetails };
                     });
                     
-                    this.setCachedData(this.activityCache, `${busId}-${month}`, processedTimeline);
+                    this.setCachedData(this.activityCache, `${busId}-${selectedMonth}`, processedTimeline);
                     return processedTimeline;
                 } catch (error) {
                     console.warn(`Erreur de chargement des activités pour ${busId}`, error);
                     return [];
                 }
             }
-
+            
+            displayBusList() {
+                const busGrid = document.getElementById('busGrid');
+                busGrid.innerHTML = '';
+                
+                const filteredBuses = this.buses
+                    .filter(bus => bus.number)
+                    .sort((a, b) => a.number - b.number);
+                
+                if (filteredBuses.length === 0) {
+                    busGrid.innerHTML = '<div class="loading">Chargement des bus...</div>';
+                    return;
+                }
+                
+                filteredBuses.forEach((bus, index) => {
+                    const busCard = this.createBusCard(bus, index);
+                    busGrid.appendChild(busCard);
+                });
+            }
+            
+            createBusCard(bus, index) {
+                const card = document.createElement('div');
+                card.className = 'bus-card';
+                card.style.setProperty('--line-color', `#${bus.lastKnownLine.color}`);
+                card.style.animationDelay = `${index * 0.1}s`;
+                
+                const isOnline = bus.activity && bus.activity.status === 'online';
+                const statusClass = isOnline ? 'status-online' : 'status-offline';
+                const statusText = isOnline ? 'En service' : 'Hors service';
+                const statusIcon = isOnline ? '🚌' : '😴';
+                
+                const lineText = isOnline 
+                    ? `Il est actuellement sur la ligne ${bus.lastKnownLine.number}.`
+                    : `La dernière fois qu'on l'a vu, c'était sur la ligne ${bus.lastKnownLine.number}.`;
+                
+                card.innerHTML = `
+                    <div class="bus-number" data-bus-number="${bus.number}">Bus #${bus.number}</div>
+                    <div class="bus-status">
+                        <div class="status-badge ${statusClass}">${statusIcon} ${statusText}</div>
+                    </div>
+                    <div class="bus-line">${lineText}</div>
+                    ${bus.designation ? `<div class="bus-designation">${bus.designation}</div>` : ''}
+                `;
+                
+                card.addEventListener('click', () => this.showBusDetails(bus, card));
+                
+                setTimeout(() => {
+                    card.classList.add('animate-in');
+                }, index * 100);
+                
+                return card;
+            }
+            
+            async showBusDetails(bus, cardElement) {
+                this.selectedBus = bus;
+                
+                cardElement.classList.add('zoom-animation');
+                
+                const detailsView = document.getElementById('detailsView');
+                const detailsBusNumber = document.getElementById('detailsBusNumber');
+                const detailsStatus = document.getElementById('detailsStatus');
+                const detailsHeader = document.querySelector('.details-header');
+                
+                detailsBusNumber.textContent = `Bus #${bus.number}`;
+                detailsHeader.style.setProperty('--line-color', `#${bus.lastKnownLine.color}`);
+                
+                const isOnline = bus.activity && bus.activity.status === 'online';
+                const statusClass = isOnline ? 'status-online' : 'status-offline';
+                const statusText = isOnline ? '🚌 En service' : '😴 Hors service';
+                
+                detailsStatus.innerHTML = `<div class="status-badge ${statusClass}">${statusText}</div>`;
+                
+                this.currentMonthIndex = 0;
+                this.updateMonthDisplay();
+                
+                setTimeout(() => {
+                    detailsView.style.display = 'block';
+                    detailsView.style.opacity = '0';
+                    detailsView.style.transform = 'scale(0.95)';
+                    
+                    requestAnimationFrame(() => {
+                        detailsView.style.transition = 'all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                        detailsView.style.opacity = '1';
+                        detailsView.style.transform = 'scale(1)';
+                    });
+                }, 300);
+                
+                this.loadActivities(bus.id);
+            }
+            
+            async loadActivities(busId) {
+                const activitiesList = document.getElementById('activitiesList');
+                activitiesList.innerHTML = '<div class="loading">Chargement des activités...</div>';
+                
+                try {
+                    const activities = await this.fetchActivities(busId);
+                    this.displayActivities(activities);
+                } catch (error) {
+                    console.error("Erreur lors du chargement des activités", error);
+                    activitiesList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="emoji">😔</div>
+                            <div>Oups ! Une erreur interne est survenue.</div>
+                            <div>Réessayez plus tard.</div>
+                        </div>
+                    `;
+                }
+            }
+            
             displayActivities(activities) {
-                this.activitiesListEl.innerHTML = "";
+                const activitiesList = document.getElementById('activitiesList');
+                activitiesList.innerHTML = '';
                 
                 if (!activities || activities.length === 0 || !activities.some(day => day.activities && day.activities.length > 0)) {
-                    this.activitiesListEl.innerHTML = `
+                    activitiesList.innerHTML = `
                         <div class="empty-state">
-                            <div class="icon">😴</div>
-                            <h3>Aucune activité</h3>
-                            <p>Ce bus n'a effectué aucun service ce mois.<br>
-                            Tentez de voir une autre période : il se cache sûrement une affectation intéressante !</p>
+                            <div class="emoji">😴</div>
+                            <div>Ce bus n'a effectué aucun service ce mois...</div>
+                            <div style="margin-top: 8px; font-size: 14px;">🤔 Tentez de voir une autre période : il se cache sûrement une affectation hors du commun !</div>
                         </div>
                     `;
                     return;
                 }
-
+                
                 const allActivities = activities
                     .reduce((acc, day) => {
                         if (day.activities && day.activities.length > 0) {
@@ -982,72 +967,91 @@
                         const dateB = new Date(b.startedAt);
                         return dateB - dateA;
                     });
-
-                allActivities.forEach((act, index) => {
-                    const activityItem = this.createActivityItem(act, index);
-                    this.activitiesListEl.appendChild(activityItem);
+                
+                allActivities.forEach((activity, index) => {
+                    const activityItem = this.createActivityItem(activity);
+                    activitiesList.appendChild(activityItem);
+                    
+                    setTimeout(() => {
+                        activityItem.classList.add('animate-in');
+                    }, index * 100);
                 });
             }
-
-            createActivityItem(activity, index) {
-                const lineColor = activity.lineDetails ? `#${activity.lineDetails.color}` : '#0078d4';
-                const lineNumber = activity.lineDetails ? activity.lineDetails.number : 'Inconnue';
+            
+            createActivityItem(activity) {
+                const item = document.createElement('div');
+                item.className = 'activity-item';
                 
-                const item = document.createElement("div");
-                item.className = "activity-item";
-                item.style.borderLeftColor = lineColor;
-                item.style.animationDelay = `${index * 0.1}s`;
+                const lineColor = `#${activity.lineDetails.color}`;
+                const lineNumber = activity.lineDetails.number;
                 
-                const dateFormatted = new Date(activity.dayDate).toLocaleDateString('fr-FR', { 
-                    weekday: 'long',
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
+                item.style.setProperty('--line-color', lineColor);
+                
+                const dateFormatted = new Date(activity.dayDate).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 });
                 
                 const startTime = new Date(activity.startedAt);
                 const endTime = new Date(activity.updatedAt);
-                const duration = Math.round((endTime - startTime) / (1000 * 60)); 
+                const duration = Math.round((endTime - startTime) / (1000 * 60));
+                
+                const startTimeFormatted = startTime.toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                
+                const endTimeFormatted = endTime.toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
                 
                 item.innerHTML = `
-                    <div class="activity-line" style="color: ${lineColor};">
-                        Ligne ${lineNumber}
-                    </div>
+                    <div class="activity-line">Ligne ${lineNumber}</div>
                     <div class="activity-date">${dateFormatted}</div>
-                    <div class="activity-time">
-                        ${startTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})} 
-                        → ${endTime.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
-                        (${duration} min)
-                    </div>
+                    <div class="activity-time">de ${startTimeFormatted} à ${endTimeFormatted} (${duration} min)</div>
                 `;
                 
                 return item;
             }
-
-            startAutoRefresh() {
-                setInterval(() => {
-                    this.fetchBuses().catch(console.error);
-                }, 120000); 
+            
+            hideDetails() {
+                const detailsView = document.getElementById('detailsView');
+                detailsView.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+                detailsView.style.opacity = '0';
+                detailsView.style.transform = 'scale(0.95)';
+                
+                setTimeout(() => {
+                    detailsView.style.display = 'none';
+                    this.selectedBus = null;
+                }, 300);
+            }
+            
+            showError() {
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+            
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+            
+            startAutoRefresh(intervalMs = 120000) {
+                this.stopAutoRefresh();
+                this.refreshInterval = setInterval(() => {
+                    this.fetchBuses();
+                }, intervalMs);
+            }
+            
+            stopAutoRefresh() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                }
             }
         }
-
+        
         document.addEventListener('DOMContentLoaded', () => {
             new BusTracker();
-        });
-
-        function controlParentSpinner(show, message) {
-            try {
-                window.parent.postMessage({
-                    action: show ? 'showSpinner' : 'hideSpinner',
-                    message: message || (show ? '' : '')
-                }, '*'); 
-            } catch (e) {
-                console.error("Impossible d'envoyer un message à la page parente", e);
-            }
-        }
-
-        window.addEventListener('load', () => {
-            controlParentSpinner(false);
         });
     </script>
 </body>
