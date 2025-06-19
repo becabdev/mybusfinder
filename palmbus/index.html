@@ -7355,13 +7355,91 @@ function renderMenuContent(data) {
         return;
     }
 
-    const sortedLines = Object.keys(data.busesByLineAndDestination).sort((a, b) => {
-        const aIsFav = favoriteLines.has(a);
-        const bIsFav = favoriteLines.has(b);
-        if (aIsFav && !bIsFav) return -1;
-        if (!aIsFav && bIsFav) return 1;
-        return parseInt(a) - parseInt(b);
+    const sortedLines = Object.keys(busesByLineAndDestination)
+        .sort((a, b) => {
+            const aIsFavorite = favoriteLines.has(a);
+            const bIsFavorite = favoriteLines.has(b);
+            
+            if (aIsFavorite && !bIsFavorite) return -1;
+            if (!aIsFavorite && bIsFavorite) return 1;
+            
+    const getSortKey = (line) => {
+        
+        let typeValue = 1000; 
+        
+        if (/^[A-Za-z]$/.test(line)) {
+            typeValue = 100;
+        } 
+        else if (/^\d+$/.test(line)) {
+            typeValue = 200;
+        } 
+        else if (/^\d+[A-Za-z]+$/.test(line)) {
+            const numPart = parseInt(line.match(/^\d+/)[0], 10);
+            typeValue = 200; 
+            return typeValue + numPart + 0.5; 
+        }
+        
+        if (typeValue === 200) {
+            return typeValue + parseInt(line, 10);
+        }
+        
+        if (typeValue === 100) {
+            return typeValue + line.charCodeAt(0);
+        }
+        
+        return typeValue;
+    };
+
+    const valueA = getSortKey(a);
+    const valueB = getSortKey(b);
+
+    if (valueA !== valueB) {
+        return valueA - valueB;
+    }
+
+    return a.localeCompare(b);
     });
+
+
+function hexToRgb(hex) {
+    hex = hex.replace(/^#/, '');
+    
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    return { r, g, b };
+}
+
+
+function calculateLuminance(r, g, b) {
+    return (r * 0.299 + g * 0.587 + b * 0.114);
+}
+
+
+function getTextColor(backgroundColor) {
+    try {
+        let hexColor = backgroundColor;
+        
+        if (!hexColor.startsWith('#')) {
+            hexColor = '#' + hexColor;
+        }
+        
+        const { r, g, b } = hexToRgb(hexColor);
+        
+        const luminance = calculateLuminance(r, g, b);
+        
+        const threshold = 150;
+                
+        return luminance > threshold ? '#000000' : '#ffffff';
+    } catch (e) {
+        return '#ffffff';
+    }
+}
 
     sortedLines.forEach(line => {
         const lineNameText = lineName[line] || t("unknown_line");
