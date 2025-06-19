@@ -6960,6 +6960,551 @@ let currentSearchResults = [];
 let isSearchActive = false;
 
 function updateMenu() {
+
+                // Fonctions utilitaires pour la recherche
+function generateSearchSuggestions() {
+    searchSuggestions.clear();
+    
+    // Ajouter les noms de lignes
+    Object.keys(busesByLineAndDestination).forEach(line => {
+        const lineNameText = lineName[line] || line;
+        searchSuggestions.add(`Ligne ${lineNameText}`);
+        searchSuggestions.add(lineNameText);
+    });
+    
+    // Ajouter les destinations
+    Object.values(busesByLineAndDestination).forEach(destinations => {
+        Object.keys(destinations).forEach(dest => {
+            if (dest !== "Inconnue") {
+                searchSuggestions.add(dest);
+            }
+        });
+    });
+    
+    // Ajouter l'historique
+    searchHistory.forEach(term => searchSuggestions.add(term));
+}
+
+function setupSearchEventListeners() {
+    const searchInput = document.querySelector('input[type="text"]');
+    const suggestionsContainer = document.querySelector('.suggestions-container') || 
+        document.querySelector('[style*="backdrop-filter: blur(15px)"]');
+    
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            const query = e.target.value.trim();
+            if (query.length > 0) {
+                performSearch(query);
+                showSuggestions(query);
+            } else {
+                clearSearch();
+                hideSuggestions();
+            }
+        }, 150);
+    });
+    
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim()) {
+            showSuggestions(searchInput.value.trim());
+        }
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!searchContainer.contains(e.target)) {
+            hideSuggestions();
+        }
+    });
+    
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                addToSearchHistory(query);
+                performSearch(query);
+                hideSuggestions();
+            }
+        }
+        if (e.key === 'Escape') {
+            clearSearch();
+            searchInput.blur();
+        }
+    });
+}
+
+function performSearch(query) {
+    const linesContainer = document.getElementById('linesContainer');
+    const searchResultsContainer = document.getElementById('searchResults');
+    
+    if (!query) {
+        clearSearch();
+        return;
+    }
+    
+    isSearchActive = true;
+    currentSearchResults = [];
+    
+    const queryLower = query.toLowerCase();
+    const searchTerms = queryLower.split(' ').filter(term => term.length > 0);
+    
+    // Recherche dans les lignes
+    Object.keys(busesByLineAndDestination).forEach(line => {
+        const lineNameText = (lineName[line] || line).toLowerCase();
+        const lineMatches = searchTerms.some(term => 
+            line.toLowerCase().includes(term) || 
+            lineNameText.includes(term) ||
+            `ligne ${lineNameText}`.includes(term)
+        );
+        
+        if (lineMatches) {
+            currentSearchResults.push({
+                type: 'line',
+                line: line,
+                relevance: calculateRelevance(queryLower, [line.toLowerCase(), lineNameText])
+            });
+        }
+        
+        // Recherche dans les destinations
+        Object.keys(busesByLineAndDestination[line]).forEach(destination => {
+            const destMatches = searchTerms.some(term => 
+                destination.toLowerCase().includes(term)
+            );
+            
+            if (destMatches && destination !== "Inconnue") {
+                currentSearchResults.push({
+                    type: 'destination',
+                    line: line,
+                    destination: destination,
+                    relevance: calculateRelevance(queryLower, [destination.toLowerCase()])
+                });
+            }
+        });
+        
+        // Recherche dans les véhicules
+        Object.values(busesByLineAndDestination[line]).forEach(vehicles => {
+            vehicles.forEach(bus => {
+                const popupContent = bus.vehicle.getPopup().getContent();
+                const vehicleMatches = searchTerms.some(term => {
+                    const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
+                    const vehicleLabel = labelMatch ? labelMatch[1].toLowerCase() : '';
+                    return vehicleLabel.includes(term) || bus.parkNumber.toString().includes(term);
+                });
+                
+                if (vehicleMatches) {
+                    currentSearchResults.push({
+                        type: 'vehicle',
+                        line: line,
+                        vehicle: bus,
+                        relevance: calculateRelevance(queryLower, [bus.parkNumber.toString()])
+                    });
+                }
+            });
+        });
+    });
+    
+    // Trier par pertinence
+    currentSearchResults.sort((a, b) => b.relevance - a.relevance);
+    
+    displaySearchResults();
+    linesContainer.style.display = 'none';
+    searchResultsContainer.style.display = 'block';
+}
+
+function calculateRelevance(query, targets) {
+    let maxRelevance = 0;
+    
+    targets.forEach(target => {
+        let relevance = 0;
+        
+        // Correspondance exacte
+        if (target === query) relevance += 100;
+        // Commence par la requête
+        else if (target.startsWith(query)) relevance += 80;
+        // Contient la requête
+        else if (target.includes(query)) relevance += 60;
+        // Correspondance partielle
+        else {
+            const queryWords = query.split(' ');
+            const targetWords = target.split(' ');
+            let matchCount = 0;
+            
+            queryWords.forEach(qWord => {
+                targetWords.forEach(tWord => {
+                    if (tWord.includes(qWord) || qWord.includes(tWord)) {
+                        matchCount++;
+                    }
+                });
+            });
+            
+            relevance += (matchCount / queryWords.length) * 40;
+        }
+        
+        maxRelevance = Math.max(maxRelevance, relevance);
+    });
+    
+    return maxRelevance;
+}
+
+function displaySearchResults() {
+    const searchResultsContainer = document.getElementById('searchResults');
+    searchResultsContainer.innerHTML = '';
+    
+    if (currentSearchResults.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.textContent = t("no_results_found");
+        noResults.style.cssText = `
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            padding: 20px;
+            font-style: italic;
+        `;
+        searchResultsContainer.appendChild(noResults);
+        return;
+    }
+    
+    const resultsTitle = document.createElement('div');
+    resultsTitle.textContent = `${currentSearchResults.length} résultat(s) trouvé(s)`;
+    resultsTitle.style.cssText = `
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 14px;
+        margin-bottom: 15px;
+        padding: 0 5px;
+    `;
+    searchResultsContainer.appendChild(resultsTitle);
+    
+    // Grouper les résultats par type
+    const groupedResults = {
+        line: currentSearchResults.filter(r => r.type === 'line'),
+        destination: currentSearchResults.filter(r => r.type === 'destination'),
+        vehicle: currentSearchResults.filter(r => r.type === 'vehicle')
+    };
+    
+    Object.entries(groupedResults).forEach(([type, results]) => {
+        if (results.length === 0) return;
+        
+        const groupTitle = document.createElement('div');
+        groupTitle.textContent = type === 'line' ? 'Lignes' : 
+                                type === 'destination' ? 'Destinations' : 'Véhicules';
+        groupTitle.style.cssText = `
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 15px 5px 10px 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        `;
+        searchResultsContainer.appendChild(groupTitle);
+        
+        results.slice(0, 10).forEach(result => {
+            const resultItem = createSearchResultItem(result);
+            searchResultsContainer.appendChild(resultItem);
+        });
+    });
+}
+
+function createSearchResultItem(result) {
+    const item = document.createElement('div');
+    const lineColor = lineColors[result.line] || '#000000';
+    const textColor = getTextColor(lineColor);
+    
+    item.style.cssText = `
+        background: ${lineColor};
+        color: ${textColor};
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    `;
+    
+    let content = '';
+    
+    switch (result.type) {
+        case 'line':
+            const lineNameText = lineName[result.line] || result.line;
+            content = `
+                <div style="font-weight: bold; font-size: 16px;">Ligne ${lineNameText}</div>
+                <div style="opacity: 0.8; font-size: 14px;">${Object.keys(busesByLineAndDestination[result.line]).length} destination(s)</div>
+            `;
+            item.onclick = () => {
+                searchToLine(result.line);
+            };
+            break;
+            
+        case 'destination':
+            content = `
+                <div style="font-weight: bold; font-size: 16px;">${result.destination}</div>
+                <div style="opacity: 0.8; font-size: 14px;">Ligne ${lineName[result.line] || result.line}</div>
+            `;
+            item.onclick = () => {
+                searchToDestination(result.line, result.destination);
+            };
+            break;
+            
+        case 'vehicle':
+            const popupContent = result.vehicle.vehicle.getPopup().getContent();
+            const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
+            const vehicleLabel = labelMatch ? labelMatch[1].replace(/Véhicule inconnu\./, "inconnu") : "inconnu";
+            
+            content = `
+                <div style="font-weight: bold; font-size: 16px;">Véhicule ${vehicleLabel}</div>
+                <div style="opacity: 0.8; font-size: 14px;">Ligne ${lineName[result.line] || result.line}</div>
+            `;
+            item.onclick = () => {
+                searchToVehicle(result.vehicle);
+            };
+            break;
+    }
+    
+    item.innerHTML = content;
+    
+    item.onmouseover = () => {
+        item.style.transform = 'scale(0.98)';
+        item.style.opacity = '0.9';
+    };
+    
+    item.onmouseout = () => {
+        item.style.transform = 'scale(1)';
+        item.style.opacity = '1';
+    };
+    
+    return item;
+}
+
+function showSuggestions(query) {
+    const suggestionsContainer = document.querySelector('[style*="backdrop-filter: blur(15px)"]');
+    const queryLower = query.toLowerCase();
+    
+    const matchingSuggestions = Array.from(searchSuggestions)
+        .filter(suggestion => suggestion.toLowerCase().includes(queryLower))
+        .slice(0, 8);
+    
+    if (matchingSuggestions.length === 0) {
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+    
+    suggestionsContainer.innerHTML = '';
+    
+    // Historique récent
+    const recentSearches = searchHistory.filter(term => 
+        term.toLowerCase().includes(queryLower)
+    ).slice(0, 3);
+    
+    if (recentSearches.length > 0) {
+        const historyTitle = document.createElement('div');
+        historyTitle.textContent = 'Recherches récentes';
+        historyTitle.style.cssText = `
+            padding: 8px 12px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+        suggestionsContainer.appendChild(historyTitle);
+        
+        recentSearches.forEach(term => {
+            const suggItem = createSuggestionItem(term, '🕒');
+            suggestionsContainer.appendChild(suggItem);
+        });
+    }
+    
+    // Suggestions générales
+    matchingSuggestions.forEach(suggestion => {
+        if (!recentSearches.includes(suggestion)) {
+            const icon = suggestion.startsWith('Ligne') ? '🚌' : 
+                        suggestion.includes('→') ? '📍' : '🔍';
+            const suggItem = createSuggestionItem(suggestion, icon);
+            suggestionsContainer.appendChild(suggItem);
+        }
+    });
+    
+    suggestionsContainer.style.display = 'block';
+}
+
+function createSuggestionItem(text, icon) {
+    const item = document.createElement('div');
+    item.style.cssText = `
+        padding: 10px 12px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: white;
+    `;
+    
+    item.innerHTML = `<span>${icon}</span><span>${text}</span>`;
+    
+    item.onmouseover = () => {
+        item.style.background = 'rgba(255, 255, 255, 0.1)';
+    };
+    
+    item.onmouseout = () => {
+        item.style.background = 'transparent';
+    };
+    
+    item.onclick = () => {
+        const searchInput = document.querySelector('input[type="text"]');
+        searchInput.value = text;
+        addToSearchHistory(text);
+        performSearch(text);
+        hideSuggestions();
+    };
+    
+    return item;
+}
+
+function hideSuggestions() {
+    const suggestionsContainer = document.querySelector('[style*="backdrop-filter: blur(15px)"]');
+    suggestionsContainer.style.display = 'none';
+}
+
+function addToSearchHistory(term) {
+    if (!searchHistory.includes(term)) {
+        searchHistory.unshift(term);
+        searchHistory = searchHistory.slice(0, 10); // Garder seulement les 10 derniers
+        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+    }
+}
+
+function clearSearch() {
+    isSearchActive = false;
+    currentSearchResults = [];
+    const linesContainer = document.getElementById('linesContainer');
+    const searchResultsContainer = document.getElementById('searchResults');
+    const searchInput = document.querySelector('input[type="text"]');
+    
+    if (linesContainer) linesContainer.style.display = 'block';
+    if (searchResultsContainer) searchResultsContainer.style.display = 'none';
+    if (searchInput) searchInput.value = '';
+    
+    hideSuggestions();
+}
+
+function applyQuickFilter(filterType, buttonElement) {
+    // Reset tous les boutons
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.style.background = 'rgba(255, 255, 255, 0.1)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+    });
+    
+    // Activer le bouton sélectionné
+    buttonElement.style.background = 'rgba(255, 255, 255, 0.3)';
+    buttonElement.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+    
+    const linesContainer = document.getElementById('linesContainer');
+    const allLineSections = linesContainer.querySelectorAll('.linesection');
+    
+    allLineSections.forEach(section => {
+        const line = section.dataset.line;
+        let shouldShow = false;
+        
+        switch (filterType) {
+            case 'favorites':
+                shouldShow = favoriteLines.has(line);
+                break;
+            case 'nearby':
+                // Implémentation basique - vous pouvez améliorer avec la géolocalisation
+                shouldShow = true; // Pour l'instant, affiche tout
+                break;
+            case 'delayed':
+                // Vérifier s'il y a des retards dans cette ligne
+                shouldShow = hasDelayedVehicles(line);
+                break;
+            case 'active':
+                shouldShow = Object.keys(busesByLineAndDestination[line]).length > 0;
+                break;
+        }
+        
+        section.style.display = shouldShow ? 'block' : 'none';
+    });
+}
+
+function hasDelayedVehicles(line) {
+    // Vérification basique des retards - à adapter selon vos données
+    if (busesByLineAndDestination[line]) {
+        return Object.values(busesByLineAndDestination[line]).some(vehicles => {
+            return vehicles.some(bus => {
+                const popupContent = bus.vehicle.getPopup().getContent();
+                return popupContent.includes('retard') || popupContent.includes('delayed');
+            });
+        });
+    }
+    return false;
+}
+
+function searchToLine(lineId) {
+    // Utiliser votre fonction existante pour filtrer par ligne
+    safeVibrate([50, 30, 50], true);
+    soundsUX('MBF_Menu_LineSelect');
+    selectedLine = lineId;
+    filterByLine(lineId);
+    closeSearchAndShowMap();
+}
+
+function searchToDestination(lineId, destination) {
+    safeVibrate([50, 30, 50], true);
+    soundsUX('MBF_Menu_LineSelect');
+    selectedLine = lineId;
+    filterByLine(lineId);
+    // Vous pouvez ajouter une logique pour centrer sur cette destination
+    closeSearchAndShowMap();
+}
+
+function searchToVehicle(busData) {
+    safeVibrate([50, 300, 50, 30, 50], true);
+    soundsUX('MBF_Menu_VehicleSelect');
+    map.setView(busData.vehicle.getLatLng(), 15);
+    busData.vehicle.openPopup();
+    closeSearchAndShowMap();
+}
+
+function closeSearchAndShowMap() {
+    const mapp = document.getElementById('map');
+    mapp.style.opacity = '1';
+    menu.classList.add('hidden');
+    
+    if (localStorage.getItem('transparency') === 'true') {
+        const map = document.getElementById('map');
+        map.classList.remove('hiddennotransition');
+        map.classList.add('appearnotransition');
+        map.classList.remove('hidden');
+        map.classList.remove('appear');
+    } else {
+        const map = document.getElementById('map');
+        map.classList.remove('hidden');
+        map.classList.add('appear');
+        map.classList.remove('hiddennotransition');
+        map.classList.remove('appearnotransition');
+    }
+    
+    window.isMenuShowed = false;
+    menu.addEventListener('animationend', function onAnimationEnd(event) {
+        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+            menu.style.display = 'none';
+        }
+    });
+    
+    isMenuVisible = false;
+    const menubottom1 = document.getElementById('menubtm');
+    const filtre = document.getElementById('filtre');
+    
+    menubottom1.style.display = 'flex';
+    setTimeout(() => {
+        menubottom1.classList.remove('slide-upb');
+        menubottom1.classList.add('slide-downb');
+        if (selectedLine) {
+            filtre.classList.remove('slide-upc');
+            filtre.classList.add('slide-downc');
+            filtre.style.display = 'flex';
+        }
+    }, 10);
+}
+
     const menu = document.getElementById('menu');
     menu.innerHTML = '';
     
@@ -7863,549 +8408,6 @@ const menubottom1 = document.getElementById('menubtm');
             }, { once: true });
 
 
-            // Fonctions utilitaires pour la recherche
-function generateSearchSuggestions() {
-    searchSuggestions.clear();
-    
-    // Ajouter les noms de lignes
-    Object.keys(busesByLineAndDestination).forEach(line => {
-        const lineNameText = lineName[line] || line;
-        searchSuggestions.add(`Ligne ${lineNameText}`);
-        searchSuggestions.add(lineNameText);
-    });
-    
-    // Ajouter les destinations
-    Object.values(busesByLineAndDestination).forEach(destinations => {
-        Object.keys(destinations).forEach(dest => {
-            if (dest !== "Inconnue") {
-                searchSuggestions.add(dest);
-            }
-        });
-    });
-    
-    // Ajouter l'historique
-    searchHistory.forEach(term => searchSuggestions.add(term));
-}
-
-function setupSearchEventListeners() {
-    const searchInput = document.querySelector('input[type="text"]');
-    const suggestionsContainer = document.querySelector('.suggestions-container') || 
-        document.querySelector('[style*="backdrop-filter: blur(15px)"]');
-    
-    let searchTimeout;
-    
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const query = e.target.value.trim();
-            if (query.length > 0) {
-                performSearch(query);
-                showSuggestions(query);
-            } else {
-                clearSearch();
-                hideSuggestions();
-            }
-        }, 150);
-    });
-    
-    searchInput.addEventListener('focus', () => {
-        if (searchInput.value.trim()) {
-            showSuggestions(searchInput.value.trim());
-        }
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!searchContainer.contains(e.target)) {
-            hideSuggestions();
-        }
-    });
-    
-    searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const query = searchInput.value.trim();
-            if (query) {
-                addToSearchHistory(query);
-                performSearch(query);
-                hideSuggestions();
-            }
-        }
-        if (e.key === 'Escape') {
-            clearSearch();
-            searchInput.blur();
-        }
-    });
-}
-
-function performSearch(query) {
-    const linesContainer = document.getElementById('linesContainer');
-    const searchResultsContainer = document.getElementById('searchResults');
-    
-    if (!query) {
-        clearSearch();
-        return;
-    }
-    
-    isSearchActive = true;
-    currentSearchResults = [];
-    
-    const queryLower = query.toLowerCase();
-    const searchTerms = queryLower.split(' ').filter(term => term.length > 0);
-    
-    // Recherche dans les lignes
-    Object.keys(busesByLineAndDestination).forEach(line => {
-        const lineNameText = (lineName[line] || line).toLowerCase();
-        const lineMatches = searchTerms.some(term => 
-            line.toLowerCase().includes(term) || 
-            lineNameText.includes(term) ||
-            `ligne ${lineNameText}`.includes(term)
-        );
-        
-        if (lineMatches) {
-            currentSearchResults.push({
-                type: 'line',
-                line: line,
-                relevance: calculateRelevance(queryLower, [line.toLowerCase(), lineNameText])
-            });
-        }
-        
-        // Recherche dans les destinations
-        Object.keys(busesByLineAndDestination[line]).forEach(destination => {
-            const destMatches = searchTerms.some(term => 
-                destination.toLowerCase().includes(term)
-            );
-            
-            if (destMatches && destination !== "Inconnue") {
-                currentSearchResults.push({
-                    type: 'destination',
-                    line: line,
-                    destination: destination,
-                    relevance: calculateRelevance(queryLower, [destination.toLowerCase()])
-                });
-            }
-        });
-        
-        // Recherche dans les véhicules
-        Object.values(busesByLineAndDestination[line]).forEach(vehicles => {
-            vehicles.forEach(bus => {
-                const popupContent = bus.vehicle.getPopup().getContent();
-                const vehicleMatches = searchTerms.some(term => {
-                    const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-                    const vehicleLabel = labelMatch ? labelMatch[1].toLowerCase() : '';
-                    return vehicleLabel.includes(term) || bus.parkNumber.toString().includes(term);
-                });
-                
-                if (vehicleMatches) {
-                    currentSearchResults.push({
-                        type: 'vehicle',
-                        line: line,
-                        vehicle: bus,
-                        relevance: calculateRelevance(queryLower, [bus.parkNumber.toString()])
-                    });
-                }
-            });
-        });
-    });
-    
-    // Trier par pertinence
-    currentSearchResults.sort((a, b) => b.relevance - a.relevance);
-    
-    displaySearchResults();
-    linesContainer.style.display = 'none';
-    searchResultsContainer.style.display = 'block';
-}
-
-function calculateRelevance(query, targets) {
-    let maxRelevance = 0;
-    
-    targets.forEach(target => {
-        let relevance = 0;
-        
-        // Correspondance exacte
-        if (target === query) relevance += 100;
-        // Commence par la requête
-        else if (target.startsWith(query)) relevance += 80;
-        // Contient la requête
-        else if (target.includes(query)) relevance += 60;
-        // Correspondance partielle
-        else {
-            const queryWords = query.split(' ');
-            const targetWords = target.split(' ');
-            let matchCount = 0;
-            
-            queryWords.forEach(qWord => {
-                targetWords.forEach(tWord => {
-                    if (tWord.includes(qWord) || qWord.includes(tWord)) {
-                        matchCount++;
-                    }
-                });
-            });
-            
-            relevance += (matchCount / queryWords.length) * 40;
-        }
-        
-        maxRelevance = Math.max(maxRelevance, relevance);
-    });
-    
-    return maxRelevance;
-}
-
-function displaySearchResults() {
-    const searchResultsContainer = document.getElementById('searchResults');
-    searchResultsContainer.innerHTML = '';
-    
-    if (currentSearchResults.length === 0) {
-        const noResults = document.createElement('div');
-        noResults.textContent = t("no_results_found");
-        noResults.style.cssText = `
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-            padding: 20px;
-            font-style: italic;
-        `;
-        searchResultsContainer.appendChild(noResults);
-        return;
-    }
-    
-    const resultsTitle = document.createElement('div');
-    resultsTitle.textContent = `${currentSearchResults.length} résultat(s) trouvé(s)`;
-    resultsTitle.style.cssText = `
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 14px;
-        margin-bottom: 15px;
-        padding: 0 5px;
-    `;
-    searchResultsContainer.appendChild(resultsTitle);
-    
-    // Grouper les résultats par type
-    const groupedResults = {
-        line: currentSearchResults.filter(r => r.type === 'line'),
-        destination: currentSearchResults.filter(r => r.type === 'destination'),
-        vehicle: currentSearchResults.filter(r => r.type === 'vehicle')
-    };
-    
-    Object.entries(groupedResults).forEach(([type, results]) => {
-        if (results.length === 0) return;
-        
-        const groupTitle = document.createElement('div');
-        groupTitle.textContent = type === 'line' ? 'Lignes' : 
-                                type === 'destination' ? 'Destinations' : 'Véhicules';
-        groupTitle.style.cssText = `
-            color: white;
-            font-weight: bold;
-            font-size: 16px;
-            margin: 15px 5px 10px 5px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 5px;
-        `;
-        searchResultsContainer.appendChild(groupTitle);
-        
-        results.slice(0, 10).forEach(result => {
-            const resultItem = createSearchResultItem(result);
-            searchResultsContainer.appendChild(resultItem);
-        });
-    });
-}
-
-function createSearchResultItem(result) {
-    const item = document.createElement('div');
-    const lineColor = lineColors[result.line] || '#000000';
-    const textColor = getTextColor(lineColor);
-    
-    item.style.cssText = `
-        background: ${lineColor};
-        color: ${textColor};
-        padding: 12px;
-        margin-bottom: 8px;
-        border-radius: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    `;
-    
-    let content = '';
-    
-    switch (result.type) {
-        case 'line':
-            const lineNameText = lineName[result.line] || result.line;
-            content = `
-                <div style="font-weight: bold; font-size: 16px;">Ligne ${lineNameText}</div>
-                <div style="opacity: 0.8; font-size: 14px;">${Object.keys(busesByLineAndDestination[result.line]).length} destination(s)</div>
-            `;
-            item.onclick = () => {
-                searchToLine(result.line);
-            };
-            break;
-            
-        case 'destination':
-            content = `
-                <div style="font-weight: bold; font-size: 16px;">${result.destination}</div>
-                <div style="opacity: 0.8; font-size: 14px;">Ligne ${lineName[result.line] || result.line}</div>
-            `;
-            item.onclick = () => {
-                searchToDestination(result.line, result.destination);
-            };
-            break;
-            
-        case 'vehicle':
-            const popupContent = result.vehicle.vehicle.getPopup().getContent();
-            const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-            const vehicleLabel = labelMatch ? labelMatch[1].replace(/Véhicule inconnu\./, "inconnu") : "inconnu";
-            
-            content = `
-                <div style="font-weight: bold; font-size: 16px;">Véhicule ${vehicleLabel}</div>
-                <div style="opacity: 0.8; font-size: 14px;">Ligne ${lineName[result.line] || result.line}</div>
-            `;
-            item.onclick = () => {
-                searchToVehicle(result.vehicle);
-            };
-            break;
-    }
-    
-    item.innerHTML = content;
-    
-    item.onmouseover = () => {
-        item.style.transform = 'scale(0.98)';
-        item.style.opacity = '0.9';
-    };
-    
-    item.onmouseout = () => {
-        item.style.transform = 'scale(1)';
-        item.style.opacity = '1';
-    };
-    
-    return item;
-}
-
-function showSuggestions(query) {
-    const suggestionsContainer = document.querySelector('[style*="backdrop-filter: blur(15px)"]');
-    const queryLower = query.toLowerCase();
-    
-    const matchingSuggestions = Array.from(searchSuggestions)
-        .filter(suggestion => suggestion.toLowerCase().includes(queryLower))
-        .slice(0, 8);
-    
-    if (matchingSuggestions.length === 0) {
-        suggestionsContainer.style.display = 'none';
-        return;
-    }
-    
-    suggestionsContainer.innerHTML = '';
-    
-    // Historique récent
-    const recentSearches = searchHistory.filter(term => 
-        term.toLowerCase().includes(queryLower)
-    ).slice(0, 3);
-    
-    if (recentSearches.length > 0) {
-        const historyTitle = document.createElement('div');
-        historyTitle.textContent = 'Recherches récentes';
-        historyTitle.style.cssText = `
-            padding: 8px 12px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        `;
-        suggestionsContainer.appendChild(historyTitle);
-        
-        recentSearches.forEach(term => {
-            const suggItem = createSuggestionItem(term, '🕒');
-            suggestionsContainer.appendChild(suggItem);
-        });
-    }
-    
-    // Suggestions générales
-    matchingSuggestions.forEach(suggestion => {
-        if (!recentSearches.includes(suggestion)) {
-            const icon = suggestion.startsWith('Ligne') ? '🚌' : 
-                        suggestion.includes('→') ? '📍' : '🔍';
-            const suggItem = createSuggestionItem(suggestion, icon);
-            suggestionsContainer.appendChild(suggItem);
-        }
-    });
-    
-    suggestionsContainer.style.display = 'block';
-}
-
-function createSuggestionItem(text, icon) {
-    const item = document.createElement('div');
-    item.style.cssText = `
-        padding: 10px 12px;
-        cursor: pointer;
-        transition: background 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: white;
-    `;
-    
-    item.innerHTML = `<span>${icon}</span><span>${text}</span>`;
-    
-    item.onmouseover = () => {
-        item.style.background = 'rgba(255, 255, 255, 0.1)';
-    };
-    
-    item.onmouseout = () => {
-        item.style.background = 'transparent';
-    };
-    
-    item.onclick = () => {
-        const searchInput = document.querySelector('input[type="text"]');
-        searchInput.value = text;
-        addToSearchHistory(text);
-        performSearch(text);
-        hideSuggestions();
-    };
-    
-    return item;
-}
-
-function hideSuggestions() {
-    const suggestionsContainer = document.querySelector('[style*="backdrop-filter: blur(15px)"]');
-    suggestionsContainer.style.display = 'none';
-}
-
-function addToSearchHistory(term) {
-    if (!searchHistory.includes(term)) {
-        searchHistory.unshift(term);
-        searchHistory = searchHistory.slice(0, 10); // Garder seulement les 10 derniers
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-    }
-}
-
-function clearSearch() {
-    isSearchActive = false;
-    currentSearchResults = [];
-    const linesContainer = document.getElementById('linesContainer');
-    const searchResultsContainer = document.getElementById('searchResults');
-    const searchInput = document.querySelector('input[type="text"]');
-    
-    if (linesContainer) linesContainer.style.display = 'block';
-    if (searchResultsContainer) searchResultsContainer.style.display = 'none';
-    if (searchInput) searchInput.value = '';
-    
-    hideSuggestions();
-}
-
-function applyQuickFilter(filterType, buttonElement) {
-    // Reset tous les boutons
-    document.querySelectorAll('[data-filter]').forEach(btn => {
-        btn.style.background = 'rgba(255, 255, 255, 0.1)';
-        btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-    });
-    
-    // Activer le bouton sélectionné
-    buttonElement.style.background = 'rgba(255, 255, 255, 0.3)';
-    buttonElement.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-    
-    const linesContainer = document.getElementById('linesContainer');
-    const allLineSections = linesContainer.querySelectorAll('.linesection');
-    
-    allLineSections.forEach(section => {
-        const line = section.dataset.line;
-        let shouldShow = false;
-        
-        switch (filterType) {
-            case 'favorites':
-                shouldShow = favoriteLines.has(line);
-                break;
-            case 'nearby':
-                // Implémentation basique - vous pouvez améliorer avec la géolocalisation
-                shouldShow = true; // Pour l'instant, affiche tout
-                break;
-            case 'delayed':
-                // Vérifier s'il y a des retards dans cette ligne
-                shouldShow = hasDelayedVehicles(line);
-                break;
-            case 'active':
-                shouldShow = Object.keys(busesByLineAndDestination[line]).length > 0;
-                break;
-        }
-        
-        section.style.display = shouldShow ? 'block' : 'none';
-    });
-}
-
-function hasDelayedVehicles(line) {
-    // Vérification basique des retards - à adapter selon vos données
-    if (busesByLineAndDestination[line]) {
-        return Object.values(busesByLineAndDestination[line]).some(vehicles => {
-            return vehicles.some(bus => {
-                const popupContent = bus.vehicle.getPopup().getContent();
-                return popupContent.includes('retard') || popupContent.includes('delayed');
-            });
-        });
-    }
-    return false;
-}
-
-function searchToLine(lineId) {
-    // Utiliser votre fonction existante pour filtrer par ligne
-    safeVibrate([50, 30, 50], true);
-    soundsUX('MBF_Menu_LineSelect');
-    selectedLine = lineId;
-    filterByLine(lineId);
-    closeSearchAndShowMap();
-}
-
-function searchToDestination(lineId, destination) {
-    safeVibrate([50, 30, 50], true);
-    soundsUX('MBF_Menu_LineSelect');
-    selectedLine = lineId;
-    filterByLine(lineId);
-    // Vous pouvez ajouter une logique pour centrer sur cette destination
-    closeSearchAndShowMap();
-}
-
-function searchToVehicle(busData) {
-    safeVibrate([50, 300, 50, 30, 50], true);
-    soundsUX('MBF_Menu_VehicleSelect');
-    map.setView(busData.vehicle.getLatLng(), 15);
-    busData.vehicle.openPopup();
-    closeSearchAndShowMap();
-}
-
-function closeSearchAndShowMap() {
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
-    menu.classList.add('hidden');
-    
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-    
-    window.isMenuShowed = false;
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-    
-    isMenuVisible = false;
-    const menubottom1 = document.getElementById('menubtm');
-    const filtre = document.getElementById('filtre');
-    
-    menubottom1.style.display = 'flex';
-    setTimeout(() => {
-        menubottom1.classList.remove('slide-upb');
-        menubottom1.classList.add('slide-downb');
-        if (selectedLine) {
-            filtre.classList.remove('slide-upc');
-            filtre.classList.add('slide-downc');
-            filtre.style.display = 'flex';
-        }
-    }, 10);
-}
 
         }
 
