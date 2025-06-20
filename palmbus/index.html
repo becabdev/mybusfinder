@@ -2289,7 +2289,7 @@ tarteaucitron.init({
     </script>
 
     <script>
-        // détection environnement dev
+    // détection environnement dev
     (function () {
         if (window.location.hostname === "dev.mybusfinder.fr") {
             const banner = document.createElement("div");
@@ -2297,7 +2297,7 @@ tarteaucitron.init({
             ⚠️ <strong>Accès restreint – Environnement de développement confidentiel</strong><br>
             Ce site est strictement réservé aux membres autorisés du projet MyBusFinder.<br>
             Toute consultation, copie, diffusion ou divulgation non autorisée de tout ou partie de ce contenu est formellement interdite.<br>
-            Des poursuites civiles et pénales pourront être engagées conformément aux articles 226-13, 323-1 et suivants du Code pénal (atteinte au secret et accès frauduleux à un système de traitement automatisé de données).
+            Des poursuites civiles et pénales pourront être engagées conformément aux articles 226-13, 323-1 et suivants du Code pénal.
             `;
 
             Object.assign(banner.style, {
@@ -2315,9 +2315,19 @@ tarteaucitron.init({
             maxWidth: "320px",
             pointerEvents: "none",
             lineHeight: "1.5",
+            opacity: "1",
+            transition: "opacity 1s ease-out"
             });
 
             document.body.appendChild(banner);
+
+            // Disparition après 15 secondes
+            setTimeout(() => {
+            banner.style.opacity = "0";
+            setTimeout(() => {
+                banner.remove();
+            }, 1000); // temps pour que la transition se termine
+            }, 15000);
         }
     })();
 </script>
