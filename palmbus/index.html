@@ -7026,7 +7026,7 @@ function updateMenu() {
 function initializeMenuStructure() {
 
                 // Fonctions utilitaires pour la recherche
-function generateSearchSuggestions() {
+function generateSearchSuggestions(busesByLineAndDestination) {
     searchSuggestions.clear();
     
     // Ajouter les noms de lignes
@@ -7099,7 +7099,7 @@ function setupSearchEventListeners() {
     });
 }
 
-function performSearch(query) {
+function performSearch(query, busesByLineAndDestination) {
     const linesContainer = document.getElementById('linesContainer');
     const searchResultsContainer = document.getElementById('searchResults');
     
