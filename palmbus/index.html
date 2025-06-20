@@ -7005,21 +7005,8 @@ let isMenuInitialized = false;
 let menuUpdateQueue = [];
 let lastKnownVehicles = {};
 
-function updateMenu() {
-        const menu = document.getElementById('menu');
-    
-    // Si le menu n'est pas encore initialisé, le créer entièrement
-    if (!isMenuInitialized) {
-        initializeMenuStructure();
-        isMenuInitialized = true;
-    } else {
-        // Sinon, juste mettre à jour les données
-        updateMenuData();
-        return;
-    }
-}
 
-function initializeMenuStructure() {
+function updateMenu() {
     const menu = document.getElementById('menu');
     menu.innerHTML = '';
     
