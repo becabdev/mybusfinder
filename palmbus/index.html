@@ -3333,7 +3333,6 @@ function hideLoadingScreen() {
         const loadingScreen = document.getElementById('loading-screen');
 
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
-            toastBottomRight.info(`Updating to build ${window.BUILD_VERSION} in progress... Please wait`);
             disparaitrelelogo();
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
@@ -3524,7 +3523,6 @@ async function getFromCache() {
 
 async function extractGTFSFiles() {
     try {
-        toastBottomRight.info('Mise à jour de la base de données dynamiques. Cette opération va prendre quelques secondes 🙂');
         disparaitrelelogo();
         soundsUX('MBF_Popup');
 
