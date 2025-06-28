@@ -2288,49 +2288,6 @@ tarteaucitron.init({
     window.i18n = i18n;
     </script>
 
-    <script>
-    // détection environnement dev
-    (function () {
-        if (window.location.hostname === "dev.mybusfinder.fr") {
-            const banner = document.createElement("div");
-            banner.innerHTML = `
-            ⚠️ <strong>Accès restreint – Environnement de développement confidentiel</strong><br>
-            Ce site est strictement réservé aux membres autorisés du projet MyBusFinder.<br>
-            Toute consultation, copie, diffusion ou divulgation non autorisée de tout ou partie de ce contenu est formellement interdite.<br>
-            Des poursuites civiles et pénales pourront être engagées conformément aux articles 226-13 et 323-1 du Code pénal (atteinte au secret et accès frauduleux à un système de traitement automatisé de données).<br>
-            <div style="font-style: italic; font-size: 9px; margin-top: 5px;">build ${BUILD_VERSION}</div>
-            `;
-
-            Object.assign(banner.style, {
-            position: "fixed",
-            bottom: "10px",
-            right: "10px",
-            backgroundColor: "#8B0000",
-            color: "white",
-            padding: "14px 18px",
-            borderRadius: "10px",
-            fontSize: "13px",
-            zIndex: "99999",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-            maxWidth: "320px",
-            pointerEvents: "none",
-            lineHeight: "1.5",
-            opacity: "1",
-            transition: "opacity 1s ease-out"
-            });
-
-            document.body.appendChild(banner);
-
-            setTimeout(() => {
-            banner.style.opacity = "0";
-            setTimeout(() => {
-                banner.remove();
-            }, 1000); // temps pour que la transition se termine
-            }, 15000);
-        }
-    })();
-</script>
-
 
 <script>
 
@@ -6997,15 +6954,6 @@ function closeMenu() {
     }, 10);
 }
 
-let searchHistory = JSON.parse(localStorage.getItem('searchHistory')) || [];
-let searchSuggestions = new Set();
-let currentSearchResults = [];
-let isSearchActive = false;
-let isMenuInitialized = false;
-let menuUpdateQueue = [];
-let lastKnownVehicles = {};
-
-
 function updateMenu() {
     const menu = document.getElementById('menu');
     menu.innerHTML = '';
@@ -7051,6 +6999,7 @@ function updateMenu() {
     backButton.onclick = closeMenu;
     topBar.appendChild(backButton);
 
+    
     const title = document.createElement('div');
     title.textContent = `${t("network")}`;
     title.style.cssText = `
@@ -7059,692 +7008,10 @@ function updateMenu() {
     `;
     topBar.appendChild(title);
 
-                // Fonctions utilitaires pour la recherche
-function generateSearchSuggestions() {
-    searchSuggestions.clear();
-    
-    // Ajouter les noms de lignes
-    Object.keys(busesByLineAndDestination).forEach(line => {
-        const lineNameText = lineName[line] || line;
-        searchSuggestions.add(`Ligne ${lineNameText}`);
-        searchSuggestions.add(lineNameText);
-    });
-    
-    // Ajouter les destinations
-    Object.values(busesByLineAndDestination).forEach(destinations => {
-        Object.keys(destinations).forEach(dest => {
-            if (dest !== "Inconnue") {
-                searchSuggestions.add(dest);
-            }
-        });
-    });
-    
-    // Ajouter l'historique
-    searchHistory.forEach(term => searchSuggestions.add(term));
-}
-
-function setupSearchEventListeners() {
-    const searchInput = document.querySelector('input[type="text"]');
-    const suggestionsContainer = document.querySelector('.suggestions-container') || 
-        document.querySelector('[style*="backdrop-filter: blur(15px)"]');
-    
-    let searchTimeout;
-    
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            const query = e.target.value.trim();
-            if (query.length > 0) {
-                performSearch(query);
-                showSuggestions(query);
-            } else {
-                clearSearch();
-                hideSuggestions();
-            }
-        }, 150);
-    });
-    
-    searchInput.addEventListener('focus', () => {
-        if (searchInput.value.trim()) {
-            showSuggestions(searchInput.value.trim());
-        }
-    });
-    
-    document.addEventListener('click', (e) => {
-        if (!searchContainer.contains(e.target)) {
-            hideSuggestions();
-        }
-    });
-    
-    searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            const query = searchInput.value.trim();
-            if (query) {
-                addToSearchHistory(query);
-                performSearch(query);
-                hideSuggestions();
-            }
-        }
-        if (e.key === 'Escape') {
-            clearSearch();
-            searchInput.blur();
-        }
-    });
-}
-
-function performSearch(query) {
-    const linesContainer = document.getElementById('linesContainer');
-    const searchResultsContainer = document.getElementById('searchResults');
-    
-    if (!query) {
-        clearSearch();
-        return;
-    }
-    
-    isSearchActive = true;
-    currentSearchResults = [];
-    
-    const queryLower = query.toLowerCase();
-    const searchTerms = queryLower.split(' ').filter(term => term.length > 0);
-    
-    // Recherche dans les lignes
-    Object.keys(busesByLineAndDestination).forEach(line => {
-        const lineNameText = (lineName[line] || line).toLowerCase();
-        const lineMatches = searchTerms.some(term => 
-            line.toLowerCase().includes(term) || 
-            lineNameText.includes(term) ||
-            `ligne ${lineNameText}`.includes(term)
-        );
-        
-        if (lineMatches) {
-            currentSearchResults.push({
-                type: 'line',
-                line: line,
-                relevance: calculateRelevance(queryLower, [line.toLowerCase(), lineNameText])
-            });
-        }
-        
-        // Recherche dans les destinations
-        Object.keys(busesByLineAndDestination[line]).forEach(destination => {
-            const destMatches = searchTerms.some(term => 
-                destination.toLowerCase().includes(term)
-            );
-            
-            if (destMatches && destination !== "Inconnue") {
-                currentSearchResults.push({
-                    type: 'destination',
-                    line: line,
-                    destination: destination,
-                    relevance: calculateRelevance(queryLower, [destination.toLowerCase()])
-                });
-            }
-        });
-        
-        // Recherche dans les véhicules
-        Object.values(busesByLineAndDestination[line]).forEach(vehicles => {
-            vehicles.forEach(bus => {
-                const popupContent = bus.vehicle.getPopup().getContent();
-                const vehicleMatches = searchTerms.some(term => {
-                    const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-                    const vehicleLabel = labelMatch ? labelMatch[1].toLowerCase() : '';
-                    return vehicleLabel.includes(term) || bus.parkNumber.toString().includes(term);
-                });
-                
-                if (vehicleMatches) {
-                    currentSearchResults.push({
-                        type: 'vehicle',
-                        line: line,
-                        vehicle: bus,
-                        relevance: calculateRelevance(queryLower, [bus.parkNumber.toString()])
-                    });
-                }
-            });
-        });
-    });
-    
-    // Trier par pertinence
-    currentSearchResults.sort((a, b) => b.relevance - a.relevance);
-    
-    displaySearchResults();
-    linesContainer.style.display = 'none';
-    searchResultsContainer.style.display = 'block';
-}
-
-function calculateRelevance(query, targets) {
-    let maxRelevance = 0;
-    
-    targets.forEach(target => {
-        let relevance = 0;
-        
-        // Correspondance exacte
-        if (target === query) relevance += 100;
-        // Commence par la requête
-        else if (target.startsWith(query)) relevance += 80;
-        // Contient la requête
-        else if (target.includes(query)) relevance += 60;
-        // Correspondance partielle
-        else {
-            const queryWords = query.split(' ');
-            const targetWords = target.split(' ');
-            let matchCount = 0;
-            
-            queryWords.forEach(qWord => {
-                targetWords.forEach(tWord => {
-                    if (tWord.includes(qWord) || qWord.includes(tWord)) {
-                        matchCount++;
-                    }
-                });
-            });
-            
-            relevance += (matchCount / queryWords.length) * 40;
-        }
-        
-        maxRelevance = Math.max(maxRelevance, relevance);
-    });
-    
-    return maxRelevance;
-}
-
-function displaySearchResults() {
-    const searchResultsContainer = document.getElementById('searchResults');
-    searchResultsContainer.innerHTML = '';
-    
-    if (currentSearchResults.length === 0) {
-        const noResults = document.createElement('div');
-        noResults.textContent = t("no_results_found");
-        noResults.style.cssText = `
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-            padding: 20px;
-            font-style: italic;
-        `;
-        searchResultsContainer.appendChild(noResults);
-        return;
-    }
-    
-    const resultsTitle = document.createElement('div');
-    resultsTitle.textContent = `${currentSearchResults.length} résultat(s) trouvé(s)`;
-    resultsTitle.style.cssText = `
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 14px;
-        margin-bottom: 15px;
-        padding: 0 5px;
-    `;
-    searchResultsContainer.appendChild(resultsTitle);
-    
-    // Grouper les résultats par type
-    const groupedResults = {
-        line: currentSearchResults.filter(r => r.type === 'line'),
-        destination: currentSearchResults.filter(r => r.type === 'destination'),
-        vehicle: currentSearchResults.filter(r => r.type === 'vehicle')
-    };
-    
-    Object.entries(groupedResults).forEach(([type, results]) => {
-        if (results.length === 0) return;
-        
-        const groupTitle = document.createElement('div');
-        groupTitle.textContent = type === 'line' ? 'Lignes' : 
-                                type === 'destination' ? 'Destinations' : 'Véhicules';
-        groupTitle.style.cssText = `
-            color: white;
-            font-weight: bold;
-            font-size: 16px;
-            margin: 15px 5px 10px 5px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            padding-bottom: 5px;
-        `;
-        searchResultsContainer.appendChild(groupTitle);
-        
-        results.slice(0, 10).forEach(result => {
-            const resultItem = createSearchResultItem(result);
-            searchResultsContainer.appendChild(resultItem);
-        });
-    });
-}
-
-function createSearchResultItem(result) {
-    const item = document.createElement('div');
-    const lineColor = lineColors[result.line] || '#000000';
-    const textColor = getTextColor(lineColor);
-    
-    item.style.cssText = `
-        background: ${lineColor};
-        color: ${textColor};
-        padding: 12px;
-        margin-bottom: 8px;
-        border-radius: 12px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    `;
-    
-    let content = '';
-    
-    switch (result.type) {
-        case 'line':
-            const lineNameText = lineName[result.line] || result.line;
-            content = `
-                <div style="font-weight: bold; font-size: 16px;">Ligne ${lineNameText}</div>
-                <div style="opacity: 0.8; font-size: 14px;">${Object.keys(busesByLineAndDestination[result.line]).length} destination(s)</div>
-            `;
-            item.onclick = () => {
-                searchToLine(result.line);
-            };
-            break;
-            
-        case 'destination':
-            content = `
-                <div style="font-weight: bold; font-size: 16px;">${result.destination}</div>
-                <div style="opacity: 0.8; font-size: 14px;">Ligne ${lineName[result.line] || result.line}</div>
-            `;
-            item.onclick = () => {
-                searchToDestination(result.line, result.destination);
-            };
-            break;
-            
-        case 'vehicle':
-            const popupContent = result.vehicle.vehicle.getPopup().getContent();
-            const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-            const vehicleLabel = labelMatch ? labelMatch[1].replace(/Véhicule inconnu\./, "inconnu") : "inconnu";
-            
-            content = `
-                <div style="font-weight: bold; font-size: 16px;">Véhicule ${vehicleLabel}</div>
-                <div style="opacity: 0.8; font-size: 14px;">Ligne ${lineName[result.line] || result.line}</div>
-            `;
-            item.onclick = () => {
-                searchToVehicle(result.vehicle);
-            };
-            break;
-    }
-    
-    item.innerHTML = content;
-    
-    item.onmouseover = () => {
-        item.style.transform = 'scale(0.98)';
-        item.style.opacity = '0.9';
-    };
-    
-    item.onmouseout = () => {
-        item.style.transform = 'scale(1)';
-        item.style.opacity = '1';
-    };
-    
-    return item;
-}
-
-function showSuggestions(query) {
-    const suggestionsContainer = document.querySelector('[style*="backdrop-filter: blur(15px)"]');
-    const queryLower = query.toLowerCase();
-    
-    const matchingSuggestions = Array.from(searchSuggestions)
-        .filter(suggestion => suggestion.toLowerCase().includes(queryLower))
-        .slice(0, 8);
-    
-    if (matchingSuggestions.length === 0) {
-        suggestionsContainer.style.display = 'none';
-        return;
-    }
-    
-    suggestionsContainer.innerHTML = '';
-    
-    // Historique récent
-    const recentSearches = searchHistory.filter(term => 
-        term.toLowerCase().includes(queryLower)
-    ).slice(0, 3);
-    
-    if (recentSearches.length > 0) {
-        const historyTitle = document.createElement('div');
-        historyTitle.textContent = 'Recherches récentes';
-        historyTitle.style.cssText = `
-            padding: 8px 12px;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        `;
-        suggestionsContainer.appendChild(historyTitle);
-        
-        recentSearches.forEach(term => {
-            const suggItem = createSuggestionItem(term, '🕒');
-            suggestionsContainer.appendChild(suggItem);
-        });
-    }
-    
-    // Suggestions générales
-    matchingSuggestions.forEach(suggestion => {
-        if (!recentSearches.includes(suggestion)) {
-            const icon = suggestion.startsWith('Ligne') ? '🚌' : 
-                        suggestion.includes('→') ? '📍' : '🔍';
-            const suggItem = createSuggestionItem(suggestion, icon);
-            suggestionsContainer.appendChild(suggItem);
-        }
-    });
-    
-    suggestionsContainer.style.display = 'block';
-}
-
-function createSuggestionItem(text, icon) {
-    const item = document.createElement('div');
-    item.style.cssText = `
-        padding: 10px 12px;
-        cursor: pointer;
-        transition: background 0.2s ease;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: white;
-    `;
-    
-    item.innerHTML = `<span>${icon}</span><span>${text}</span>`;
-    
-    item.onmouseover = () => {
-        item.style.background = 'rgba(255, 255, 255, 0.1)';
-    };
-    
-    item.onmouseout = () => {
-        item.style.background = 'transparent';
-    };
-    
-    item.onclick = () => {
-        const searchInput = document.querySelector('input[type="text"]');
-        searchInput.value = text;
-        addToSearchHistory(text);
-        performSearch(text);
-        hideSuggestions();
-    };
-    
-    return item;
-}
-
-function hideSuggestions() {
-    const suggestionsContainer = document.querySelector('[style*="backdrop-filter: blur(15px)"]');
-    suggestionsContainer.style.display = 'none';
-}
-
-function addToSearchHistory(term) {
-    if (!searchHistory.includes(term)) {
-        searchHistory.unshift(term);
-        searchHistory = searchHistory.slice(0, 10); // Garder seulement les 10 derniers
-        localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
-    }
-}
-
-function clearSearch() {
-    isSearchActive = false;
-    currentSearchResults = [];
-    const linesContainer = document.getElementById('linesContainer');
-    const searchResultsContainer = document.getElementById('searchResults');
-    const searchInput = document.querySelector('input[type="text"]');
-    
-    if (linesContainer) linesContainer.style.display = 'block';
-    if (searchResultsContainer) searchResultsContainer.style.display = 'none';
-    if (searchInput) searchInput.value = '';
-    
-    hideSuggestions();
-}
-
-function applyQuickFilter(filterType, buttonElement) {
-    // Reset tous les boutons
-    document.querySelectorAll('[data-filter]').forEach(btn => {
-        btn.style.background = 'rgba(255, 255, 255, 0.1)';
-        btn.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-    });
-    
-    // Activer le bouton sélectionné
-    buttonElement.style.background = 'rgba(255, 255, 255, 0.3)';
-    buttonElement.style.borderColor = 'rgba(255, 255, 255, 0.5)';
-    
-    const linesContainer = document.getElementById('linesContainer');
-    const allLineSections = linesContainer.querySelectorAll('.linesection');
-    
-    allLineSections.forEach(section => {
-        const line = section.dataset.line;
-        let shouldShow = false;
-        
-        switch (filterType) {
-            case 'favorites':
-                shouldShow = favoriteLines.has(line);
-                break;
-            case 'nearby':
-                // Implémentation basique - vous pouvez améliorer avec la géolocalisation
-                shouldShow = true; // Pour l'instant, affiche tout
-                break;
-            case 'delayed':
-                // Vérifier s'il y a des retards dans cette ligne
-                shouldShow = hasDelayedVehicles(line);
-                break;
-            case 'active':
-                shouldShow = Object.keys(busesByLineAndDestination[line]).length > 0;
-                break;
-        }
-        
-        section.style.display = shouldShow ? 'block' : 'none';
-    });
-}
-
-function hasDelayedVehicles(line) {
-    // Vérification basique des retards - à adapter selon vos données
-    if (busesByLineAndDestination[line]) {
-        return Object.values(busesByLineAndDestination[line]).some(vehicles => {
-            return vehicles.some(bus => {
-                const popupContent = bus.vehicle.getPopup().getContent();
-                return popupContent.includes('retard') || popupContent.includes('delayed');
-            });
-        });
-    }
-    return false;
-}
-
-function searchToLine(lineId) {
-    // Utiliser votre fonction existante pour filtrer par ligne
-    safeVibrate([50, 30, 50], true);
-    soundsUX('MBF_Menu_LineSelect');
-    selectedLine = lineId;
-    filterByLine(lineId);
-    closeSearchAndShowMap();
-}
-
-function searchToDestination(lineId, destination) {
-    safeVibrate([50, 30, 50], true);
-    soundsUX('MBF_Menu_LineSelect');
-    selectedLine = lineId;
-    filterByLine(lineId);
-    // Vous pouvez ajouter une logique pour centrer sur cette destination
-    closeSearchAndShowMap();
-}
-
-function searchToVehicle(busData) {
-    safeVibrate([50, 300, 50, 30, 50], true);
-    soundsUX('MBF_Menu_VehicleSelect');
-    map.setView(busData.vehicle.getLatLng(), 15);
-    busData.vehicle.openPopup();
-    closeSearchAndShowMap();
-}
-
-function closeSearchAndShowMap() {
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
-    menu.classList.add('hidden');
-    
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-    
-    window.isMenuShowed = false;
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-    
-    isMenuVisible = false;
-    const menubottom1 = document.getElementById('menubtm');
-    const filtre = document.getElementById('filtre');
-    
-    menubottom1.style.display = 'flex';
-    setTimeout(() => {
-        menubottom1.classList.remove('slide-upb');
-        menubottom1.classList.add('slide-downb');
-        if (selectedLine) {
-            filtre.classList.remove('slide-upc');
-            filtre.classList.add('slide-downc');
-            filtre.style.display = 'flex';
-        }
-    }, 10);
-}
-
-
-    // Container pour la recherche
-    const searchContainer = document.createElement('div');
-    searchContainer.style.cssText = `
-        position: relative;
-        margin: 0 15px;
-        margin-bottom: 10px;
-    `;
-
-    // Input de recherche
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = `${t("search_lines_stops")} (Ligne, destination, arrêt...)`;
-    searchInput.style.cssText = `
-        width: 100%;
-        padding: 12px 45px 12px 15px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 25px;
-        color: white;
-        font-size: 16px;
-        outline: none;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-    `;
-
-    // Icône de recherche
-    const searchIcon = document.createElement('div');
-    searchIcon.innerHTML = `
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="11" cy="11" r="8" stroke="white" stroke-width="2" fill="none"/>
-            <path d="m21 21-4.35-4.35" stroke="white" stroke-width="2"/>
-        </svg>
-    `;
-    searchIcon.style.cssText = `
-        position: absolute;
-        right: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-        opacity: 0.7;
-    `;
-
-    // Container pour les suggestions
-    const suggestionsContainer = document.createElement('div');
-    suggestionsContainer.style.cssText = `
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.95);
-        border-radius: 15px;
-        margin-top: 5px;
-        max-height: 200px;
-        overflow-y: auto;
-        z-index: 1002;
-        display: none;
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    `;
-
-    searchContainer.appendChild(searchInput);
-    searchContainer.appendChild(searchIcon);
-    searchContainer.appendChild(suggestionsContainer);
-    topBar.appendChild(searchContainer);
-
     
     const spacer = document.createElement('div');
     spacer.style.height = '15px'; 
     menu.appendChild(spacer);
-
-    // Container pour les filtres rapides
-    const quickFiltersContainer = document.createElement('div');
-    quickFiltersContainer.style.cssText = `
-        display: flex;
-        gap: 8px;
-        padding: 0 15px;
-        margin-bottom: 15px;
-        overflow-x: auto;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-    `;
-    quickFiltersContainer.style['-webkit-scrollbar'] = 'none';
-
-    const filterButtons = [
-        { text: 'Favoris', filter: 'favorites', icon: '★' },
-        { text: 'Proches', filter: 'nearby', icon: '📍' },
-        { text: 'En retard', filter: 'delayed', icon: '⏰' },
-        { text: 'Actives', filter: 'active', icon: '🚌' }
-    ];
-
-    filterButtons.forEach(button => {
-        const filterBtn = document.createElement('button');
-        filterBtn.textContent = `${button.icon} ${button.text}`;
-        filterBtn.dataset.filter = button.filter;
-        filterBtn.style.cssText = `
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            color: white;
-            font-size: 14px;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        `;
-        
-        filterBtn.onclick = () => applyQuickFilter(button.filter, filterBtn);
-        quickFiltersContainer.appendChild(filterBtn);
-    });
-
-    menu.appendChild(quickFiltersContainer);
-
-    setupScrollListener();
-
-    function setupScrollListener() {
-    const menu = document.getElementById('menu');
-    const topBar = menu.querySelector('.menu-top-bar');
-    let lastScrollTop = 0;
-    
-    menu.addEventListener('scroll', function() {
-        const scrollTop = menu.scrollTop;
-        
-        if (scrollTop > lastScrollTop && scrollTop > 50) {
-            topBar.style.transform = 'translateY(-100%)';
-        } else {
-            topBar.style.transform = 'translateY(0)';
-        }
-        
-        lastScrollTop = scrollTop;
-    });
-}
-
-    // Container pour les résultats de recherche
-    const searchResultsContainer = document.createElement('div');
-    searchResultsContainer.id = 'searchResults';
-    searchResultsContainer.style.cssText = `
-        display: none;
-        padding: 0 15px;
-    `;
-    menu.appendChild(searchResultsContainer);
 
     let lastScrollTop = 0;
     
@@ -7762,642 +7029,22 @@ function closeSearchAndShowMap() {
 
 let isStandardView = localStorage.getItem('isStandardView') === 'true';
 
-function updateMenuData() {
-    // Calculer les nouveaux groupes de véhicules
-    const busesByLineAndDestination = calculateBusesByLineAndDestination();
-    
-    // Comparer avec les données précédentes
-    const changes = detectChanges(busesByLineAndDestination);
-    
-    // Appliquer seulement les changements nécessaires
-    applyChangesToMenu(busesByLineAndDestination, changes);
-    
-    // Mettre à jour les suggestions de recherche si nécessaire
-    if (changes.hasStructuralChanges) {
-        generateSearchSuggestions();
-    }
-}
-
-function calculateBusesByLineAndDestination() {
-    const busesByLineAndDestination = {};
-
-    Object.keys(markers).forEach(id => {
-        const vehicle = markers[id];
-        const line = vehicle.line;
-        
-        let destination = "Inconnue";
-        const popupContent = vehicle.getPopup().getContent();
-        
-        const patterns = [
-            /<strong[^>]*>➜\s*(.*?)<\/strong>/,
-            />➜\s*(.*?)</,
-            /Ligne \d+<\/p>\s*<strong[^>]*>➜\s*(.*?)<\/strong>/
-        ];
-
-        for (const pattern of patterns) {
-            const match = popupContent.match(pattern);
-            if (match && match[1]) {
-                destination = match[1].trim();
-                if (destination.toLowerCase() !== 'Destination inconnue') {
-                    break;
-                }
-            }
-        }
-
-        if (!busesByLineAndDestination[line]) {
-            busesByLineAndDestination[line] = {};
-        }
-
-        if (!busesByLineAndDestination[line][destination]) {
-            busesByLineAndDestination[line][destination] = [];
-        }
-
-        busesByLineAndDestination[line][destination].push({
-            parkNumber: vehicle.id,
-            vehicle
-        });
-    });
-    
-    return busesByLineAndDestination;
-}
-
-function detectChanges(newData) {
-    const changes = {
-        hasStructuralChanges: false,
-        newLines: [],
-        removedLines: [],
-        modifiedLines: [],
-        vehicleUpdates: {}
-    };
-    
-    const currentLines = Object.keys(newData);
-    const previousLines = Object.keys(lastKnownVehicles);
-    
-    // Détecter les nouvelles lignes
-    changes.newLines = currentLines.filter(line => !previousLines.includes(line));
-    
-    // Détecter les lignes supprimées
-    changes.removedLines = previousLines.filter(line => !currentLines.includes(line));
-    
-    // Détecter les modifications dans les lignes existantes
-    currentLines.forEach(line => {
-        if (previousLines.includes(line)) {
-            const currentDestinations = Object.keys(newData[line]);
-            const previousDestinations = Object.keys(lastKnownVehicles[line] || {});
-            
-            // Vérifier si les destinations ont changé
-            const destinationsChanged = 
-                currentDestinations.length !== previousDestinations.length ||
-                !currentDestinations.every(dest => previousDestinations.includes(dest));
-            
-            if (destinationsChanged) {
-                changes.modifiedLines.push(line);
-                changes.hasStructuralChanges = true;
-            } else {
-                // Vérifier les véhicules dans chaque destination
-                currentDestinations.forEach(destination => {
-                    const currentVehicles = newData[line][destination];
-                    const previousVehicles = lastKnownVehicles[line]?.[destination] || [];
-                    
-                    const vehicleIds = currentVehicles.map(v => v.parkNumber).sort();
-                    const previousIds = previousVehicles.map(v => v.parkNumber).sort();
-                    
-                    if (JSON.stringify(vehicleIds) !== JSON.stringify(previousIds)) {
-                        if (!changes.vehicleUpdates[line]) {
-                            changes.vehicleUpdates[line] = {};
-                        }
-                        changes.vehicleUpdates[line][destination] = {
-                            added: vehicleIds.filter(id => !previousIds.includes(id)),
-                            removed: previousIds.filter(id => !vehicleIds.includes(id))
-                        };
-                    } else {
-                        // Vérifier si le contenu des véhicules a changé (pour les mises à jour de statut)
-                        const contentChanged = currentVehicles.some(currentVehicle => {
-                            const previousVehicle = previousVehicles.find(pv => pv.parkNumber === currentVehicle.parkNumber);
-                            if (previousVehicle) {
-                                const currentContent = currentVehicle.vehicle.getPopup().getContent();
-                                const previousContent = previousVehicle.vehicle.getPopup().getContent();
-                                return currentContent !== previousContent;
-                            }
-                            return false;
-                        });
-                        
-                        if (contentChanged) {
-                            if (!changes.vehicleUpdates[line]) {
-                                changes.vehicleUpdates[line] = {};
-                            }
-                            changes.vehicleUpdates[line][destination] = {
-                                updated: currentVehicles.map(v => v.parkNumber)
-                            };
-                        }
-                    }
-                });
-            }
-        }
-    });
-    
-    changes.hasStructuralChanges = changes.hasStructuralChanges || 
-        changes.newLines.length > 0 || 
-        changes.removedLines.length > 0;
-    
-    return changes;
-}
-
-function applyChangesToMenu(newData, changes) {
-    const linesContainer = document.getElementById('linesContainer');
-    
-    // Supprimer les lignes supprimées
-    changes.removedLines.forEach(line => {
-        const lineElement = linesContainer.querySelector(`[data-line="${line}"]`);
-        if (lineElement) {
-            lineElement.remove();
-        }
-    });
-    
-    // Ajouter les nouvelles lignes
-    changes.newLines.forEach(line => {
-        const lineElement = createLineSection(line, newData[line]);
-        insertLineInOrder(linesContainer, lineElement, line);
-    });
-    
-    // Modifier les lignes existantes qui ont des changements structurels
-    changes.modifiedLines.forEach(line => {
-        const lineElement = linesContainer.querySelector(`[data-line="${line}"]`);
-        if (lineElement) {
-            const newLineElement = createLineSection(line, newData[line]);
-            lineElement.replaceWith(newLineElement);
-        }
-    });
-    
-    // Mettre à jour les véhicules individuels
-    Object.entries(changes.vehicleUpdates).forEach(([line, destinations]) => {
-        Object.entries(destinations).forEach(([destination, updates]) => {
-            if (updates.updated) {
-                updateVehicleContent(line, destination, newData[line][destination]);
-            } else {
-                updateVehicleList(line, destination, newData[line][destination], updates);
-            }
-        });
-    });
-    
-    // Sauvegarder l'état actuel
-    lastKnownVehicles = JSON.parse(JSON.stringify(newData));
-}
-
-function createLineSection(line, destinations) {
-    const lineNameText = lineName[line] || t("unknown_line");
-    const lineColor = lineColors[line] || '#000000';
-    const textColor = getTextColor(lineColor);
-
-    const lineSection = document.createElement('div');
-    lineSection.dataset.line = line;
-    lineSection.style.backgroundColor = lineColor;
-    lineSection.classList.add('linesection');
-    lineSection.style.marginBottom = '10px';
-    lineSection.style.marginLeft = '10px';
-    lineSection.style.marginRight = '10px';
-    lineSection.style.padding = '10px';
-    lineSection.style.borderRadius = '16px';
-    lineSection.style.position = 'relative';
-    lineSection.style.overflow = 'hidden';
-
-    // Ajouter les effets visuels
-    const beam1 = document.createElement('div');
-    beam1.classList.add('light-beam', 'beam1');
-    lineSection.appendChild(beam1);
-
-    const beam2 = document.createElement('div');
-    beam2.classList.add('light-beam', 'beam2');
-    lineSection.appendChild(beam2);
-
-    const beam3 = document.createElement('div');
-    beam3.classList.add('light-beam', 'beam3');
-    lineSection.appendChild(beam3);
-
-    // Événements hover
-    lineSection.onmouseover = () => {
-        lineSection.style.transform = 'scale(0.99,0.99)';
-        lineSection.style.opacity = '0.9';
-        lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
-    };  
-
-    lineSection.onmouseout = () => {
-        lineSection.style.transform = 'scale(1,1)';
-        lineSection.style.opacity = '0.9';
-        lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
-    };
-
-    // Bouton favori
-    const favoriteButton = document.createElement('button');
-    favoriteButton.style.position = 'absolute';
-    favoriteButton.style.right = '5px';
-    favoriteButton.style.top = '5px';
-    favoriteButton.style.background = 'none';
-    favoriteButton.style.border = 'none';
-    favoriteButton.style.color = textColor;
-    favoriteButton.style.fontSize = '20px';
-    favoriteButton.style.cursor = 'pointer';
-    favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
-    favoriteButton.onclick = async (e) => {
-        e.stopPropagation();
-        const lineSection = e.target.closest('.linesection');
-        const isFavorite = favoriteLines.has(line);
-        await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
-    };
-
-    // Titre de la ligne
-    const lineTitle = document.createElement('div');
-    lineTitle.textContent = `${t("line")} ${lineNameText}`;
-    lineTitle.style.fontSize = '20px';
-    lineTitle.style.fontWeight = 'normal';
-    lineTitle.style.color = textColor;
-    lineTitle.style.paddingRight = '30px';
-    lineTitle.style.paddingLeft = '10px';
-
-    lineSection.appendChild(lineTitle);
-    lineSection.appendChild(favoriteButton);
-
-    // Ajouter les destinations
-    Object.keys(destinations).sort().forEach(destination => {
-        const destinationSection = createDestinationSection(line, destination, destinations[destination], textColor);
-        lineSection.appendChild(destinationSection);
-    });
-
-    // Événement click sur la ligne
-    lineSection.onclick = (event) => {
-        if (event.target === favoriteButton) return;
-        
-        const mapp = document.getElementById('map');
-        mapp.style.opacity = '1';
-        safeVibrate([50, 30, 50], true);
-        soundsUX('MBF_Menu_LineSelect');
-        const lineId = line;
-        selectedLine = lineId;
-        filterByLine(lineId);
-        closeMenuAndShowMap();
-        event.stopPropagation();
-    };
-
-    return lineSection;
-}
-
-function createDestinationSection(line, destination, vehicles, textColor) {
-    const destinationSection = document.createElement('div');
-    destinationSection.style.marginTop = '5px';
-    destinationSection.style.paddingLeft = '10px';
-    destinationSection.dataset.destination = destination;
-
-    const destinationTitle = document.createElement('div');
-    destinationTitle.textContent = `➜ ${destination}`;
-    destinationTitle.style.fontSize = '16px';
-    destinationTitle.style.fontWeight = 'normal';
-    destinationTitle.style.marginBottom = '4px';
-    destinationTitle.style.color = textColor;
-    destinationSection.appendChild(destinationTitle);
-
-    const vehiclesContainer = document.createElement('div');
-    vehiclesContainer.classList.add('vehicles-container');
-    
-    vehicles.forEach(bus => {
-        const busItem = createBusItem(line, destination, bus, textColor);
-        vehiclesContainer.appendChild(busItem);
-    });
-
-    destinationSection.appendChild(vehiclesContainer);
-    return destinationSection;
-}
-
-function createBusItem(line, destination, bus, textColor) {
-        const busItem = document.createElement('div');
-        const marker = bus.vehicle;
-        const popupContent = marker.getPopup().getContent();
-        
-        let nextStopInfo = '';
-        let terminusInfo = '';
-        
-        const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
-        const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
-        
-        if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
-            const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-            const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
-            
-            if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
-                const stopName = firstStopNameMatch[1].trim();
-                const timeInfo = firstTimeMatch[1].trim();
-                if (stopName && timeInfo) {
-                    nextStopInfo = `${stopName}`;
-                }
-            }
-            
-            if (stopNameContainers.length > 1 && timeDisplays.length > 1) {
-                const lastIndex = stopNameContainers.length - 1;
-                const lastStopNameMatch = stopNameContainers[lastIndex].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-                const lastTimeMatch = timeDisplays[lastIndex].match(/data-time-left="([^"]*)"/);
-                
-                if (lastStopNameMatch && lastStopNameMatch[1] && lastTimeMatch && lastTimeMatch[1]) {
-                    const terminusName = lastStopNameMatch[1].trim();
-                    const terminusTime = lastTimeMatch[1].trim();
-                    if (terminusName && terminusTime) {
-                        terminusInfo = `${t("arrivalat")} ${destination} ${terminusTime !== t("imminent") ? t("in") + ' ' + terminusTime : t("imminent")}.`;
-                    }
-                }
-            }
-        }
-        
-        if (!nextStopInfo || !terminusInfo) {
-            const stopsHeaderMatch = popupContent.match(/<p style="margin: 0; font-size: 18px; text-align: right;">(.*?)<\/p>/);
-            if (stopsHeaderMatch && stopsHeaderMatch[1]) {
-                const headerText = stopsHeaderMatch[1].trim();
-                if (headerText.includes('imminent')) {
-                    nextStopInfo = t("imminentdeparture") + '.';
-                } else if (headerText.includes('min')) {
-                    const minMatch = headerText.match(/dans (\d+) min/);
-                    if (minMatch && minMatch[1]) {
-                        nextStopInfo = `${t("departurein")} ${minMatch[1]} ${t("min")}.`;
-                    }
-                }
-            }
-            
-            if (!terminusInfo) {
-                terminusInfo = `${t("indirectionof")} ${destination}.`;
-            }
-        }
-
-        const mainText = document.createElement('div');
-        const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-        const vehicleLabel = labelMatch ? labelMatch[1].trim() : "Véhicule inconnu";
-        const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
-        const displayLabel = vehicleLabel.replace(/Véhicule inconnu\./, "inconnu");
-        
-        // création de disp flexbox pour aligner parc et les info
-        mainText.style.display = 'flex';
-        mainText.style.alignItems = 'center';
-        mainText.style.gap = '10px';
-        mainText.style.fontSize = '1.2em';
-        mainText.style.fontWeight = '500';
-        mainText.style.color = textColor;
-
-        // création boîte pour parc
-        const busIdBox = document.createElement('div');
-        busIdBox.textContent = displayLabel;
-        busIdBox.style.padding = '2px 8px';
-        busIdBox.style.backgroundColor = '#00000017';
-        busIdBox.style.borderRadius = '6px';
-        busIdBox.style.fontWeight = 'bold';
-        busIdBox.style.color = textColor;
-        busIdBox.style.display = 'inline-block';
-        busIdBox.style.textAlign = 'center';
-        busIdBox.style.padding = '5px 10px';
-
-        // statut véc
-        const infoText = document.createElement('span');
-        infoText.textContent = `${nextStopInfo}`;
-
-        // ajout des éléments au dom
-        mainText.appendChild(infoText);
-
-        const arrivalText = document.createElement('div');
-        arrivalText.textContent = terminusInfo;
-        arrivalText.style.fontSize = '0.9em'; 
-        arrivalText.style.opacity = '0.8';  
-        arrivalText.style.color = textColor;
-
-        const contentContainer = document.createElement('div');
-        contentContainer.style.display = 'flex';
-        contentContainer.style.flexDirection = 'column';
-        contentContainer.style.flexGrow = '1';
-        contentContainer.appendChild(mainText);
-        contentContainer.appendChild(arrivalText);
-
-        busItem.style.position = 'relative';
-        
-        const backgroundContainer = document.createElement('div');
-        backgroundContainer.style.position = 'absolute';
-        backgroundContainer.style.right = '8px';
-        backgroundContainer.style.bottom = '0';
-        backgroundContainer.style.display = 'flex';
-        backgroundContainer.style.alignItems = 'center';
-        backgroundContainer.style.justifyContent = 'flex-end';
-        backgroundContainer.style.pointerEvents = 'none'; 
-        backgroundContainer.style.opacity = '0.2';
-        backgroundContainer.style.zIndex = '0'; 
-        backgroundContainer.style.scale = '1.7';
-        backgroundContainer.innerHTML = vehicleBrandHtmlLight;
-        
-        const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
-        if (thumbnailImg) {
-            thumbnailImg.style.height = '80%';
-            thumbnailImg.style.width = 'auto';
-            thumbnailImg.style.maxHeight = '40px';
-            thumbnailImg.style.objectFit = 'contain';
-        }
-
-        busItem.textContent = '';
-        busItem.style.display = 'flex';
-        busItem.style.alignItems = 'center';
-        busItem.style.gap = '10px';
-        busItem.style.overflow = 'hidden'; 
-        busItem.style.boxShadow = '0 0 7px 0px rgb(0 0 0 / 24%)';
-
-
-        
-        busItem.appendChild(backgroundContainer);
-        
-        const frontContent = document.createElement('div');
-        frontContent.style.display = 'flex';
-        frontContent.style.alignItems = 'center';
-        frontContent.style.gap = '10px';
-        frontContent.style.width = '100%';
-        frontContent.style.position = 'relative';
-        frontContent.style.zIndex = '1';
-        
-        frontContent.appendChild(busIdBox);
-        frontContent.appendChild(contentContainer);
-        busItem.appendChild(frontContent);
-
-        busItem.style.cursor = 'pointer';
-        busItem.classList.add('menu-item');
-        busItem.style.fontFamily = 'League Spartan';
-        busItem.style.color = textColor;
-        busItem.style.padding = '5px 10px';
-        busItem.style.marginBottom = '8px';
-        busItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-        busItem.style.borderRadius = '8px';
-        busItem.dataset.vehicleId = bus.parkNumber;
-
-        lineSection.onclick = () => {
-            const mapp = document.getElementById('map');
-            mapp.style.opacity = '1';
-            safeVibrate([50, 30, 50], true);
-            soundsUX('MBF_Menu_LineSelect');
-            const lineId = line;
-            selectedLine = lineId;
-            filterByLine(lineId);
-            const map = document.getElementById('map');
-            map.style.opacity = '1';
-            menu.classList.add('hidden');
-            if (localStorage.getItem('transparency') === 'true') {
-                const map = document.getElementById('map');
-                map.classList.remove('hiddennotransition');
-                map.classList.add('appearnotransition');
-                map.classList.remove('hidden');
-                map.classList.remove('appear');
-            } else {
-                const map = document.getElementById('map');
-                map.classList.remove('hidden');
-                map.classList.add('appear');
-                map.classList.remove('hiddennotransition');
-                map.classList.remove('appearnotransition');
-            }
-            window.isMenuShowed = false;
-            menu.addEventListener('animationend', function onAnimationEnd(event) {
-                if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                    menu.style.display = 'none';
-                }
-            });
-            isMenuVisible = false;
-            const filtre = document.getElementById('filtre');
-            menubottom1.style.display = 'flex';
-            setTimeout(() => {
-                menubottom1.classList.remove('slide-upb');
-                menubottom1.classList.add('slide-downb');
-                if (selectedLine) {
-                    filtre.classList.remove('slide-upc');
-                    filtre.classList.add('slide-downc');
-                    filtre.style.display = 'flex';
-                }
-            }, 10);
-            event.stopPropagation();
-
-        };
-
-        busItem.onclick = (event) => {
-            event.stopPropagation();
-            safeVibrate([50, 300, 50, 30, 50], true);
-            soundsUX('MBF_Menu_VehicleSelect');
-            map.setView(bus.vehicle.getLatLng(), 15);
-            bus.vehicle.openPopup();
-            const mapp = document.getElementById('map');
-            mapp.style.opacity = '1';
-            menu.classList.add('hidden');
-            if (localStorage.getItem('transparency') === 'true') {
-                const map = document.getElementById('map');
-                map.classList.remove('hiddennotransition');
-                map.classList.add('appearnotransition');
-                map.classList.remove('hidden');
-                map.classList.remove('appear');
-            } else {
-                const map = document.getElementById('map');
-                map.classList.remove('hidden');
-                map.classList.add('appear');
-                map.classList.remove('hiddennotransition');
-                map.classList.remove('appearnotransition');
-            }
-            window.isMenuShowed = false;
-            menu.addEventListener('animationend', function onAnimationEnd(event) {
-                if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                    menu.style.display = 'none';
-                }
-            });
-            isMenuVisible = false;
-            if (selectedLine) {
-                resetMapView();
-            }
-        };
-
-    return busItem;
-}
-
-function insertLineInOrder(container, lineElement, line) {
-    const sortedLines = Array.from(container.children)
-        .map(el => ({ element: el, line: el.dataset.line }))
-        .concat([{ element: lineElement, line: line }])
-        .sort((a, b) => {
-            const aIsFavorite = favoriteLines.has(a.line);
-            const bIsFavorite = favoriteLines.has(b.line);
-            
-            if (aIsFavorite && !bIsFavorite) return -1;
-            if (!aIsFavorite && bIsFavorite) return 1;
-            
-            // [Reprendre la logique de tri existante]
-            return a.line.localeCompare(b.line);
-        });
-    
-    const targetIndex = sortedLines.findIndex(item => item.line === line);
-    const nextElement = sortedLines[targetIndex + 1]?.element;
-    
-    if (nextElement && nextElement.parentNode === container) {
-        container.insertBefore(lineElement, nextElement);
+function toggleMapView(forceState) {
+    if (forceState !== undefined) {
+        isStandardView = forceState;
     } else {
-        container.appendChild(lineElement);
-    }
-}
-
-function updateVehicleContent(line, destination, vehicles) {
-    const lineElement = document.querySelector(`[data-line="${line}"]`);
-    if (!lineElement) return;
-    
-    const destinationElement = lineElement.querySelector(`[data-destination="${destination}"]`);
-    if (!destinationElement) return;
-    
-    const vehiclesContainer = destinationElement.querySelector('.vehicles-container');
-    if (!vehiclesContainer) return;
-    
-    // Mettre à jour le contenu de chaque véhicule
-    vehicles.forEach(bus => {
-        const existingBusItem = vehiclesContainer.querySelector(`[data-vehicle-id="${bus.parkNumber}"]`);
-        if (existingBusItem) {
-            const textColor = getTextColor(lineColors[line] || '#000000');
-            const newBusItem = createBusItem(line, destination, bus, textColor);
-            existingBusItem.replaceWith(newBusItem);
-        }
-    });
-}
-
-function updateVehicleList(line, destination, vehicles, updates) {
-    const lineElement = document.querySelector(`[data-line="${line}"]`);
-    if (!lineElement) return;
-    
-    const destinationElement = lineElement.querySelector(`[data-destination="${destination}"]`);
-    if (!destinationElement) return;
-    
-    const vehiclesContainer = destinationElement.querySelector('.vehicles-container');
-    if (!vehiclesContainer) return;
-    
-    const textColor = getTextColor(lineColors[line] || '#000000');
-    
-    // Supprimer les véhicules supprimés
-    if (updates.removed) {
-        updates.removed.forEach(vehicleId => {
-            const busItem = vehiclesContainer.querySelector(`[data-vehicle-id="${vehicleId}"]`);
-            if (busItem) {
-                busItem.remove();
-            }
-        });
+        isStandardView = !isStandardView;
     }
     
-    // Ajouter les nouveaux véhicules
-    if (updates.added) {
-        updates.added.forEach(vehicleId => {
-            const bus = vehicles.find(v => v.parkNumber === vehicleId);
-            if (bus) {
-                const busItem = createBusItem(line, destination, bus, textColor);
-                vehiclesContainer.appendChild(busItem);
-            }
-        });
-    }
-}
+    localStorage.setItem('isStandardView', isStandardView);
 
-function closeMenuAndShowMap() {
-    const mapp = document.getElementById('map');
-    const menu = document.getElementById('menu');
     const menubottom1 = document.getElementById('menubtm');
-    const filtre = document.getElementById('filtre');
-    
+    const menu = document.getElementById('menu');
+    const mapp = document.getElementById('map');
     mapp.style.opacity = '1';
+    const map = document.getElementById('map');
     menu.classList.add('hidden');
-    
+
     if (localStorage.getItem('transparency') === 'true') {
         const map = document.getElementById('map');
         map.classList.remove('hiddennotransition');
@@ -8411,27 +7058,67 @@ function closeMenuAndShowMap() {
         map.classList.remove('hiddennotransition');
         map.classList.remove('appearnotransition');
     }
-    
     window.isMenuShowed = false;
     menu.addEventListener('animationend', function onAnimationEnd(event) {
         if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
             menu.style.display = 'none';
         }
     });
-    
     isMenuVisible = false;
     menubottom1.style.display = 'flex';
-    
     setTimeout(() => {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
         if (selectedLine) {
+            const filtre = document.getElementById('filtre');
             filtre.classList.remove('slide-upc');
             filtre.classList.add('slide-downc');
             filtre.style.display = 'flex';
         }
     }, 10);
+
+    applyMapView();
 }
+
+function applyMapView() {
+    const currentDate = new Date();
+    const latitude = map.getCenter().lat;  
+    const longitude = map.getCenter().lng;  
+
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.TileLayer) {
+            map.removeLayer(layer);
+        }
+    });
+
+    if (!isStandardView) {
+    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        minZoom: 12,
+        maxZoom: 19,
+    }).addTo(map);
+    
+    if (localStorage.getItem('darkmap') === 'true') {
+        const mapPane = mapInstance.getPanes().tilePane;
+        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+    } else {
+        const mapPane = mapInstance.getPanes().tilePane;
+        mapPane.style.filter = 'none';
+    }
+
+} else {
+    const mapPane = map.getPanes().tilePane;
+    mapPane.style.filter = 'none';
+    
+    L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+        minZoom: 12,
+        maxZoom: 19,
+        format: 'image/jpeg',
+        style: 'normal'
+    }).addTo(map);
+
+}
+}
+
 
 let startY;
 let endY;
@@ -8656,16 +7343,6 @@ function getTextColor(backgroundColor) {
     }
 }
 
-// Générer les suggestions de recherche
-generateSearchSuggestions();
-
-// Event listeners pour la recherche
-setupSearchEventListeners();
-
-// Container principal pour les lignes
-const linesContainer = document.createElement('div');
-linesContainer.id = 'linesContainer';
-menu.appendChild(linesContainer);
 
 sortedLines.forEach(line => {
     const lineNameText = lineName[line] || t("unknown_line");
@@ -8757,12 +7434,251 @@ sortedLines.forEach(line => {
        
 
 
+            busesByLineAndDestination[line][destination].forEach(bus => {
+                const busItem = document.createElement('div');
+                const marker = bus.vehicle;
+                const popupContent = marker.getPopup().getContent();
+                
+                let nextStopInfo = '';
+                let terminusInfo = '';
+                
+                const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
+                const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
+                
+                if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
+                    const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
+                    const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
+                    
+                    if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
+                        const stopName = firstStopNameMatch[1].trim();
+                        const timeInfo = firstTimeMatch[1].trim();
+                        if (stopName && timeInfo) {
+                            nextStopInfo = `${stopName}`;
+                        }
+                    }
+                    
+                    if (stopNameContainers.length > 1 && timeDisplays.length > 1) {
+                        const lastIndex = stopNameContainers.length - 1;
+                        const lastStopNameMatch = stopNameContainers[lastIndex].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
+                        const lastTimeMatch = timeDisplays[lastIndex].match(/data-time-left="([^"]*)"/);
+                        
+                        if (lastStopNameMatch && lastStopNameMatch[1] && lastTimeMatch && lastTimeMatch[1]) {
+                            const terminusName = lastStopNameMatch[1].trim();
+                            const terminusTime = lastTimeMatch[1].trim();
+                            if (terminusName && terminusTime) {
+                                terminusInfo = `${t("arrivalat")} ${destination} ${terminusTime !== t("imminent") ? t("in") + ' ' + terminusTime : t("imminent")}.`;
+                            }
+                        }
+                    }
+                }
+                
+                if (!nextStopInfo || !terminusInfo) {
+                    const stopsHeaderMatch = popupContent.match(/<p style="margin: 0; font-size: 18px; text-align: right;">(.*?)<\/p>/);
+                    if (stopsHeaderMatch && stopsHeaderMatch[1]) {
+                        const headerText = stopsHeaderMatch[1].trim();
+                        if (headerText.includes('imminent')) {
+                            nextStopInfo = t("imminentdeparture") + '.';
+                        } else if (headerText.includes('min')) {
+                            const minMatch = headerText.match(/dans (\d+) min/);
+                            if (minMatch && minMatch[1]) {
+                                nextStopInfo = `${t("departurein")} ${minMatch[1]} ${t("min")}.`;
+                            }
+                        }
+                    }
+                    
+                    if (!terminusInfo) {
+                        terminusInfo = `${t("indirectionof")} ${destination}.`;
+                    }
+                }
 
+                const mainText = document.createElement('div');
+                const labelMatch = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
+                const vehicleLabel = labelMatch ? labelMatch[1].trim() : "Véhicule inconnu";
+                const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
+                const displayLabel = vehicleLabel.replace(/Véhicule inconnu\./, "inconnu");
+                
+                // création de disp flexbox pour aligner parc et les info
+                mainText.style.display = 'flex';
+                mainText.style.alignItems = 'center';
+                mainText.style.gap = '10px';
+                mainText.style.fontSize = '1.2em';
+                mainText.style.fontWeight = '500';
+                mainText.style.color = textColor;
+
+                // création boîte pour parc
+                const busIdBox = document.createElement('div');
+                busIdBox.textContent = displayLabel;
+                busIdBox.style.padding = '2px 8px';
+                busIdBox.style.backgroundColor = '#00000017';
+                busIdBox.style.borderRadius = '6px';
+                busIdBox.style.fontWeight = 'bold';
+                busIdBox.style.color = textColor;
+                busIdBox.style.display = 'inline-block';
+                busIdBox.style.textAlign = 'center';
+                busIdBox.style.padding = '5px 10px';
+
+                // statut véc
+                const infoText = document.createElement('span');
+                infoText.textContent = `${nextStopInfo}`;
+
+                // ajout des éléments au dom
+                mainText.appendChild(infoText);
+
+                const arrivalText = document.createElement('div');
+                arrivalText.textContent = terminusInfo;
+                arrivalText.style.fontSize = '0.9em'; 
+                arrivalText.style.opacity = '0.8';  
+                arrivalText.style.color = textColor;
+
+                const contentContainer = document.createElement('div');
+                contentContainer.style.display = 'flex';
+                contentContainer.style.flexDirection = 'column';
+                contentContainer.style.flexGrow = '1';
+                contentContainer.appendChild(mainText);
+                contentContainer.appendChild(arrivalText);
+
+                busItem.style.position = 'relative';
+                
+                const backgroundContainer = document.createElement('div');
+                backgroundContainer.style.position = 'absolute';
+                backgroundContainer.style.right = '8px';
+                backgroundContainer.style.bottom = '0';
+                backgroundContainer.style.display = 'flex';
+                backgroundContainer.style.alignItems = 'center';
+                backgroundContainer.style.justifyContent = 'flex-end';
+                backgroundContainer.style.pointerEvents = 'none'; 
+                backgroundContainer.style.opacity = '0.2';
+                backgroundContainer.style.zIndex = '0'; 
+                backgroundContainer.style.scale = '1.7';
+                backgroundContainer.innerHTML = vehicleBrandHtmlLight;
+                
+                const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
+                if (thumbnailImg) {
+                    thumbnailImg.style.height = '80%';
+                    thumbnailImg.style.width = 'auto';
+                    thumbnailImg.style.maxHeight = '40px';
+                    thumbnailImg.style.objectFit = 'contain';
+                }
+
+                busItem.textContent = '';
+                busItem.style.display = 'flex';
+                busItem.style.alignItems = 'center';
+                busItem.style.gap = '10px';
+                busItem.style.overflow = 'hidden'; 
+                busItem.style.boxShadow = '0 0 7px 0px rgb(0 0 0 / 24%)';
+
+
+                
+                busItem.appendChild(backgroundContainer);
+                
+                const frontContent = document.createElement('div');
+                frontContent.style.display = 'flex';
+                frontContent.style.alignItems = 'center';
+                frontContent.style.gap = '10px';
+                frontContent.style.width = '100%';
+                frontContent.style.position = 'relative';
+                frontContent.style.zIndex = '1';
+                
+                frontContent.appendChild(busIdBox);
+                frontContent.appendChild(contentContainer);
+                busItem.appendChild(frontContent);
+
+                busItem.style.cursor = 'pointer';
+                busItem.classList.add('menu-item');
+                busItem.style.fontFamily = 'League Spartan';
+                busItem.style.color = textColor;
+                busItem.style.padding = '5px 10px';
+                busItem.style.marginBottom = '8px';
+                busItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                busItem.style.borderRadius = '8px';
+
+                lineSection.onclick = () => {
+                    const mapp = document.getElementById('map');
+                    mapp.style.opacity = '1';
+                    safeVibrate([50, 30, 50], true);
+                    soundsUX('MBF_Menu_LineSelect');
+                    const lineId = line;
+                    selectedLine = lineId;
+                    filterByLine(lineId);
+                    const map = document.getElementById('map');
+                    map.style.opacity = '1';
+                    menu.classList.add('hidden');
+                    if (localStorage.getItem('transparency') === 'true') {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.add('appearnotransition');
+                        map.classList.remove('hidden');
+                        map.classList.remove('appear');
+                    } else {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hidden');
+                        map.classList.add('appear');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.remove('appearnotransition');
+                    }
+                    window.isMenuShowed = false;
+                    menu.addEventListener('animationend', function onAnimationEnd(event) {
+                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+                            menu.style.display = 'none';
+                        }
+                    });
+                    isMenuVisible = false;
+                    const filtre = document.getElementById('filtre');
+                    menubottom1.style.display = 'flex';
+                    setTimeout(() => {
+                        menubottom1.classList.remove('slide-upb');
+                        menubottom1.classList.add('slide-downb');
+                        if (selectedLine) {
+                            filtre.classList.remove('slide-upc');
+                            filtre.classList.add('slide-downc');
+                            filtre.style.display = 'flex';
+                        }
+                    }, 10);
+                    event.stopPropagation();
+
+                };
+
+                busItem.onclick = (event) => {
+                    event.stopPropagation();
+                    safeVibrate([50, 300, 50, 30, 50], true);
+                    soundsUX('MBF_Menu_VehicleSelect');
+                    map.setView(bus.vehicle.getLatLng(), 15);
+                    bus.vehicle.openPopup();
+                    const mapp = document.getElementById('map');
+                    mapp.style.opacity = '1';
+                    menu.classList.add('hidden');
+                    if (localStorage.getItem('transparency') === 'true') {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.add('appearnotransition');
+                        map.classList.remove('hidden');
+                        map.classList.remove('appear');
+                    } else {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hidden');
+                        map.classList.add('appear');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.remove('appearnotransition');
+                    }
+                    window.isMenuShowed = false;
+                    menu.addEventListener('animationend', function onAnimationEnd(event) {
+                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+                            menu.style.display = 'none';
+                        }
+                    });
+                    isMenuVisible = false;
+                    if (selectedLine) {
+                        resetMapView();
+                    }
+                };
+
+                destinationSection.appendChild(busItem);
+            });
 
             lineSection.appendChild(destinationSection);
         });
 
-    linesContainer.appendChild(lineSection);
+    menu.appendChild(lineSection);
 });
 }
 
@@ -8813,8 +7729,6 @@ const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'none';
             }
             }, { once: true });
-
-
 
         }
 
