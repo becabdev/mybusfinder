@@ -3366,7 +3366,7 @@ showLoadingScreen();
 
 let data;
 
-window.DB_NAME;
+let DB_NAME;
 let STORE_NAME;
 const DB_VERSION = 4;
 
@@ -3391,6 +3391,7 @@ async function initDB() {
     
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
+        window.DB_NAME = DB_NAME;
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result);
