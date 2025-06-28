@@ -261,6 +261,12 @@
     "reloadticket_desc": "Rechargez votre abonnement via le portail officiel du réseau.",
     "noboutique": "Boutique indisponible",
     "noboutiqueinfo": "La boutique en ligne du réseau n'est pas disponible pour le moment.",
-
-    "langversion": "1.0.7.1"
+    "customization": "Customization",
+    "customizationtext": "Customize the app's appearance to suit your taste 😊",
+    "vibrations": "Haptic feedback",
+    "vibrationstext": "Enable vibrations for in-app interactions. This feature only works on Android.",
+    "soundsux": "Interface sounds - Beta",
+    "soundsuxtext": "Enable interface sounds. This feature is in beta and may not work properly.",
+    
+    "langversion": "1.0.7.2"
   }
