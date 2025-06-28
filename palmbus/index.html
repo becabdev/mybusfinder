@@ -1706,8 +1706,8 @@
 <div id="loading-screen" class="logobkg">
     <img id="logoscr" class="logoscr rainbow-shadow" src="src/whitelogo.png" style="display: block; margin: 0 auto; max-width: 50%; height: auto;"/>
 
-    <div class="gearbox">
-    <div class="overlay"></div>
+    <div id="gearbox" class="gearbox" style="display: none;">
+    <div id="overlay" class="overlay" style="display: none;"></div>
         <div class="gear one">
         <div class="gear-inner">
             <div class="bar"></div>
@@ -1741,7 +1741,7 @@
         </div>
     </div>
 
-    <div class="spinner"></div>
+    <div id="spinner" class="spinner"></div>
     <img id="bottom-logo" class="logoscr logo-bottom" src="src/credits.png" />
 </div>
   
@@ -1771,10 +1771,29 @@
     document.addEventListener('gestureend', function (e) {
     e.preventDefault();
     });
-</script>
 
+    const gearbox = document.getElementById('gearbox');
+    const overlay = document.getElementById('overlay');
+    const logoscr = document.getElementById('logoscr');
+    const bottomlogo = document.getElementById('bottom-logo');
+    const spinner = document.getElementById('spinner');
 
- <script>
+    function apparaitrelelogo() {
+        gearbox.style.display = 'none';
+        overlay.style.display = 'none';
+        logoscr.style.display = 'block';
+        bottomlogo.style.display = 'block';
+        spinner.style.display = 'block';
+    }
+
+    function disparaitrelelogo() {
+        gearbox.style.display = 'block';
+        overlay.style.display = 'block';
+        logoscr.style.display = 'none';
+        bottomlogo.style.display = 'none';
+        spinner.style.display = 'none';
+    }
+
  /* tarteaucitron */
 tarteaucitron.init({
           "bodyPosition": "middle",
