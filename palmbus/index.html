@@ -3374,7 +3374,6 @@ async function initConstants() {
     try {
         const { nomdureseau } = await getSetvar();
         DB_NAME = `MyBusFinder${nomdureseau}`;
-        window.VEHICULES_CACHE = nomdureseau;
         STORE_NAME = `gtfsStore${nomdureseau}`;
         return { DB_NAME, STORE_NAME };
     } catch (error) {
@@ -4688,14 +4687,15 @@ const filtre = document.getElementById('filtre');
     }
 };
 
-// merci ChatGPT 💝
 
-const vehicleModelsCache = new Map();
-const CACHE_KEY = VEHICULES_CACHE;
-const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000; 
 
 async function loadVehicleModels() {
     try {
+        const { nomdureseau } = await getSetvar();
+        let VEHICULES_CACHE = nomdureseau;
+        const vehicleModelsCache = new Map();
+        const CACHE_KEY = VEHICULES_CACHE;
+        const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000; 
         const cachedData = getCachedData();
         if (cachedData) {
             Object.assign(vehicleModels, cachedData.models);
