@@ -3367,7 +3367,6 @@ showLoadingScreen();
 let data;
 
 let DB_NAME;
-window.DB_NAME = DB_NAME;
 let STORE_NAME;
 const DB_VERSION = 4;
 
@@ -3375,6 +3374,7 @@ async function initConstants() {
     try {
         const { nomdureseau } = await getSetvar();
         DB_NAME = `MyBusFinder${nomdureseau}`;
+        window.VEHICULES_CACHE = nomdureseau;
         STORE_NAME = `gtfsStore${nomdureseau}`;
         return { DB_NAME, STORE_NAME };
     } catch (error) {
@@ -4691,7 +4691,7 @@ const filtre = document.getElementById('filtre');
 // merci ChatGPT 💝
 
 const vehicleModelsCache = new Map();
-const CACHE_KEY = DB_NAME;
+const CACHE_KEY = VEHICULES_CACHE;
 const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000; 
 
 async function loadVehicleModels() {
