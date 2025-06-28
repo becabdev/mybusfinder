@@ -262,7 +262,14 @@
     "noboutique": "Store unavailable",
     "noboutiqueinfo": "The network's online store is currently unavailable.",
 
-    "langversion": "1.0.7.1"
+    "customization": "Customization",
+    "customizationtext": "Customize the app's appearance to suit your taste 😊",
+    "vibrations": "Haptic feedback",
+    "vibrationstext": "Enable vibrations for in-app interactions. This feature only works on Android.",
+    "soundsux": "Interface sounds - Beta",
+    "soundsuxtext": "Enable interface sounds. This feature is in beta and may not work properly.",
+    
+    "langversion": "1.0.7.2"
 
   }
   
