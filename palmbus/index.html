@@ -3720,7 +3720,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         const menubtm = document.getElementById('menubtm');
         const filtre = document.getElementById('filtre');
             safeVibrate([50]);
-            soundsUX('MBF_VehicleClose');
+            soundsUX('MBF_VehicleOpen');
 
         if (menubtm) {
             const markerId = marker.id;
@@ -3987,7 +3987,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const menubtm = document.getElementById('menubtm');
     const filtre = document.getElementById('filtre');
     safeVibrate([50]);
-    soundsUX('MBF_VehicleOpen');
+    soundsUX('MBF_VehicleClose');
     
     if (menubtm && filtre) {
         try {
