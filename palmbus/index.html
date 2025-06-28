@@ -3811,7 +3811,7 @@ async function initializeGTFS() {
         
         if (needsUpdate) {
             const result = await extractGTFSFiles();
-            disparaitrelelogo();
+            apparaitrelelogo();
             extractedFiles = result.extractedFiles;
             
             await saveToCache(extractedFiles, result.metadata);
