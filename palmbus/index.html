@@ -1398,6 +1398,181 @@
         height: 100%;
     }
 
+/* From Uiverse.io by Nawsome */ 
+@keyframes clockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes counter-clockwise {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+
+.gearbox {
+  background: #111;
+  height: 150px;
+  width: 200px;
+  position: relative;
+  border: none;
+  overflow: hidden;
+  border-radius: 6px;
+  box-shadow: 0px 0px 0px 1px rgba(255, 255, 255, 0.1);
+}
+
+.gearbox .overlay {
+  border-radius: 6px;
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  box-shadow: inset 0px 0px 20px black;
+  transition: background 0.2s;
+}
+
+.gearbox .overlay {
+  background: transparent;
+}
+
+.gear {
+  position: absolute;
+  height: 60px;
+  width: 60px;
+  box-shadow: 0px -1px 0px 0px #888888, 0px 1px 0px 0px black;
+  border-radius: 30px;
+}
+
+.gear.large {
+  height: 120px;
+  width: 120px;
+  border-radius: 60px;
+}
+
+.gear.large:after {
+  height: 96px;
+  width: 96px;
+  border-radius: 48px;
+  margin-left: -48px;
+  margin-top: -48px;
+}
+
+.gear.one {
+  top: 12px;
+  left: 10px;
+}
+
+.gear.two {
+  top: 61px;
+  left: 60px;
+}
+
+.gear.three {
+  top: 110px;
+  left: 10px;
+}
+
+.gear.four {
+  top: 13px;
+  left: 128px;
+}
+
+.gear:after {
+  content: "";
+  position: absolute;
+  height: 36px;
+  width: 36px;
+  border-radius: 36px;
+  background: #111;
+  top: 50%;
+  left: 50%;
+  margin-left: -18px;
+  margin-top: -18px;
+  z-index: 3;
+  box-shadow: 0px 0px 10px rgba(255, 255, 255, 0.1), inset 0px 0px 10px rgba(0, 0, 0, 0.1), inset 0px 2px 0px 0px #090909, inset 0px -1px 0px 0px #888888;
+}
+
+.gear-inner {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  background: #555;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.large .gear-inner {
+  border-radius: 60px;
+}
+
+.gear.one .gear-inner {
+  animation: counter-clockwise 3s infinite linear;
+}
+
+.gear.two .gear-inner {
+  animation: clockwise 3s infinite linear;
+}
+
+.gear.three .gear-inner {
+  animation: counter-clockwise 3s infinite linear;
+}
+
+.gear.four .gear-inner {
+  animation: counter-clockwise 6s infinite linear;
+}
+
+.gear-inner .bar {
+  background: #555;
+  height: 16px;
+  width: 76px;
+  position: absolute;
+  left: 50%;
+  margin-left: -38px;
+  top: 50%;
+  margin-top: -8px;
+  border-radius: 2px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.large .gear-inner .bar {
+  margin-left: -68px;
+  width: 136px;
+}
+
+.gear-inner .bar:nth-child(2) {
+  transform: rotate(60deg);
+}
+
+.gear-inner .bar:nth-child(3) {
+  transform: rotate(120deg);
+}
+
+.gear-inner .bar:nth-child(4) {
+  transform: rotate(90deg);
+}
+
+.gear-inner .bar:nth-child(5) {
+  transform: rotate(30deg);
+}
+
+.gear-inner .bar:nth-child(6) {
+  transform: rotate(150deg);
+}
+
+
 </style>
 
 </head>
@@ -1475,6 +1650,42 @@
 	
 <div id="loading-screen" class="logobkg">
     <img id="logoscr" class="logoscr rainbow-shadow" src="src/whitelogo.png" style="display: block; margin: 0 auto; max-width: 50%; height: auto;"/>
+
+    <div id="gearbox" class="gearbox" style="display: none;">
+    <div id="overlay" class="overlay" style="display: none;"></div>
+        <div class="gear one">
+        <div class="gear-inner">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        </div>
+        <div class="gear two">
+        <div class="gear-inner">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        </div>
+        <div class="gear three">
+        <div class="gear-inner">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        </div>
+        <div class="gear four large">
+        <div class="gear-inner">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+        </div>
+    </div>
+
     <img id="bottom-logo" class="logoscr logo-bottom" src="src/credits.png" />
 </div>
   
@@ -1504,10 +1715,26 @@
     document.addEventListener('gestureend', function (e) {
     e.preventDefault();
     });
-</script>
 
+    const gearbox = document.getElementById('gearbox');
+    const overlay = document.getElementById('overlay');
+    const logoscr = document.getElementById('logoscr');
+    const bottomlogo = document.getElementById('bottom-logo');
 
- <script>
+    function apparaitrelelogo() {
+        gearbox.style.display = 'none';
+        overlay.style.display = 'none';
+        logoscr.style.display = 'block';
+        bottomlogo.style.display = 'block';
+    }
+
+    function disparaitrelelogo() {
+        gearbox.style.display = 'block';
+        overlay.style.display = 'block';
+        logoscr.style.display = 'none';
+        bottomlogo.style.display = 'none';
+    }
+
  /* tarteaucitron */
 tarteaucitron.init({
           "bodyPosition": "middle",
@@ -1904,6 +2131,7 @@ tarteaucitron.init({
     const fluentPopupManager = new FluentPopup();
 
     function showFluentPopup(options = {}) {
+    soundsUX('MBF_Popup');
     fluentPopupManager.open(options);
     }
 
@@ -1914,7 +2142,8 @@ tarteaucitron.init({
     if (localStorage.getItem('transparency') !== 'true') {
         if (window.innerWidth > 1024) {
             localStorage.setItem('transparency', true);
-            toastBottomRight.info('Pour votre confort à l\'utilisation de l\'app sur PC, My Bus Finder a automatiquement activé le mode transparence rétracté pour le menu Véhicules en service. Vous pourrez désactiver ce paramètre à tout moment. ')
+            toastBottomRight.info('Pour votre confort à l\'utilisation de l\'app sur PC, My Bus Finder a automatiquement activé le mode transparence rétracté pour le menu Véhicules en service. Vous pourrez désactiver ce paramètre à tout moment. ');
+            soundsUX('MBF_NotificationInfo');
         }
     }
 
@@ -1957,6 +2186,13 @@ tarteaucitron.init({
             const langversion = t("langversion");
             const erazecache = t("erazecache");
             const erazecachetext = t("erazecachetext");
+            const vibrations = t("vibrations");
+            const vibrationstext = t("vibrationstext");
+            const soundsux = t("soundsux");
+            const soundsuxtext = t("soundsuxtext");
+            const customization = t("customization");
+            const customizationtext = t("customizationtext");
+
                    
 
             FluentSettingsMenu.init({
@@ -1968,17 +2204,28 @@ tarteaucitron.init({
             FluentSettingsMenu.createSection("advanced", advanced);
             FluentSettingsMenu.createSection("about", about);
 
-            FluentSettingsMenu.addToggle("general", "mapview", {
+            FluentSettingsMenu.addSubmenu("general", "customization", {
+                icon: "",
+                label: customization,
+                description: customizationtext,
+            });
+
+            FluentSettingsMenu.addToggle("submenu-customization", "mapview", {
                 icon: "🗺️",
                 label: satelmode,
                 description: satelmodetext,
                 value: localStorage.getItem('isStandardView') === 'true',
                 onChange: function (value) {
                 toggleMapView(value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
                 }
             });
 
-            FluentSettingsMenu.addSelect("general", "themeselect", {
+            FluentSettingsMenu.addSelect("submenu-customization", "themeselect", {
                 icon: "🖌️",
                 label: theme,
                 description: themeselect,
@@ -1993,6 +2240,11 @@ tarteaucitron.init({
                 ],
                 onChange: function (value) {
                 changeColorBkg(value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
                 }
             });
 
@@ -2003,16 +2255,56 @@ tarteaucitron.init({
                 value: localStorage.getItem('locateonstart') === 'true',
                 onChange: function (value) {
                 localStorage.setItem('locateonstart', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
                 }
             });
 
-            FluentSettingsMenu.addToggle("general", "transparency", {
+            FluentSettingsMenu.addToggle("submenu-customization", "transparency", {
                 icon: "🪟",
                 label: transparency,
                 description: transparencytext,
                 value: localStorage.getItem('transparency') === 'true',
                 onChange: function (value) {
                 localStorage.setItem('transparency', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
+                }
+            });
+
+            FluentSettingsMenu.addToggle("submenu-customization", "transparency", {
+                icon: "📳",
+                label: vibrations,
+                description: vibrationstext,
+                value: localStorage.getItem('vibrations') === 'true',
+                onChange: function (value) {
+                localStorage.setItem('vibrations', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
+                }
+            });
+
+            FluentSettingsMenu.addToggle("submenu-customization", "transparency", {
+                icon: "🔊",
+                label: soundsux,
+                description: soundsuxtext,
+                value: localStorage.getItem('soundsux') === 'true',
+                onChange: function (value) {
+                localStorage.setItem('soundsux', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
                 }
             });
 
@@ -2040,6 +2332,11 @@ tarteaucitron.init({
                 value: false,
                 onChange: function (value) {
                 toggleSunOrientation(value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
                 }
             });
 
@@ -2259,7 +2556,7 @@ if ('serviceWorker' in navigator) {
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
             toastBottomRight.info('Préparation en cours.')
-
+            soundsUX('MBF_NotificationInfo');
           if (!refreshing) {
             refreshing = true;
             window.location.reload();
@@ -2410,6 +2707,16 @@ setTimeout(() => {
     document.getElementById("bottom-logo").classList.add("logoscrapp");
 }, 10); 
 
+function soundsUX(soundFileName) {
+    if (localStorage.getItem('soundsux') === 'true') {
+        const audio = new Audio('../soundsUX/' + soundFileName + '.wav');
+        audio.volume = 1.0;
+        audio.play().catch(error => {
+            console.error('Erreur lors de la lecture du son UserXperience', error);
+        });
+    }
+}
+
 async function initMap() {
     const data = await getSetvar();
     let defaultCoords = [43.125463, 5.930077];
@@ -2558,6 +2865,7 @@ function locateUser() {
         );
     } else {
         toastBottomRight.error("La géolocalisation n'est pas supportée par votre navigateur");
+        soundsUX('MBF_NotificationError');
     }
 }
 
@@ -2894,6 +3202,7 @@ function focusOnVehicle(vehicleId) {
         
         if (!marker) {
             toastBottomRight.error('La position du véhicule est indisponible');
+            soundsUX('MBF_NotificationError');
             return;
         }
         
@@ -2905,7 +3214,7 @@ function focusOnVehicle(vehicleId) {
             const markerIcon = marker._icon.querySelector('.marker-icon');
             if (!markerIcon) {
                 toastBottomRight.error('La position du véhicule est indisponible');
-
+                soundsUX('MBF_NotificationError');
                 return;
             }
             
@@ -2916,9 +3225,11 @@ function focusOnVehicle(vehicleId) {
             
         } catch (mapError) {
             toastBottomRight.error('Une erreur interne est survenue ! Prière contacter le support MyBusFinder en leur indiquant ce code d\'erreur : manipulating marker error');
+            soundsUX('MBF_NotificationError');
         }
     } catch (error) {
         toastBottomRight.error('Une erreur interne est survenue ! Prière contacter le support MyBusFinder en leur indiquant ce code d\'erreur : focusOnVehicle function error');
+        soundsUX('MBF_NotificationError');
     }
 }
 
@@ -3023,6 +3334,8 @@ function hideLoadingScreen() {
 
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             toastBottomRight.info(`Updating to build ${window.BUILD_VERSION} in progress... Please wait`);
+            disparaitrelelogo();
+            soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
                     window.location.reload();
@@ -3212,6 +3525,8 @@ async function getFromCache() {
 async function extractGTFSFiles() {
     try {
         toastBottomRight.info('Mise à jour de la base de données dynamiques. Cette opération va prendre quelques secondes 🙂');
+        disparaitrelelogo();
+        soundsUX('MBF_Popup');
 
 
         const response = await fetch('proxy-cors/proxy_gtfs.php');
@@ -3437,6 +3752,7 @@ async function initializeGTFS() {
         
         if (needsUpdate) {
             const result = await extractGTFSFiles();
+            apparaitrelelogo();
             extractedFiles = result.extractedFiles;
             
             await saveToCache(extractedFiles, result.metadata);
@@ -3448,6 +3764,7 @@ async function initializeGTFS() {
                 extractedFiles = result.extractedFiles;
                 await saveToCache(extractedFiles, result.metadata);
                 toastBottomRight.success('Données téléchargées avec succès !');
+                soundsUX('MBF_Success');
             } 
         }
         
@@ -3486,6 +3803,7 @@ async function clearGTFSCache() {
 
             request.onsuccess = () => {
                 toastBottomRight.success('MBF3 : Cache erased successfully !!');
+                soundsUX('MBF_Success');
                 resolve();
             };
             request.onerror = () => reject(request.error);
@@ -3493,6 +3811,7 @@ async function clearGTFSCache() {
     } catch (error) {
         console.error('Erreur lors de l\'effacement du cache', error);
         toastBottomRight.error('Erreur lors de l\'effacement du cache');
+        soundsUX('MBF_NotificationError');
         throw error;
     }
 }
@@ -3630,6 +3949,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         const menubtm = document.getElementById('menubtm');
         const filtre = document.getElementById('filtre');
             safeVibrate([50]);
+            soundsUX('MBF_VehicleOpen');
 
         if (menubtm) {
             const markerId = marker.id;
@@ -3896,6 +4216,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const menubtm = document.getElementById('menubtm');
     const filtre = document.getElementById('filtre');
     safeVibrate([50]);
+    soundsUX('MBF_VehicleClose');
     
     if (menubtm && filtre) {
         try {
@@ -4401,6 +4722,7 @@ async function loadVehicleModels() {
     } catch (error) {
         console.error('Erreur lors du chargement des modèles de véhicules', error);
         toastBottomRight.error('Erreur lors du chargement des modèles de véhicules');
+        soundsUX('MBF_NotificationError');
     }
 }
 
@@ -4595,6 +4917,10 @@ function clearVehicleCache() {
 
 // qu'es-ce que ça aide l'IA maintenant... 🙂
 
+// finalement c'est de la vraie daube son code
+// vive le code fait par des humains !
+// mais bon, ça marche, c'est l'essentiel
+
 function getVehicleOptionsBadges(parkNumber) {
     const model = getVehicleModel(parkNumber);
     let badges = '';
@@ -4729,7 +5055,7 @@ async function initializeApp() {
     } catch (error) {
         console.error('BECAB Launcher : erreur lors de l\'initialisation :', error);
         toastBottomRight.error('BECAB Launcher : erreur lors de l\'initialisation :', error);
-
+        soundsUX('MBF_NotificationError');
     }
 }
 
@@ -6814,6 +7140,7 @@ document.head.appendChild(animationStyle);
 
 function closeMenu() {
     safeVibrate([30], true);
+    soundsUX('MBF_SelectedVehicle_DoorClose');
     const menu = document.getElementById('menu');
     const menubottom1 = document.getElementById('menubtm');
     const mapp = document.getElementById('map');
@@ -7498,6 +7825,7 @@ sortedLines.forEach(line => {
                     const mapp = document.getElementById('map');
                     mapp.style.opacity = '1';
                     safeVibrate([50, 30, 50], true);
+                    soundsUX('MBF_Menu_LineSelect');
                     const lineId = line;
                     selectedLine = lineId;
                     filterByLine(lineId);
@@ -7542,6 +7870,7 @@ sortedLines.forEach(line => {
                 busItem.onclick = (event) => {
                     event.stopPropagation();
                     safeVibrate([50, 300, 50, 30, 50], true);
+                    soundsUX('MBF_Menu_VehicleSelect');
                     map.setView(bus.vehicle.getLatLng(), 15);
                     bus.vehicle.openPopup();
                     const mapp = document.getElementById('map');
@@ -7586,6 +7915,7 @@ const menubottom1 = document.getElementById('menubtm');
 
 
         function showMenu() {
+            soundsUX('MBF_SelectedVehicle_DoorOpen');
             window.isMenuShowed = true;
             const mapp = document.getElementById('map');
             mapp.style.opacity = '0.5';
@@ -7633,7 +7963,6 @@ const menubottom1 = document.getElementById('menubtm');
 
         const menubutton = document.getElementById('menubutton');
         menubutton.onclick = showMenu; 
-
 
         const closeMap = document.getElementById('map');
         closeMap.onclick = () => {
@@ -8295,7 +8624,7 @@ function addSubmenu(sectionId, id, options) {
         toggleInput.addEventListener('change', (e) => {
           item.value = e.target.checked;
           if (item.onChange) item.onChange(item.value);
-          safeVibrate([20, 30, 20], true);
+          safeVibrate([30, 40, 30], true);
         });
         
         const toggleSlider = document.createElement('span');
@@ -8585,6 +8914,7 @@ function afficherMenu() {
     accueil.classList.add("affiche")
     accueil.style.display = 'block';
     window.isMenuShowed = true;
+    soundsUX('MBF_Popup');
 
     const menubottom1 = document.getElementById('menubtm');
 
@@ -8708,6 +9038,7 @@ async function main() {
     } catch (error) {
         console.error("Erreur critique dans main():", error);
         toastBottomRight.error("Une erreur critique est survenue. Nous investigons actuellement sur la cause de la panne.");
+        soundsUX('MBF_NotificationError');
     }
 }
 

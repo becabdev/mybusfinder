@@ -263,6 +263,12 @@
   "noboutique": "Negozio non disponibile",
   "noboutiqueinfo": "Il negozio online della rete non è disponibile al momento.",
 
-  "langversion": "1.0.7.1"
+  "customization": "Personalizzazione",
+  "customizationtext": "Personalizza l'aspetto dell'app secondo i tuoi gusti 😊",
+  "vibrations": "Feedback aptico",
+  "vibrationstext": "Attiva le vibrazioni per le interazioni nell'app. Questa funzione è disponibile solo su Android.",
+  "soundsux": "Suoni dell'interfaccia - Beta",
+  "soundsuxtext": "Attiva i suoni dell'interfaccia. Questa funzione è in beta e potrebbe non funzionare correttamente.",
+  "langversion": "1.0.7.2"
 
 }
