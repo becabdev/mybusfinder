@@ -139,52 +139,6 @@
             margin: 0 auto;
         }
 
-        .weather-card {
-            background: var(--card-background);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-large);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-            box-shadow: var(--shadow-medium);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .weather-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-strong);
-        }
-
-        .weather-icon {
-            font-size: 2.5rem;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-        }
-
-        .weather-info {
-            flex: 1;
-        }
-
-        .weather-temp {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
-
-        .weather-desc {
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .weather-location {
-            font-weight: 600;
-            color: var(--accent-color);
-            font-size: 0.9rem;
-        }
 
         .features-grid {
             display: grid;
@@ -359,7 +313,6 @@
             }
         }
 
-        .weather-card,
         .feature-card,
         .notepad-section,
         .quick-links-section {
@@ -378,15 +331,6 @@
 
             .app-header {
                 padding: var(--spacing-sm);
-            }
-
-            .weather-card {
-                text-align: center;
-                gap: var(--spacing-sm);
-            }
-
-            .weather-icon {
-                font-size: 3rem;
             }
 
             .feature-card {
@@ -424,13 +368,8 @@
             .main-container {
                 padding: var(--spacing-lg);
             }
-
-            .weather-card {
-                padding: var(--spacing-lg);
-            }
         }
 
-        /* Loading states */
         .loading {
             opacity: 0.6;
             pointer-events: none;
@@ -454,6 +393,153 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+                .carousel-container {
+            max-width: 1200px;
+            width: 100%;
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .carousel {
+            position: relative;
+            overflow: hidden;
+            border-radius: 15px;
+        }
+
+        .carousel-track {
+            display: flex;
+            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .carousel-slide {
+            min-width: 100%;
+            position: relative;
+            aspect-ratio: 16/9;
+        }
+
+        .carousel-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .carousel-slide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(0,0,0,0.1), transparent);
+            z-index: 1;
+        }
+
+        .carousel-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .carousel-nav:hover {
+            background: white;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .carousel-nav:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .carousel-nav.prev {
+            left: 20px;
+        }
+
+        .carousel-nav.next {
+            right: 20px;
+        }
+
+        .carousel-dots {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: white;
+            transform: scale(1.2);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .dot:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: scale(1.1);
+        }
+
+        .carousel-counter {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .carousel-container {
+                padding: 20px;
+            }
+            
+            .carousel-nav {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .carousel-nav.prev {
+                left: 10px;
+            }
+            
+            .carousel-nav.next {
+                right: 10px;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -465,14 +551,24 @@
     </header>
 
     <main class="main-container">
-        <div class="weather-card">
-            <div class="weather-icon">⏳</div>
-            <div class="weather-info">
-                <div class="weather-temp">--°C</div>
-                <div class="weather-desc" data-i18n="loading">Chargement...</div>
-                <div class="weather-location">--</div>
+
+        <div class="carousel" style="margin-bottom: var(--spacing-lg);">
+            <div class="carousel-track">
+                <div class="carousel-slide">
+                    <img src="../ads/1.jpg">
+                </div>
+                <div class="carousel-slide">
+                    <img src="../ads/2.jpg">
+                </div>
+                <div class="carousel-slide">
+                    <img src="../ads/3.jpg">
+                </div>
             </div>
-        </div>
+            
+            <button class="carousel-nav prev" onclick="changeSlide(-1)">‹</button>
+            <button class="carousel-nav next" onclick="changeSlide(1)">›</button>
+            
+    </div>
 
         <div class="features-grid">
             <button id="bus" class="feature-card">
@@ -537,6 +633,83 @@
     </main>
     
     <script>
+
+                let currentSlide = 0;
+        const totalSlides = document.querySelectorAll('.carousel-slide').length;
+        const track = document.querySelector('.carousel-track');
+        
+        let autoPlayInterval;
+        
+        function updateCarousel() {
+            const slideWidth = 100;
+            track.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
+            
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+        }
+        
+        function changeSlide(direction) {
+            currentSlide += direction;
+            
+            if (currentSlide >= totalSlides) {
+                currentSlide = 0;
+            } else if (currentSlide < 0) {
+                currentSlide = totalSlides - 1;
+            }
+            
+            updateCarousel();
+            resetAutoPlay();
+        }
+        
+        function goToSlide(slideIndex) {
+            currentSlide = slideIndex;
+            updateCarousel();
+            resetAutoPlay();
+        }
+        
+        function startAutoPlay() {
+            autoPlayInterval = setInterval(() => {
+                changeSlide(1);
+            }, 15000); 
+        }
+        
+        function resetAutoPlay() {
+            clearInterval(autoPlayInterval);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowRight') {
+                changeSlide(1);
+            }
+        });
+        
+        let startX = 0;
+        let endX = 0;
+        
+        track.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+        });
+        
+        track.addEventListener('touchmove', (e) => {
+            endX = e.touches[0].clientX;
+        });
+        
+        track.addEventListener('touchend', () => {
+            const threshold = 50;
+            const diff = startX - endX;
+            
+            if (Math.abs(diff) > threshold) {
+                if (diff > 0) {
+                    changeSlide(1); 
+                } else {
+                    changeSlide(-1); 
+                }
+            }
+        });
+        
+        const carouselContainer = document.querySelector('.carousel-container');
+        
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -682,7 +855,6 @@
             
             // Initialize other components
             initGreeting();
-            initWeather();
             initNotepad();
             initEventHandlers();
         });
@@ -822,121 +994,6 @@
 
         };
 
-async function initWeather() {
-    try {
-        updateWeatherUI('⏳', i18n.t("loading"), '', i18n.t("getting_location"));
-        
-        const position = await getCurrentPosition();
-        const { latitude, longitude } = position.coords;
-        
-        updateWeatherUI('⏳', i18n.t("loading"), '', ``);
-        
-        const weatherData = await fetchWeatherData(latitude, longitude);
-        
-        updateWeatherUI(
-            getWeatherIcon(weatherData.weather[0].id),
-            `${Math.round(weatherData.main.temp)}°C`,
-            weatherData.weather[0].description,
-            weatherData.name
-        );
-    } catch (error) {
-        console.error('Erreur', error);
-        updateWeatherUI('❌', i18n.t("error"), i18n.t("unablegetpos"), i18n.t("checkconnection"));  
-    }
-}
-
-function getCurrentPosition() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('La géolocalisation n\'est pas supportée par votre navigateur'));
-            return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-        });
-    });
-}
-
-async function fetchWeatherData(latitude, longitude) {
-    const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&hourly=temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`
-    );
-    
-    if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des données météo');
-    }
-    
-    const data = await response.json();
-    
-    return {
-        weather: [{
-            id: data.current.weather_code,
-            description: getWeatherDescription(data.current.weather_code)
-        }],
-        main: {
-            temp: data.current.temperature_2m
-        },
-        name: await getLocationName(latitude, longitude)
-    };
-}
-
-async function getLocationName(latitude, longitude) {
-    try {
-        const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=fr`
-        );
-        
-        if (!response.ok) {
-            throw new Error('Impossible de récup le nom de la localisation');
-        }
-        
-        const data = await response.json();
-        return data.address.city || data.address.town || data.address.village || data.address.hamlet || 'Localisation inconnue';
-    } catch (error) {
-        console.error('Erreur de geocodage inverse', error);
-        return 'Localisation inconnue';
-    }
-}
-
-function updateWeatherUI(icon, temperature, description, location) {
-    document.querySelector('.weather-icon').textContent = icon;
-    document.querySelector('.weather-temp').textContent = temperature;
-    document.querySelector('.weather-desc').textContent = description;
-    document.querySelector('.weather-location').textContent = location;
-}
-
-function getWeatherIcon(weatherCode) {
-    if (weatherCode === 0) return '☀️'; // Ciel clair
-    if (weatherCode <= 3) return '🌤️'; // Partiellement nuageux
-    if (weatherCode <= 48) return '☁️'; // Nuageux, brouillard
-    if (weatherCode <= 57) return '🌧️'; // Bruine
-    if (weatherCode <= 65) return '🌧️'; // Pluie
-    if (weatherCode <= 77) return '❄️'; // Neige
-    if (weatherCode <= 82) return '🌦️'; // Averses
-    if (weatherCode <= 86) return '🌨️'; // Neige
-    if (weatherCode <= 99) return '⛈️'; // Orage
-    return '🌡️'; 
-}
-
-function getWeatherDescription(weatherCode) {
-    if (weatherCode === 0) return i18n.t("clear") || 'Ciel dégagé';
-    if (weatherCode === 1) return i18n.t("partiallyclear") || 'Principalement dégagé';
-    if (weatherCode === 2) return i18n.t("partiallynudge") || 'Partiellement nuageux';
-    if (weatherCode === 3) return i18n.t("nudge") || 'Nuageux';
-    if (weatherCode <= 48) return i18n.t("fog") || 'Brouillard';
-    if (weatherCode <= 57) return i18n.t("bruine") || 'Bruine';
-    if (weatherCode <= 65) return i18n.t("rain") || 'Pluie';
-    if (weatherCode <= 77) return i18n.t("ice") || 'Neige';
-    if (weatherCode <= 82) return i18n.t("averses") || 'Averses';
-    if (weatherCode <= 86) return i18n.t("ice") || 'Neige';
-    if (weatherCode <= 99) return i18n.t("thunder") || 'Orage';
-    return i18n.t("unknownweather") || 'Météo inconnue';
-}
-
-document.addEventListener('DOMContentLoaded', initWeather);
 
 
 
@@ -961,7 +1018,6 @@ document.addEventListener('DOMContentLoaded', initWeather);
 
         document.addEventListener('DOMContentLoaded', () => {
             
-            initWeather();
             
             initNotepad();
         });

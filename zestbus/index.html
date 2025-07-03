@@ -15,7 +15,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
-    <meta name="google-adsense-account" content="ca-pub-5815761294049475">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
     body,
@@ -477,7 +476,7 @@
     .popup-content1,
     .popup1,
     .time-content {
-        animation: 0.6s cubic-bezier(0.25, 1.5, 0.5, 1) forwards zoomFadeIn;
+        animation: 0.8s cubic-bezier(0.25, 1.5, 0.5, 1) forwards zoomFadeIn;
     }
     @keyframes zoomFadeIn {
         0% {
@@ -489,6 +488,24 @@
             opacity: 1;
             transform: scale(1);
             filter: blur(0);
+        }
+    }
+
+    .closepop {
+        animation: 0.8s cubic-bezier(0.25, 1.5, 0.5, 1) forwards zoomFadeOut;
+        pointer-events: none;
+    }
+
+    @keyframes zoomFadeOut {
+        0% {
+            opacity: 1;
+            transform: scale(1);
+            filter: blur(0);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(0.8);
+            filter: blur(13px);
         }
     }
     .marker-icon {
@@ -579,30 +596,83 @@
     textarea {
         user-select: text;
     }
-    #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(45deg, #000, #1a1a1a, #242424);
-        background-size: 200% 200%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 10000;
-        animation: 5s infinite gradientAnimation;
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        #0a0a0a 0%,
+        #1a1a2e 25%,
+        #16213e 50%,
+        #2d1b69 75%,
+        #0f3460 100%
+    );
+    background-size: 300% 300%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 10000;
+    animation: gradientFlow 8s ease-in-out infinite;
+    overflow: hidden;
+}
+
+#loading-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        circle at 30% 70%,
+        rgba(138, 43, 226, 0.15) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 70% 30%,
+        rgba(0, 100, 148, 0.12) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 50% 50%,
+        rgba(25, 25, 112, 0.08) 0%,
+        transparent 70%
+    );
+    animation: pulseOverlay 6s ease-in-out infinite alternate;
+}
+
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 0%;
     }
-    @keyframes gradientAnimation {
-        0%,
-        100% {
-            background-position: 0 50%;
-        }
-        50% {
-            background-position: 100% 50%;
-        }
+    25% {
+        background-position: 100% 50%;
     }
+    50% {
+        background-position: 50% 100%;
+    }
+    75% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 0% 0%;
+    }
+}
+
+@keyframes pulseOverlay {
+    0% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
     .shapes-container {
         width: 100%;
         overflow: hidden;
@@ -673,16 +743,14 @@
     @keyframes fadeIn {
         0% {
             opacity: 0;
-            transform: translateY(20px);
         }
         100% {
             opacity: 1;
-            transform: translateY(0);
         }
     }
     .filtre {
-        display: none;
         position: absolute;
+        cursor: pointer;
         bottom: 10px;
         left: 50%;
         transform: translateX(-50%) translateY(-100%);
@@ -1577,7 +1645,7 @@
 
 </head>
 <body>
-<div class="filtre" id="filtre">
+<div class="filtre slide-upc" id="filtre">
     <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
 </div>
 
@@ -1588,7 +1656,7 @@
                     class="title" data-i18n="menu">Menu</span></a>
             </li>
             <li>
-                <a onclick="showUpdatePopupPourHoraires()" id="clock"><span class="icon"><img src="src/horloge.png" id="myscheduleicon" style="width: 40px; height: 40px;"></img></span> <span
+                <a onclick="showUpdatePopup('schedule.html')" id="clock"><span class="icon"><img src="src/horloge.png" id="myscheduleicon" style="width: 40px; height: 40px;"></img></span> <span
                         class="title" data-i18n="schedule">Horaires</span></a>
             </li>
             <li>
@@ -1607,10 +1675,6 @@
     <iframe id="webview-frameaccueil" src="../mainmenu.html" frameborder="0"></iframe>
 </div>
 
-
-	<amp-auto-ads type="adsense"
-        data-ad-client="ca-pub-5815761294049475">
-</amp-auto-ads>
 
     <div id="map"></div>
     <svg id="sun-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -1640,16 +1704,10 @@
         </div>
     </div>
 
-	
-	
-    <script async custom-element="amp-auto-ads"
-        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
-</script>
-
 
 	
 <div id="loading-screen" class="logobkg">
-    <img id="logoscr" class="logoscr rainbow-shadow" src="src/whitelogo.png" style="display: block; margin: 0 auto; max-width: 50%; height: auto;"/>
+    <img id="logoscr" class="logoscr" src="src/whitelogo.png" style="display: block; margin: 0 auto; max-width: 50%; height: auto;"/>
 
     <div id="gearbox" class="gearbox" style="display: none;">
     <div id="overlay" class="overlay" style="display: none;"></div>
@@ -1686,14 +1744,13 @@
         </div>
     </div>
 
+    <span id="loading-text" style="color: white; display: none; font-family: SegoeUIBoot; font-size: 14px; font-weight: 300;">status</span>
+
     <img id="bottom-logo" class="logoscr logo-bottom" src="src/credits.png" />
 </div>
   
 
  <script src="src/js/toastjs.js"></script>       
- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5815761294049475"
-     crossorigin="anonymous"></script>
- <script src="../js/tarteaucitron/tarteaucitron.min.js"></script>
  <script src="../build.js"></script>
 
  <script>
@@ -1720,12 +1777,14 @@
     const overlay = document.getElementById('overlay');
     const logoscr = document.getElementById('logoscr');
     const bottomlogo = document.getElementById('bottom-logo');
+    const loadingText = document.getElementById('loading-text');
 
     function apparaitrelelogo() {
         gearbox.style.display = 'none';
         overlay.style.display = 'none';
         logoscr.style.display = 'block';
         bottomlogo.style.display = 'block';
+        loadingText.style.display = 'none';
     }
 
     function disparaitrelelogo() {
@@ -1733,61 +1792,10 @@
         overlay.style.display = 'block';
         logoscr.style.display = 'none';
         bottomlogo.style.display = 'none';
+        loadingText.style.display = 'block';
     }
 
- /* tarteaucitron */
-tarteaucitron.init({
-          "bodyPosition": "middle",
 
-    	  "hashtag": "#cookies", /* Hashtag qui permet d'ouvrir le panneau de contrôle  */
-    	  "cookieName": "tarteaucitron", /* Nom du cookie (uniquement lettres et chiffres) */
-    
-    	  "orientation": "middle", /* Position de la bannière (top - bottom - popup - banner) */
-       
-          "groupServices": true, /* Grouper les services par catégorie */
-          "showDetailsOnClick": true, /* Cliquer pour ouvrir la description */
-          "serviceDefaultState": "wait", /* Statut par défaut (true - wait - false) */
-                           
-    	  "showAlertSmall": false, /* Afficher la petite bannière en bas à droite */
-    	  "cookieslist": false, /* Afficher la liste des cookies */
-                           
-          "closePopup": true, /* Afficher un X pour fermer la bannière */
-
-          "showIcon": false, /* Afficher un cookie pour ouvrir le panneau */
-          //"iconSrc": "src/whitelogo.png", /* Optionnel: URL ou image en base64 */
-          "iconPosition": "BottomRight", /* Position de l'icons: (BottomRight - BottomLeft - TopRight - TopLeft) */
-
-    	  "adblocker": true, /* Afficher un message si un Adblocker est détecté */
-                           
-          "DenyAllCta" : true, /* Afficher le bouton Tout refuser */
-          "AcceptAllCta" : true, /* Afficher le bouton Tout accepter */
-          "highPrivacy": true, /* Attendre le consentement */
-          "alwaysNeedConsent": false, /* Demander le consentement même pour les services "Privacy by design" */
-                           
-    	  "handleBrowserDNTRequest": false, /* Refuser tout par défaut si Do Not Track est activé sur le navigateur */
-
-    	  "removeCredit": true, /* Retirer le lien de crédit vers tarteaucitron.io */
-    	  "moreInfoLink": true, /* Afficher le lien En savoir plus */
-
-          "useExternalCss": false, /* Mode expert : désactiver le chargement des fichiers .css tarteaucitron */
-          "useExternalJs": false, /* Mode expert : désactiver le chargement des fichiers .js tarteaucitron */
-
-    	  //"cookieDomain": ".my-multisite-domaine.fr", /* Optionnel: domaine principal pour partager le consentement avec des sous domaines */
-                          
-          "mandatory": true, /* Afficher un message pour l'utilisation de cookies obligatoires */
-    
-          
-          "googleConsentMode": true, /* Activer le Google Consent Mode v2 pour Google ads & GA4 */
-
-          "partnersList": true /* Afficher le détail du nombre de partenaires sur la bandeau */
-        });
-    </script>
-
-    <script>
-        (tarteaucitron.job = tarteaucitron.job || []).push('gcmadstorage');
-    </script>
-
-<script>
     const i18n = {
     translations: {},
     currentLang: 'fr',
@@ -3021,6 +3029,7 @@ function showUpdatePopup(link) {
     const currentLang = i18n.currentLang;
     const hasParams = link.includes('?');
     const langParam = `lang=${currentLang}`;
+    popup.classList.remove('closepop');
     
     const loadingContainer = document.createElement('div');
     loadingContainer.id = 'iframe-loading-container';
@@ -3237,6 +3246,7 @@ window.addEventListener('message', function(event) {
     try {        
         if (event.data && event.data.type === 'vehicleSelected') {
             const vehicleId = event.data.vehicleId;
+            closeUpdatePopup();
             focusOnVehicle(vehicleId);
         }
     } catch (error) {
@@ -3266,8 +3276,12 @@ function closeUpdatePopup() {
         }
     }
     
-    popup.style.display = 'none'; 
-    popup1.style.display = 'none'; 
+    popup.classList.add('closepop');
+    setTimeout(() => {
+        popup.style.display = 'none'; 
+        popup1.style.display = 'none'; 
+    }, 300);
+
 
     
     const menubottom1 = document.getElementById('menubtm');
@@ -3334,6 +3348,8 @@ function hideLoadingScreen() {
 
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
+            const loadingtext = document.getElementById('loading-text');
+            loadingtext.textContent = 'Mise à jour vers ' + window.BUILD_VERSION + ' en cours';
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3524,6 +3540,8 @@ async function getFromCache() {
 async function extractGTFSFiles() {
     try {
         disparaitrelelogo();
+        const loadingtext = document.getElementById('loading-text');
+        loadingtext.textContent = 'Chargement des données dynamiques en cours... 😊';
         soundsUX('MBF_Popup');
 
 
@@ -5069,47 +5087,49 @@ let vibrationTimeout = null;
  * Par Becab Systems
  */
 function safeVibrate(pattern, force = false) {
-    if (!navigator.vibrate) {
-        return false;
-    }
-    
-    if (isVibrating && !force) {
-        return false;
-    }
-    
-    if (isVibrating && force) {
-        navigator.vibrate(0);
-        
-        if (vibrationTimeout) {
-            clearTimeout(vibrationTimeout);
-            vibrationTimeout = null;
+    if (localStorage.getItem('vibration') === 'true') {
+        if (!navigator.vibrate) {
+            return false;
         }
-    }
-    
-    isVibrating = true;
-    
-    const vibrationPattern = Array.isArray(pattern) ? pattern : [pattern];
-    
-    const totalDuration = vibrationPattern.reduce((a, b) => a + b, 0) + 50;
-    
-    try {
-        const success = navigator.vibrate(vibrationPattern);
         
-        if (success === false) {
+        if (isVibrating && !force) {
+            return false;
+        }
+        
+        if (isVibrating && force) {
+            navigator.vibrate(0);
+            
+            if (vibrationTimeout) {
+                clearTimeout(vibrationTimeout);
+                vibrationTimeout = null;
+            }
+        }
+        
+        isVibrating = true;
+        
+        const vibrationPattern = Array.isArray(pattern) ? pattern : [pattern];
+        
+        const totalDuration = vibrationPattern.reduce((a, b) => a + b, 0) + 50;
+        
+        try {
+            const success = navigator.vibrate(vibrationPattern);
+            
+            if (success === false) {
+                isVibrating = false;
+                return false;
+            }
+        } catch (error) {
             isVibrating = false;
             return false;
         }
-    } catch (error) {
-        isVibrating = false;
-        return false;
-    }
-    
-    vibrationTimeout = setTimeout(() => {
-        isVibrating = false;
-        vibrationTimeout = null;
-    }, totalDuration);
-    
-    return true;
+        
+        vibrationTimeout = setTimeout(() => {
+            isVibrating = false;
+            vibrationTimeout = null;
+        }, totalDuration);
+        
+        return true;
+    } 
 }
 
 
@@ -7821,6 +7841,10 @@ sortedLines.forEach(line => {
                 busItem.style.borderRadius = '8px';
 
                 lineSection.onclick = () => {
+                    if (localStorage.getItem('astuce') !== 'true') {
+                        localStorage.setItem('astuce', 'true');
+                        toastBottomRight.info(`${t("astuceselectligne")}`);
+                    }
                     const mapp = document.getElementById('map');
                     mapp.style.opacity = '1';
                     safeVibrate([50, 30, 50], true);
@@ -7991,10 +8015,16 @@ const menubottom1 = document.getElementById('menubtm');
 
             const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'flex';
-        
+
+            const filtre = document.getElementById('filtre');
             setTimeout(() => {
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
+                if (selectedLine) {
+                    filtre.classList.remove('slide-upc');
+                    filtre.classList.add('slide-downc');
+                    filtre.style.display = 'flex';
+                }
             }, 10);
                 isMenuVisible = false; 
             };
@@ -8796,7 +8826,7 @@ const receivedSettings = {};
 window.addEventListener('message', function(event) {
 
     if (event.data.type === 'schedule') {
-        showUpdatePopupPourHoraires()
+        showUpdatePopup('schedule.html')
         safeVibrate([30], true);
     }
 
