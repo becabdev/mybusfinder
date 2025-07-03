@@ -2543,7 +2543,7 @@ function isServiceActive(serviceId, dateObj) {
 
 
 async function loadStopTimes(fileContent) {
-    const localStopTimes = {}; 
+    let localStopTimes = {}; 
     
     try {
         if (!fileContent) {
@@ -2554,15 +2554,16 @@ async function loadStopTimes(fileContent) {
         console.time('Chargement stop_times');
         console.log('Début du chargement des stop_times (fichier volumineux ~20Mo)...');
         
-        const newlineChar = fileContent.indexOf('\r\n') >= 0 && 
-                          fileContent.indexOf('\r\n') < fileContent.indexOf('\n', 1) ? 
-                          '\r\n' : '\n';
+        // Détection du délimiteur de ligne une seule fois
+        const newlineChar = fileContent.includes('\r\n') ? '\r\n' : '\n';
         
+        // Parsing du header avec nettoyage immédiat
         const headerEndPos = fileContent.indexOf(newlineChar);
         const headerLine = fileContent.substring(0, headerEndPos);
         const headers = parseCSVLine(headerLine);
         
-        const indices = {
+        // Pré-calcul des indices pour éviter les recherches répétées
+        const indices = Object.freeze({
             tripId: headers.indexOf('trip_id'),
             stopId: headers.indexOf('stop_id'),
             arrivalTime: headers.indexOf('arrival_time'),
@@ -2570,32 +2571,75 @@ async function loadStopTimes(fileContent) {
             stopSequence: headers.indexOf('stop_sequence'),
             pickupType: headers.indexOf('pickup_type'),
             dropOffType: headers.indexOf('drop_off_type')
-        };
+        });
         
         if (indices.tripId === -1 || indices.stopId === -1 || indices.arrivalTime === -1) {
             console.error('Format de fichier stop_times.txt invalide, colonnes requises manquantes');
             return localStopTimes;
         }
         
-        const CHUNK_SIZE = 100000; 
-        const FLUSH_THRESHOLD = 100000; 
+        // Configuration optimisée pour la mémoire
+        const CHUNK_SIZE = 50000; // Réduit pour moins de pression mémoire
+        const FLUSH_THRESHOLD = 50000; // Synchronisé avec CHUNK_SIZE
+        const MAX_WARNINGS = 5;
+        const PROGRESS_INTERVAL = 2000;
         
+        // Variables de contrôle avec let pour permettre la réassignation
         let entryCount = 0;
         let warningCount = 0;
-        const MAX_WARNINGS = 5;
         let lastProgressReport = Date.now();
-        const PROGRESS_INTERVAL = 2000; 
-        
-        let tempTrips = {};
+        let tempTrips = Object.create(null); // Objet sans prototype
         let tripCount = 0;
-        
         let position = headerEndPos + newlineChar.length;
-        let endPos, line;
         let linesProcessed = 0;
         
+        // Fonctions utilitaires inline pour éviter les closures
+        const processStopEntry = (values) => {
+            const tripId = values[indices.tripId];
+            if (!tripId) return null;
+            
+            if (!tempTrips[tripId]) {
+                tempTrips[tripId] = [];
+                tripCount++;
+            }
+            
+            const stopEntry = {
+                stop_id: values[indices.stopId],
+                stop_sequence: indices.stopSequence !== -1 && values[indices.stopSequence] ? 
+                    parseInt(values[indices.stopSequence], 10) : 0
+            };
+            
+            if (values[indices.arrivalTime]) {
+                stopEntry.arrival_time = formatTimeString(values[indices.arrivalTime]);
+            }
+            
+            const depTime = indices.departureTime !== -1 ? values[indices.departureTime] : null;
+            if (depTime && depTime !== values[indices.arrivalTime]) {
+                stopEntry.departure_time = formatTimeString(depTime);
+            } else {
+                stopEntry.departure_time = stopEntry.arrival_time;
+            }
+            
+            if (indices.pickupType !== -1 && values[indices.pickupType] && values[indices.pickupType] !== '0') {
+                stopEntry.pickup_type = parseInt(values[indices.pickupType], 10);
+            }
+            
+            if (indices.dropOffType !== -1 && values[indices.dropOffType] && values[indices.dropOffType] !== '0') {
+                stopEntry.drop_off_type = parseInt(values[indices.dropOffType], 10);
+            }
+            
+            tempTrips[tripId].push(stopEntry);
+            return stopEntry;
+        };
+        
+        // Boucle principale optimisée
         while (position < fileContent.length) {
-            for (let i = 0; i < CHUNK_SIZE && position < fileContent.length; i++) {
-                endPos = fileContent.indexOf(newlineChar, position);
+            let chunkProcessed = 0;
+            
+            // Traitement par chunks avec limite stricte
+            while (chunkProcessed < CHUNK_SIZE && position < fileContent.length) {
+                const endPos = fileContent.indexOf(newlineChar, position);
+                let line;
                 
                 if (endPos === -1) {
                     line = fileContent.substring(position);
@@ -2605,17 +2649,17 @@ async function loadStopTimes(fileContent) {
                     position = endPos + newlineChar.length;
                 }
                 
-                if (!line.trim()) continue;
+                if (!line.trim()) {
+                    chunkProcessed++;
+                    continue;
+                }
                 
                 linesProcessed++;
+                chunkProcessed++;
                 
-                let values;
                 try {
-                    if (line.indexOf('"') === -1) {
-                        values = line.split(',');
-                    } else {
-                        values = parseCSVLine(line);
-                    }
+                    // Parsing optimisé avec réutilisation de variables
+                    const values = line.includes('"') ? parseCSVLine(line) : line.split(',');
                     
                     if (values.length <= Math.max(indices.tripId, indices.stopId, indices.arrivalTime)) {
                         if (warningCount < MAX_WARNINGS) {
@@ -2625,41 +2669,10 @@ async function loadStopTimes(fileContent) {
                         continue;
                     }
                     
-                    const tripId = values[indices.tripId];
-                    if (!tripId) continue;
-                    
-                    if (!tempTrips[tripId]) {
-                        tempTrips[tripId] = [];
-                        tripCount++;
+                    const result = processStopEntry(values);
+                    if (result) {
+                        entryCount++;
                     }
-                    
-                    const stopEntry = {
-                        stop_id: values[indices.stopId],
-                        stop_sequence: indices.stopSequence !== -1 && values[indices.stopSequence] ? 
-                            parseInt(values[indices.stopSequence], 10) : 0
-                    };
-                    
-                    if (values[indices.arrivalTime]) {
-                        stopEntry.arrival_time = formatTimeString(values[indices.arrivalTime]);
-                    }
-                    
-                    if (indices.departureTime !== -1 && values[indices.departureTime] && 
-                        values[indices.departureTime] !== values[indices.arrivalTime]) {
-                        stopEntry.departure_time = formatTimeString(values[indices.departureTime]);
-                    } else {
-                        stopEntry.departure_time = stopEntry.arrival_time;
-                    }
-                    
-                    if (indices.pickupType !== -1 && values[indices.pickupType] && values[indices.pickupType] !== '0') {
-                        stopEntry.pickup_type = parseInt(values[indices.pickupType], 10);
-                    }
-                    
-                    if (indices.dropOffType !== -1 && values[indices.dropOffType] && values[indices.dropOffType] !== '0') {
-                        stopEntry.drop_off_type = parseInt(values[indices.dropOffType], 10);
-                    }
-                    
-                    tempTrips[tripId].push(stopEntry);
-                    entryCount++;
                     
                 } catch (error) {
                     if (warningCount < MAX_WARNINGS) {
@@ -2669,42 +2682,90 @@ async function loadStopTimes(fileContent) {
                 }
             }
             
+            // Gestion du progress avec yield pour libérer le thread
             const now = Date.now();
             if (now - lastProgressReport > PROGRESS_INTERVAL) {
                 const percentComplete = Math.floor((position / fileContent.length) * 100);
                 console.log(`Chargement en cours : ${percentComplete}% (${entryCount} arrêts, ${tripCount} trajets)`);
                 lastProgressReport = now;
                 
+                // Yield control pour éviter le blocage du thread principal
                 await new Promise(resolve => setTimeout(resolve, 0));
             }
             
-            if (entryCount > FLUSH_THRESHOLD) {
+            // Flush avec nettoyage agressif
+            if (entryCount >= FLUSH_THRESHOLD) {
                 await flushTempTrips(tempTrips, localStopTimes);
                 
-                tempTrips = {};
+                // Nettoyage explicite des références
+                for (const tripId in tempTrips) {
+                    delete tempTrips[tripId];
+                }
+                tempTrips = Object.create(null);
                 tripCount = 0;
                 
+                // Force la collecte des déchets si disponible
                 await forceGarbageCollection();
             }
         }
         
+        // Flush final avec nettoyage
         if (Object.keys(tempTrips).length > 0) {
             await flushTempTrips(tempTrips, localStopTimes);
-            tempTrips = null;
         }
         
         console.timeEnd('Chargement stop_times');
         console.log(`Stop times chargés: ${Object.keys(localStopTimes).length} trajets, ${entryCount} arrêts au total`);
-        
-        fileContent = null;
-        await forceGarbageCollection();
         
         return localStopTimes;
 
     } catch (error) {
         console.error('Erreur lors du chargement des horaires', error.message, error.stack);
         return localStopTimes;
+    } finally {
+        // Nettoyage final explicite dans le bloc finally
+        try {
+            if (typeof fileContent === 'string') {
+                fileContent = null;
+            }
+            await forceGarbageCollection();
+        } catch (cleanupError) {
+            console.warn('Erreur lors du nettoyage:', cleanupError.message);
+        }
     }
+}
+
+// Fonction utilitaire pour forcer la collecte des déchets
+async function forceGarbageCollection() {
+    if (typeof global !== 'undefined' && global.gc) {
+        try {
+            global.gc();
+        } catch (e) {
+            // Ignore si gc n'est pas disponible
+        }
+    }
+    
+    // Yield pour permettre au moteur JS de faire du nettoyage
+    await new Promise(resolve => setTimeout(resolve, 0));
+}
+
+// Fonction de flush optimisée pour éviter les fuites
+async function flushTempTrips(tempTrips, localStopTimes) {
+    for (const tripId in tempTrips) {
+        if (tempTrips.hasOwnProperty(tripId)) {
+            // Tri des arrêts par séquence pour optimiser l'accès
+            const stops = tempTrips[tripId];
+            stops.sort((a, b) => a.stop_sequence - b.stop_sequence);
+            
+            localStopTimes[tripId] = stops;
+            
+            // Suppression explicite de la référence
+            delete tempTrips[tripId];
+        }
+    }
+    
+    // Yield pour permettre la collecte des déchets
+    await new Promise(resolve => setTimeout(resolve, 0));
 }
 
 async function flushTempTrips(tempTrips, destination) {
