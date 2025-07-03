@@ -757,27 +757,6 @@
         let startX = 0;
         let endX = 0;
         
-        track.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-        });
-        
-        track.addEventListener('touchmove', (e) => {
-            endX = e.touches[0].clientX;
-        });
-        
-        track.addEventListener('touchend', () => {
-            const threshold = 50;
-            const diff = startX - endX;
-            
-            if (Math.abs(diff) > threshold) {
-                if (diff > 0) {
-                    changeSlide(1); 
-                } else {
-                    changeSlide(-1); 
-                }
-            }
-        });
-        
         const carouselContainer = document.querySelector('.carousel-container');
         carouselContainer.addEventListener('mouseenter', () => {
             clearInterval(autoPlayInterval);
