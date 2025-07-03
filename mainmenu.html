@@ -716,13 +716,6 @@
         });
         
         const carouselContainer = document.querySelector('.carousel-container');
-        carouselContainer.addEventListener('mouseenter', () => {
-            clearInterval(autoPlayInterval);
-        });
-        
-        carouselContainer.addEventListener('mouseleave', () => {
-            startAutoPlay();
-        });
         
         document.getElementById('total-slides').textContent = totalSlides;
         startAutoPlay();
