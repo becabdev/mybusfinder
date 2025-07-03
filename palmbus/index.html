@@ -5092,47 +5092,49 @@ let vibrationTimeout = null;
  * Par Becab Systems
  */
 function safeVibrate(pattern, force = false) {
-    if (!navigator.vibrate) {
-        return false;
-    }
-    
-    if (isVibrating && !force) {
-        return false;
-    }
-    
-    if (isVibrating && force) {
-        navigator.vibrate(0);
-        
-        if (vibrationTimeout) {
-            clearTimeout(vibrationTimeout);
-            vibrationTimeout = null;
+    if (localStorage.getItem('vibration') === 'true') {
+        if (!navigator.vibrate) {
+            return false;
         }
-    }
-    
-    isVibrating = true;
-    
-    const vibrationPattern = Array.isArray(pattern) ? pattern : [pattern];
-    
-    const totalDuration = vibrationPattern.reduce((a, b) => a + b, 0) + 50;
-    
-    try {
-        const success = navigator.vibrate(vibrationPattern);
         
-        if (success === false) {
+        if (isVibrating && !force) {
+            return false;
+        }
+        
+        if (isVibrating && force) {
+            navigator.vibrate(0);
+            
+            if (vibrationTimeout) {
+                clearTimeout(vibrationTimeout);
+                vibrationTimeout = null;
+            }
+        }
+        
+        isVibrating = true;
+        
+        const vibrationPattern = Array.isArray(pattern) ? pattern : [pattern];
+        
+        const totalDuration = vibrationPattern.reduce((a, b) => a + b, 0) + 50;
+        
+        try {
+            const success = navigator.vibrate(vibrationPattern);
+            
+            if (success === false) {
+                isVibrating = false;
+                return false;
+            }
+        } catch (error) {
             isVibrating = false;
             return false;
         }
-    } catch (error) {
-        isVibrating = false;
-        return false;
-    }
-    
-    vibrationTimeout = setTimeout(() => {
-        isVibrating = false;
-        vibrationTimeout = null;
-    }, totalDuration);
-    
-    return true;
+        
+        vibrationTimeout = setTimeout(() => {
+            isVibrating = false;
+            vibrationTimeout = null;
+        }, totalDuration);
+        
+        return true;
+    } 
 }
 
 
