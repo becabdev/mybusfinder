@@ -494,6 +494,7 @@
 
     .closepop {
         animation: 0.8s cubic-bezier(0.25, 1.5, 0.5, 1) forwards zoomFadeOut;
+        pointer-events: none;
     }
 
     @keyframes zoomFadeOut {
@@ -1594,7 +1595,7 @@
 
 </head>
 <body>
-<div class="filtre" id="filtre">
+<div class="filtre slide-upc" id="filtre">
     <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
 </div>
 
