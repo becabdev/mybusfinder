@@ -267,6 +267,7 @@
     "vibrationstext": "Activez les vibrations pour les interactions dans l'application. Cette fonctionnalité fonctionne uniquement sur Android.",
     "soundsux": "Sons de l'interface - Beta",
     "soundsuxtext": "Activez les sons de l'interface. Cette fonctionnalité est en bêta et peut ne pas fonctionner correctement.",
+    "astuceselectligne": "Astuce : vous pouvez filtrer plusieurs lignes à la fois, en zoomant une vue avec tous les véhicules s'affiche !",
 
     "langversion": "1.0.7.2"
   }
