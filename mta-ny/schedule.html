@@ -1453,7 +1453,17 @@
             </div>
         </div>
         
+        <div id="error-view" class="view">
+            <div id="error-message" data-i18n="errorfetchingdata">
+                Erreur lors du chargement des données
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" data-i18n="retry" onclick="loadData()">Réessayer</button>
+            </div>
+        </div>
+        
         <div id="lines-view" class="view page-transition">
+            <h2 data-i18n="selectalinee">Sélectionnez une ligne</h2>
             <div id="lines-container" class="bus-list"></div>
         </div>
         
@@ -1711,6 +1721,7 @@ function stopRealtimeUpdates() {
                     showLines();
                 }).catch(error => {
                     console.error('Erreur lors du chargement des données:', error);
+                    showView('error-view');
                 });
         }
 
@@ -3397,7 +3408,7 @@ function showLines() {
         
         favorites.forEach((favorite, index) => {
             if (!routes[favorite.routeId]) {
-                console.warn(`Route ${favorite.routeId} not found for fav ${favorite.id}`);
+                console.warn(`Route ${favorite.routeId} not found for favorite ${favorite.id}`);
                 return; 
             }
             
@@ -3443,7 +3454,7 @@ function showLines() {
     
     const linesHeader = document.createElement('h3');
     linesHeader.innerHTML = `
-        ${favorites.length > 0 ? t("alllines") : t("selectalinee") || "Lignes"}
+        ${favorites.length > 0 ? t("alllines") : t("lines") || "Lignes"}
     `;
     linesSection.appendChild(linesHeader);
     
