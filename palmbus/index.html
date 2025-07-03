@@ -1704,7 +1704,7 @@
         </div>
     </div>
 
-    <span id="loading-text" data-i18n="loading">Mise à jour en cours</span>
+    <span id="loading-text" style="color: white; display: none;">status</span>
 
     <img id="bottom-logo" class="logoscr logo-bottom" src="src/credits.png" />
 </div>
@@ -1740,12 +1740,14 @@
     const overlay = document.getElementById('overlay');
     const logoscr = document.getElementById('logoscr');
     const bottomlogo = document.getElementById('bottom-logo');
+    const loadingText = document.getElementById('loading-text');
 
     function apparaitrelelogo() {
         gearbox.style.display = 'none';
         overlay.style.display = 'none';
         logoscr.style.display = 'block';
         bottomlogo.style.display = 'block';
+        loadingText.style.display = 'none';
     }
 
     function disparaitrelelogo() {
@@ -1753,6 +1755,7 @@
         overlay.style.display = 'block';
         logoscr.style.display = 'none';
         bottomlogo.style.display = 'none';
+        loadingText.style.display = 'none';
     }
 
  /* tarteaucitron */
@@ -3360,6 +3363,8 @@ function hideLoadingScreen() {
 
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
+            const loadingtext = document.getElementById('loading-text');
+            loadingtext.textContent = 'Mise à jour vers ' + window.BUILD_VERSION + ' en cours';
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3550,6 +3555,8 @@ async function getFromCache() {
 async function extractGTFSFiles() {
     try {
         disparaitrelelogo();
+        const loadingtext = document.getElementById('loading-text');
+        loadingtext.textContent = 'Chargement des données dynamiques en cours... 😊';
         soundsUX('MBF_Popup');
 
 
