@@ -675,12 +675,11 @@
         function startAutoPlay() {
             autoPlayInterval = setInterval(() => {
                 changeSlide(1);
-            }, 5000); 
+            }, 15000); 
         }
         
         function resetAutoPlay() {
             clearInterval(autoPlayInterval);
-            startAutoPlay();
         }
         
         document.addEventListener('keydown', (e) => {
@@ -717,7 +716,6 @@
         
         const carouselContainer = document.querySelector('.carousel-container');
         
-        startAutoPlay();
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
