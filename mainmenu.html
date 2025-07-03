@@ -713,10 +713,16 @@
 
                 let currentSlide = 0;
         const totalSlides = document.querySelectorAll('.carousel-slide').length;
-
+        const track = document.querySelector('.carousel-track');
         
         let autoPlayInterval;
         
+        function updateCarousel() {
+            const slideWidth = 100;
+            track.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
+            
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+        }
         
         function changeSlide(direction) {
             currentSlide += direction;
@@ -727,11 +733,13 @@
                 currentSlide = totalSlides - 1;
             }
             
+            updateCarousel();
             resetAutoPlay();
         }
         
         function goToSlide(slideIndex) {
             currentSlide = slideIndex;
+            updateCarousel();
             resetAutoPlay();
         }
         
@@ -757,7 +765,37 @@
         let startX = 0;
         let endX = 0;
         
-
+        track.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+        });
+        
+        track.addEventListener('touchmove', (e) => {
+            endX = e.touches[0].clientX;
+        });
+        
+        track.addEventListener('touchend', () => {
+            const threshold = 50;
+            const diff = startX - endX;
+            
+            if (Math.abs(diff) > threshold) {
+                if (diff > 0) {
+                    changeSlide(1); 
+                } else {
+                    changeSlide(-1); 
+                }
+            }
+        });
+        
+        const carouselContainer = document.querySelector('.carousel-container');
+        carouselContainer.addEventListener('mouseenter', () => {
+            clearInterval(autoPlayInterval);
+        });
+        
+        carouselContainer.addEventListener('mouseleave', () => {
+            startAutoPlay();
+        });
+        
+        document.getElementById('total-slides').textContent = totalSlides;
         startAutoPlay();
 
     document.addEventListener('gesturestart', function (e) {
