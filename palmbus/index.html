@@ -491,6 +491,23 @@
             filter: blur(0);
         }
     }
+
+    .closepop {
+        animation: 0.6s cubic-bezier(0.25, 1.5, 0.5, 1) forwards zoomFadeOut;
+    }
+
+    @keyframes zoomFadeOut {
+        0% {
+            opacity: 1;
+            transform: scale(1);
+            filter: blur(0);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(0.8);
+            filter: blur(13px);
+        }
+    }
     .marker-icon {
         animation: 2s infinite zoomInOut;
     }
@@ -1588,7 +1605,7 @@
                     class="title" data-i18n="menu">Menu</span></a>
             </li>
             <li>
-                <a onclick="showUpdatePopupPourHoraires()" id="clock"><span class="icon"><img src="src/horloge.png" id="myscheduleicon" style="width: 40px; height: 40px;"></img></span> <span
+                <a onclick="showUpdatePopup('schedule.html')" id="clock"><span class="icon"><img src="src/horloge.png" id="myscheduleicon" style="width: 40px; height: 40px;"></img></span> <span
                         class="title" data-i18n="schedule">Horaires</span></a>
             </li>
             <li>
@@ -3237,6 +3254,7 @@ window.addEventListener('message', function(event) {
     try {        
         if (event.data && event.data.type === 'vehicleSelected') {
             const vehicleId = event.data.vehicleId;
+            closeUpdatePopup();
             focusOnVehicle(vehicleId);
         }
     } catch (error) {
@@ -3266,8 +3284,14 @@ function closeUpdatePopup() {
         }
     }
     
-    popup.style.display = 'none'; 
-    popup1.style.display = 'none'; 
+    const popupContent = document.querySelector('.popup-content');
+    popupContent.classList.remove('popup-content');
+    popupContent.classList.add('closepop');
+    setTimeout(() => {
+        popup.style.display = 'none'; 
+        popup1.style.display = 'none'; 
+    }, 300);
+
 
     
     const menubottom1 = document.getElementById('menubtm');
@@ -8796,7 +8820,7 @@ const receivedSettings = {};
 window.addEventListener('message', function(event) {
 
     if (event.data.type === 'schedule') {
-        showUpdatePopupPourHoraires()
+        showUpdatePopup('schedule.html')
         safeVibrate([30], true);
     }
 
