@@ -139,52 +139,6 @@
             margin: 0 auto;
         }
 
-        .weather-card {
-            background: var(--card-background);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-large);
-            padding: var(--spacing-md);
-            margin-bottom: var(--spacing-md);
-            box-shadow: var(--shadow-medium);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .weather-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-strong);
-        }
-
-        .weather-icon {
-            font-size: 2.5rem;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-        }
-
-        .weather-info {
-            flex: 1;
-        }
-
-        .weather-temp {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
-
-        .weather-desc {
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-
-        .weather-location {
-            font-weight: 600;
-            color: var(--accent-color);
-            font-size: 0.9rem;
-        }
 
         .features-grid {
             display: grid;
@@ -359,7 +313,6 @@
             }
         }
 
-        .weather-card,
         .feature-card,
         .notepad-section,
         .quick-links-section {
@@ -378,15 +331,6 @@
 
             .app-header {
                 padding: var(--spacing-sm);
-            }
-
-            .weather-card {
-                text-align: center;
-                gap: var(--spacing-sm);
-            }
-
-            .weather-icon {
-                font-size: 3rem;
             }
 
             .feature-card {
@@ -424,13 +368,8 @@
             .main-container {
                 padding: var(--spacing-lg);
             }
-
-            .weather-card {
-                padding: var(--spacing-lg);
-            }
         }
 
-        /* Loading states */
         .loading {
             opacity: 0.6;
             pointer-events: none;
@@ -470,7 +409,6 @@
             position: relative;
             overflow: hidden;
             border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
         }
 
         .carousel-track {
@@ -637,15 +575,6 @@
             <button class="carousel-nav next" onclick="changeSlide(1)">›</button>
             
     </div>
-
-        <div class="weather-card">
-            <div class="weather-icon">⏳</div>
-            <div class="weather-info">
-                <div class="weather-temp">--°C</div>
-                <div class="weather-desc" data-i18n="loading">Chargement...</div>
-                <div class="weather-location">--</div>
-            </div>
-        </div>
 
         <div class="features-grid">
             <button id="bus" class="feature-card">
@@ -942,7 +871,6 @@
             
             // Initialize other components
             initGreeting();
-            initWeather();
             initNotepad();
             initEventHandlers();
         });
@@ -1082,121 +1010,6 @@
 
         };
 
-async function initWeather() {
-    try {
-        updateWeatherUI('⏳', i18n.t("loading"), '', i18n.t("getting_location"));
-        
-        const position = await getCurrentPosition();
-        const { latitude, longitude } = position.coords;
-        
-        updateWeatherUI('⏳', i18n.t("loading"), '', ``);
-        
-        const weatherData = await fetchWeatherData(latitude, longitude);
-        
-        updateWeatherUI(
-            getWeatherIcon(weatherData.weather[0].id),
-            `${Math.round(weatherData.main.temp)}°C`,
-            weatherData.weather[0].description,
-            weatherData.name
-        );
-    } catch (error) {
-        console.error('Erreur', error);
-        updateWeatherUI('❌', i18n.t("error"), i18n.t("unablegetpos"), i18n.t("checkconnection"));  
-    }
-}
-
-function getCurrentPosition() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('La géolocalisation n\'est pas supportée par votre navigateur'));
-            return;
-        }
-        
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-        });
-    });
-}
-
-async function fetchWeatherData(latitude, longitude) {
-    const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&hourly=temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`
-    );
-    
-    if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des données météo');
-    }
-    
-    const data = await response.json();
-    
-    return {
-        weather: [{
-            id: data.current.weather_code,
-            description: getWeatherDescription(data.current.weather_code)
-        }],
-        main: {
-            temp: data.current.temperature_2m
-        },
-        name: await getLocationName(latitude, longitude)
-    };
-}
-
-async function getLocationName(latitude, longitude) {
-    try {
-        const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=fr`
-        );
-        
-        if (!response.ok) {
-            throw new Error('Impossible de récup le nom de la localisation');
-        }
-        
-        const data = await response.json();
-        return data.address.city || data.address.town || data.address.village || data.address.hamlet || 'Localisation inconnue';
-    } catch (error) {
-        console.error('Erreur de geocodage inverse', error);
-        return 'Localisation inconnue';
-    }
-}
-
-function updateWeatherUI(icon, temperature, description, location) {
-    document.querySelector('.weather-icon').textContent = icon;
-    document.querySelector('.weather-temp').textContent = temperature;
-    document.querySelector('.weather-desc').textContent = description;
-    document.querySelector('.weather-location').textContent = location;
-}
-
-function getWeatherIcon(weatherCode) {
-    if (weatherCode === 0) return '☀️'; // Ciel clair
-    if (weatherCode <= 3) return '🌤️'; // Partiellement nuageux
-    if (weatherCode <= 48) return '☁️'; // Nuageux, brouillard
-    if (weatherCode <= 57) return '🌧️'; // Bruine
-    if (weatherCode <= 65) return '🌧️'; // Pluie
-    if (weatherCode <= 77) return '❄️'; // Neige
-    if (weatherCode <= 82) return '🌦️'; // Averses
-    if (weatherCode <= 86) return '🌨️'; // Neige
-    if (weatherCode <= 99) return '⛈️'; // Orage
-    return '🌡️'; 
-}
-
-function getWeatherDescription(weatherCode) {
-    if (weatherCode === 0) return i18n.t("clear") || 'Ciel dégagé';
-    if (weatherCode === 1) return i18n.t("partiallyclear") || 'Principalement dégagé';
-    if (weatherCode === 2) return i18n.t("partiallynudge") || 'Partiellement nuageux';
-    if (weatherCode === 3) return i18n.t("nudge") || 'Nuageux';
-    if (weatherCode <= 48) return i18n.t("fog") || 'Brouillard';
-    if (weatherCode <= 57) return i18n.t("bruine") || 'Bruine';
-    if (weatherCode <= 65) return i18n.t("rain") || 'Pluie';
-    if (weatherCode <= 77) return i18n.t("ice") || 'Neige';
-    if (weatherCode <= 82) return i18n.t("averses") || 'Averses';
-    if (weatherCode <= 86) return i18n.t("ice") || 'Neige';
-    if (weatherCode <= 99) return i18n.t("thunder") || 'Orage';
-    return i18n.t("unknownweather") || 'Météo inconnue';
-}
-
-document.addEventListener('DOMContentLoaded', initWeather);
 
 
 
@@ -1221,7 +1034,6 @@ document.addEventListener('DOMContentLoaded', initWeather);
 
         document.addEventListener('DOMContentLoaded', () => {
             
-            initWeather();
             
             initNotepad();
         });
