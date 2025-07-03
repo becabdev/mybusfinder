@@ -698,8 +698,8 @@
         }
     }
     .filtre {
-        display: none;
         position: absolute;
+        cursor: pointer;
         bottom: 10px;
         left: 50%;
         transform: translateX(-50%) translateY(-100%);
@@ -7790,6 +7790,10 @@ sortedLines.forEach(line => {
                 busItem.style.borderRadius = '8px';
 
                 lineSection.onclick = () => {
+                    if (localStorage.getItem('astuce') !== 'true') {
+                        localStorage.setItem('astuce', 'true');
+                        toastBottomRight.info(`${t("astuceselectligne")}`);
+                    }
                     const mapp = document.getElementById('map');
                     mapp.style.opacity = '1';
                     safeVibrate([50, 30, 50], true);
@@ -7960,10 +7964,16 @@ const menubottom1 = document.getElementById('menubtm');
 
             const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'flex';
-        
+
+            const filtre = document.getElementById('filtre');
             setTimeout(() => {
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
+                if (selectedLine) {
+                    filtre.classList.remove('slide-upc');
+                    filtre.classList.add('slide-downc');
+                    filtre.style.display = 'flex';
+                }
             }, 10);
                 isMenuVisible = false; 
             };
