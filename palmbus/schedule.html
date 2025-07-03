@@ -2554,7 +2554,7 @@ async function loadStopTimes(fileContent) {
         console.time('Chargement stop_times');
         console.log('Début du chargement des stop_times (fichier volumineux ~20Mo)...');
         
-        // Détection optimisée du caractère de fin de ligne
+        // Détection optimisée du caractère de nouvelle ligne
         const newlineChar = fileContent.includes('\r\n') ? '\r\n' : '\n';
         
         // Parsing des headers optimisé
@@ -2562,15 +2562,20 @@ async function loadStopTimes(fileContent) {
         const headerLine = fileContent.substring(0, headerEndPos);
         const headers = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
         
-        // Mapping des indices une seule fois
+        // Création d'un map pour les indices pour un accès O(1)
+        const indexMap = new Map();
+        headers.forEach((header, index) => {
+            indexMap.set(header, index);
+        });
+        
         const indices = {
-            tripId: headers.indexOf('trip_id'),
-            stopId: headers.indexOf('stop_id'),
-            arrivalTime: headers.indexOf('arrival_time'),
-            departureTime: headers.indexOf('departure_time'),
-            stopSequence: headers.indexOf('stop_sequence'),
-            pickupType: headers.indexOf('pickup_type'),
-            dropOffType: headers.indexOf('drop_off_type')
+            tripId: indexMap.get('trip_id') ?? -1,
+            stopId: indexMap.get('stop_id') ?? -1,
+            arrivalTime: indexMap.get('arrival_time') ?? -1,
+            departureTime: indexMap.get('departure_time') ?? -1,
+            stopSequence: indexMap.get('stop_sequence') ?? -1,
+            pickupType: indexMap.get('pickup_type') ?? -1,
+            dropOffType: indexMap.get('drop_off_type') ?? -1
         };
         
         if (indices.tripId === -1 || indices.stopId === -1 || indices.arrivalTime === -1) {
@@ -2578,48 +2583,52 @@ async function loadStopTimes(fileContent) {
             return localStopTimes;
         }
         
-        // Configuration optimisée pour le traitement par chunks
-        const CHUNK_SIZE = 50000; // Réduit pour éviter les blocages
-        const BATCH_SIZE = 10000; // Traitement par batch plus petit
+        // Paramètres optimisés pour le traitement par chunks
+        const CHUNK_SIZE = 250000; // Augmenté pour moins d'interruptions
+        const FLUSH_THRESHOLD = 500000; // Augmenté pour moins de flushes
         
         let entryCount = 0;
         let warningCount = 0;
         const MAX_WARNINGS = 5;
         let lastProgressReport = Date.now();
-        const PROGRESS_INTERVAL = 1000; // Rapports plus fréquents
+        const PROGRESS_INTERVAL = 3000; // Moins fréquent pour éviter la surcharge
         
-        // Pré-compilation des regex pour les optimisations
+        let tempTrips = Object.create(null); // Plus rapide que {}
+        let tripCount = 0;
+        
+        // Pré-compilation des regex pour éviter les recompilations
         const timeRegex = /^(\d{1,2}):(\d{2}):(\d{2})$/;
-        const emptyLineRegex = /^\s*$/;
+        const commaRegex = /,(?=(?:[^"]*"[^"]*")*[^"]*$)/;
         
-        // Split initial du contenu par lignes (plus efficace qu'un parsing ligne par ligne)
-        const lines = fileContent.split(newlineChar);
+        // Split optimisé avec pré-allocation
+        const dataContent = fileContent.substring(headerEndPos + newlineChar.length);
+        const lines = dataContent.split(newlineChar);
+        
+        let linesProcessed = 0;
         const totalLines = lines.length;
         
-        // Traitement par batch pour éviter les blocages
-        for (let startIdx = 1; startIdx < totalLines; startIdx += BATCH_SIZE) {
-            const endIdx = Math.min(startIdx + BATCH_SIZE, totalLines);
-            const batch = lines.slice(startIdx, endIdx);
+        // Traitement par chunks avec for classique (plus rapide)
+        for (let lineIndex = 0; lineIndex < totalLines; lineIndex++) {
+            const line = lines[lineIndex];
             
-            const batchData = [];
+            if (!line.trim()) continue;
             
-            // Traitement optimisé du batch
-            for (let i = 0; i < batch.length; i++) {
-                const line = batch[i];
-                
-                if (!line || emptyLineRegex.test(line)) continue;
-                
-                let values;
+            linesProcessed++;
+            
+            try {
                 // Parsing CSV optimisé
+                let values;
                 if (line.indexOf('"') === -1) {
                     // Cas simple : pas de guillemets
                     values = line.split(',');
                 } else {
-                    // Cas complexe : utilisation d'un parser simple mais efficace
-                    values = parseCSVLineOptimized(line);
+                    // Cas complexe : utilisation de regex pré-compilée
+                    values = line.split(commaRegex);
                 }
                 
-                if (values.length <= Math.max(indices.tripId, indices.stopId, indices.arrivalTime)) {
+                // Vérification rapide de la longueur minimale
+                const minRequiredLength = Math.max(indices.tripId, indices.stopId, indices.arrivalTime) + 1;
+                if (values.length < minRequiredLength) {
                     if (warningCount < MAX_WARNINGS) {
                         warningCount++;
                         console.warn(`Ligne ignorée - données incomplètes (${warningCount}/${MAX_WARNINGS} avertissements max)`);
@@ -2627,68 +2636,95 @@ async function loadStopTimes(fileContent) {
                     continue;
                 }
                 
-                const tripId = values[indices.tripId];
+                const tripId = values[indices.tripId]?.trim();
                 if (!tripId) continue;
                 
-                // Construction optimisée de l'objet stop
+                // Création du trip si nécessaire
+                if (!tempTrips[tripId]) {
+                    tempTrips[tripId] = [];
+                    tripCount++;
+                }
+                
+                // Construction optimisée de l'objet stopEntry
                 const stopEntry = {
-                    stop_id: values[indices.stopId],
+                    stop_id: values[indices.stopId]?.trim(),
                     stop_sequence: indices.stopSequence !== -1 && values[indices.stopSequence] ? 
                         parseInt(values[indices.stopSequence], 10) : 0
                 };
                 
                 // Traitement optimisé des heures
-                if (values[indices.arrivalTime]) {
-                    stopEntry.arrival_time = formatTimeStringOptimized(values[indices.arrivalTime], timeRegex);
+                const arrivalTime = values[indices.arrivalTime]?.trim();
+                if (arrivalTime) {
+                    stopEntry.arrival_time = formatTimeStringOptimized(arrivalTime, timeRegex);
                 }
                 
-                const departureTime = indices.departureTime !== -1 ? values[indices.departureTime] : null;
-                if (departureTime && departureTime !== values[indices.arrivalTime]) {
+                const departureTime = indices.departureTime !== -1 ? values[indices.departureTime]?.trim() : null;
+                if (departureTime && departureTime !== arrivalTime) {
                     stopEntry.departure_time = formatTimeStringOptimized(departureTime, timeRegex);
                 } else {
                     stopEntry.departure_time = stopEntry.arrival_time;
                 }
                 
-                // Types de pickup/drop-off optimisés
-                if (indices.pickupType !== -1 && values[indices.pickupType] && values[indices.pickupType] !== '0') {
-                    stopEntry.pickup_type = parseInt(values[indices.pickupType], 10);
+                // Traitement optimisé des types
+                if (indices.pickupType !== -1) {
+                    const pickupType = values[indices.pickupType]?.trim();
+                    if (pickupType && pickupType !== '0') {
+                        stopEntry.pickup_type = parseInt(pickupType, 10);
+                    }
                 }
                 
-                if (indices.dropOffType !== -1 && values[indices.dropOffType] && values[indices.dropOffType] !== '0') {
-                    stopEntry.drop_off_type = parseInt(values[indices.dropOffType], 10);
+                if (indices.dropOffType !== -1) {
+                    const dropOffType = values[indices.dropOffType]?.trim();
+                    if (dropOffType && dropOffType !== '0') {
+                        stopEntry.drop_off_type = parseInt(dropOffType, 10);
+                    }
                 }
                 
-                batchData.push({ tripId, stopEntry });
+                tempTrips[tripId].push(stopEntry);
                 entryCount++;
-            }
-            
-            // Insertion par batch dans la structure finale
-            for (const { tripId, stopEntry } of batchData) {
-                if (!localStopTimes[tripId]) {
-                    localStopTimes[tripId] = [];
-                }
-                localStopTimes[tripId].push(stopEntry);
-            }
-            
-            // Rapport de progression et yield périodiques
-            const now = Date.now();
-            if (now - lastProgressReport > PROGRESS_INTERVAL) {
-                const percentComplete = Math.floor((endIdx / totalLines) * 100);
-                console.log(`Chargement en cours : ${percentComplete}% (${entryCount} arrêts, ${Object.keys(localStopTimes).length} trajets)`);
-                lastProgressReport = now;
                 
-                // Yield pour éviter le blocage de l'interface
-                await new Promise(resolve => setTimeout(resolve, 0));
+            } catch (error) {
+                if (warningCount < MAX_WARNINGS) {
+                    warningCount++;
+                    console.warn(`Erreur lors du traitement de la ligne: ${error.message} (${warningCount}/${MAX_WARNINGS} avertissements max)`);
+                }
+            }
+            
+            // Gestion du progress et du flush optimisée
+            if (linesProcessed % CHUNK_SIZE === 0) {
+                const now = Date.now();
+                if (now - lastProgressReport > PROGRESS_INTERVAL) {
+                    const percentComplete = Math.floor((linesProcessed / totalLines) * 100);
+                    console.log(`Chargement en cours : ${percentComplete}% (${entryCount} arrêts, ${tripCount} trajets)`);
+                    lastProgressReport = now;
+                    
+                    // Yield moins fréquemment
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+                
+                if (entryCount > FLUSH_THRESHOLD) {
+                    await flushTempTrips(tempTrips, localStopTimes);
+                    
+                    tempTrips = Object.create(null);
+                    tripCount = 0;
+                    
+                    await forceGarbageCollection();
+                }
             }
         }
         
-        // Tri final des stops par séquence pour chaque trip
-        for (const tripId in localStopTimes) {
-            localStopTimes[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
+        // Flush final
+        if (Object.keys(tempTrips).length > 0) {
+            await flushTempTrips(tempTrips, localStopTimes);
+            tempTrips = null;
         }
         
         console.timeEnd('Chargement stop_times');
         console.log(`Stop times chargés: ${Object.keys(localStopTimes).length} trajets, ${entryCount} arrêts au total`);
+        
+        // Nettoyage
+        lines.length = 0;
+        await forceGarbageCollection();
         
         return localStopTimes;
 
@@ -2698,57 +2734,28 @@ async function loadStopTimes(fileContent) {
     }
 }
 
-// Parser CSV optimisé pour les cas simples
-function parseCSVLineOptimized(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    let i = 0;
-    
-    while (i < line.length) {
-        const char = line[i];
-        
-        if (char === '"') {
-            if (inQuotes && line[i + 1] === '"') {
-                current += '"';
-                i += 2;
-            } else {
-                inQuotes = !inQuotes;
-                i++;
-            }
-        } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-            i++;
-        } else {
-            current += char;
-            i++;
-        }
-    }
-    
-    result.push(current.trim());
-    return result;
-}
-
-// Formatage de temps optimisé
+// Fonction helper optimisée pour le formatage du temps
 function formatTimeStringOptimized(timeStr, regex) {
     if (!timeStr) return null;
     
-    const trimmed = timeStr.trim();
-    if (regex.test(trimmed)) {
-        return trimmed;
+    const match = timeStr.match(regex);
+    if (match) {
+        const [, hours, minutes, seconds] = match;
+        const h = parseInt(hours, 10);
+        const m = parseInt(minutes, 10);
+        const s = parseInt(seconds, 10);
+        
+        // Formatage optimisé sans padding si pas nécessaire
+        if (h < 10 && m < 10 && s < 10) {
+            return `${h}:0${m}:0${s}`;
+        } else if (h < 10) {
+            return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        } else {
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
     }
     
-    // Cas spéciaux pour les heures > 24h (format GTFS)
-    const parts = trimmed.split(':');
-    if (parts.length === 3) {
-        const hours = parseInt(parts[0], 10);
-        const minutes = parts[1].padStart(2, '0');
-        const seconds = parts[2].padStart(2, '0');
-        return `${hours.toString().padStart(2, '0')}:${minutes}:${seconds}`;
-    }
-    
-    return trimmed;
+    return timeStr; // Retourne tel quel si le format n'est pas reconnu
 }
 
 async function flushTempTrips(tempTrips, destination) {
