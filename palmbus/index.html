@@ -3038,6 +3038,7 @@ function showUpdatePopup(link) {
     const currentLang = i18n.currentLang;
     const hasParams = link.includes('?');
     const langParam = `lang=${currentLang}`;
+    popup.classList.remove('closepop');
     
     const loadingContainer = document.createElement('div');
     loadingContainer.id = 'iframe-loading-container';
@@ -3284,7 +3285,6 @@ function closeUpdatePopup() {
         }
     }
     
-    popup.classList.remove('popup-content');
     popup.classList.add('closepop');
     setTimeout(() => {
         popup.style.display = 'none'; 
