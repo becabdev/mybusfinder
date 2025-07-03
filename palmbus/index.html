@@ -603,65 +603,77 @@
     width: 100%;
     height: 100%;
     background: linear-gradient(
-        45deg,
-        #001a1a,
-        #002d1a,
-        #1a0033,
-        #003d03,
-        #2d001a,
-        #003330
+        135deg,
+        #0a0a0a 0%,
+        #1a1a2e 25%,
+        #16213e 50%,
+        #2d1b69 75%,
+        #0f3460 100%
     );
-    background-size: 400% 400%;
+    background-size: 300% 300%;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     z-index: 10000;
     animation: gradientFlow 8s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
+}
+
+#loading-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        circle at 30% 70%,
+        rgba(138, 43, 226, 0.15) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 70% 30%,
+        rgba(0, 100, 148, 0.12) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 50% 50%,
+        rgba(25, 25, 112, 0.08) 0%,
+        transparent 70%
+    );
+    animation: pulseOverlay 6s ease-in-out infinite alternate;
 }
 
 @keyframes gradientFlow {
     0% {
-        background-position: 0% 50%;
+        background-position: 0% 0%;
     }
     25% {
-        background-position: 100% 0%;
+        background-position: 100% 50%;
     }
     50% {
-        background-position: 100% 100%;
+        background-position: 50% 100%;
     }
     75% {
-        background-position: 0% 100%;
-    }
-    100% {
         background-position: 0% 50%;
     }
-}
-
-#loading-screen {
-    background: radial-gradient(
-        ellipse at center,
-        #001a1a 0%,
-        #002d1a 25%,
-        #1a0033 50%,
-        #003d03 75%,
-        #2d001a 100%
-    );
-    background-size: 300% 300%;
-    animation: breathingGradient 6s ease-in-out infinite;
-}
-
-@keyframes breathingGradient {
-    0%, 100% {
-        background-size: 300% 300%;
-        background-position: center;
-    }
-    50% {
-        background-size: 350% 350%;
-        background-position: center;
+    100% {
+        background-position: 0% 0%;
     }
 }
 
+@keyframes pulseOverlay {
+    0% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
     .shapes-container {
         width: 100%;
         overflow: hidden;
