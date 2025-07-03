@@ -7790,7 +7790,10 @@ sortedLines.forEach(line => {
                 busItem.style.borderRadius = '8px';
 
                 lineSection.onclick = () => {
-                    toastBottomRight.info(`${t("astuceselectligne")}`);
+                    if (localStorage.getItem('astuce') !== 'true') {
+                        localStorage.setItem('astuce', 'true');
+                        toastBottomRight.info(`${t("astuceselectligne")}`);
+                    }
                     const mapp = document.getElementById('map');
                     mapp.style.opacity = '1';
                     safeVibrate([50, 30, 50], true);
