@@ -596,30 +596,83 @@
     textarea {
         user-select: text;
     }
-    #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(45deg, #000, #1a1a1a, #242424);
-        background-size: 200% 200%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 10000;
-        animation: 5s infinite gradientAnimation;
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        #0a0a0a 0%,
+        #1a1a2e 25%,
+        #16213e 50%,
+        #2d1b69 75%,
+        #0f3460 100%
+    );
+    background-size: 300% 300%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 10000;
+    animation: gradientFlow 8s ease-in-out infinite;
+    overflow: hidden;
+}
+
+#loading-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        circle at 30% 70%,
+        rgba(138, 43, 226, 0.15) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 70% 30%,
+        rgba(0, 100, 148, 0.12) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 50% 50%,
+        rgba(25, 25, 112, 0.08) 0%,
+        transparent 70%
+    );
+    animation: pulseOverlay 6s ease-in-out infinite alternate;
+}
+
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 0%;
     }
-    @keyframes gradientAnimation {
-        0%,
-        100% {
-            background-position: 0 50%;
-        }
-        50% {
-            background-position: 100% 50%;
-        }
+    25% {
+        background-position: 100% 50%;
     }
+    50% {
+        background-position: 50% 100%;
+    }
+    75% {
+        background-position: 0% 50%;
+    }
+    100% {
+        background-position: 0% 0%;
+    }
+}
+
+@keyframes pulseOverlay {
+    0% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1.1);
+    }
+}
     .shapes-container {
         width: 100%;
         overflow: hidden;
@@ -690,11 +743,9 @@
     @keyframes fadeIn {
         0% {
             opacity: 0;
-            transform: translateY(20px);
         }
         100% {
             opacity: 1;
-            transform: translateY(0);
         }
     }
     .filtre {
@@ -1656,7 +1707,7 @@
 
 	
 <div id="loading-screen" class="logobkg">
-    <img id="logoscr" class="logoscr rainbow-shadow" src="src/whitelogo.png" style="display: block; margin: 0 auto; max-width: 50%; height: auto;"/>
+    <img id="logoscr" class="logoscr" src="src/whitelogo.png" style="display: block; margin: 0 auto; max-width: 50%; height: auto;"/>
 
     <div id="gearbox" class="gearbox" style="display: none;">
     <div id="overlay" class="overlay" style="display: none;"></div>
@@ -1693,7 +1744,7 @@
         </div>
     </div>
 
-    <span id="loading-text" style="color: white; display: none; font-size: 10px; font-weight: bold;">status</span>
+    <span id="loading-text" style="color: white; display: none; font-family: Segoe UI; font-size: 14px; font-weight: 300;">status</span>
 
     <img id="bottom-logo" class="logoscr logo-bottom" src="src/credits.png" />
 </div>
