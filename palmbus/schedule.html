@@ -1533,9 +1533,6 @@ select:focus {
             <div id="realtime-view" class="tab-content">
 
                 <div id="realtime-container" class="realtime-list"></div>
-                <div id="last-update-time" class="update-time" data-i18n="lastupdateatscheme">
-                    Dernière màj à --:--
-                </div>
             </div>
         </div>
         <div id="home-view" class="view page-transition">
@@ -1762,8 +1759,7 @@ function displayRealtimeError() {
 function updateLastUpdateTime(timestamp) {
     const lastUpdate = new Date(timestamp * 1000);
     const timeString = lastUpdate.toLocaleTimeString();
-    document.getElementById('last-update-time').textContent = 
-        `Dernière màj à ${timeString}`;
+
 }
 
 function processRealtimeData(message) {
