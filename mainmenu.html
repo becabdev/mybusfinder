@@ -614,7 +614,6 @@
 
     <main class="main-container">
 
-            <div class="carousel-container">
         <div class="carousel">
             <div class="carousel-track">
                 <div class="carousel-slide">
@@ -637,18 +636,6 @@
             <button class="carousel-nav prev" onclick="changeSlide(-1)">‹</button>
             <button class="carousel-nav next" onclick="changeSlide(1)">›</button>
             
-            <div class="carousel-counter">
-                <span id="current-slide">1</span> / <span id="total-slides">5</span>
-            </div>
-        </div>
-        
-        <div class="carousel-dots">
-            <button class="dot active" onclick="goToSlide(0)"></button>
-            <button class="dot" onclick="goToSlide(1)"></button>
-            <button class="dot" onclick="goToSlide(2)"></button>
-            <button class="dot" onclick="goToSlide(3)"></button>
-            <button class="dot" onclick="goToSlide(4)"></button>
-        </div>
     </div>
 
         <div class="weather-card">
@@ -726,21 +713,10 @@
 
                 let currentSlide = 0;
         const totalSlides = document.querySelectorAll('.carousel-slide').length;
-        const track = document.querySelector('.carousel-track');
-        const dots = document.querySelectorAll('.dot');
+
         
         let autoPlayInterval;
         
-        function updateCarousel() {
-            const slideWidth = 100;
-            track.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
-            
-            dots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentSlide);
-            });
-            
-            document.getElementById('current-slide').textContent = currentSlide + 1;
-        }
         
         function changeSlide(direction) {
             currentSlide += direction;
@@ -751,13 +727,11 @@
                 currentSlide = totalSlides - 1;
             }
             
-            updateCarousel();
             resetAutoPlay();
         }
         
         function goToSlide(slideIndex) {
             currentSlide = slideIndex;
-            updateCarousel();
             resetAutoPlay();
         }
         
