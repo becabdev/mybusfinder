@@ -3284,9 +3284,8 @@ function closeUpdatePopup() {
         }
     }
     
-    const popupContent = document.querySelector('.popup-content');
-    popupContent.classList.remove('popup-content');
-    popupContent.classList.add('closepop');
+    popup.classList.remove('popup-content');
+    popup.classList.add('closepop');
     setTimeout(() => {
         popup.style.display = 'none'; 
         popup1.style.display = 'none'; 
