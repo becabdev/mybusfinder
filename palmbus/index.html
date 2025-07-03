@@ -638,34 +638,27 @@
     }
 }
 
-/* Version alternative avec effet de vague */
 #loading-screen {
-    background: linear-gradient(
-        -45deg,
-        #001a1a,
-        #002d1a,
-        #1a0033,
-        #003d03,
-        #2d001a,
-        #003330,
-        #001a1a
+    background: radial-gradient(
+        ellipse at center,
+        #001a1a 0%,
+        #002d1a 25%,
+        #1a0033 50%,
+        #003d03 75%,
+        #2d001a 100%
     );
-    background-size: 600% 600%;
-    animation: waveMotion 10s ease-in-out infinite;
+    background-size: 300% 300%;
+    animation: breathingGradient 6s ease-in-out infinite;
 }
 
-@keyframes waveMotion {
+@keyframes breathingGradient {
     0%, 100% {
-        background-position: 0% 50%;
-        transform: scale(1);
+        background-size: 300% 300%;
+        background-position: center;
     }
-    33% {
-        background-position: 100% 0%;
-        transform: scale(1.02);
-    }
-    66% {
-        background-position: 0% 100%;
-        transform: scale(0.98);
+    50% {
+        background-size: 350% 350%;
+        background-position: center;
     }
 }
 
