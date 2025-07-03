@@ -596,30 +596,122 @@
     textarea {
         user-select: text;
     }
-    #loading-screen {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(45deg, #003330, #003d03, #3f003f);
-        background-size: 200% 200%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        z-index: 10000;
-        animation: 5s infinite gradientAnimation;
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        45deg,
+        #001a1a,
+        #002d1a,
+        #1a001a,
+        #000d1a,
+        #1a0d00,
+        #001a0d
+    );
+    background-size: 400% 400%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 10000;
+    animation: gradientFlow 8s ease-in-out infinite;
+    overflow: hidden;
+}
+
+/* Animation principale du gradient */
+@keyframes gradientFlow {
+    0% {
+        background-position: 0% 50%;
     }
-    @keyframes gradientAnimation {
-        0%,
-        100% {
-            background-position: 0 50%;
-        }
-        50% {
-            background-position: 100% 50%;
-        }
+    25% {
+        background-position: 100% 0%;
     }
+    50% {
+        background-position: 100% 100%;
+    }
+    75% {
+        background-position: 0% 100%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Overlay pour ajouter de la profondeur avec des particules lumineuses */
+#loading-screen::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(
+        circle at 20% 30%,
+        rgba(0, 100, 100, 0.1) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 80% 70%,
+        rgba(100, 0, 100, 0.1) 0%,
+        transparent 50%
+    ),
+    radial-gradient(
+        circle at 40% 80%,
+        rgba(0, 100, 50, 0.1) 0%,
+        transparent 50%
+    );
+    animation: particleMove 12s linear infinite;
+}
+
+@keyframes particleMove {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    33% {
+        transform: translate(-20px, -30px) rotate(120deg);
+    }
+    66% {
+        transform: translate(20px, -20px) rotate(240deg);
+    }
+    100% {
+        transform: translate(0, 0) rotate(360deg);
+    }
+}
+
+/* Effet de vague subtile */
+#loading-screen::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.02) 25%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0.02) 75%,
+        transparent 100%
+    );
+    animation: wave 6s ease-in-out infinite;
+    transform: translateX(-100%);
+}
+
+@keyframes wave {
+    0% {
+        transform: translateX(-100%) skewX(0deg);
+    }
+    50% {
+        transform: translateX(100%) skewX(10deg);
+    }
+    100% {
+        transform: translateX(-100%) skewX(0deg);
+    }
+}
     .shapes-container {
         width: 100%;
         overflow: hidden;
