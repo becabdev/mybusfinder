@@ -790,9 +790,6 @@
         border-radius: 18px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
-    .menubottom {
-        filter: url(#frosted);
-    }
     .menubottom ul li {
         margin: auto;
     }
@@ -1643,6 +1640,60 @@
   transform: rotate(150deg);
 }
 
+.glass-container {
+	position: absolute;
+	inset: 0;
+	border-radius: 16px;
+	height: 100%;
+	width: 100%;
+}
+
+.glass-effect-backdrop {
+  border-radius: 16px;
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+  -webkit-backdrop-filter: blur(0.5px);
+  backdrop-filter: blur(0.5px);
+}
+
+.glass-effect {
+  border-radius: 9999px;
+	position: absolute;
+	left: 0px;
+	right: 0;
+	height: 0.8rem;
+	width: 100%;
+  -webkit-backdrop-filter: url(#distortion);
+  backdrop-filter: url(#distortion);
+}
+
+.glass-effect.top {
+	top: 0;
+}
+
+.glass-effect.bottom {
+	bottom: 0;
+}
+
+.glass-effect.left {
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 0.8rem;
+	height: 100%;
+}
+
+.glass-effect.right {
+	right: 0;
+	left: auto;
+	top: 0;
+	bottom: 0;
+	width: 0.8rem;
+	height: 100%
+}
 
 </style>
 
@@ -1653,13 +1704,19 @@
 </div>
 
     <svg style="display:none;">
-      <filter id="frosted">
+      <filter id="distortion">
         <feTurbulence type="turbulence" baseFrequency="0.01 0.1" numOctaves="1" result="turbulence"/>
         <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="8" xChannelSelector="R" yChannelSelector="G"/>
       </filter>
     </svg>
 
  <div class="menubottom">
+        <div class="glass-container">
+            <div class="glass-effect top"></div>
+            <div class="glass-effect bottom"></div>
+            <div class="glass-effect left"></div>
+            <div class="glass-effect right"></div>
+        </div>
         <ul id="menubtm" class="menubottom-ul">
             <li>
                 <a onclick="afficherMenu()"><span class="icon"><img src="src/menu.png" id="menuicon" style="width: 40px; height: 40px;"></img></span> <span
