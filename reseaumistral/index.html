@@ -784,8 +784,8 @@
         z-index: 10000;
         padding: 0 9px;
         background-color: #0f056b9c;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: url(#liquid-prism-intense);
+        -webkit-backdrop-filter: url(#liquid-prism-intense);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
         border-radius: 18px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
@@ -973,8 +973,8 @@
         transform: translateY(0) translateX(-50%);
         opacity: 1;
         filter: blur(0);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: url(#liquid-prism-intense);
+        -webkit-backdrop-filter: url(#liquid-prism-intense);
     }
     .slide-upb {
         transform: translateY(100%) translateX(-50%);
@@ -986,8 +986,8 @@
         transform: translateY(-220%) translateX(-50%);
         opacity: 1;
         filter: blur(0);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: url(#liquid-prism-intense);
+        -webkit-backdrop-filter: url(#liquid-prism-intense);
     }
     .slide-upc {
         transform: translateY(100%) translateX(-50%);
@@ -1640,60 +1640,6 @@
   transform: rotate(150deg);
 }
 
-.glass-container {
-	position: absolute;
-	inset: 0;
-	border-radius: 16px;
-	height: 100%;
-	width: 100%;
-}
-
-.glass-effect-backdrop {
-  border-radius: 16px;
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: 0;
-	bottom: 0;
-  -webkit-backdrop-filter: blur(0.5px);
-  backdrop-filter: blur(0.5px);
-}
-
-.glass-effect {
-  border-radius: 9999px;
-	position: absolute;
-	left: 0px;
-	right: 0;
-	height: 0.8rem;
-	width: 100%;
-  -webkit-backdrop-filter: url(#distortion);
-  backdrop-filter: url(#distortion);
-}
-
-.glass-effect.top {
-	top: 0;
-}
-
-.glass-effect.bottom {
-	bottom: 0;
-}
-
-.glass-effect.left {
-	left: 0;
-	top: 0;
-	bottom: 0;
-	width: 0.8rem;
-	height: 100%;
-}
-
-.glass-effect.right {
-	right: 0;
-	left: auto;
-	top: 0;
-	bottom: 0;
-	width: 0.8rem;
-	height: 100%
-}
 
 </style>
 
@@ -1703,20 +1649,57 @@
     <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
 </div>
 
-    <svg style="display:none;">
-      <filter id="distortion">
-        <feTurbulence type="turbulence" baseFrequency="0.01 0.1" numOctaves="1" result="turbulence"/>
-        <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="8" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-    </svg>
+<svg width="0" height="0" style="position: absolute;">
+  <defs>
+    <filter id="liquid-prism-intense" x="0%" y="0%" width="100%" height="100%" filterUnits="objectBoundingBox">
+
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.001 0.005"
+        numOctaves="1"
+        seed="17"
+        result="turbulence"
+      />
+
+      <feComponentTransfer in="turbulence" result="mapped">
+        <feFuncR type="gamma" amplitude="1" exponent="10" offset="0.5" />
+        <feFuncG type="gamma" amplitude="0" exponent="1" offset="0" />
+        <feFuncB type="gamma" amplitude="0" exponent="1" offset="0.5" />
+      </feComponentTransfer>
+
+      <feGaussianBlur in="turbulence" stdDeviation="3" result="softMap" />
+
+      <feSpecularLighting
+        in="softMap"
+        surfaceScale="5"
+        specularConstant="1"
+        specularExponent="100"
+        lighting-color="white"
+        result="specLight"
+      >
+        <fePointLight x="-200" y="-200" z="300" />
+      </feSpecularLighting>
+
+      <feComposite
+        in="specLight"
+        operator="arithmetic"
+        k1="0" k2="1" k3="1" k4="0"
+        result="litImage"
+      />
+
+      <feDisplacementMap
+        in="SourceGraphic"
+        in2="softMap"
+        scale="200"
+        xChannelSelector="R"
+        yChannelSelector="G"
+      />
+
+    </filter>
+  </defs>
+</svg>
 
  <div class="menubottom">
-        <div class="glass-container">
-            <div class="glass-effect top"></div>
-            <div class="glass-effect bottom"></div>
-            <div class="glass-effect left"></div>
-            <div class="glass-effect right"></div>
-        </div>
         <ul id="menubtm" class="menubottom-ul">
             <li>
                 <a onclick="afficherMenu()"><span class="icon"><img src="src/menu.png" id="menuicon" style="width: 40px; height: 40px;"></img></span> <span
