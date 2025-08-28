@@ -5507,7 +5507,7 @@ async function fetchVehiclePositions() {
                 if (vehicle) {
 
 
-                const id = entity.id.replace("vehicle:", "") || vehicle.vehicle.id || vehicle.vehicle.label;
+                const id = vehicle.vehicle.label || vehicle.vehicle.id || entity.id;
                 const vehicleOptionsBadges = getVehicleOptionsBadges(id);
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
