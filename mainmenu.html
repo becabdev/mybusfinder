@@ -989,7 +989,7 @@
                         <div class="whats-new-item-icon">⚡</div>
                         <div class="whats-new-item-title">Performances optimisées</div>
                     </div>
-                    <div class="whats-new-item-desc">Chargement plus rapide et interactions + fluides sur tous les appareils</div>
+                    <div class="whats-new-item-desc">Perfs améliorées (-40% usage CPU+RAM) et interactions + fluides</div>
                 </div>
                 <div class="whats-new-item">
                     <div class="whats-new-item-header">
@@ -1320,17 +1320,14 @@
 
         function initEventHandlers() {
             document.getElementById('bus').onclick = () => {
-                setActiveNavItem('nav-map');
                 window.parent.postMessage({ type: 'openmap' }, '*');
             };
 
             document.getElementById('clock').onclick = () => {
-                setActiveNavItem('nav-schedule');
                 window.parent.postMessage({ type: 'schedule' }, '*');
             };
 
             document.getElementById('actu').onclick = () => {
-                setActiveNavItem('nav-news');
                 window.parent.postMessage({ type: 'news' }, '*');
             };
 
@@ -1339,7 +1336,6 @@
             };
             
             document.getElementById('settings').onclick = () => {
-                setActiveNavItem('nav-more');
                 window.parent.postMessage({ type: 'settings' }, '*');
             };
 
@@ -1352,31 +1348,25 @@
             };
 
             document.getElementById('header-settings').onclick = () => {
-                setActiveNavItem('nav-more');
                 window.parent.postMessage({ type: 'settings' }, '*');
             };
 
             document.getElementById('nav-home').onclick = () => {
-                setActiveNavItem('nav-home');
             };
 
             document.getElementById('nav-map').onclick = () => {
-                setActiveNavItem('nav-map');
                 window.parent.postMessage({ type: 'openmap' }, '*');
             };
 
             document.getElementById('nav-schedule').onclick = () => {
-                setActiveNavItem('nav-schedule');
                 window.parent.postMessage({ type: 'schedule' }, '*');
             };
 
             document.getElementById('nav-news').onclick = () => {
-                setActiveNavItem('nav-news');
                 window.parent.postMessage({ type: 'news' }, '*');
             };
 
             document.getElementById('nav-more').onclick = () => {
-                setActiveNavItem('nav-more');
                 window.parent.postMessage({ type: 'settings' }, '*');
             };
         }
