@@ -14,13 +14,7 @@
         }
 
         :root {
-            --mobile-padding: clamp(0.75rem, 4vw, 2rem);
-            --mobile-gap: clamp(1rem, 3vw, 2rem);
-            --mobile-border-radius: clamp(16px, 4vw, 28px);
-            --mobile-font-size-sm: clamp(0.8rem, 3.5vw, 0.95rem);
-            --mobile-font-size-base: clamp(0.9rem, 4vw, 1rem);
-            --mobile-font-size-lg: clamp(1.1rem, 5vw, 1.4rem);
-            --mobile-touch-target: 44px; 
+            --bg-primary: #0a0a0f;
             --bg-secondary: #161621;
             --bg-card: rgba(25, 25, 40, 0.8);
             --text-primary: #e8e9f0;
@@ -52,6 +46,7 @@
             line-height: 1.6;
         }
 
+        /* Animated Background */
         .animated-bg {
             position: fixed;
             top: 0;
@@ -101,6 +96,7 @@
             100% { transform: translateX(100%) translateY(20px); }
         }
 
+        /* Header */
         .header {
             position: sticky;
             top: 0;
@@ -172,6 +168,7 @@
             font-weight: 500;
         }
 
+        /* Main Container */
         .main-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -187,6 +184,7 @@
                 "notepad sidebar";
         }
 
+        /* Carousel */
         .carousel-section {
             grid-area: carousel;
             background: var(--gradient-card);
@@ -222,6 +220,7 @@
             object-fit: contain;
         }
 
+        /* Ripple Effect */
         .ripple-container {
             position: relative;
             overflow: hidden;
@@ -277,6 +276,7 @@
         .carousel-nav.prev { left: 25px; }
         .carousel-nav.next { right: 25px; }
 
+        /* What's New Section */
         .whats-new-section {
             grid-area: whats-new;
             background: var(--gradient-card);
@@ -392,6 +392,7 @@
             line-height: 1.5;
         }
 
+        /* Features Grid */
         .features-section {
             grid-area: features;
             display: grid;
@@ -475,6 +476,7 @@
             max-width: 90%;
         }
 
+        /* Sidebar */
         .sidebar {
             grid-area: sidebar;
             display: flex;
@@ -557,6 +559,7 @@
             font-size: 1rem;
         }
 
+        /* Notepad */
         .notepad-section {
             grid-area: notepad;
             background: var(--gradient-card);
@@ -595,12 +598,13 @@
             color: var(--text-tertiary);
         }
 
+        /* Hidden state for what's new */
         .whats-new-hidden {
             display: none !important;
         }
 
-        
-        @media (max-width: 575px) {
+        /* Responsive Design */
+        @media (max-width: 1024px) {
             .main-container {
                 grid-template-columns: 1fr;
                 grid-template-areas: 
@@ -609,274 +613,39 @@
                     "features"
                     "sidebar"
                     "notepad";
-                padding: 0.75rem;
-                gap: 1rem;
-            }
-
-            .header {
-                padding: 0.75rem 1rem;
-                position: relative;
-            }
-
-            .header-content {
-                flex-direction: row;
-                gap: 0.75rem;
-                justify-content: center;
-                align-items: center;
-            }
-
-            .logo-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 12px;
-                font-size: 1.2rem;
-            }
-
-            .logo-title {
-                font-size: 1.2rem;
-                font-weight: 700;
-            }
-
-            .greeting-text {
-                display: none;
-            }
-
-            .carousel {
-                height: 200px;
-                border-radius: 20px;
-            }
-
-            .carousel-section {
-                border-radius: 20px;
-                margin-bottom: 0.5rem;
-            }
-
-            .carousel-nav {
-                width: 40px;
-                height: 40px;
-                font-size: 1rem;
-                backdrop-filter: blur(10px);
-            }
-
-            .carousel-nav.prev { left: 15px; }
-            .carousel-nav.next { right: 15px; }
-
-            .whats-new-section {
-                border-radius: 20px;
                 padding: 1.5rem;
-            }
-
-            .whats-new-header {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: flex-start;
-            }
-
-            .whats-new-title {
-                font-size: 1.1rem;
-                gap: 0.5rem;
-            }
-
-            .whats-new-badge {
-                padding: 0.2rem 0.6rem;
-                font-size: 0.75rem;
-            }
-
-            .close-whats-new {
-                position: absolute;
-                top: 1rem;
-                right: 1rem;
-                width: 28px;
-                height: 28px;
-                font-size: 1rem;
-            }
-
-            .whats-new-content {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .whats-new-item {
-                padding: 1.25rem;
-                border-radius: 14px;
-            }
-
-            .whats-new-item-icon {
-                width: 35px;
-                height: 35px;
-                border-radius: 10px;
-                font-size: 1rem;
-                margin-bottom: 0.75rem;
-            }
-
-            .whats-new-item-title {
-                font-size: 1rem;
-                margin-bottom: 0.4rem;
-            }
-
-            .whats-new-item-desc {
-                font-size: 0.85rem;
-                line-height: 1.4;
             }
 
             .features-section {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-            }
-
-            .feature-card {
-                padding: 1.5rem;
-                border-radius: 20px;
-                gap: 1rem;
-                min-height: auto;
-                transform-origin: center;
-            }
-
-            .feature-card:hover {
-                transform: translateY(-4px) scale(1.01);
-            }
-
-            .feature-card:active {
-                transform: translateY(-2px) scale(0.99);
-            }
-
-            .feature-icon {
-                width: 60px;
-                height: 60px;
-                border-radius: 16px;
-                font-size: 1.8rem;
-            }
-
-            .feature-title {
-                font-size: 1.1rem;
-                font-weight: 600;
-            }
-
-            .feature-desc {
-                font-size: 0.85rem;
-                line-height: 1.5;
-                max-width: 100%;
-            }
-
-            .sidebar {
-                gap: 1rem;
-            }
-
-            .quick-links {
-                padding: 1.5rem;
-                border-radius: 20px;
-            }
-
-            .section-title {
-                font-size: 1.1rem;
-                margin-bottom: 1.25rem;
-                padding-left: 1rem;
-            }
-
-            .section-title::before {
-                width: 4px;
-                height: 18px;
-            }
-
-            .links-grid {
-                gap: 0.75rem;
-            }
-
-            .link-card {
-                padding: 1rem;
-                border-radius: 14px;
-                gap: 1rem;
-            }
-
-            .link-card:hover {
-                transform: translateX(4px) scale(1.01);
-            }
-
-            .link-icon {
-                font-size: 1.1rem;
-                width: 35px;
-            }
-
-            .link-title {
-                font-size: 0.9rem;
-            }
-
-            .notepad-section {
-                padding: 1.5rem;
-                border-radius: 20px;
-            }
-
-            .notepad-textarea {
-                min-height: 150px;
-                padding: 1.25rem;
-                border-radius: 14px;
-                font-size: 0.9rem;
-                line-height: 1.5;
-            }
-
-            .ripple-container {
-                -webkit-tap-highlight-color: transparent;
-                touch-action: manipulation;
-            }
-
-            .feature-card,
-            .quick-links,
-            .notepad-section,
-            .carousel-section,
-            .whats-new-section {
-                animation-duration: 0.6s;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             }
         }
 
-        @media (min-width: 576px) and (max-width: 767px) {
-            .main-container {
-                grid-template-columns: 1fr;
-                grid-template-areas: 
-                    "carousel"
-                    "whats-new"
-                    "features"
-                    "sidebar"
-                    "notepad";
-                padding: 1rem;
-                gap: 1.25rem;
-            }
-
+        @media (max-width: 768px) {
             .header {
                 padding: 1rem 1.5rem;
             }
 
             .header-content {
-                flex-direction: row;
+                flex-direction: column;
                 gap: 1rem;
             }
 
-            .logo-icon {
-                width: 45px;
-                height: 45px;
-                font-size: 1.4rem;
-            }
-
-            .logo-title {
-                font-size: 1.4rem;
-            }
-
-            .carousel {
-                height: 240px;
-            }
-
             .features-section {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1.25rem;
+                grid-template-columns: 1fr;
             }
 
             .feature-card {
-                padding: 1.75rem;
+                padding: 2rem;
             }
 
-            .feature-icon {
-                width: 65px;
-                height: 65px;
-                font-size: 1.9rem;
+            .carousel {
+                height: 250px;
+            }
+
+            .main-container {
+                gap: 1.5rem;
+                padding: 1rem;
             }
 
             .whats-new-content {
@@ -884,107 +653,7 @@
             }
         }
 
-        @media (min-width: 768px) and (max-width: 1023px) {
-            .main-container {
-                grid-template-columns: 1fr;
-                grid-template-areas: 
-                    "carousel"
-                    "whats-new"
-                    "features"
-                    "sidebar"
-                    "notepad";
-                padding: 1.5rem;
-                gap: 1.5rem;
-            }
-
-            .features-section {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1.5rem;
-            }
-
-            .carousel {
-                height: 280px;
-            }
-
-            .whats-new-content {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .main-container {
-                grid-template-columns: 2fr 1fr;
-                grid-template-areas: 
-                    "carousel carousel"
-                    "whats-new whats-new"
-                    "features sidebar"
-                    "notepad sidebar";
-            }
-
-            .features-section {
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            }
-
-            .whats-new-content {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-            .feature-icon,
-            .logo-icon,
-            .whats-new-item-icon {
-                -webkit-font-smoothing: antialiased;
-                -moz-osx-font-smoothing: grayscale;
-            }
-        }
-
-        @media (max-height: 500px) and (orientation: landscape) {
-            .carousel {
-                height: 180px;
-            }
-
-            .feature-card {
-                padding: 1.25rem;
-            }
-
-            .feature-icon {
-                width: 50px;
-                height: 50px;
-                font-size: 1.5rem;
-            }
-
-            .main-container {
-                gap: 0.75rem;
-            }
-        }
-
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-                --shadow-subtle: 0 4px 16px rgba(0, 0, 0, 0.2);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-
-            .animated-bg::before,
-            .animated-bg::after {
-                animation: none;
-            }
-
-            .ripple {
-                display: none;
-            }
-        }
-
+        /* Animations */
         @keyframes slideUp {
             from {
                 opacity: 0;
@@ -1030,11 +699,6 @@
         .whats-new-item:nth-child(1) { animation-delay: 0.8s; }
         .whats-new-item:nth-child(2) { animation-delay: 0.9s; }
         .whats-new-item:nth-child(3) { animation-delay: 1s; }
-
-        #bus, #clock, #actu, #settings, #app, #mbh, #ticket {
-            cursor: pointer;
-        }
-
     </style>
 </head>
 <body>
@@ -1070,19 +734,19 @@
             </div>
             <div class="whats-new-content">
                 <div class="whats-new-item">
-                    <div class="whats-new-item-icon">➕</div>
-                    <div class="whats-new-item-title">Nouvaux réseaux</div>
-                    <div class="whats-new-item-desc">Lignes d'Azur</div>
+                    <div class="whats-new-item-icon">🎨</div>
+                    <div class="whats-new-item-title">Interface repensée</div>
+                    <div class="whats-new-item-desc">Design moderne avec effets visuels améliorés et animations fluides</div>
                 </div>
                 <div class="whats-new-item">
                     <div class="whats-new-item-icon">⚡</div>
-                    <div class="whats-new-item-title">Correction de bugs</div>
+                    <div class="whats-new-item-title">Performances optimisées</div>
                     <div class="whats-new-item-desc">Chargement plus rapide et meilleure réactivité de l'interface</div>
                 </div>
                 <div class="whats-new-item">
-                    <div class="whats-new-item-icon">📱</div>
-                    <div class="whats-new-item-title">Améliorations de interface</div>
-                    <div class="whats-new-item-desc">Ergonomie améliorée et introduction progressives d'un nouveau système de design</div>
+                    <div class="whats-new-item-icon">🔔</div>
+                    <div class="whats-new-item-title">Notifications temps réel</div>
+                    <div class="whats-new-item-desc">Alertes instantanées pour les retards et perturbations de vos lignes</div>
                 </div>
             </div>
         </section>
@@ -1144,6 +808,7 @@
     </main>
 
     <script>
+        // Ripple Effect
         function createRipple(event) {
             const button = event.currentTarget;
             const rect = button.getBoundingClientRect();
@@ -1164,6 +829,7 @@
             }, 600);
         }
 
+        // Add ripple effect to all ripple containers
         document.addEventListener('DOMContentLoaded', () => {
             const rippleElements = document.querySelectorAll('.ripple-container');
             rippleElements.forEach(element => {
@@ -1171,6 +837,7 @@
             });
         });
 
+        // What's New Section Management
         function hideWhatsNew() {
             const whatsNewSection = document.getElementById('whats-new-section');
             whatsNewSection.style.opacity = '0';
@@ -1180,6 +847,7 @@
                 whatsNewSection.classList.add('whats-new-hidden');
                 localStorage.setItem('whatsNewHidden-v2.1', 'true');
                 
+                // Adjust grid layout
                 const mainContainer = document.querySelector('.main-container');
                 mainContainer.style.gridTemplateAreas = `
                     "carousel carousel"
@@ -1195,6 +863,7 @@
                 const whatsNewSection = document.getElementById('whats-new-section');
                 whatsNewSection.classList.add('whats-new-hidden');
                 
+                // Adjust grid layout immediately
                 const mainContainer = document.querySelector('.main-container');
                 mainContainer.style.gridTemplateAreas = `
                     "carousel carousel"
@@ -1204,6 +873,7 @@
             }
         }
 
+        // Carousel functionality
         let currentSlide = 0;
         const totalSlides = document.querySelectorAll('.carousel-slide').length;
         const track = document.querySelector('.carousel-track');
@@ -1245,6 +915,7 @@
             startAutoPlay();
         }
         
+        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') {
                 changeSlide(-1);
@@ -1253,157 +924,32 @@
             }
         });
         
-        let touchStartTime = 0;
-        let touchStartPos = { x: 0, y: 0 };
+        // Touch navigation
+        let startX = 0;
+        let endX = 0;
         
         track.addEventListener('touchstart', (e) => {
             startX = e.touches[0].clientX;
-            touchStartTime = Date.now();
-            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            
-            track.style.transition = 'none';
-        }, { passive: true });
+        });
         
         track.addEventListener('touchmove', (e) => {
             endX = e.touches[0].clientX;
-            const endY = e.touches[0].clientY;
-            
-            const deltaX = Math.abs(endX - touchStartPos.x);
-            const deltaY = Math.abs(endY - touchStartPos.y);
-            
-            if (deltaX > deltaY && deltaX > 10) {
-                e.preventDefault();
-                
-                const diff = startX - endX;
-                const maxSwipe = window.innerWidth * 0.3;
-                const swipeProgress = Math.min(Math.abs(diff) / maxSwipe, 1);
-                
-                track.style.transform = `translateX(-${currentSlide * 100}%) translateX(${-diff * 0.3}px)`;
-            }
-        }, { passive: false });
+        });
         
-        track.addEventListener('touchend', (e) => {
-            const touchEndTime = Date.now();
-            const touchDuration = touchEndTime - touchStartTime;
+        track.addEventListener('touchend', () => {
             const threshold = 50;
             const diff = startX - endX;
             
-            track.style.transition = 'transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-            
-            const isQuickSwipe = touchDuration < 300 && Math.abs(diff) > 30;
-            const isLongSwipe = Math.abs(diff) > threshold;
-            
-            if (isQuickSwipe || isLongSwipe) {
+            if (Math.abs(diff) > threshold) {
                 if (diff > 0) {
                     changeSlide(1); 
                 } else {
                     changeSlide(-1); 
                 }
-            } else {
-                updateCarousel();
             }
-        }, { passive: true });
+        });
 
-        function createMobileRipple(event) {
-            const button = event.currentTarget;
-            const rect = button.getBoundingClientRect();
-            
-            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-            
-            const size = Math.max(rect.width, rect.height) * 1.2; // Slightly larger for mobile
-            const x = clientX - rect.left - size / 2;
-            const y = clientY - rect.top - size / 2;
-            
-            const ripple = document.createElement('span');
-            ripple.classList.add('ripple');
-            ripple.style.width = ripple.style.height = size + 'px';
-            ripple.style.left = x + 'px';
-            ripple.style.top = y + 'px';
-            
-            button.appendChild(ripple);
-            
-            if ('vibrate' in navigator) {
-                navigator.vibrate(10);
-            }
-            
-            setTimeout(() => {
-                ripple.remove();
-            }, 600);
-        }
-
-        function initMobileHandlers() {
-            const rippleElements = document.querySelectorAll('.ripple-container');
-            
-            rippleElements.forEach(element => {
-                element.addEventListener('touchstart', createMobileRipple, { passive: true });
-                element.addEventListener('click', createRipple);
-                
-                element.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                }, { passive: false });
-            });
-
-            const featureCards = document.querySelectorAll('.feature-card');
-            featureCards.forEach(card => {
-                card.addEventListener('touchstart', () => {
-                    card.style.transform = 'translateY(-2px) scale(0.98)';
-                }, { passive: true });
-                
-                card.addEventListener('touchend', () => {
-                    setTimeout(() => {
-                        card.style.transform = '';
-                    }, 150);
-                }, { passive: true });
-            });
-
-            if ('scrollBehavior' in document.documentElement.style) {
-                document.documentElement.style.scrollBehavior = 'smooth';
-            }
-        }
-
-        function setMobileViewportHeight() {
-            const vh = window.innerHeight * 0.01;
-            document.documentElement.style.setProperty('--vh', `${vh}px`);
-        }
-
-        function isMobileDevice() {
-            return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                   (window.innerWidth <= 768 && 'ontouchstart' in window);
-        }
-
-        function hideWhatsNewMobile() {
-            const whatsNewSection = document.getElementById('whats-new-section');
-            
-            if ('vibrate' in navigator) {
-                navigator.vibrate(15);
-            }
-            
-            whatsNewSection.style.opacity = '0';
-            whatsNewSection.style.transform = 'translateY(-20px) scale(0.95)';
-            
-            setTimeout(() => {
-                whatsNewSection.classList.add('whats-new-hidden');
-                localStorage.setItem('whatsNewHidden-v2.1', 'true');
-                
-                const mainContainer = document.querySelector('.main-container');
-                if (window.innerWidth <= 1023) {
-                    mainContainer.style.gridTemplateAreas = `
-                        "carousel"
-                        "features"
-                        "sidebar"
-                        "notepad"
-                    `;
-                } else {
-                    mainContainer.style.gridTemplateAreas = `
-                        "carousel carousel"
-                        "features sidebar"
-                        "notepad sidebar"
-                    `;
-                }
-            }, 300);
-        }
-
+        // Prevent iOS zoom on gesture
         document.addEventListener('gesturestart', function (e) {
             e.preventDefault();
         });
@@ -1414,6 +960,7 @@
             e.preventDefault();
         });
 
+        // Internationalization system
         const i18n = {
             translations: {},
             currentLang: 'fr',
@@ -1538,29 +1085,6 @@
 
         // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
-            // Mobile-specific initialization
-            if (isMobileDevice()) {
-                setMobileViewportHeight();
-                initMobileHandlers();
-                
-                // Update viewport height on orientation change
-                window.addEventListener('orientationchange', () => {
-                    setTimeout(setMobileViewportHeight, 100);
-                });
-                
-                // Update viewport height on resize (for mobile browsers that change height on scroll)
-                window.addEventListener('resize', setMobileViewportHeight);
-                
-                // Override hideWhatsNew function for mobile
-                window.hideWhatsNew = hideWhatsNewMobile;
-            } else {
-                // Desktop initialization
-                const rippleElements = document.querySelectorAll('.ripple-container');
-                rippleElements.forEach(element => {
-                    element.addEventListener('click', createRipple);
-                });
-            }
-            
             // Check what's new visibility first
             checkWhatsNewVisibility();
             
@@ -1574,11 +1098,8 @@
             initNotepad();
             initEventHandlers();
             
-            // Start carousel autoplay (with longer interval on mobile)
-            const autoPlayDelay = isMobileDevice() ? 20000 : 15000;
-            autoPlayInterval = setInterval(() => {
-                changeSlide(1);
-            }, autoPlayDelay);
+            // Start carousel autoplay
+            startAutoPlay();
         });
 
         function initEventHandlers() {
@@ -1717,6 +1238,7 @@
             setInterval(toggleGreetingLogo, 4000);
         }
 
+        // Notepad functionality
         function initNotepad() {
             const notepadElement = document.getElementById('notepad');
             let saveTimeout;
