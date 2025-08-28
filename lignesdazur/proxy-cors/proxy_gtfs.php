@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$url = 'https://www.data.gouv.fr/fr/datasets/r/47bc8088-6c72-43ad-a959-a5bbdd1aa14f';
+$url = 'https://chouette.enroute.mobi/api/v1/datas/OpendataRLA/gtfs.zip';
 
 if ($_SERVER['REQUEST_METHOD'] === 'HEAD') {
     $headers = get_headers($url, 1);
