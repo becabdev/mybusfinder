@@ -1754,6 +1754,342 @@
  <script src="../build.js"></script>
 
  <script>
+
+/**
+ * Glass Distortion Effect - Liquid Glass Style - par BecabDev
+ * Version 1.0.0
+ * 
+ * Utilisation simple :
+ * GlassDistortionAPI.apply('.ma-classe'); // Appliquer l'effet
+ * GlassDistortionAPI.remove('.ma-classe'); // Supprimer l'effet
+ * GlassDistortionAPI.setDistortion(30); // Changer l'intensité
+ * GlassDistortionAPI.setBlur(20); // Changer le flou
+ */
+
+(function() {
+    'use strict';
+
+    class GlassDistortion {
+        constructor() {
+            this.distortionIntensity = 20;
+            this.blurIntensity = 15;
+            this.glassElements = new Set();
+            this.svgId = 'glass-distortion-svg-' + Math.random().toString(36).substr(2, 9);
+            this.filterId = 'glass-distortion-filter-' + Math.random().toString(36).substr(2, 9);
+            this.backdropClass = 'glass-distortion-backdrop-' + Math.random().toString(36).substr(2, 9);
+            this.init();
+        }
+
+        init() {
+            this.createSVGFilter();
+            this.addStyles();
+        }
+
+        addStyles() {
+            const styleId = 'glass-distortion-styles';
+            if (document.getElementById(styleId)) return;
+
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .${this.backdropClass} {
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    pointer-events: none !important;
+                    z-index: -1 !important;
+                    border-radius: inherit !important;
+                    overflow: hidden !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        createSVGFilter() {
+            const existingSvg = document.getElementById(this.svgId);
+            if (existingSvg) {
+                existingSvg.remove();
+            }
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.id = this.svgId;
+            svg.setAttribute('style', 'position: absolute; width: 0; height: 0; visibility: hidden;');
+            
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+            filter.id = this.filterId;
+            filter.setAttribute('x', '-50%');
+            filter.setAttribute('y', '-50%');
+            filter.setAttribute('width', '200%');
+            filter.setAttribute('height', '200%');
+
+            const turbulence = document.createElementNS('http://www.w3.org/2000/svg', 'feTurbulence');
+            turbulence.setAttribute('baseFrequency', '0.02 0.03');
+            turbulence.setAttribute('numOctaves', '3');
+            turbulence.setAttribute('result', 'noise');
+            const displacementMap = document.createElementNS('http://www.w3.org/2000/svg', 'feDisplacementMap');
+            displacementMap.setAttribute('in', 'SourceGraphic');
+            displacementMap.setAttribute('in2', 'noise');
+            displacementMap.setAttribute('scale', this.distortionIntensity);
+            displacementMap.setAttribute('result', 'distorted');
+            const gaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+            gaussianBlur.setAttribute('in', 'distorted');
+            gaussianBlur.setAttribute('stdDeviation', this.blurIntensity);
+
+            filter.appendChild(turbulence);
+            filter.appendChild(displacementMap);
+            filter.appendChild(gaussianBlur);
+            defs.appendChild(filter);
+            svg.appendChild(defs);
+
+            if (document.body) {
+                document.body.appendChild(svg);
+            } else {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.body.appendChild(svg);
+                });
+            }
+        }
+
+        applyGlassEffect(element) {
+            if (element.querySelector('.' + this.backdropClass)) {
+                return;
+            }
+
+            if (!element.dataset.glassOriginalStyles) {
+                const computedStyles = getComputedStyle(element);
+                element.dataset.glassOriginalStyles = JSON.stringify({
+                    position: element.style.position || '',
+                    background: element.style.background || '',
+                    backgroundColor: element.style.backgroundColor || '',
+                    backgroundImage: element.style.backgroundImage || '',
+                    computedBackground: computedStyles.background,
+                    computedBackgroundColor: computedStyles.backgroundColor,
+                    computedBackgroundImage: computedStyles.backgroundImage
+                });
+            }
+
+            const currentPosition = getComputedStyle(element).position;
+            if (currentPosition === 'static') {
+                element.style.position = 'relative';
+            }
+
+            const computedStyles = getComputedStyle(element);
+            const backgroundToInherit = element.style.background || computedStyles.background;
+            const backdrop = document.createElement('div');
+            backdrop.className = this.backdropClass;
+            backdrop.style.background = backgroundToInherit;
+            backdrop.style.backdropFilter = `blur(${this.blurIntensity}px)`;
+            backdrop.style.webkitBackdropFilter = `blur(${this.blurIntensity}px)`;
+            backdrop.style.filter = `url(#${this.filterId})`;
+
+            element.insertBefore(backdrop, element.firstChild);
+
+            element.style.background = 'transparent';
+            element.style.backgroundColor = 'transparent';
+            element.style.backgroundImage = 'none';
+
+            this.glassElements.add(element);
+        }
+
+        removeGlassEffect(element) {
+            const backdrop = element.querySelector('.' + this.backdropClass);
+            if (backdrop) {
+                backdrop.remove();
+            }
+
+            if (element.dataset.glassOriginalStyles) {
+                const originalStyles = JSON.parse(element.dataset.glassOriginalStyles);
+                element.style.position = originalStyles.position;
+                element.style.background = originalStyles.background;
+                element.style.backgroundColor = originalStyles.backgroundColor;
+                element.style.backgroundImage = originalStyles.backgroundImage;
+                delete element.dataset.glassOriginalStyles;
+            }
+            
+            this.glassElements.delete(element);
+        }
+
+        updateDistortionIntensity(intensity) {
+            this.distortionIntensity = Math.max(0, Math.min(100, intensity));
+            this.createSVGFilter();
+            this.glassElements.forEach(element => {
+                const backdrop = element.querySelector('.' + this.backdropClass);
+                if (backdrop) {
+                    backdrop.style.filter = `url(#${this.filterId})`;
+                }
+            });
+        }
+
+        updateBlurIntensity(blur) {
+            this.blurIntensity = Math.max(0, Math.min(50, blur));
+            this.createSVGFilter();
+            this.glassElements.forEach(element => {
+                const backdrop = element.querySelector('.' + this.backdropClass);
+                if (backdrop) {
+                    backdrop.style.backdropFilter = `blur(${blur}px)`;
+                    backdrop.style.webkitBackdropFilter = `blur(${blur}px)`;
+                    backdrop.style.filter = `url(#${this.filterId})`;
+                }
+            });
+        }
+
+        applyToSelector(selector) {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => this.applyGlassEffect(element));
+                return elements.length;
+            } catch (error) {
+                console.warn('GlassDistortion: Sélecteur invalide -', selector);
+                return 0;
+            }
+        }
+
+        removeFromSelector(selector) {
+            try {
+                const elements = document.querySelectorAll(selector);
+                elements.forEach(element => this.removeGlassEffect(element));
+                return elements.length;
+            } catch (error) {
+                console.warn('GlassDistortion: Sélecteur invalide -', selector);
+                return 0;
+            }
+        }
+
+        removeAll() {
+            const elementsToRemove = Array.from(this.glassElements);
+            elementsToRemove.forEach(element => this.removeGlassEffect(element));
+            this.glassElements.clear();
+            return elementsToRemove.length;
+        }
+
+        destroy() {
+            this.removeAll();
+            const svg = document.getElementById(this.svgId);
+            if (svg) svg.remove();
+            const style = document.getElementById('glass-distortion-styles');
+            if (style) style.remove();
+        }
+
+        getActiveElements() {
+            return Array.from(this.glassElements);
+        }
+
+        getStats() {
+            return {
+                activeElements: this.glassElements.size,
+                distortionIntensity: this.distortionIntensity,
+                blurIntensity: this.blurIntensity
+            };
+        }
+    }
+
+    let glassEffectInstance;
+    function initGlassDistortion() {
+        if (!glassEffectInstance) {
+            glassEffectInstance = new GlassDistortion();
+        }
+        return glassEffectInstance;
+    }
+
+    window.GlassDistortionAPI = {
+        apply: function(selector) {
+            const instance = initGlassDistortion();
+            return instance.applyToSelector(selector);
+        },
+        
+
+        remove: function(selector) {
+            if (!glassEffectInstance) return 0;
+            return glassEffectInstance.removeFromSelector(selector);
+        },
+        
+
+        removeAll: function() {
+            if (!glassEffectInstance) return 0;
+            return glassEffectInstance.removeAll();
+        },
+        
+        setDistortion: function(intensity) {
+            const instance = initGlassDistortion();
+            instance.updateDistortionIntensity(intensity);
+        },
+        
+        setBlur: function(blur) {
+            const instance = initGlassDistortion();
+            instance.updateBlurIntensity(blur);
+        },
+
+        configure: function(options) {
+            const instance = initGlassDistortion();
+            if (typeof options.distortion === 'number') {
+                instance.updateDistortionIntensity(options.distortion);
+            }
+            if (typeof options.blur === 'number') {
+                instance.updateBlurIntensity(options.blur);
+            }
+        },
+
+        getStats: function() {
+            if (!glassEffectInstance) return { activeElements: 0, distortionIntensity: 20, blurIntensity: 15 };
+            return glassEffectInstance.getStats();
+        },
+
+
+        getActiveElements: function() {
+            if (!glassEffectInstance) return [];
+            return glassEffectInstance.getActiveElements();
+        },
+
+        destroy: function() {
+            if (glassEffectInstance) {
+                glassEffectInstance.destroy();
+                glassEffectInstance = null;
+            }
+        },
+
+        hasEffect: function(elementOrSelector) {
+            if (!glassEffectInstance) return false;
+            
+            let element;
+            if (typeof elementOrSelector === 'string') {
+                element = document.querySelector(elementOrSelector);
+            } else {
+                element = elementOrSelector;
+            }
+            
+            if (!element) return false;
+            return glassEffectInstance.glassElements.has(element);
+        },
+
+        version: '1.0.0'
+    };
+
+    if (typeof $ !== 'undefined') {
+        $.fn.glassDistortion = function(action, options) {
+            if (action === 'apply') {
+                this.each(function() {
+                    const instance = initGlassDistortion();
+                    instance.applyGlassEffect(this);
+                });
+            } else if (action === 'remove') {
+                this.each(function() {
+                    if (glassEffectInstance) {
+                        glassEffectInstance.removeGlassEffect(this);
+                    }
+                });
+            }
+            return this;
+        };
+    }
+
+    console.log('GlassDistortionAPI chargé avec succès - ver 1.0.0 - par BecabDev');
+})();
+
+GlassDistortionAPI.apply('.menubottom');
+
   function setAppHeight() {
     const doc = document.documentElement;
     doc.style.setProperty('--app-height', `${window.innerHeight}px`);
