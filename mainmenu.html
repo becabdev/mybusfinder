@@ -1317,7 +1317,7 @@
             initEventHandlers();
             startAutoPlay();
         });
-        
+
         function initEventHandlers() {
             document.getElementById('bus').onclick = () => {
                 setActiveNavItem('nav-map');
@@ -1354,10 +1354,6 @@
             document.getElementById('header-settings').onclick = () => {
                 setActiveNavItem('nav-more');
                 window.parent.postMessage({ type: 'settings' }, '*');
-            };
-
-            document.getElementById('header-notifications').onclick = () => {
-                window.parent.postMessage({ type: 'notifications' }, '*');
             };
 
             document.getElementById('nav-home').onclick = () => {
