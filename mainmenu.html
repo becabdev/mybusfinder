@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Bus Finder</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
         * {
             margin: 0;
@@ -14,19 +14,32 @@
         }
 
         :root {
-            --bg-primary: #0a0a0f;
+            --mobile-padding: clamp(0.75rem, 4vw, 2rem);
+            --mobile-gap: clamp(1rem, 3vw, 2rem);
+            --mobile-border-radius: clamp(16px, 4vw, 28px);
+            --mobile-font-size-sm: clamp(0.8rem, 3.5vw, 0.95rem);
+            --mobile-font-size-base: clamp(0.9rem, 4vw, 1rem);
+            --mobile-font-size-lg: clamp(1.1rem, 5vw, 1.4rem);
+            --mobile-touch-target: 44px; 
             --bg-secondary: #161621;
             --bg-card: rgba(25, 25, 40, 0.8);
             --text-primary: #e8e9f0;
             --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
             --accent: #7c3aed;
             --accent-light: #8b5cf6;
             --accent-dark: #5b21b6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --info: #3b82f6;
             --purple-glow: rgba(124, 58, 237, 0.3);
             --border: rgba(139, 92, 246, 0.2);
             --glass-bg: rgba(25, 25, 40, 0.6);
             --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
             --shadow-glow: 0 0 20px var(--purple-glow);
+            --shadow-subtle: 0 4px 16px rgba(0, 0, 0, 0.1);
+            --gradient-primary: linear-gradient(135deg, var(--accent), var(--accent-light));
+            --gradient-card: linear-gradient(135deg, rgba(25, 25, 40, 0.9), rgba(30, 30, 50, 0.8));
         }
 
         body {
@@ -36,9 +49,9 @@
             min-height: 100vh;
             overflow-x: hidden;
             position: relative;
+            line-height: 1.6;
         }
 
-        /* Animated Background */
         .animated-bg {
             position: fixed;
             top: 0;
@@ -60,8 +73,8 @@
                 radial-gradient(circle at 20% 20%, var(--accent-dark) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, var(--accent) 0%, transparent 50%),
                 radial-gradient(circle at 40% 60%, #4c1d95 0%, transparent 30%);
-            opacity: 0.1;
-            animation: float 20s ease-in-out infinite;
+            opacity: 0.12;
+            animation: float 25s ease-in-out infinite;
         }
 
         .animated-bg::after {
@@ -72,30 +85,30 @@
             width: 100%;
             height: 100%;
             background: 
-                linear-gradient(45deg, transparent 40%, rgba(124, 58, 237, 0.05) 50%, transparent 60%),
-                linear-gradient(-45deg, transparent 40%, rgba(139, 92, 246, 0.05) 50%, transparent 60%);
-            animation: slide 15s linear infinite;
+                linear-gradient(45deg, transparent 40%, rgba(124, 58, 237, 0.06) 50%, transparent 60%),
+                linear-gradient(-45deg, transparent 40%, rgba(139, 92, 246, 0.06) 50%, transparent 60%);
+            animation: slide 20s linear infinite;
         }
 
         @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(180deg); }
+            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+            33% { transform: translateY(-15px) rotate(60deg) scale(1.05); }
+            66% { transform: translateY(-30px) rotate(120deg) scale(0.95); }
         }
 
         @keyframes slide {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% { transform: translateX(-100%) translateY(-20px); }
+            100% { transform: translateX(100%) translateY(20px); }
         }
 
-        /* Header */
         .header {
             position: sticky;
             top: 0;
             z-index: 100;
             background: var(--glass-bg);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(25px);
             border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
+            padding: 1.25rem 2rem;
         }
 
         .header-content {
@@ -109,36 +122,56 @@
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 1.25rem;
         }
 
         .logo-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            width: 55px;
+            height: 55px;
+            border-radius: 16px;
+            background: var(--gradient-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            box-shadow: var(--shadow-glow);
+            font-size: 1.6rem;
+            box-shadow: var(--shadow-glow), var(--shadow-subtle);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shine 3s ease-in-out infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%); }
+            50% { transform: translateX(0) translateY(0); }
+            100% { transform: translateX(100%) translateY(100%); }
         }
 
         .logo-title {
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-size: 1.6rem;
+            font-weight: 800;
             background: linear-gradient(135deg, var(--text-primary), var(--accent-light));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
         }
 
         .greeting-text {
             font-size: 1rem;
             color: var(--text-secondary);
-            opacity: 0.8;
+            opacity: 0.9;
+            font-weight: 500;
         }
 
-        /* Main Container */
         .main-container {
             max-width: 1400px;
             margin: 0 auto;
@@ -146,34 +179,34 @@
             display: grid;
             gap: 2rem;
             grid-template-columns: 2fr 1fr;
-            grid-template-rows: auto auto 1fr;
+            grid-template-rows: auto auto auto 1fr;
             grid-template-areas: 
                 "carousel carousel"
+                "whats-new whats-new"
                 "features sidebar"
                 "notepad sidebar";
         }
 
-        /* Carousel */
         .carousel-section {
             grid-area: carousel;
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
+            background: var(--gradient-card);
+            backdrop-filter: blur(25px);
+            border-radius: 28px;
             border: 1px solid var(--border);
             overflow: hidden;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow), var(--shadow-subtle);
             position: relative;
         }
 
         .carousel {
             position: relative;
-            height: 300px;
+            height: 320px;
             overflow: hidden;
         }
 
         .carousel-track {
             display: flex;
-            transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             height: 100%;
         }
 
@@ -189,58 +222,199 @@
             object-fit: contain;
         }
 
+        .ripple-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+
         .carousel-nav {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
             background: var(--glass-bg);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(15px);
             border: 1px solid var(--border);
-            width: 45px;
-            height: 45px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--text-primary);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 10;
+            font-size: 1.2rem;
+            font-weight: 600;
         }
 
         .carousel-nav:hover {
             background: var(--accent);
             box-shadow: var(--shadow-glow);
             transform: translateY(-50%) scale(1.1);
+            border-color: var(--accent-light);
         }
 
-        .carousel-nav.prev { left: 20px; }
-        .carousel-nav.next { right: 20px; }
+        .carousel-nav.prev { left: 25px; }
+        .carousel-nav.next { right: 25px; }
 
-        /* Features Grid */
+        .whats-new-section {
+            grid-area: whats-new;
+            background: var(--gradient-card);
+            backdrop-filter: blur(25px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2rem;
+            box-shadow: var(--shadow), var(--shadow-subtle);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .whats-new-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient-primary);
+        }
+
+        .whats-new-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .whats-new-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .whats-new-badge {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+
+        .close-whats-new {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(156, 163, 175, 0.1);
+            border: 1px solid rgba(156, 163, 175, 0.2);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+        }
+
+        .close-whats-new:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            transform: scale(1.1);
+        }
+
+        .whats-new-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .whats-new-item {
+            background: rgba(139, 92, 246, 0.05);
+            border: 1px solid rgba(139, 92, 246, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .whats-new-item:hover {
+            background: rgba(139, 92, 246, 0.08);
+            border-color: rgba(139, 92, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .whats-new-item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .whats-new-item-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .whats-new-item-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
         .features-section {
             grid-area: features;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
         }
 
         .feature-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
+            background: var(--gradient-card);
+            backdrop-filter: blur(25px);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 2rem;
+            border-radius: 24px;
+            padding: 2.5rem;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            gap: 1rem;
-            box-shadow: var(--shadow);
+            gap: 1.25rem;
+            box-shadow: var(--shadow), var(--shadow-subtle);
         }
 
         .feature-card::before {
@@ -252,13 +426,13 @@
             height: 100%;
             background: linear-gradient(135deg, var(--purple-glow), transparent);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.4s ease;
         }
 
         .feature-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-8px) scale(1.02);
             border-color: var(--accent);
-            box-shadow: var(--shadow-glow), var(--shadow);
+            box-shadow: var(--shadow-glow), 0 20px 40px rgba(0, 0, 0, 0.2);
         }
 
         .feature-card:hover::before {
@@ -266,40 +440,41 @@
         }
 
         .feature-card:active {
-            transform: translateY(-2px);
+            transform: translateY(-4px) scale(1.01);
         }
 
         .feature-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            width: 80px;
+            height: 80px;
+            border-radius: 22px;
+            background: var(--gradient-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            box-shadow: var(--shadow-glow);
+            font-size: 2.2rem;
+            box-shadow: var(--shadow-glow), var(--shadow-subtle);
             position: relative;
             z-index: 2;
         }
 
         .feature-title {
-            font-size: 1.2rem;
-            font-weight: 600;
+            font-size: 1.3rem;
+            font-weight: 700;
             color: var(--text-primary);
             position: relative;
             z-index: 2;
+            letter-spacing: -0.01em;
         }
 
         .feature-desc {
             color: var(--text-secondary);
-            font-size: 0.9rem;
-            line-height: 1.5;
+            font-size: 0.95rem;
+            line-height: 1.6;
             position: relative;
             z-index: 2;
+            max-width: 90%;
         }
 
-        /* Sidebar */
         .sidebar {
             grid-area: sidebar;
             display: flex;
@@ -308,21 +483,22 @@
         }
 
         .quick-links {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
+            background: var(--gradient-card);
+            backdrop-filter: blur(25px);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: var(--shadow);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: var(--shadow), var(--shadow-subtle);
         }
 
         .section-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
             color: var(--text-primary);
             position: relative;
-            padding-left: 1rem;
+            padding-left: 1.25rem;
+            letter-spacing: -0.01em;
         }
 
         .section-title::before {
@@ -331,133 +507,488 @@
             left: 0;
             top: 50%;
             transform: translateY(-50%);
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
-            border-radius: 2px;
+            width: 5px;
+            height: 24px;
+            background: var(--gradient-primary);
+            border-radius: 3px;
         }
 
         .links-grid {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.25rem;
         }
 
         .link-card {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            border-radius: 12px;
+            gap: 1.25rem;
+            padding: 1.25rem;
+            border-radius: 16px;
             background: rgba(124, 58, 237, 0.05);
-            border: 1px solid transparent;
+            border: 1px solid rgba(124, 58, 237, 0.1);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
 
         .link-card:hover {
             background: var(--accent);
             color: white;
-            transform: translateX(5px);
+            transform: translateX(8px) scale(1.02);
             box-shadow: var(--shadow-glow);
+            border-color: var(--accent-light);
         }
 
         .link-icon {
-            font-size: 1.2rem;
-            width: 35px;
+            font-size: 1.3rem;
+            width: 40px;
             text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .link-card:hover .link-icon {
+            transform: scale(1.1);
         }
 
         .link-title {
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 1rem;
         }
 
-        /* Notepad */
         .notepad-section {
             grid-area: notepad;
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
+            background: var(--gradient-card);
+            backdrop-filter: blur(25px);
             border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: var(--shadow);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: var(--shadow), var(--shadow-subtle);
             display: flex;
             flex-direction: column;
         }
 
         .notepad-textarea {
             flex: 1;
-            min-height: 200px;
+            min-height: 220px;
             background: rgba(139, 92, 246, 0.05);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
+            border: 2px solid rgba(139, 92, 246, 0.1);
+            border-radius: 16px;
+            padding: 1.75rem;
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
+            line-height: 1.6;
             resize: none;
             outline: none;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .notepad-textarea:focus {
             border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--purple-glow);
+            box-shadow: 0 0 0 4px var(--purple-glow);
+            background: rgba(139, 92, 246, 0.08);
         }
 
         .notepad-textarea::placeholder {
-            color: var(--text-secondary);
+            color: var(--text-tertiary);
         }
 
-        /* Responsive Design */
-        @media (max-width: 1024px) {
+        .whats-new-hidden {
+            display: none !important;
+        }
+
+        
+        @media (max-width: 575px) {
             .main-container {
                 grid-template-columns: 1fr;
                 grid-template-areas: 
                     "carousel"
+                    "whats-new"
                     "features"
                     "sidebar"
                     "notepad";
-                padding: 1rem;
-            }
-
-            .features-section {
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            }
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 1rem;
-            }
-
-            .header-content {
-                flex-direction: column;
+                padding: 0.75rem;
                 gap: 1rem;
             }
 
-            .features-section {
-                grid-template-columns: 1fr;
+            .header {
+                padding: 0.75rem 1rem;
+                position: relative;
             }
 
-            .feature-card {
-                padding: 1.5rem;
+            .header-content {
+                flex-direction: row;
+                gap: 0.75rem;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                font-size: 1.2rem;
+            }
+
+            .logo-title {
+                font-size: 1.2rem;
+                font-weight: 700;
+            }
+
+            .greeting-text {
+                display: none;
             }
 
             .carousel {
                 height: 200px;
+                border-radius: 20px;
             }
 
-            .main-container {
-                gap: 1.5rem;
+            .carousel-section {
+                border-radius: 20px;
+                margin-bottom: 0.5rem;
+            }
+
+            .carousel-nav {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+                backdrop-filter: blur(10px);
+            }
+
+            .carousel-nav.prev { left: 15px; }
+            .carousel-nav.next { right: 15px; }
+
+            .whats-new-section {
+                border-radius: 20px;
+                padding: 1.5rem;
+            }
+
+            .whats-new-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+
+            .whats-new-title {
+                font-size: 1.1rem;
+                gap: 0.5rem;
+            }
+
+            .whats-new-badge {
+                padding: 0.2rem 0.6rem;
+                font-size: 0.75rem;
+            }
+
+            .close-whats-new {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                width: 28px;
+                height: 28px;
+                font-size: 1rem;
+            }
+
+            .whats-new-content {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .whats-new-item {
+                padding: 1.25rem;
+                border-radius: 14px;
+            }
+
+            .whats-new-item-icon {
+                width: 35px;
+                height: 35px;
+                border-radius: 10px;
+                font-size: 1rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .whats-new-item-title {
+                font-size: 1rem;
+                margin-bottom: 0.4rem;
+            }
+
+            .whats-new-item-desc {
+                font-size: 0.85rem;
+                line-height: 1.4;
+            }
+
+            .features-section {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .feature-card {
+                padding: 1.5rem;
+                border-radius: 20px;
+                gap: 1rem;
+                min-height: auto;
+                transform-origin: center;
+            }
+
+            .feature-card:hover {
+                transform: translateY(-4px) scale(1.01);
+            }
+
+            .feature-card:active {
+                transform: translateY(-2px) scale(0.99);
+            }
+
+            .feature-icon {
+                width: 60px;
+                height: 60px;
+                border-radius: 16px;
+                font-size: 1.8rem;
+            }
+
+            .feature-title {
+                font-size: 1.1rem;
+                font-weight: 600;
+            }
+
+            .feature-desc {
+                font-size: 0.85rem;
+                line-height: 1.5;
+                max-width: 100%;
+            }
+
+            .sidebar {
+                gap: 1rem;
+            }
+
+            .quick-links {
+                padding: 1.5rem;
+                border-radius: 20px;
+            }
+
+            .section-title {
+                font-size: 1.1rem;
+                margin-bottom: 1.25rem;
+                padding-left: 1rem;
+            }
+
+            .section-title::before {
+                width: 4px;
+                height: 18px;
+            }
+
+            .links-grid {
+                gap: 0.75rem;
+            }
+
+            .link-card {
+                padding: 1rem;
+                border-radius: 14px;
+                gap: 1rem;
+            }
+
+            .link-card:hover {
+                transform: translateX(4px) scale(1.01);
+            }
+
+            .link-icon {
+                font-size: 1.1rem;
+                width: 35px;
+            }
+
+            .link-title {
+                font-size: 0.9rem;
+            }
+
+            .notepad-section {
+                padding: 1.5rem;
+                border-radius: 20px;
+            }
+
+            .notepad-textarea {
+                min-height: 150px;
+                padding: 1.25rem;
+                border-radius: 14px;
+                font-size: 0.9rem;
+                line-height: 1.5;
+            }
+
+            .ripple-container {
+                -webkit-tap-highlight-color: transparent;
+                touch-action: manipulation;
+            }
+
+            .feature-card,
+            .quick-links,
+            .notepad-section,
+            .carousel-section,
+            .whats-new-section {
+                animation-duration: 0.6s;
             }
         }
 
-        /* Animations */
+        @media (min-width: 576px) and (max-width: 767px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "carousel"
+                    "whats-new"
+                    "features"
+                    "sidebar"
+                    "notepad";
+                padding: 1rem;
+                gap: 1.25rem;
+            }
+
+            .header {
+                padding: 1rem 1.5rem;
+            }
+
+            .header-content {
+                flex-direction: row;
+                gap: 1rem;
+            }
+
+            .logo-icon {
+                width: 45px;
+                height: 45px;
+                font-size: 1.4rem;
+            }
+
+            .logo-title {
+                font-size: 1.4rem;
+            }
+
+            .carousel {
+                height: 240px;
+            }
+
+            .features-section {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.25rem;
+            }
+
+            .feature-card {
+                padding: 1.75rem;
+            }
+
+            .feature-icon {
+                width: 65px;
+                height: 65px;
+                font-size: 1.9rem;
+            }
+
+            .whats-new-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-areas: 
+                    "carousel"
+                    "whats-new"
+                    "features"
+                    "sidebar"
+                    "notepad";
+                padding: 1.5rem;
+                gap: 1.5rem;
+            }
+
+            .features-section {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem;
+            }
+
+            .carousel {
+                height: 280px;
+            }
+
+            .whats-new-content {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .main-container {
+                grid-template-columns: 2fr 1fr;
+                grid-template-areas: 
+                    "carousel carousel"
+                    "whats-new whats-new"
+                    "features sidebar"
+                    "notepad sidebar";
+            }
+
+            .features-section {
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            }
+
+            .whats-new-content {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .feature-icon,
+            .logo-icon,
+            .whats-new-item-icon {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+        }
+
+        @media (max-height: 500px) and (orientation: landscape) {
+            .carousel {
+                height: 180px;
+            }
+
+            .feature-card {
+                padding: 1.25rem;
+            }
+
+            .feature-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+            }
+
+            .main-container {
+                gap: 0.75rem;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+                --shadow-subtle: 0 4px 16px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .animated-bg::before,
+            .animated-bg::after {
+                animation: none;
+            }
+
+            .ripple {
+                display: none;
+            }
+        }
+
         @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: translateY(40px);
             }
             to {
                 opacity: 1;
@@ -465,19 +996,40 @@
             }
         }
 
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
         .feature-card,
         .quick-links,
         .notepad-section,
-        .carousel-section {
-            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        .carousel-section,
+        .whats-new-section {
+            animation: slideUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
         }
 
         .feature-card:nth-child(1) { animation-delay: 0.1s; }
         .feature-card:nth-child(2) { animation-delay: 0.2s; }
         .feature-card:nth-child(3) { animation-delay: 0.3s; }
         .feature-card:nth-child(4) { animation-delay: 0.4s; }
+        .whats-new-section { animation-delay: 0.15s; }
         .quick-links { animation-delay: 0.5s; }
         .notepad-section { animation-delay: 0.6s; }
+
+        .whats-new-item {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .whats-new-item:nth-child(1) { animation-delay: 0.8s; }
+        .whats-new-item:nth-child(2) { animation-delay: 0.9s; }
+        .whats-new-item:nth-child(3) { animation-delay: 1s; }
     </style>
 </head>
 <body>
@@ -497,34 +1049,62 @@
                         <img src="../ads/3.jpg" alt="Pub 3">
                     </div>
                 </div>
-                <button class="carousel-nav prev" onclick="changeSlide(-1)">‹</button>
-                <button class="carousel-nav next" onclick="changeSlide(1)">›</button>
+                <button class="carousel-nav prev ripple-container" onclick="changeSlide(-1)">‹</button>
+                <button class="carousel-nav next ripple-container" onclick="changeSlide(1)">›</button>
+            </div>
+        </section>
+
+        <section id="whats-new-section" class="whats-new-section">
+            <div class="whats-new-header">
+                <div class="whats-new-title">
+                    <span>🎉</span>
+                    Nouveautés de cette version
+                    <div class="whats-new-badge">v2.1</div>
+                </div>
+                <button class="close-whats-new ripple-container" onclick="hideWhatsNew()">×</button>
+            </div>
+            <div class="whats-new-content">
+                <div class="whats-new-item">
+                    <div class="whats-new-item-icon">➕</div>
+                    <div class="whats-new-item-title">Nouvaux réseaux</div>
+                    <div class="whats-new-item-desc">Lignes d'Azur</div>
+                </div>
+                <div class="whats-new-item">
+                    <div class="whats-new-item-icon">⚡</div>
+                    <div class="whats-new-item-title">Correction de bugs</div>
+                    <div class="whats-new-item-desc">Chargement plus rapide et meilleure réactivité de l'interface</div>
+                </div>
+                <div class="whats-new-item">
+                    <div class="whats-new-item-icon">📱</div>
+                    <div class="whats-new-item-title">Améliorations de interface</div>
+                    <div class="whats-new-item-desc">Ergonomie améliorée et introduction progressives d'un nouveau système de design</div>
+                </div>
             </div>
         </section>
 
         <section class="features-section">
-            <div id="bus" class="feature-card">
+            <div id="bus" class="feature-card ripple-container">
                 <div class="feature-icon">🚌</div>
                 <div class="feature-title">Localiser un bus</div>
-                <div class="feature-desc">Trouvez facilement votre bus et ses horaires en temps réel</div>
+                <div class="feature-desc">Trouvez facilement votre bus et ses horaires en temps réel avec géolocalisation précise</div>
             </div>
 
-            <div id="clock" class="feature-card">
+            <div id="clock" class="feature-card ripple-container">
                 <div class="feature-icon">⏰</div>
                 <div class="feature-title">Horaires</div>
-                <div class="feature-desc">Fiches horaires théoriques et temps-réel</div>
+                <div class="feature-desc">Fiches horaires théoriques et temps-réel avec prédictions intelligentes</div>
             </div>
 
-            <div id="ticket" class="feature-card">
+            <div id="ticket" class="feature-card ripple-container">
                 <div class="feature-icon">🎫</div>
                 <div class="feature-title">Recharger votre titre</div>
-                <div class="feature-desc">Rechargez votre abonnement via le portail officiel</div>
+                <div class="feature-desc">Rechargez votre abonnement via le portail officiel en toute sécurité</div>
             </div>
 
-            <div id="actu" class="feature-card">
+            <div id="actu" class="feature-card ripple-container">
                 <div class="feature-icon">📰</div>
                 <div class="feature-title">Actualités</div>
-                <div class="feature-desc">Informations et déviations des transports par ligne</div>
+                <div class="feature-desc">Informations et déviations des transports par ligne avec notifications push</div>
             </div>
         </section>
 
@@ -532,19 +1112,19 @@
             <div class="quick-links">
                 <h2 class="section-title">Accès rapide</h2>
                 <div class="links-grid">
-                    <div id="settings" class="link-card">
+                    <div id="settings" class="link-card ripple-container">
                         <div class="link-icon">⚙️</div>
                         <div class="link-title">Paramètres</div>
                     </div>
-                    <div id="app" class="link-card">
+                    <div id="app" class="link-card ripple-container">
                         <div class="link-icon">📱</div>
                         <div class="link-title">Application mobile</div>
                     </div>
-                    <div id="mbh" class="link-card">
+                    <div id="mbh" class="link-card ripple-container">
                         <div class="link-icon">🚇</div>
                         <div class="link-title">My Bus History</div>
                     </div>
-                    <div id="mybusfinderhome" class="link-card" onclick="window.open('https://mybusfinder.fr', '_blank')">
+                    <div id="mybusfinderhome" class="link-card ripple-container" onclick="window.open('https://mybusfinder.fr', '_blank')">
                         <div class="link-icon">🏠</div>
                         <div class="link-title">mybusfinder.fr</div>
                     </div>
@@ -554,13 +1134,72 @@
 
         <section class="notepad-section">
             <h2 class="section-title">Bloc-notes</h2>
-            <textarea id="notepad" class="notepad-textarea" placeholder="Écrivez vos notes ici..."></textarea>
+            <textarea id="notepad" class="notepad-textarea" placeholder="Écrivez vos notes ici... ✨"></textarea>
         </section>
     </main>
 
     <script>
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const rect = button.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = event.clientX - rect.left - size / 2;
+            const y = event.clientY - rect.top - size / 2;
+            
+            const ripple = document.createElement('span');
+            ripple.classList.add('ripple');
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            
+            button.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        }
 
-                let currentSlide = 0;
+        document.addEventListener('DOMContentLoaded', () => {
+            const rippleElements = document.querySelectorAll('.ripple-container');
+            rippleElements.forEach(element => {
+                element.addEventListener('click', createRipple);
+            });
+        });
+
+        function hideWhatsNew() {
+            const whatsNewSection = document.getElementById('whats-new-section');
+            whatsNewSection.style.opacity = '0';
+            whatsNewSection.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                whatsNewSection.classList.add('whats-new-hidden');
+                localStorage.setItem('whatsNewHidden-v2.1', 'true');
+                
+                const mainContainer = document.querySelector('.main-container');
+                mainContainer.style.gridTemplateAreas = `
+                    "carousel carousel"
+                    "features sidebar"
+                    "notepad sidebar"
+                `;
+            }, 300);
+        }
+
+        function checkWhatsNewVisibility() {
+            const isHidden = localStorage.getItem('whatsNewHidden-v2.1');
+            if (isHidden === 'true') {
+                const whatsNewSection = document.getElementById('whats-new-section');
+                whatsNewSection.classList.add('whats-new-hidden');
+                
+                const mainContainer = document.querySelector('.main-container');
+                mainContainer.style.gridTemplateAreas = `
+                    "carousel carousel"
+                    "features sidebar"
+                    "notepad sidebar"
+                `;
+            }
+        }
+
+        let currentSlide = 0;
         const totalSlides = document.querySelectorAll('.carousel-slide').length;
         const track = document.querySelector('.carousel-track');
         
@@ -569,8 +1208,6 @@
         function updateCarousel() {
             const slideWidth = 100;
             track.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
-            
-            document.getElementById('current-slide').textContent = currentSlide + 1;
         }
         
         function changeSlide(direction) {
@@ -600,6 +1237,7 @@
         
         function resetAutoPlay() {
             clearInterval(autoPlayInterval);
+            startAutoPlay();
         }
         
         document.addEventListener('keydown', (e) => {
@@ -610,42 +1248,166 @@
             }
         });
         
-        let startX = 0;
-        let endX = 0;
+        let touchStartTime = 0;
+        let touchStartPos = { x: 0, y: 0 };
         
         track.addEventListener('touchstart', (e) => {
             startX = e.touches[0].clientX;
-        });
+            touchStartTime = Date.now();
+            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            
+            track.style.transition = 'none';
+        }, { passive: true });
         
         track.addEventListener('touchmove', (e) => {
             endX = e.touches[0].clientX;
-        });
+            const endY = e.touches[0].clientY;
+            
+            const deltaX = Math.abs(endX - touchStartPos.x);
+            const deltaY = Math.abs(endY - touchStartPos.y);
+            
+            if (deltaX > deltaY && deltaX > 10) {
+                e.preventDefault();
+                
+                const diff = startX - endX;
+                const maxSwipe = window.innerWidth * 0.3;
+                const swipeProgress = Math.min(Math.abs(diff) / maxSwipe, 1);
+                
+                track.style.transform = `translateX(-${currentSlide * 100}%) translateX(${-diff * 0.3}px)`;
+            }
+        }, { passive: false });
         
-        track.addEventListener('touchend', () => {
+        track.addEventListener('touchend', (e) => {
+            const touchEndTime = Date.now();
+            const touchDuration = touchEndTime - touchStartTime;
             const threshold = 50;
             const diff = startX - endX;
             
-            if (Math.abs(diff) > threshold) {
+            track.style.transition = 'transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            
+            const isQuickSwipe = touchDuration < 300 && Math.abs(diff) > 30;
+            const isLongSwipe = Math.abs(diff) > threshold;
+            
+            if (isQuickSwipe || isLongSwipe) {
                 if (diff > 0) {
                     changeSlide(1); 
                 } else {
                     changeSlide(-1); 
                 }
+            } else {
+                updateCarousel();
             }
-        });
-        
-        const carouselContainer = document.querySelector('.carousel-container');
-        
+        }, { passive: true });
 
-    document.addEventListener('gesturestart', function (e) {
-    e.preventDefault();
-    });
-    document.addEventListener('gesturechange', function (e) {
-    e.preventDefault();
-    });
-    document.addEventListener('gestureend', function (e) {
-    e.preventDefault();
-    });
+        function createMobileRipple(event) {
+            const button = event.currentTarget;
+            const rect = button.getBoundingClientRect();
+            
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+            
+            const size = Math.max(rect.width, rect.height) * 1.2; // Slightly larger for mobile
+            const x = clientX - rect.left - size / 2;
+            const y = clientY - rect.top - size / 2;
+            
+            const ripple = document.createElement('span');
+            ripple.classList.add('ripple');
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            
+            button.appendChild(ripple);
+            
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10);
+            }
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        }
+
+        function initMobileHandlers() {
+            const rippleElements = document.querySelectorAll('.ripple-container');
+            
+            rippleElements.forEach(element => {
+                element.addEventListener('touchstart', createMobileRipple, { passive: true });
+                element.addEventListener('click', createRipple);
+                
+                element.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+            });
+
+            const featureCards = document.querySelectorAll('.feature-card');
+            featureCards.forEach(card => {
+                card.addEventListener('touchstart', () => {
+                    card.style.transform = 'translateY(-2px) scale(0.98)';
+                }, { passive: true });
+                
+                card.addEventListener('touchend', () => {
+                    setTimeout(() => {
+                        card.style.transform = '';
+                    }, 150);
+                }, { passive: true });
+            });
+
+            if ('scrollBehavior' in document.documentElement.style) {
+                document.documentElement.style.scrollBehavior = 'smooth';
+            }
+        }
+
+        function setMobileViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+
+        function isMobileDevice() {
+            return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   (window.innerWidth <= 768 && 'ontouchstart' in window);
+        }
+
+        function hideWhatsNewMobile() {
+            const whatsNewSection = document.getElementById('whats-new-section');
+            
+            if ('vibrate' in navigator) {
+                navigator.vibrate(15);
+            }
+            
+            whatsNewSection.style.opacity = '0';
+            whatsNewSection.style.transform = 'translateY(-20px) scale(0.95)';
+            
+            setTimeout(() => {
+                whatsNewSection.classList.add('whats-new-hidden');
+                localStorage.setItem('whatsNewHidden-v2.1', 'true');
+                
+                const mainContainer = document.querySelector('.main-container');
+                if (window.innerWidth <= 1023) {
+                    mainContainer.style.gridTemplateAreas = `
+                        "carousel"
+                        "features"
+                        "sidebar"
+                        "notepad"
+                    `;
+                } else {
+                    mainContainer.style.gridTemplateAreas = `
+                        "carousel carousel"
+                        "features sidebar"
+                        "notepad sidebar"
+                    `;
+                }
+            }, 300);
+        }
+
+        document.addEventListener('gesturestart', function (e) {
+            e.preventDefault();
+        });
+        document.addEventListener('gesturechange', function (e) {
+            e.preventDefault();
+        });
+        document.addEventListener('gestureend', function (e) {
+            e.preventDefault();
+        });
 
         const i18n = {
             translations: {},
@@ -769,14 +1531,49 @@
             });
         }
 
+        // Initialize everything when DOM is loaded
         document.addEventListener('DOMContentLoaded', async () => {
+            // Mobile-specific initialization
+            if (isMobileDevice()) {
+                setMobileViewportHeight();
+                initMobileHandlers();
+                
+                // Update viewport height on orientation change
+                window.addEventListener('orientationchange', () => {
+                    setTimeout(setMobileViewportHeight, 100);
+                });
+                
+                // Update viewport height on resize (for mobile browsers that change height on scroll)
+                window.addEventListener('resize', setMobileViewportHeight);
+                
+                // Override hideWhatsNew function for mobile
+                window.hideWhatsNew = hideWhatsNewMobile;
+            } else {
+                // Desktop initialization
+                const rippleElements = document.querySelectorAll('.ripple-container');
+                rippleElements.forEach(element => {
+                    element.addEventListener('click', createRipple);
+                });
+            }
+            
+            // Check what's new visibility first
+            checkWhatsNewVisibility();
+            
+            // Initialize translations
             await i18n.init();
             await waitForTranslations();
             i18n.applyTranslations();
             
+            // Initialize other components
             initGreeting();
             initNotepad();
             initEventHandlers();
+            
+            // Start carousel autoplay (with longer interval on mobile)
+            const autoPlayDelay = isMobileDevice() ? 20000 : 15000;
+            autoPlayInterval = setInterval(() => {
+                changeSlide(1);
+            }, autoPlayDelay);
         });
 
         function initEventHandlers() {
@@ -787,7 +1584,6 @@
             const app = document.getElementById('app');
             const mbh = document.getElementById('mbh');
             const ticket = document.getElementById('ticket');
-
 
             bus.onclick = () => {
                 window.parent.postMessage({ type: 'openmap' }, '*');
@@ -818,51 +1614,51 @@
             };
         }
 
-        // Greeting system - fixed to wait for translations
+        // Greeting system
         async function initGreeting() {
             await waitForTranslations();
             
             function getGreetings() {
                 return {
                     morning: [
-                        i18n.t("greetings-morning1"),
-                        i18n.t("greetings-morning2"),
-                        i18n.t("greetings-morning3"),
-                        i18n.t("greetings-morning4"),
-                        i18n.t("greetings-morning5"),
-                        i18n.t("greetings-morning6"),
+                        i18n.t("greetings-morning1") || "Bonjour ! Prêt pour une nouvelle journée ?",
+                        i18n.t("greetings-morning2") || "Bon matin ! Comment allez-vous aujourd'hui ?",
+                        i18n.t("greetings-morning3") || "Salut ! Belle journée qui commence !",
+                        i18n.t("greetings-morning4") || "Bonjour ! Que cette journée vous soit favorable !",
+                        i18n.t("greetings-morning5") || "Hello ! Prêt à conquérir cette journée ?",
+                        i18n.t("greetings-morning6") || "Bonjour ! L'aventure du jour commence !",
                     ],
                     midday: [
-                        i18n.t("greetings-midday1"),
-                        i18n.t("greetings-midday2"),
-                        i18n.t("greetings-midday3"),
-                        i18n.t("greetings-midday4"),
-                        i18n.t("greetings-midday5"),
-                        i18n.t("greetings-midday6"),
+                        i18n.t("greetings-midday1") || "Bon appétit ! C'est l'heure du déjeuner !",
+                        i18n.t("greetings-midday2") || "Salut ! Comment se passe votre midi ?",
+                        i18n.t("greetings-midday3") || "Bonjour ! Pause déjeuner bien méritée ?",
+                        i18n.t("greetings-midday4") || "Hello ! Profitez bien de votre pause !",
+                        i18n.t("greetings-midday5") || "Salut ! Comment va cette mi-journée ?",
+                        i18n.t("greetings-midday6") || "Bonjour ! Prenez le temps de souffler !",
                     ],
                     afternoon: [
-                        i18n.t("greetings-afternoon1"),
-                        i18n.t("greetings-afternoon2"),
-                        i18n.t("greetings-afternoon3"),
-                        i18n.t("greetings-afternoon4"),
-                        i18n.t("greetings-afternoon5"),
-                        i18n.t("greetings-afternoon6"),
+                        i18n.t("greetings-afternoon1") || "Bon après-midi ! Comment ça va ?",
+                        i18n.t("greetings-afternoon2") || "Salut ! Bel après-midi n'est-ce pas ?",
+                        i18n.t("greetings-afternoon3") || "Hello ! L'après-midi bat son plein !",
+                        i18n.t("greetings-afternoon4") || "Bonjour ! Comment se déroule votre journée ?",
+                        i18n.t("greetings-afternoon5") || "Salut ! Profitez bien de cet après-midi !",
+                        i18n.t("greetings-afternoon6") || "Hello ! Une belle après-midi pour voyager !",
                     ],
                     evening: [
-                        i18n.t("greetings-evening1"),
-                        i18n.t("greetings-evening2"),
-                        i18n.t("greetings-evening3"),
-                        i18n.t("greetings-evening4"),
-                        i18n.t("greetings-evening5"),
-                        i18n.t("greetings-evening6"),
+                        i18n.t("greetings-evening1") || "Bonsoir ! Comment s'est passée votre journée ?",
+                        i18n.t("greetings-evening2") || "Salut ! Belle soirée qui commence !",
+                        i18n.t("greetings-evening3") || "Bonsoir ! Prêt pour la soirée ?",
+                        i18n.t("greetings-evening4") || "Hello ! Time to relax après cette journée !",
+                        i18n.t("greetings-evening5") || "Bonsoir ! Comment allez-vous ce soir ?",
+                        i18n.t("greetings-evening6") || "Salut ! Bonne fin de journée !",
                     ],
                     night: [
-                        i18n.t("greetings-night1"),
-                        i18n.t("greetings-night2"),
-                        i18n.t("greetings-night3"),
-                        i18n.t("greetings-night4"),
-                        i18n.t("greetings-night5"),
-                        i18n.t("greetings-night6"),
+                        i18n.t("greetings-night1") || "Bonne soirée ! Rentrez bien !",
+                        i18n.t("greetings-night2") || "Bonsoir ! Nuit calme et paisible !",
+                        i18n.t("greetings-night3") || "Hello ! Voyagez en sécurité ce soir !",
+                        i18n.t("greetings-night4") || "Bonsoir ! Prenez soin de vous !",
+                        i18n.t("greetings-night5") || "Salut ! Bonne nuit quand vous y serez !",
+                        i18n.t("greetings-night6") || "Bonsoir ! Safe travels tonight !",
                     ]
                 };
             }
@@ -893,28 +1689,28 @@
 
             function updateGreeting() {
                 const greetingElement = document.getElementById('greeting');
-                greetingElement.textContent = getRandomGreeting();
+                if (greetingElement) {
+                    greetingElement.textContent = getRandomGreeting();
+                }
             }
 
-        function toggleGreetingLogo() {
-            const greetingElement = document.getElementById('greeting');
-            const logoElement = document.getElementById('logo');
-            
-            if (greetingElement.style.opacity !== '0') {
-                greetingElement.style.opacity = '0';
-                setTimeout(() => {
-                    logoElement.style.opacity = '1';
-                }, 500);
+            function toggleGreetingLogo() {
+                const greetingElement = document.getElementById('greeting');
+                const logoElement = document.getElementById('logo');
+                
+                if (greetingElement && logoElement) {
+                    if (greetingElement.style.opacity !== '0') {
+                        greetingElement.style.opacity = '0';
+                        setTimeout(() => {
+                            logoElement.style.opacity = '1';
+                        }, 500);
+                    }
+                }
             }
+
+            updateGreeting();
+            setInterval(toggleGreetingLogo, 4000);
         }
-
-        setInterval(toggleGreetingLogo, 4000);
-        updateGreeting();
-
-        };
-
-
-
 
         function initNotepad() {
             const notepadElement = document.getElementById('notepad');
@@ -926,7 +1722,6 @@
             }
             
             notepadElement.addEventListener('input', () => {
-                
                 clearTimeout(saveTimeout);
                 
                 saveTimeout = setTimeout(() => {
@@ -934,12 +1729,6 @@
                 }, 1000);
             });
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            
-            initNotepad();
-        });
     </script>
 </body>
 </html>
