@@ -1308,12 +1308,16 @@
 
 
         document.addEventListener('DOMContentLoaded', async () => {
+            await i18n.init();
+            await waitForTranslations();
+            i18n.applyTranslations();
+            
             initGreeting();
             initNotepad();
             initEventHandlers();
             startAutoPlay();
         });
-
+        
         function initEventHandlers() {
             document.getElementById('bus').onclick = () => {
                 setActiveNavItem('nav-map');
