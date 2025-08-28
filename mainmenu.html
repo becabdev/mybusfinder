@@ -902,18 +902,17 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
-                <div class="logo-icon">🚌</div>
+                <div class="logo-icon">
+                    <img src="./src/logow.png"></img>
+                </div>
                 <div class="logo-text">
                     <div class="logo-title">My Bus Finder</div>
-                    <div class="greeting-text" id="greeting">Bonjour ! Belle journée qui commence !</div>
+                    <div class="greeting-text" id="greeting">Bonjour ! </div>
                 </div>
             </div>
             <div class="header-actions">
                 <div class="header-action ripple-container" id="header-settings" title="Paramètres">
                     ⚙️
-                </div>
-                <div class="header-action ripple-container" id="header-notifications" title="Notifications">
-                    🔔
                 </div>
             </div>
         </div>
@@ -947,7 +946,7 @@
             <div class="whats-new-header">
                 <div class="whats-new-title">
                     🎉 Nouveautés de cette version
-                    <div class="whats-new-badge">v2.1</div>
+                    <div class="whats-new-badge">v3.1</div>
                 </div>
                 <button class="close-whats-new ripple-container" onclick="hideWhatsNew()">×</button>
             </div>
@@ -957,21 +956,21 @@
                         <div class="whats-new-item-icon">🎨</div>
                         <div class="whats-new-item-title">Interface repensée</div>
                     </div>
-                    <div class="whats-new-item-desc">Design moderne optimisé mobile avec navigation tactile améliorée</div>
+                    <div class="whats-new-item-desc">Amélioration du design vers des couleurs plus uniformes ainsi qu'une meilleures ergonomie</div>
                 </div>
                 <div class="whats-new-item">
                     <div class="whats-new-item-header">
                         <div class="whats-new-item-icon">⚡</div>
                         <div class="whats-new-item-title">Performances optimisées</div>
                     </div>
-                    <div class="whats-new-item-desc">Chargement plus rapide et interactions fluides sur tous les appareils</div>
+                    <div class="whats-new-item-desc">Chargement plus rapide et interactions + fluides sur tous les appareils</div>
                 </div>
                 <div class="whats-new-item">
                     <div class="whats-new-item-header">
                         <div class="whats-new-item-icon">📱</div>
-                        <div class="whats-new-item-title">Navigation mobile</div>
+                        <div class="whats-new-item-title">Nouveau réseau</div>
                     </div>
-                    <div class="whats-new-item-desc">Nouvelle barre de navigation inférieure pour un accès rapide</div>
+                    <div class="whats-new-item-desc">Lignes d'Azur</div>
                 </div>
             </div>
         </section>
@@ -1188,11 +1187,125 @@
         const i18n = {
             translations: {},
             currentLang: 'fr',
+            supportedLanguages: ['fr', 'it', 'ar', 'en'],
+            defaultLang: 'fr',
+            isLoaded: false,
+            
+            getBrowserLanguage() {
+                const fullLang = navigator.language || navigator.userLanguage;
+                const primaryLang = fullLang.split('-')[0];
+                
+                if (this.supportedLanguages.includes(primaryLang)) {
+                    return primaryLang;
+                }
+                
+                return this.defaultLang;
+            },
+            
+            getLanguageFromUrl() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const lang = urlParams.get('lang');
+                return lang || localStorage.getItem('preferredLanguage') || this.defaultLang;
+            },
+            
+            async loadTranslations() {
+                this.currentLang = this.getLanguageFromUrl();
+                localStorage.setItem('preferredLanguage', this.currentLang);
+                
+                try {
+                    const response = await fetch(`../locales/${this.currentLang}.json`);
+                    this.translations = await response.json();
+                    this.isLoaded = true;
+                    document.dispatchEvent(new CustomEvent('translationsLoaded'));
+                    return this.translations;
+                } catch (error) {
+                    console.error("Erreur lors du chargement des traductions:", error);
+                    this.translations = {
+                        welcome: "Bienvenue sur My Bus Finder",
+                        search_bus: "Localiser mon bus",
+                        search_bus_desc: "Trouvez facilement votre bus et ses horaires en temps réel",
+                        schedules: "Horaires",
+                        schedules_desc: "Fiches horaires théoriques et temps-réel",
+                        news: "Actualités",
+                        news_desc: "Informations et déviations des transports par ligne",
+                        notepad: "Bloc-notes",
+                        notepad_placeholder: "Écrivez vos notes ici...",
+                        quick_links: "Accès rapides",
+                        settings: "Paramètres",
+                        mobile_app: "Application mobile (a venir)",
+                        bus_history: "My Bus History",
+                        loading: "Chargement...",
+                    };
+                    this.isLoaded = true;
+                    document.dispatchEvent(new CustomEvent('translationsLoaded'));
+                    return this.translations;
+                }
+            },
             
             t(key, params = {}) {
-                return this.translations[key] || key;
+                let text = this.translations[key] || key;
+                
+                Object.keys(params).forEach(param => {
+                    text = text.replace(`{${param}}`, params[param]);
+                });
+                
+                return text;
+            },
+            
+            applyTranslations() {
+                document.querySelectorAll('[data-i18n]').forEach(element => {
+                    const key = element.getAttribute('data-i18n');
+                    if (this.translations[key]) {
+                        element.textContent = this.translations[key];
+                    }
+                });
+
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                    const key = element.getAttribute('data-i18n-placeholder');
+                    if (this.translations[key]) {
+                        element.placeholder = this.translations[key];
+                    }
+                });
+            },
+            
+            addLangToUrl() {
+                const browserLang = this.getBrowserLanguage();
+                
+                if (browserLang !== this.defaultLang) {
+                    const currentUrl = new URL(window.location.href);
+                    if (!currentUrl.searchParams.has('lang')) {
+                        currentUrl.searchParams.set('lang', browserLang);
+                        window.history.replaceState({}, '', currentUrl.toString());
+                    }
+                }
+                
+                return browserLang;
+            },
+            
+            init() {
+                const detectedLang = this.addLangToUrl();
+                const urlLang = new URLSearchParams(window.location.search).get('lang');
+                
+                if (!localStorage.getItem('preferredLanguage')) {
+                    localStorage.setItem('preferredLanguage', urlLang || detectedLang);
+                }
+                
+                return this.loadTranslations();
             }
         };
+
+        window.t = (key, params) => i18n.t(key, params);
+
+        function waitForTranslations() {
+            return new Promise(resolve => {
+                if (i18n.isLoaded) {
+                    resolve();
+                } else {
+                    document.addEventListener('translationsLoaded', () => resolve(), { once: true });
+                }
+            });
+        }
+
 
         document.addEventListener('DOMContentLoaded', async () => {
             initGreeting();
