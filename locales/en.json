@@ -270,7 +270,14 @@
     "soundsuxtext": "Enable interface sounds. This feature is in beta and may not work properly.",
     "astuceselectligne": "Tip: You can filter multiple lines at once; when you zoom in, a view with all vehicles appears!",
     
-    "langversion": "1.0.7.2"
+
+    "hybrid": "Hybrid",
+    "gnv": "CNG",
+    "electric": "Electric",
+    "whatsnew": "🎉 What's new in this version",
+    "langversion": "1.0.7.3"
+
+
 
   }
   

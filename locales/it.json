@@ -270,6 +270,10 @@
   "soundsux": "Suoni dell'interfaccia - Beta",
   "soundsuxtext": "Attiva i suoni dell'interfaccia. Questa funzione è in beta e potrebbe non funzionare correttamente.",
   "astuceselectligne": "Suggerimento: puoi filtrare più linee contemporaneamente; ingrandendo, viene visualizzata una vista con tutti i veicoli!",
-  "langversion": "1.0.7.2"
+  "hybrid": "Ibrido",
+  "gnv": "GNV",
+  "electric": "Elettrico",
+  "whatsnew": "🎉 Novità di questa versione",
+  "langversion": "1.0.7.3"
 
 }

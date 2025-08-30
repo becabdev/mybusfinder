@@ -269,5 +269,10 @@
     "soundsuxtext": "Activez les sons de l'interface. Cette fonctionnalité est en bêta et peut ne pas fonctionner correctement.",
     "astuceselectligne": "Astuce : vous pouvez filtrer plusieurs lignes à la fois, en zoomant une vue avec tous les véhicules s'affiche !",
 
-    "langversion": "1.0.7.2"
+    "hybrid": "Hybride",
+    "gnv": "GNV",
+    "electric": "Électrique",
+    "whatsnew": "🎉 Nouveautés de cette version",
+
+    "langversion": "1.0.7.3"
   }
