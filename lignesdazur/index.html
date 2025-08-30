@@ -1640,20 +1640,25 @@
   transform: rotate(150deg);
 }
 
-/* Popup véhicule - Styles globaux */
-.vehicle-popup {
+.popup-container {
     position: relative;
     font-family: 'League Spartan', sans-serif;
     font-size: 14px;
     color: #333;
-    border-radius: 20px;
+    border-radius: 15px;
     overflow: hidden;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
 }
 
-.vehicle-popup-share-btn {
+.popup-container:hover {
+    transform: translateY(-2px);
+}
+
+/* Bouton de partage */
+.share-button {
     position: absolute;
     top: 10px;
     right: 10px;
@@ -1665,19 +1670,23 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.vehicle-popup-share-btn:hover {
+.share-button:hover {
     background: rgba(0, 0, 0, 0.4);
-    transform: scale(1.05);
+    transform: scale(1.1);
 }
 
-.vehicle-popup-header {
+.share-button svg {
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* En-tête principal avec effets lumineux */
+.popup-header {
     position: relative;
     padding: 10px;
     text-align: center;
@@ -1685,137 +1694,146 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 15px;
+    box-shadow: 0px 4px 20px 5px rgba(0, 0, 0, 0.3);
+    border-radius: 11px;
     margin: 7px;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 
-        0px 4px 20px 5px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+/* Faisceaux lumineux améliorés */
 .light-beam {
     position: absolute;
-    width: 2px;
-    height: 100%;
-    background: linear-gradient(
-        180deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.3) 50%,
-        transparent 100%
-    );
-    animation: shimmer 3s infinite;
-    z-index: 1;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    animation: shimmer 3s infinite ease-in-out;
 }
 
-.light-beam.beam1 {
-    left: 20%;
+.beam1 {
     animation-delay: 0s;
 }
 
-.light-beam.beam2 {
-    left: 50%;
+.beam2 {
     animation-delay: 1s;
+    background: linear-gradient(-45deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
 }
 
-.light-beam.beam3 {
-    left: 80%;
+.beam3 {
     animation-delay: 2s;
+    background: linear-gradient(90deg, transparent 30%, rgba(255, 255, 255, 0.06) 50%, transparent 70%);
 }
 
 @keyframes shimmer {
-    0%, 100% { opacity: 0; transform: translateX(-10px); }
-    50% { opacity: 1; transform: translateX(10px); }
+    0% {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(0%);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(100%);
+    }
 }
 
-.vehicle-popup-content {
+.popup-content {
     z-index: 2;
     text-align: left;
     width: 100%;
 }
 
-.vehicle-popup-line-title {
+.line-title {
     margin: 0;
     font-size: 24px;
-    font-weight: 700;
+    font-weight: 600;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.vehicle-popup-destination {
+.destination {
     margin: 0;
     font-size: 14px;
-    font-weight: 600;
     opacity: 0.9;
+    font-weight: 500;
 }
 
-.vehicle-popup-options-container {
+.options-container {
     position: relative;
     display: flex;
     align-items: center;
 }
 
-.vehicle-popup-options-wrapper {
+.options-wrapper {
     position: relative;
     flex: 1;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
-.vehicle-popup-options {
+.options {
     display: flex;
     gap: 10px;
     padding: 0px;
     overflow-x: auto;
     white-space: nowrap;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
     color: #ffffff;
 }
 
-.vehicle-popup-options::-webkit-scrollbar {
+.options::-webkit-scrollbar {
     height: 4px;
 }
 
-.vehicle-popup-options::-webkit-scrollbar-track {
-    background: transparent;
+.options::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
 }
 
-.vehicle-popup-options::-webkit-scrollbar-thumb {
+.options::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.3);
     border-radius: 2px;
 }
 
-.vehicle-popup-badge {
-    padding: 6px 12px;
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.4));
-    font-weight: 500;
+.options::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.vehicle-badge {
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.6);
+    font-weight: normal;
     white-space: nowrap;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     height: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
-.vehicle-popup-badge:hover {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.5));
+.vehicle-badge:hover {
+    background: rgba(0, 0, 0, 0.8);
     transform: translateY(-1px);
 }
 
-.vehicle-popup-badge-icon {
+.vehicle-badge svg {
     display: inline-block;
     vertical-align: top;
     position: relative;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 }
 
-.vehicle-popup-badge-text {
+.vehicle-number {
     display: inline-block;
     line-height: 20px;
     vertical-align: middle;
@@ -1824,40 +1842,40 @@
     font-weight: 600;
 }
 
-.vehicle-popup-badge-hidden {
+.vehicle-number-hidden {
     display: none;
 }
 
-.vehicle-popup-brand {
+.vehicle-brand {
     margin-top: 10px;
     text-align: right;
 }
 
-.vehicle-popup-background-text {
+.background-text {
     position: absolute;
     right: 10px;
     top: 0;
     z-index: 1;
     opacity: 0.08;
     font-size: 100px;
-    font-weight: 900;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     white-space: nowrap;
-    background: linear-gradient(135deg, currentColor, transparent);
+    font-weight: 800;
+    background: linear-gradient(45deg, currentColor 30%, transparent 70%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-.vehicle-popup-stops-section {
+.stops-section {
     padding-top: 10px;
     padding-left: 10px;
     padding-right: 10px;
 }
 
-.vehicle-popup-stops-header {
+.stops-header {
     margin: 0;
     font-size: 18px;
     text-align: right;
@@ -1865,25 +1883,49 @@
     opacity: 0.9;
 }
 
-.next-stops-content {
-    margin-top: 5px;
+.stops-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
-.vehicle-popup::before {
+.next-stops-content {
+    margin-top: 8px;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.popup-container {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.popup-header::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.popup-header::after {
+    content: '';
+    position: absolute;
     bottom: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(255, 255, 255, 0.1) 0%,
-        rgba(255, 255, 255, 0.05) 50%,
-        rgba(255, 255, 255, 0.1) 100%
-    );
-    z-index: -1;
-    border-radius: inherit;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 </style>
@@ -6157,11 +6199,9 @@ async function fetchVehiclePositions() {
                     }
                     
                     const popupContent = `
-                        <div class="vehicle-popup" style="box-shadow: 0px 0px 20px 4px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
+                        <div class="popup-container" style="box-shadow: 0px 0px 20px 4px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
-                            <button onclick="shareVehicleId('${vehicle.vehicle.id}')" 
-                                    title="${t("share")}" 
-                                    class="vehicle-popup-share-btn">
+                            <button class="share-button" onclick="shareVehicleId('${vehicle.vehicle.id}')" title="${t("share")}">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 3C10.3431 3 9 4.34315 9 6C9 7.65685 10.3431 9 12 9C13.6569 9 15 7.65685 15 6" />
                                     <path d="M5.5 15C3.84315 15 2.5 16.3431 2.5 18C2.5 19.6569 3.84315 21 5.5 21C7.15685 21 8.5 19.6569 8.5 18" />
@@ -6170,22 +6210,21 @@ async function fetchVehiclePositions() {
                                 </svg>
                             </button>
 
-                            <div class="vehicle-popup-header" style="color: ${textColor};">
+                            <div class="popup-header" style="color: ${textColor};">
                                 <div class="light-beam beam1"></div>
                                 <div class="light-beam beam2"></div>
                                 <div class="light-beam beam3"></div>
 
-                                <div class="vehicle-popup-content">
-                                    <p class="vehicle-popup-line-title">${t("line")} ${lineName[line] || t("unknownline")}</p>
-                                    <strong class="vehicle-popup-destination">➜ ${lastStopName}</strong>
+                                <div class="popup-content">
+                                    <p class="line-title">${t("line")} ${lineName[line] || t("unknownline")}</p>
+                                    <strong class="destination">➜ ${lastStopName}</strong>
                                     
                                     <div>
-                                        <div class="vehicle-popup-options-container">
-                                            <div class="vehicle-popup-options-wrapper">
-                                                <div class="vehicle-popup-options">
-                                                    <!-- Numéro de parc -->
-                                                    <span class="vehicle-popup-badge">
-                                                        <svg class="vehicle-popup-badge-icon" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                                        <div class="options-container">
+                                            <div class="options-wrapper">
+                                                <div class="options">
+                                                    <span class="vehicle-badge">
+                                                        <svg style="display: inline-block;vertical-align: top; position: relative;" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                             <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
                                                             <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
                                                             <g id="SVGRepo_iconCarrier">
@@ -6200,31 +6239,27 @@ async function fetchVehiclePositions() {
                                                                 <path d="M4.5 5H8.25M19.5 5H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path>
                                                             </g>
                                                         </svg>
-                                                        <span class="vehicle-popup-badge-text">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc")).toString().padStart(3, '0')}</span>
-                                                        <span class="vehicle-popup-badge-hidden">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc"))}</span>
+                                                        <span class="vehicle-number">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc")).toString().padStart(3, '0')}</span>
+                                                        <span class="vehicle-number-hidden">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc"))}</span>
                                                     </span>
-                                                    
-                                                    <!-- Badges des options du véhicule -->
                                                     ${vehicleOptionsBadges}
                                                 </div>
                                             </div>
                                         </div>
-                                        
-                                        <div class="vehicle-popup-brand">
+                                        <div class="vehicle-brand">
                                             ${vehicleBrandHtml}
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Texte en arrière-plan -->
-                                <div class="vehicle-popup-background-text" style="color: ${textColor};">
+                                <div class="background-text" style="color: ${textColor};">
                                     ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
                                 </div>
                             </div>
 
-                            <div class="vehicle-popup-stops-section" style="color: ${textColor};">
-                                <p class="vehicle-popup-stops-header">${stopsHeaderText}</p>
-                                <ul>
+                            <div class="stops-section" style="color: ${textColor};">
+                                <p class="stops-header">${stopsHeaderText}</p>
+                                <ul class="stops-list">
                                     <div id="nextStopsContent" class="next-stops-content">
                                         ${nextStopsHTML}
                                     </div>   
