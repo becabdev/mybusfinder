@@ -1640,11 +1640,12 @@
   transform: rotate(150deg);
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
+/* Container principal de la popup */
 .vehicle-popup {
     position: relative;
-    font-family: 'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
     color: #333;
     border-radius: 15px;
@@ -1652,146 +1653,149 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     font-weight: 400;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.2px;
 }
 
-.share-button {
+/* Bouton de partage */
+.vehicle-popup .share-button {
     position: absolute;
     top: 10px;
     right: 10px;
     background: none;
     border: none;
-    padding: 6px;
+    padding: 4px;
     cursor: pointer;
     z-index: 3;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    transition: background-color 0.2s ease;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    border-radius: 6px;
 }
 
-.share-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+.vehicle-popup .share-button:hover {
+    transform: scale(1.1);
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.vehicle-main-info {
+/* Section principale avec informations */
+.vehicle-popup .main-info {
     position: relative;
-    padding: 12px;
+    padding: 10px;
     text-align: center;
     overflow: hidden;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0px 4px 20px 5px rgba(0, 0, 0, 0.25);
-    border-radius: 12px;
-    margin: 8px;
+    box-shadow: 0px 4px 20px 5px rgba(0, 0, 0, 0.3);
+    border-radius: 11px;
+    margin: 7px;
 }
 
+/* Effets de lumière animés */
 .light-beam {
     position: absolute;
     width: 2px;
     height: 100%;
-    background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.6), transparent);
-    animation: moveBeam 3s linear infinite;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    animation: lightMove 3s infinite linear;
 }
 
-.beam1 { left: 20%; animation-delay: 0s; }
-.beam2 { left: 50%; animation-delay: 1s; }
-.beam3 { left: 80%; animation-delay: 2s; }
+.light-beam.beam1 {
+    left: -10px;
+    animation-delay: 0s;
+}
 
-@keyframes moveBeam {
+.light-beam.beam2 {
+    left: 50%;
+    animation-delay: 1s;
+}
+
+.light-beam.beam3 {
+    right: -10px;
+    animation-delay: 2s;
+}
+
+@keyframes lightMove {
     0% { transform: translateX(-100px); opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
+    50% { opacity: 1; }
     100% { transform: translateX(100px); opacity: 0; }
 }
 
-.vehicle-content {
+/* Contenu textuel principal */
+.vehicle-popup .text-content {
     z-index: 2;
     text-align: left;
     width: 100%;
 }
 
-.vehicle-line-title {
+.vehicle-popup .line-title {
     margin: 0;
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 24px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: -0.5px;
 }
 
-.vehicle-destination {
+.vehicle-popup .destination {
     margin: 0;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     opacity: 0.9;
+    margin-top: 2px;
 }
 
-.vehicle-options-container {
+/* Container des options/badges */
+.vehicle-popup .options-container {
     position: relative;
     display: flex;
     align-items: center;
-    margin-top: 8px;
 }
 
-.vehicle-options-wrapper {
+.vehicle-popup .options-wrapper {
     position: relative;
     flex: 1;
     overflow: hidden;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
-.vehicle-options {
+.vehicle-popup .options {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     padding: 0px;
     overflow-x: auto;
     white-space: nowrap;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    scrollbar-color: #888 #f1f1f1;
     color: #ffffff;
 }
 
-.vehicle-options::-webkit-scrollbar {
-    height: 4px;
-}
-
-.vehicle-options::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.vehicle-options::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-}
-
-.vehicle-options::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-}
-
-.vehicle-number-badge {
-    padding: 8px 12px;
+/* Badge du numéro de véhicule */
+.vehicle-popup .vehicle-badge {
+    padding: 6px 10px;
     background: rgba(0, 0, 0, 0.5);
     font-weight: 500;
     white-space: nowrap;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     height: 20px;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
-    letter-spacing: -0.005em;
+    letter-spacing: 0.2px;
 }
 
-.vehicle-number-icon {
+.vehicle-popup .vehicle-icon {
     display: inline-block;
     vertical-align: top;
     position: relative;
 }
 
-.vehicle-number-text {
+.vehicle-popup .vehicle-number {
     display: inline-block;
     line-height: 20px;
     vertical-align: middle;
@@ -1800,82 +1804,101 @@
     font-weight: 600;
 }
 
-.vehicle-number-hidden {
+.vehicle-popup .vehicle-number-hidden {
     display: none;
 }
 
-.vehicle-brand-section {
-    margin-top: 12px;
+/* Section marque du véhicule */
+.vehicle-popup .vehicle-brand {
+    margin-top: 10px;
     text-align: right;
 }
 
-.vehicle-background-text {
+/* Texte d'arrière-plan décoratif */
+.vehicle-popup .background-text {
     position: absolute;
     right: 10px;
     top: 0;
     z-index: 1;
-    opacity: 0.08;
+    opacity: 0.1;
     font-size: 100px;
-    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: flex-end;
     white-space: nowrap;
-    letter-spacing: -0.03em;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: -2px;
 }
 
-.vehicle-stops-section {
-    padding: 12px 12px 16px 12px;
+/* Section des arrêts suivants */
+.vehicle-popup .stops-section {
+    padding-top: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
-.stops-header {
+.vehicle-popup .stops-header {
     margin: 0;
     font-size: 18px;
     text-align: right;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-}
-
-.stops-list {
-    margin: 8px 0 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.next-stops-content {
-    /* Styles pour le contenu des prochains arrêts */
-}
-
-.vehicle-option-badge {
-    padding: 6px 10px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-radius: 10px;
-    font-size: 12px;
     font-weight: 500;
-    white-space: nowrap;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: 'Poppins', sans-serif;
 }
 
+.vehicle-popup .next-stops-content {
+    margin-top: 8px;
+}
+
+/* Scrollbar personnalisée pour WebKit */
+.vehicle-popup .options::-webkit-scrollbar {
+    height: 6px;
+}
+
+.vehicle-popup .options::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.vehicle-popup .options::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.vehicle-popup .options::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Animations et transitions */
+.vehicle-popup {
+    animation: popupFadeIn 0.3s ease-out;
+}
+
+@keyframes popupFadeIn {
+    0% { 
+        opacity: 0; 
+        transform: scale(0.95) translateY(-10px); 
+    }
+    100% { 
+        opacity: 1; 
+        transform: scale(1) translateY(0); 
+    }
+}
+
+/* Responsive */
 @media (max-width: 480px) {
-    .vehicle-popup {
-        font-size: 13px;
+    .vehicle-popup .line-title {
+        font-size: 20px;
     }
     
-    .vehicle-line-title {
-        font-size: 22px;
+    .vehicle-popup .background-text {
+        font-size: 60px;
     }
     
-    .vehicle-destination {
-        font-size: 14px;
-    }
-    
-    .vehicle-background-text {
-        font-size: 80px;
+    .vehicle-popup .stops-header {
+        font-size: 16px;
     }
 }
-
 </style>
 
 </head>
@@ -6146,80 +6169,82 @@ async function fetchVehiclePositions() {
                         return contentCache.get(cacheKey);
                     }
                     
-                    const popupContent = `
-                        <div class="vehicle-popup" style="box-shadow: 0px 0px 20px 4px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
-                            
-                            <button onclick="shareVehicleId('${vehicle.vehicle.id}')" 
-                                    title="${t("share")}" 
-                                    class="share-button">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 3C10.3431 3 9 4.34315 9 6C9 7.65685 10.3431 9 12 9C13.6569 9 15 7.65685 15 6" />
-                                    <path d="M5.5 15C3.84315 15 2.5 16.3431 2.5 18C2.5 19.6569 3.84315 21 5.5 21C7.15685 21 8.5 19.6569 8.5 18" />
-                                    <path d="M18.5 21C16.8431 21 15.5 19.6569 15.5 18C15.5 16.3431 16.8431 15 18.5 15C20.1569 15 21.5 16.3431 21.5 18" />
-                                    <path d="M20 13C20 10.6106 18.9525 8.46589 17.2916 7M4 13C4 10.6106 5.04752 8.46589 6.70838 7M10 20.748C10.6392 20.9125 11.3094 21 12 21C12.6906 21 13.3608 20.9125 14 20.748" />
-                                </svg>
-                            </button>
+const popupContent = `
+    <div class="vehicle-popup" style="box-shadow: 0px 0px 20px 4px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
+        
+        <button onclick="shareVehicleId('${vehicle.vehicle.id}')" 
+                title="${t("share")}" 
+                class="share-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3C10.3431 3 9 4.34315 9 6C9 7.65685 10.3431 9 12 9C13.6569 9 15 7.65685 15 6" />
+                <path d="M5.5 15C3.84315 15 2.5 16.3431 2.5 18C2.5 19.6569 3.84315 21 5.5 21C7.15685 21 8.5 19.6569 8.5 18" />
+                <path d="M18.5 21C16.8431 21 15.5 19.6569 15.5 18C15.5 16.3431 16.8431 15 18.5 15C20.1569 15 21.5 16.3431 21.5 18" />
+                <path d="M20 13C20 10.6106 18.9525 8.46589 17.2916 7M4 13C4 10.6106 5.04752 8.46589 6.70838 7M10 20.748C10.6392 20.9125 11.3094 21 12 21C12.6906 21 13.3608 20.9125 14 20.748" />
+            </svg>
+        </button>
 
-                            <div class="vehicle-main-info" style="color: ${textColor};">
-                                <div class="light-beam beam1"></div>
-                                <div class="light-beam beam2"></div>
-                                <div class="light-beam beam3"></div>
+        <div class="main-info" style="color: ${textColor};">
+            <div class="light-beam beam1"></div>
+            <div class="light-beam beam2"></div>
+            <div class="light-beam beam3"></div>
 
-                                <div class="vehicle-content">
-                                    <p class="vehicle-line-title">${t("line")} ${lineName[line] || t("unknownline")}</p>
-                                    <strong class="vehicle-destination">➜ ${lastStopName}</strong>
-                                    
-                                    <div class="vehicle-options-container">
-                                        <div class="vehicle-options-wrapper">
-                                            <div class="vehicle-options">
-                                                <!-- Numéro de parc -->
-                                                <span class="vehicle-number-badge">
-                                                    <svg class="vehicle-number-icon" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
-                                                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                                                        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                                                        <g id="SVGRepo_iconCarrier">
-                                                            <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path>
-                                                            <path d="M20 13H16M4 13H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M15.5 16H17" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M7 16H8.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-                                                            <path d="M4.5 5H8.25M19.5 5H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path>
-                                                        </g>
-                                                    </svg>
-                                                    <span class="vehicle-number-text">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc")).toString().padStart(3, '0')}</span>
-                                                    <span class="vehicle-number-hidden">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc"))}</span>
-                                                </span>
-                                                
-                                                <!-- Badges des options du véhicule -->
-                                                ${vehicleOptionsBadges}
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="vehicle-brand-section">
-                                            ${vehicleBrandHtml}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Texte en arrière-plan -->
-                                <div class="vehicle-background-text" style="color: ${textColor};">
-                                    ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
-                                </div>
-                            </div>
-
-                            <div class="vehicle-stops-section" style="color: ${textColor};">
-                                <p class="stops-header">${stopsHeaderText}</p>
-                                <ul class="stops-list">
-                                    <div id="nextStopsContent" class="next-stops-content">
-                                        ${nextStopsHTML}
-                                    </div>   
-                                </ul>
+            <!-- Texte principal -->
+            <div class="text-content">
+                <p class="line-title">${t("line")} ${lineName[line] || t("unknownline")}</p>
+                <strong class="destination">➜ ${lastStopName}</strong>
+                <div>
+                    <div class="options-container">
+                        <div class="options-wrapper">
+                            <!-- Contenu défilant horizontalement -->
+                            <div class="options">
+                                <!-- Numéro de parc -->
+                                <span class="vehicle-badge">
+                                    <svg class="vehicle-icon" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+                                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                                        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                                        <g id="SVGRepo_iconCarrier">
+                                            <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path>
+                                            <path d="M20 13H16M4 13H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M15.5 16H17" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M7 16H8.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                            <path d="M4.5 5H8.25M19.5 5H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path>
+                                        </g>
+                                    </svg>
+                                    <span class="vehicle-number">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc")).toString().padStart(3, '0')}</span>
+                                    <span class="vehicle-number-hidden">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc"))}</span>
+                                </span>
+                                
+                                <!-- Badges des options du véhicule -->
+                                ${vehicleOptionsBadges}
                             </div>
                         </div>
-                    `;
+                    </div>
+                    <div class="vehicle-brand">
+                        ${vehicleBrandHtml}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Texte en arrière-plan -->
+            <div class="background-text" style="color: ${textColor};">
+                ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
+            </div>
+        </div>
+
+        <div class="stops-section" style="color: ${textColor};">
+            <p class="stops-header">${stopsHeaderText}</p>
+            <ul>
+                <div id="nextStopsContent" class="next-stops-content">
+                    ${nextStopsHTML}
+                </div>   
+            </ul>
+        </div>
+    </div>
+`;
                     
                     // limite la taille cache
                     if (contentCache.size > 100) {
