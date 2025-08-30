@@ -130,7 +130,7 @@
         }
 
         .logo-icon {
-            width: 50px;
+            width: 135px;
             height: 50px;
             border-radius: 50px;
             display: flex;
@@ -892,12 +892,10 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-section">
-                <div class="logo-icon">
-                    <img style="width: inherit;" src="./src/logow.png"></img>
-                </div>
                 <div class="logo-text">
-                    <div class="logo-title">My Bus Finder</div>
-                    <div class="greeting-text" id="greeting">Bonjour ! </div>
+                    <div class="logo-icon">
+                        <img style="width: inherit;" src="./src/logow.png"></img>
+                    </div>
                 </div>
             </div>
             <div class="header-actions">
@@ -1302,7 +1300,6 @@
             await waitForTranslations();
             i18n.applyTranslations();
             
-            initGreeting();
             initNotepad();
             initEventHandlers();
             startAutoPlay();
@@ -1359,87 +1356,6 @@
             document.getElementById('nav-more').onclick = () => {
                 window.parent.postMessage({ type: 'settings' }, '*');
             };
-        }
- 
-        function initGreeting() {
-            function getGreetings() {
-                return {
-                    morning: [
-                        i18n.t("greetings-morning1"),
-                        i18n.t("greetings-morning2"),
-                        i18n.t("greetings-morning3"),
-                        i18n.t("greetings-morning4"),
-                        i18n.t("greetings-morning5"),
-                        i18n.t("greetings-morning6"),
-                    ],
-                    midday: [
-                        i18n.t("greetings-midday1"),
-                        i18n.t("greetings-midday2"),
-                        i18n.t("greetings-midday3"),
-                        i18n.t("greetings-midday4"),
-                        i18n.t("greetings-midday5"),
-                        i18n.t("greetings-midday6"),
-                    ],
-                    afternoon: [
-                        i18n.t("greetings-afternoon1"),
-                        i18n.t("greetings-afternoon2"),
-                        i18n.t("greetings-afternoon3"),
-                        i18n.t("greetings-afternoon4"),
-                        i18n.t("greetings-afternoon5"),
-                        i18n.t("greetings-afternoon6"),
-                    ],
-                    evening: [
-                        i18n.t("greetings-evening1"),
-                        i18n.t("greetings-evening2"),
-                        i18n.t("greetings-evening3"),
-                        i18n.t("greetings-evening4"),
-                        i18n.t("greetings-evening5"),
-                        i18n.t("greetings-evening6"),
-                    ],
-                    night: [
-                        i18n.t("greetings-night1"),
-                        i18n.t("greetings-night2"),
-                        i18n.t("greetings-night3"),
-                        i18n.t("greetings-night4"),
-                        i18n.t("greetings-night5"),
-                        i18n.t("greetings-night6"),
-                    ]
-                };
-            }
-
-            function getDayPeriod() {
-                const hour = new Date().getHours();
-                
-                if (hour >= 5 && hour < 12) {
-                    return 'morning';
-                } else if (hour >= 12 && hour < 14) {
-                    return 'midday';
-                } else if (hour >= 14 && hour < 18) {
-                    return 'afternoon';
-                } else if (hour >= 18 && hour < 22) {
-                    return 'evening';
-                } else {
-                    return 'night';
-                }
-            }
-
-            function getRandomGreeting() {
-                const greetings = getGreetings();
-                const period = getDayPeriod();
-                const periodGreetings = greetings[period];
-                const randomIndex = Math.floor(Math.random() * periodGreetings.length);
-                return periodGreetings[randomIndex];
-            }
-
-            function updateGreeting() {
-                const greetingElement = document.getElementById('greeting');
-                if (greetingElement) {
-                    greetingElement.textContent = getRandomGreeting();
-                }
-            }
-
-            updateGreeting();
-            setInterval(updateGreeting, 30000); 
         }
 
         function initNotepad() {
