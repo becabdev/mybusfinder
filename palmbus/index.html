@@ -1802,7 +1802,6 @@
 }
 
 .ripple-container {
-    position: fixed;
     overflow: hidden;
     cursor: pointer;
     user-select: none;
@@ -6390,7 +6389,7 @@ async function fetchVehiclePositions() {
                                 </svg>
                             </button>
 
-                            <div class="vehicle-info-section" style="color: ${textColor};">
+                            <div class="vehicle-info-section ripple-container" style="color: ${textColor};">
                                 <div class="light-beam beam1"></div>
                                 <div class="light-beam beam2"></div>
                                 <div class="light-beam beam3"></div>
