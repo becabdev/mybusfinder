@@ -7310,7 +7310,7 @@ function updateMenu() {
         -webkit-backdrop-filter: blur(8px);
     `;
     menu.appendChild(topBar);
-
+    
     const backButton = document.createElement('div');
     backButton.innerHTML = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -7329,12 +7329,13 @@ function updateMenu() {
     `;
     backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
     backButton.onmouseout = () => backButton.style.background = 'transparent';
+
     backButton.onclick = closeMenu;
     topBar.appendChild(backButton);
 
     const title = document.createElement('div');
     title.className = 'menu-title';
-    title.textContent = t("network");
+    title.textContent = t("network"); 
     title.style.cssText = `
         font-size: 20px;
         font-weight: 500;
@@ -7355,9 +7356,9 @@ function updateMenu() {
             if (lineVehicleCount > 0) activeLines++;
         });
         
-        const title = document.querySelector('.menu-top-bar .menu-title');
-        if (title) {
-            title.innerHTML = `
+        const titleElement = document.querySelector('.menu-top-bar .menu-title');
+        if (titleElement) {
+            titleElement.innerHTML = `
                 <div>${t("network")}</div>
                 <div style="font-size: 12px; opacity: 0.8;">
                     ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
@@ -7366,7 +7367,7 @@ function updateMenu() {
         }
     }
 
-    updateMenuStatistics();
+
     
     const spacer = document.createElement('div');
     spacer.style.height = '15px'; 
@@ -7615,6 +7616,9 @@ function getNextStopInfo(vehicleId) {
         vehicle
     });
 });
+
+updateMenuStatistics();
+
 
     const sortedLines = Object.keys(busesByLineAndDestination)
         .sort((a, b) => {
