@@ -7355,15 +7355,28 @@ function updateMenu() {
             totalVehicles += lineVehicleCount;
             if (lineVehicleCount > 0) activeLines++;
         });
+
+        if (activeLines === totalLines) {
+            memeNombre = true;
+        }
         
         const titleElement = document.querySelector('.menu-top-bar .menu-title');
         if (titleElement) {
-            titleElement.innerHTML = `
-                <div>${t("network")}</div>
-                <div style="font-size: 12px; opacity: 0.8;">
-                    ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
-                </div>
-            `;
+            if (memeNombre) {
+                titleElement.innerHTML = `
+                    <div>${t("network")}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">
+                        ${totalLines} ${t('line')} • ${totalVehicles} ${t('vehicles')}
+                    </div>
+                `;
+            } else {
+                titleElement.innerHTML = `
+                    <div>${t("network")}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">
+                        ${activeLines}/${totalLines} ${t('line')} • ${totalVehicles} ${t('vehicles')}
+                    </div>
+                `;
+            }
         }
     }
 
