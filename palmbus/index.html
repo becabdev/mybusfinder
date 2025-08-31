@@ -7288,32 +7288,6 @@ function closeMenu() {
     }, 10);
 }
 
-function updateMenuStatistics() {
-    let totalLines = Object.keys(busesByLineAndDestination).length;
-    let totalVehicles = 0;
-    let activeLines = 0;
-    
-    Object.values(busesByLineAndDestination).forEach(destinations => {
-        let lineVehicleCount = 0;
-        Object.values(destinations).forEach(buses => {
-            lineVehicleCount += buses.length;
-        });
-        totalVehicles += lineVehicleCount;
-        if (lineVehicleCount > 0) activeLines++;
-    });
-    
-    const title = document.querySelector('.menu-top-bar .menu-title');
-    if (title) {
-        title.innerHTML = `
-            <div>${t("network")}</div>
-            <div style="font-size: 12px; opacity: 0.8;">
-                ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
-            </div>
-        `;
-    }
-}
-
-
 function updateMenu() {
     const menu = document.getElementById('menu');
     menu.innerHTML = '';
@@ -7366,6 +7340,31 @@ function updateMenu() {
         font-weight: 500;
     `;
     topBar.appendChild(title);
+
+    function updateMenuStatistics() {
+        let totalLines = Object.keys(busesByLineAndDestination).length;
+        let totalVehicles = 0;
+        let activeLines = 0;
+        
+        Object.values(busesByLineAndDestination).forEach(destinations => {
+            let lineVehicleCount = 0;
+            Object.values(destinations).forEach(buses => {
+                lineVehicleCount += buses.length;
+            });
+            totalVehicles += lineVehicleCount;
+            if (lineVehicleCount > 0) activeLines++;
+        });
+        
+        const title = document.querySelector('.menu-top-bar .menu-title');
+        if (title) {
+            title.innerHTML = `
+                <div>${t("network")}</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
+                </div>
+            `;
+        }
+    }
 
     updateMenuStatistics();
     
