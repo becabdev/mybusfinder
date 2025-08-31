@@ -19,7 +19,7 @@
     <style>
     body,
     html {
-        height: var(--app-height);
+        height: 100%;
         width: 100vw;
         display: flex;
         justify-content: center;
@@ -3482,22 +3482,18 @@ document.getElementById('close-popup1').addEventListener('click', closeUpdatePop
 
 
 function hideLoadingScreen() {
-    if(!localStorage.getItem('OutOfBoxExperienceTerminee')) {
-            const iframeeee = document.getElementById("webview-frameaccueil");
-            iframeeee.src = "../oobe.html";
-    } 
     setTimeout(() => {
         const loadingScreen = document.getElementById('loading-screen');
 
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Mise à jour vers ' + window.BUILD_VERSION + ' en cours';
+            loadingtext.textContent = 'Update to ' + window.BUILD_VERSION + ' in progress...';
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
                     window.location.reload();
-                }, 4000);
+                }, 1000);
 
         } else {
 
