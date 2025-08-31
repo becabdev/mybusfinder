@@ -1989,10 +1989,14 @@
                 document.addEventListener('mouseup', this.handlePointerUp.bind(this));
                 document.addEventListener('mousemove', this.handlePointerMove.bind(this));
                 document.addEventListener('mouseleave', this.handlePointerUp.bind(this));
-                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: false });
-                document.addEventListener('touchend', this.handlePointerUp.bind(this));
-                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: false });
-                document.addEventListener('touchcancel', this.handlePointerUp.bind(this));
+                
+                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
+                document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
+                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
+                document.addEventListener('touchcancel', this.handlePointerUp.bind(this), { passive: true });
+                
+                document.addEventListener('click', this.handleClick.bind(this), { passive: true });
+
             }
 
             handlePointerDown(e) {
