@@ -1002,7 +1002,6 @@
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.2s ease-in, filter 0.2s ease-in;
     }
     .slide-downc {
-        display: flex;
         transform: translateY(-220%) translateX(-50%);
         opacity: 1;
         filter: blur(0);
@@ -1010,11 +1009,9 @@
         -webkit-backdrop-filter: blur(1px);
     }
     .slide-upc {
-        display: none;
         transform: translateY(100%) translateX(-50%);
         opacity: 0;
         filter: blur(5px);
-        transition: transform 0.2s ease-in, opacity 0.2s ease-in, filter 0.2s ease-in;
     }
     #popup1::-webkit-scrollbar {
         width: 8px;
@@ -3326,9 +3323,10 @@ function showUpdatePopupmusic(link) {
         const filtre = document.getElementById('filtre');
         filtre.classList.add('slide-upc');
         filtre.classList.remove('slide-downc');
-        filtre.addEventListener('animationend', () => {
+        setTimeout(() => {
             filtre.style.display = 'none';
-        });
+        }, 500);
+            
         resetMapView();            
     }
 
@@ -4649,9 +4647,9 @@ function filterByLine(lineId) {
     const filtre = document.getElementById('filtre');
     filtre.classList.add('slide-upc');
     filtre.classList.remove('slide-downc');
-    filtre.addEventListener('animationend', () => {
+    setTimeout(() => {
         filtre.style.display = 'none';
-    });
+    }, 500);
     resetMapView();
   } else if (selectedLines.length === 1) {
     zoomToSelectedLine(selectedLines[0]);
@@ -4780,9 +4778,9 @@ function showPopup() {
                 const filtre = document.getElementById('filtre');
                 filtre.classList.add('slide-upc');
                 filtre.classList.remove('slide-downc');
-                filtre.addEventListener('animationend', () => {
+                setTimeout(() => {
                     filtre.style.display = 'none';
-                });
+                }, 500);
         }
 
             menubottom1.addEventListener('transitionend', () => {
@@ -4838,9 +4836,9 @@ const filtre = document.getElementById('filtre');
         if (selectedLine) {
             filtre.classList.add('slide-upc');
             filtre.classList.remove('slide-downc');
-            filtre.addEventListener('animationend', () => {
+            setTimeout(() => {
                 filtre.style.display = 'none';
-            });
+            }, 500);
     resetMapView();
     }
 };
@@ -8062,9 +8060,9 @@ const menubottom1 = document.getElementById('menubtm');
                 const filtre = document.getElementById('filtre');
                 filtre.classList.add('slide-upc');
                 filtre.classList.remove('slide-downc');
-                filtre.addEventListener('animationend', () => {
+                setTimeout(() => {
                     filtre.style.display = 'none';
-                });
+                }, 500);
         }
 
             menubottom1.addEventListener('transitionend', () => {
