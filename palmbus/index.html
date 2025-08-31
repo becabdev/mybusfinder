@@ -4903,599 +4903,457 @@ let selectedLines = [];
 
 
 
-// Variables globales - Initialisation sécurisée
-let welcomePopup = null;
-let isWelcomeVisible = false;
-let networkLegend = null;
-let busLines = null;
-let busStops = null;
-let routeInfo = {}; // Pour stocker les infos des lignes
-
-
-// Fonction pour créer la popup de bienvenue
-function createWelcomePopup() {
-    if (welcomePopup) {
-        map.removeControl(welcomePopup);
-    }
-
-    welcomePopup = L.control({position: 'topleft'});
-    
-    welcomePopup.onAdd = function() {
-        const div = L.DomUtil.create('div', 'welcome-popup');
-        div.innerHTML = `
-            <div class="welcome-header">
-                <h3>🚌 Bienvenue sur le réseau</h3>
-                <button class="close-btn" onclick="hideWelcomePopup()">&times;</button>
-            </div>
-            <div class="network-lines" id="networkLines">
-                <p>Chargement des lignes...</p>
-            </div>
-            <div class="welcome-actions">
-                <button onclick="zoomToNetwork()" class="action-btn">📍 Voir tout le réseau</button>
-                <button onclick="showNearestStops()" class="action-btn">📍 Arrêts proches</button>
-            </div>
-        `;
-        
-        // Empêcher la propagation des événements de clic sur la popup
-        L.DomEvent.disableClickPropagation(div);
-        L.DomEvent.disableScrollPropagation(div);
-        
-        return div;
-    };
-
-    return welcomePopup;
-}
-
-// Fonction pour afficher la popup de bienvenue
-function showWelcomePopup() {
-    if (!isWelcomeVisible) {
-        createWelcomePopup().addTo(map);
-        isWelcomeVisible = true;
-        updateNetworkLines();
-    }
-}
-
-// Fonction pour masquer la popup de bienvenue
-function hideWelcomePopup() {
-    if (welcomePopup && isWelcomeVisible) {
-        map.removeControl(welcomePopup);
-        isWelcomeVisible = false;
-    }
-}
-
-// Fonction pour mettre à jour la liste des lignes
-function updateNetworkLines() {
-    const networkLinesDiv = document.getElementById('networkLines');
-    if (!networkLinesDiv || !routeInfo) return;
-
-    let linesHtml = '';
-    const routeIds = Object.keys(routeInfo);
-    
-    if (routeIds.length === 0) {
-        linesHtml = '<p>Aucune ligne trouvée</p>';
-    } else {
-        routeIds.forEach(routeId => {
-            const color = lineColors[routeId] || '#3388ff';
-            const route = routeInfo[routeId];
-            const routeType = route.route_type === '3' ? '🚌' : '🚊';
-            const isDashed = route.route_type === '3' ? ' (ligne pointillée)' : '';
-            
-            linesHtml += `
-                <div class="line-item" onclick="focusOnLine('${routeId}')">
-                    <span class="line-color" style="background-color: ${color}"></span>
-                    <span class="line-info">
-                        ${routeType} Ligne ${route.route_short_name || routeId}
-                        <small>${route.route_long_name || ''}</small>
-                    </span>
-                </div>
-            `;
-        });
-    }
-    
-    networkLinesDiv.innerHTML = linesHtml;
-}
-
-// Fonction pour zoomer sur tout le réseau
-function zoomToNetwork() {
-    if (busLines && busStops) {
-        const group = L.featureGroup([busLines, busStops]);
-        map.fitBounds(group.getBounds(), {padding: [20, 20]});
-    }
-    hideWelcomePopup();
-}
-
-// Fonction pour afficher les arrêts les plus proches
-function showNearestStops() {
-    if (!gtfsInitialized || !window.busStopLayers) {
-        alert('Les données des arrêts ne sont pas encore chargées');
-        return;
-    }
-    
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            const userLat = position.coords.latitude;
-            const userLng = position.coords.longitude;
-            
-            // Marquer la position de l'utilisateur
-            const userMarker = L.marker([userLat, userLng], {
-                icon: L.divIcon({
-                    className: 'user-location-marker',
-                    html: '📍',
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                })
-            }).addTo(map);
-            
-            // Trouver les 5 arrêts les plus proches
-            let nearestStops = [];
-            window.busStopLayers.forEach(function(layer) {
-                if (layer.getLatLng) {
-                    const distance = L.latLng(userLat, userLng).distanceTo(layer.getLatLng());
-                    nearestStops.push({
-                        layer: layer,
-                        distance: distance,
-                        properties: layer.feature ? layer.feature.properties : {}
-                    });
-                }
-            });
-            
-            nearestStops.sort((a, b) => a.distance - b.distance);
-            nearestStops = nearestStops.slice(0, 5);
-            
-            // Créer une popup avec les arrêts proches
-            let popupContent = '<h4>Arrêts les plus proches :</h4>';
-            nearestStops.forEach(function(stop, index) {
-                const distance = Math.round(stop.distance);
-                const stopName = stop.properties.stop_name || 'Arrêt sans nom';
-                popupContent += `<p><strong>${index + 1}.</strong> ${stopName} (${distance}m)</p>`;
-            });
-            
-            userMarker.bindPopup(popupContent).openPopup();
-            map.setView([userLat, userLng], 16);
-            
-        }, function(error) {
-            alert('Impossible d\'obtenir votre position : ' + error.message);
-        });
-    } else {
-        alert('La géolocalisation n\'est pas supportée par votre navigateur');
-    }
-    hideWelcomePopup();
-}
-
-// Fonction pour se concentrer sur une ligne spécifique
-function focusOnLine(routeId) {
-    // Vérifier que les données sont chargées
-    if (!gtfsInitialized || !window.geoJsonLines) {
-        console.log('Les données GTFS ne sont pas encore chargées');
-        return;
-    }
-    
-    const lineLayers = [];
-    window.geoJsonLines.forEach(function(layer) {
-        if (layer.feature && layer.feature.properties && layer.feature.properties.route_id === routeId) {
-            lineLayers.push(layer);
-        }
-    });
-    
-    if (lineLayers.length > 0 && typeof map !== 'undefined' && map) {
-        const group = L.featureGroup(lineLayers);
-        map.fitBounds(group.getBounds(), {padding: [50, 50]});
-        
-        // Faire clignoter la ligne
-        lineLayers.forEach(function(layer) {
-            const originalOpacity = layer.options.opacity || 0.7;
-            let blinkCount = 0;
-            const blinkInterval = setInterval(function() {
-                layer.setStyle({opacity: blinkCount % 2 === 0 ? 0.2 : 1});
-                blinkCount++;
-                if (blinkCount >= 6) {
-                    clearInterval(blinkInterval);
-                    layer.setStyle({opacity: originalOpacity});
-                }
-            }, 300);
-        });
-    }
-    hideWelcomePopup();
-}
-
-// Fonction pour créer une légende permanente
-function createNetworkLegend() {
-    if (networkLegend) {
-        map.removeControl(networkLegend);
-    }
-
-    networkLegend = L.control({position: 'bottomright'});
-    
-    networkLegend.onAdd = function() {
-        const div = L.DomUtil.create('div', 'network-legend');
-        div.innerHTML = `
-            <div class="legend-header" onclick="toggleLegend()">
-                <span>Légende</span>
-                <span class="toggle-icon">▼</span>
-            </div>
-            <div class="legend-content" id="legendContent">
-                <div class="legend-item">
-                    <span class="legend-symbol bus-stop"></span>
-                    <span>Arrêts de bus</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-line solid"></span>
-                    <span>Lignes de tramway</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-line dashed"></span>
-                    <span>Lignes de bus</span>
-                </div>
-            </div>
-        `;
-        
-        L.DomEvent.disableClickPropagation(div);
-        return div;
-    };
-
-    return networkLegend;
-}
-
-// Fonction pour basculer l'affichage de la légende
-function toggleLegend() {
-    const content = document.getElementById('legendContent');
-    const icon = document.querySelector('.toggle-icon');
-    if (content && icon) {
-        if (content.style.display === 'none') {
-            content.style.display = 'block';
-            icon.textContent = '▼';
-        } else {
-            content.style.display = 'none';
-            icon.textContent = '▶';
-        }
-    }
-}
-
-// Fonction principale modifiée avec gestion d'erreurs
 async function loadGeoJsonLines() {
     try {
+        // Indicateur de chargement
+        const loadingIndicator = document.getElementById('loading') || createLoadingIndicator();
+        loadingIndicator.style.display = 'block';
+
         const response = await fetch('proxy-cors/proxy_geojson.php');
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`Erreur HTTP: ${response.status}`);
         }
         
         const geoJsonData = await response.json();
         
-        // Vérifier que les données sont valides
-        if (!geoJsonData || !geoJsonData.features) {
-            throw new Error('Données GeoJSON invalides');
-        }
+        // Compteurs pour les statistiques
+        let lineCount = 0;
+        let stopCount = 0;
+        const routeStats = {};
 
-        // Initialiser les variables si elles n'existent pas
-        if (!window.geoJsonLines) {
-            window.geoJsonLines = [];
-        }
-        if (!window.busStopLayers) {
-            window.busStopLayers = [];
-        }
-        if (!window.lineColors) {
-            window.lineColors = {};
-        }
-
-        // Réinitialiser les arrays
-        routeInfo = {};
-
-        // Extraire les informations des routes
-        geoJsonData.features.forEach(function(feature) {
-            if (feature.properties && feature.properties.route_id) {
-                routeInfo[feature.properties.route_id] = {
-                    route_short_name: feature.properties.route_short_name,
-                    route_long_name: feature.properties.route_long_name,
-                    route_type: feature.properties.route_type
-                };
-            }
-        });
-
-        busLines = L.geoJSON(geoJsonData, {
+        // Gestion des lignes de bus
+        const busLines = L.geoJSON(geoJsonData, {
             filter: function(feature) {
-                return feature.geometry && feature.geometry.type === 'LineString';
+                return feature.geometry.type === 'LineString';
             },
             style: function(feature) {
-                const routeId = feature.properties ? feature.properties.route_id : null;
+                const routeId = feature.properties.route_id;
+                const routeType = feature.properties.route_type;
+                
+                // Couleurs par type de transport
+                let color = lineColors[routeId] || getColorByRouteType(routeType);
+                
                 return {
-                    color: (window.lineColors && routeId) ? window.lineColors[routeId] || '#3388ff' : '#3388ff',
-                    weight: 6,
+                    color: color,
+                    weight: getLineWeight(routeType),
                     opacity: 0.7,
                     lineJoin: 'round',
                     lineCap: 'round',
-                    className: 'bus-line',
-                    dashArray: (feature.properties && feature.properties.route_type === '3') ? '5, 5' : null
+                    className: `bus-line route-${routeId}`,
+                    dashArray: getDashPattern(routeType)
                 };
             },
             onEachFeature: function(feature, layer) {
-                if (feature.properties && feature.properties.route_id) {
-                    window.geoJsonLines.push(layer);
+                const props = feature.properties;
+                if (props && props.route_id) {
+                    lineCount++;
+                    geoJsonLines.push(layer);
                     
-                    // Ajouter une popup avec les infos de la ligne
-                    const routeId = feature.properties.route_id;
-                    const route = routeInfo[routeId] || {};
-                    const routeType = route.route_type === '3' ? 'Bus' : 'Tramway';
+                    // Statistiques par ligne
+                    if (!routeStats[props.route_id]) {
+                        routeStats[props.route_id] = {
+                            name: props.route_short_name || props.route_long_name || props.route_id,
+                            type: props.route_type,
+                            color: lineColors[props.route_id] || getColorByRouteType(props.route_type),
+                            stopCount: 0,
+                            visible: true
+                        };
+                    }
                     
-                    layer.bindPopup(`
-                        <h4>${routeType} ${route.route_short_name || routeId}</h4>
-                        <p>${route.route_long_name || 'Ligne de transport'}</p>
-                        <button onclick="focusOnLine('${routeId}')">Centrer sur cette ligne</button>
-                    `);
-                }
-            }
-        });
-
-        // Vérifier que la carte existe avant d'ajouter les couches
-        if (typeof map !== 'undefined' && map) {
-            busLines.addTo(map);
-        } else {
-            console.error('La carte Leaflet n\'est pas initialisée');
-            return;
-        }
-
-        busStops = L.geoJSON(geoJsonData, {
-            filter: function(feature) {
-                return feature.geometry && feature.geometry.type === 'Point';
-            },
-            pointToLayer: function(feature, latlng) {
-                return L.circleMarker(latlng, {
-                    radius: 3,
-                    fillColor: '#ffffff',
-                    color: '#000000',
-                    weight: 0.5,
-                    opacity: 0.7,
-                    fillOpacity: 0.6
-                });
-            },
-            onEachFeature: function(feature, layer) {
-                if (feature.properties && feature.properties.stop_name) {
-                    layer.bindPopup(`
-                        <h4>📍 ${feature.properties.stop_name}</h4>
-                        <p>Ligne: ${feature.properties.route_id || 'Non spécifiée'}</p>
-                        ${feature.properties.stop_desc ? `<p>${feature.properties.stop_desc}</p>` : ''}
-                    `);
+                    // Popup avec informations détaillées
+                    const popupContent = createLinePopup(props);
+                    layer.bindPopup(popupContent);
+                    
+                    // Tooltip au survol
+                    layer.bindTooltip(`Ligne ${props.route_short_name || props.route_id}`, {
+                        permanent: false,
+                        direction: 'center',
+                        className: 'route-tooltip'
+                    });
                 }
             }
         }).addTo(map);
 
+        // Gestion des arrêts de bus
+        const busStops = L.geoJSON(geoJsonData, {
+            filter: function(feature) {
+                return feature.geometry && feature.geometry.type === 'Point';
+            },
+            pointToLayer: function(feature, latlng) {
+                const props = feature.properties;
+                stopCount++;
+                
+                // Style différent selon le type d'arrêt
+                const stopStyle = getStopStyle(props);
+                
+                return L.circleMarker(latlng, stopStyle);
+            },
+            onEachFeature: function(feature, layer) {
+                const props = feature.properties;
+                if (props) {
+                    // Mise à jour des statistiques
+                    if (props.route_id && routeStats[props.route_id]) {
+                        routeStats[props.route_id].stopCount++;
+                    }
+                    
+                    // Popup avec informations de l'arrêt
+                    const popupContent = createStopPopup(props);
+                    layer.bindPopup(popupContent);
+                    
+                    // Tooltip avec nom de l'arrêt
+                    if (props.stop_name) {
+                        layer.bindTooltip(props.stop_name, {
+                            permanent: false,
+                            direction: 'top',
+                            className: 'stop-tooltip'
+                        });
+                    }
+                }
+            }
+        }).addTo(map);
+
+        // Stockage des couches d'arrêts
         busStops.eachLayer(function(layer) {
             if (layer.feature && layer.feature.properties) {
                 layer.busLine = layer.feature.properties.route_id || null;
-                window.busStopLayers.push(layer);
+                busStopLayers.push(layer);
             }
         });
 
-        // Créer la légende
-        createNetworkLegend().addTo(map);
+        // Création du panneau de contrôle des lignes
+        createRouteControlPanel(routeStats);
         
-        // Marquer comme initialisé
-        gtfsInitialized = true;
+        // Affichage des statistiques
+        displayStatistics(lineCount, stopCount, routeStats);
         
-        console.log('GeoJSON chargé avec succès:', {
-            lignes: Object.keys(routeInfo).length,
-            arrêts: window.busStopLayers.length
-        });
-
-    } catch (error) {
-        console.error('Erreur lors du chargement du GeoJSON:', error);
-        // Afficher un message d'erreur à l'utilisateur
-        if (typeof map !== 'undefined' && map) {
-            L.popup()
-                .setLatLng(map.getCenter())
-                .setContent(`
-                    <h4>⚠️ Erreur de chargement</h4>
-                    <p>Impossible de charger les données du réseau de transport.</p>
-                    <p><small>${error.message}</small></p>
-                `)
-                .openOn(map);
+        // Masquer l'indicateur de chargement
+        loadingIndicator.style.display = 'none';
+        
+        // Ajuster la vue sur toutes les données
+        if (busLines.getLayers().length > 0) {
+            map.fitBounds(busLines.getBounds(), { padding: [10, 10] });
         }
+        
+        console.log(`✅ Données chargées: ${lineCount} lignes, ${stopCount} arrêts`);
+        
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement des données GTFS:', error);
+        showErrorMessage('Erreur lors du chargement des données de transport');
+        
+        // Masquer l'indicateur de chargement en cas d'erreur
+        const loadingIndicator = document.getElementById('loading');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
 }
 
-// Événement de zoom pour afficher/masquer la popup de bienvenue
-// S'assurer que la carte existe avant d'ajouter les événements
-if (typeof map !== 'undefined' && map) {
-    map.on('zoomend', function() {
-        const currentZoom = map.getZoom();
-        // Afficher la popup quand on dézoome beaucoup (zoom < 12 par exemple)
-        if (currentZoom < 12 && gtfsInitialized) {
-            showWelcomePopup();
-        } else if (currentZoom >= 14 && isWelcomeVisible) {
-            hideWelcomePopup();
-        }
-    });
-} else {
-    // Si la carte n'est pas encore initialisée, attendre un peu et réessayer
-    setTimeout(function() {
-        if (typeof map !== 'undefined' && map) {
-            map.on('zoomend', function() {
-                const currentZoom = map.getZoom();
-                if (currentZoom < 12 && gtfsInitialized) {
-                    showWelcomePopup();
-                } else if (currentZoom >= 14 && isWelcomeVisible) {
-                    hideWelcomePopup();
-                }
-            });
-        }
-    }, 1000);
+// Fonctions utilitaires
+
+function getColorByRouteType(routeType) {
+    const typeColors = {
+        '0': '#1E88E5', // Tramway - Bleu
+        '1': '#43A047', // Métro - Vert  
+        '2': '#FB8C00', // Train - Orange
+        '3': '#E53935', // Bus - Rouge
+        '4': '#3949AB', // Ferry - Indigo
+        '5': '#8E24AA', // Téléphérique - Violet
+        '6': '#6D4C41', // Funiculaire - Marron
+        '7': '#546E7A'  // Funibus - Bleu gris
+    };
+    return typeColors[routeType] || '#3388ff';
 }
 
-// CSS à ajouter
-const style = document.createElement('style');
-style.textContent = `
-.welcome-popup {
+function getLineWeight(routeType) {
+    const weights = {
+        '0': 4, // Tramway
+        '1': 6, // Métro
+        '2': 8, // Train
+        '3': 3, // Bus
+        '4': 5, // Ferry
+        '5': 4, // Téléphérique
+        '6': 4, // Funiculaire
+        '7': 3  // Funibus
+    };
+    return weights[routeType] || 4;
+}
+
+function getDashPattern(routeType) {
+    // Lignes discontinues pour certains types
+    if (routeType === '3') return '8, 4'; // Bus
+    if (routeType === '4') return '12, 8'; // Ferry
+    return null; // Ligne continue
+}
+
+function getStopStyle(props) {
+    const baseStyle = {
+        radius: 4,
+        fillColor: '#ffffff',
+        color: '#000000',
+        weight: 1,
+        opacity: 0.8,
+        fillOpacity: 0.7
+    };
+    
+    // Style différent pour les stations importantes
+    if (props.location_type === '1' || props.stop_name?.includes('Gare')) {
+        return {
+            ...baseStyle,
+            radius: 6,
+            fillColor: '#FFD700',
+            color: '#FF6B00',
+            weight: 2
+        };
+    }
+    
+    return baseStyle;
+}
+
+function createLinePopup(props) {
+    const routeType = getRouteTypeName(props.route_type);
+    return `
+        <div class="popup-content">
+            <h3>${props.route_short_name || props.route_long_name || 'Ligne'}</h3>
+            <p><strong>Type:</strong> ${routeType}</p>
+            <p><strong>ID:</strong> ${props.route_id}</p>
+            ${props.route_desc ? `<p><strong>Description:</strong> ${props.route_desc}</p>` : ''}
+            ${props.agency_name ? `<p><strong>Opérateur:</strong> ${props.agency_name}</p>` : ''}
+        </div>
+    `;
+}
+
+function createStopPopup(props) {
+    return `
+        <div class="popup-content">
+            <h3>${props.stop_name || 'Arrêt'}</h3>
+            <p><strong>ID:</strong> ${props.stop_id}</p>
+            ${props.stop_code ? `<p><strong>Code:</strong> ${props.stop_code}</p>` : ''}
+            ${props.stop_desc ? `<p><strong>Description:</strong> ${props.stop_desc}</p>` : ''}
+            ${props.zone_id ? `<p><strong>Zone:</strong> ${props.zone_id}</p>` : ''}
+            <button onclick="showStopSchedules('${props.stop_id}')">📅 Voir les horaires</button>
+        </div>
+    `;
+}
+
+function getRouteTypeName(type) {
+    const types = {
+        '0': 'Tramway',
+        '1': 'Métro',
+        '2': 'Train',
+        '3': 'Bus',
+        '4': 'Ferry',
+        '5': 'Téléphérique',
+        '6': 'Funiculaire',
+        '7': 'Funibus'
+    };
+    return types[type] || 'Transport';
+}
+
+function createRouteControlPanel(routeStats) {
+    const panel = document.getElementById('route-control') || document.createElement('div');
+    panel.id = 'route-control';
+    panel.className = 'leaflet-control-container';
+    
+    let html = '<h3>🚌 Lignes de transport</h3><div class="route-list">';
+    
+    Object.entries(routeStats).forEach(([routeId, stats]) => {
+        html += `
+            <div class="route-item">
+                <label>
+                    <input type="checkbox" checked onchange="toggleRoute('${routeId}')">
+                    <span class="route-color" style="background-color: ${stats.color}"></span>
+                    ${stats.name} (${stats.stopCount} arrêts)
+                </label>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    panel.innerHTML = html;
+    
+    if (!document.getElementById('route-control')) {
+        document.body.appendChild(panel);
+    }
+}
+
+function displayStatistics(lineCount, stopCount, routeStats) {
+    const statsPanel = document.getElementById('stats') || document.createElement('div');
+    statsPanel.id = 'stats';
+    statsPanel.className = 'stats-panel';
+    
+    const typeCount = {};
+    Object.values(routeStats).forEach(route => {
+        const typeName = getRouteTypeName(route.type);
+        typeCount[typeName] = (typeCount[typeName] || 0) + 1;
+    });
+    
+    let typeHTML = Object.entries(typeCount)
+        .map(([type, count]) => `<span>${type}: ${count}</span>`)
+        .join(' • ');
+    
+    statsPanel.innerHTML = `
+        <h4>📊 Statistiques</h4>
+        <p><strong>${lineCount}</strong> lignes • <strong>${stopCount}</strong> arrêts</p>
+        <p class="type-stats">${typeHTML}</p>
+    `;
+    
+    if (!document.getElementById('stats')) {
+        document.body.appendChild(statsPanel);
+    }
+}
+
+function createLoadingIndicator() {
+    const indicator = document.createElement('div');
+    indicator.id = 'loading';
+    indicator.className = 'loading-indicator';
+    indicator.innerHTML = '<div class="spinner"></div><p>Chargement des données GTFS...</p>';
+    document.body.appendChild(indicator);
+    return indicator;
+}
+
+function showErrorMessage(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.innerHTML = `❌ ${message}`;
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 5000);
+}
+
+// Fonctions de contrôle des lignes
+function toggleRoute(routeId) {
+    geoJsonLines.forEach(layer => {
+        if (layer.feature.properties.route_id === routeId) {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            } else {
+                map.addLayer(layer);
+            }
+        }
+    });
+    
+    // Toggle des arrêts correspondants
+    busStopLayers.forEach(layer => {
+        if (layer.busLine === routeId) {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            } else {
+                map.addLayer(layer);
+            }
+        }
+    });
+}
+
+function showStopSchedules(stopId) {
+    // Fonction à implémenter selon votre API d'horaires
+    console.log(`Affichage des horaires pour l'arrêt: ${stopId}`);
+    alert(`Fonctionnalité d'horaires à implémenter pour l'arrêt ${stopId}`);
+}
+
+// CSS à ajouter pour le styling
+const additionallCSS = `
+<style>
+.popup-content h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.route-tooltip, .stop-tooltip {
+    background: rgba(0,0,0,0.8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+#route-control {
+    position: fixed;
+    top: 10px;
+    right: 10px;
     background: white;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    padding: 0;
-    min-width: 280px;
-    max-width: 350px;
-    font-family: Arial, sans-serif;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    max-height: 400px;
+    overflow-y: auto;
     z-index: 1000;
 }
 
-.welcome-header {
-    background: linear-gradient(135deg, #4CAF50, #45a049);
-    color: white;
-    padding: 15px;
-    border-radius: 10px 10px 0 0;
+.route-item {
+    margin: 5px 0;
     display: flex;
-    justify-content: space-between;
     align-items: center;
 }
 
-.welcome-header h3 {
-    margin: 0;
-    font-size: 18px;
-}
-
-.close-btn {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 20px;
-    cursor: pointer;
-    padding: 0;
-    width: 25px;
-    height: 25px;
+.route-color {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 0 8px;
 }
 
-.close-btn:hover {
-    background: rgba(255,255,255,0.2);
-}
-
-.network-lines {
-    padding: 15px;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.line-item {
-    display: flex;
-    align-items: center;
-    padding: 8px 0;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.2s;
-}
-
-.line-item:hover {
-    background-color: #f5f5f5;
-}
-
-.line-color {
-    width: 20px;
-    height: 4px;
-    margin-right: 10px;
-    border-radius: 2px;
-}
-
-.line-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.line-info small {
-    color: #666;
-    font-size: 11px;
-}
-
-.welcome-actions {
-    padding: 15px;
-    border-top: 1px solid #eee;
-    display: flex;
-    gap: 10px;
-}
-
-.action-btn {
-    flex: 1;
-    background: #2196F3;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.action-btn:hover {
-    background: #1976D2;
-}
-
-.network-legend {
+.stats-panel {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
     background: white;
+    padding: 10px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    padding: 0;
-    min-width: 150px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
 }
 
-.legend-header {
-    background: #333;
-    color: white;
-    padding: 10px;
-    border-radius: 8px 8px 0 0;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.legend-content {
-    padding: 10px;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
+.type-stats {
     font-size: 12px;
+    color: #666;
 }
 
-.legend-symbol {
-    width: 12px;
-    height: 12px;
-    margin-right: 8px;
-}
-
-.bus-stop {
+.loading-indicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background: white;
-    border: 1px solid #000;
-    border-radius: 50%;
-}
-
-.legend-line {
-    width: 20px;
-    height: 3px;
-    margin-right: 8px;
-    background: #3388ff;
-}
-
-.legend-line.dashed {
-    background: repeating-linear-gradient(
-        to right,
-        #3388ff,
-        #3388ff 3px,
-        transparent 3px,
-        transparent 6px
-    );
-}
-
-.user-location-marker {
-    font-size: 16px;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     text-align: center;
-    line-height: 20px;
+    z-index: 2000;
 }
+
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error-message {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff6b6b;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 4px;
+    z-index: 2000;
+}
+</style>
 `;
 
-document.head.appendChild(style);
+// Injecter le CSS
+document.head.insertAdjacentHTML('beforeend', additionallCSS);
 
 
 
