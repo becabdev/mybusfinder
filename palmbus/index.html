@@ -7346,23 +7346,18 @@ function updateMenu() {
             totalVehicles += lineVehicleCount;
             if (lineVehicleCount > 0) activeLines++;
         });
-        
-        const title = document.querySelector('.menu-top-bar .menu-title');
-        if (title) {
-            title.innerHTML = `
-                <div>${t("network")}</div>
-                <div style="font-size: 12px; opacity: 0.8;">
-                    ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
-                </div>
-            `;
-        }
     }
     updateMenuStatistics();
 
     
     const title = document.createElement('div');
     title.className = 'menu-title';
-    title.textContent = t("network");
+    title.innerHTML = `
+    <div>${t("network")}</div>
+    <div style="font-size: 12px; opacity: 0.8;">
+        ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
+    </div>
+`;
     title.style.cssText = `
         font-size: 20px;
         font-weight: 500;
