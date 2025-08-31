@@ -33,9 +33,12 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-
+        overscroll-behavior: none;
+        overscroll-behavior-y: none;
+        overscroll-behavior-x: none;
     }
     body {
+        position: fixed;
         height: 100%;
         width: 100vw;
         display: flex;
@@ -52,7 +55,9 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-
+        overscroll-behavior: none;
+        overscroll-behavior-y: none;
+        overscroll-behavior-x: none;
     }
     @font-face {
         font-family: "League Spartan";
@@ -414,21 +419,22 @@
     @keyframes slideInBounceInvMBlur {
         0% {
             filter: blur(0px);
-            scale: 1;
+            transform: scale(1);
         }
         100% {
-            scale: 1.2;
+            transform: scale(1.2);
             filter: blur(2px);
         }
     }
+
     @keyframes slideInBounceInvMBlurRev {
         0% {
-            scale: 1.2;
+            transform: scale(1.2);
             filter: blur(2px);
         }
         100% {
+            transform: scale(1);
             filter: blur(0px);
-            scale: 1;
         }
     }
     #accueil {
@@ -803,11 +809,11 @@
         list-style: none;
         margin: 0;
         z-index: 10000;
-        padding: 0 9px;
+        padding: 0 20px;
         background-color: #0f056b9c;
         backdrop-filter: blur(3px);
         -webkit-backdrop-filter: blur(3px);
-        border-radius: 18px;
+        border-radius: 40px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
     .menubottom ul li {
@@ -1796,30 +1802,92 @@
     font-size: 18px;
     text-align: right;
 }
+
+.ripple-container {
+    overflow: hidden;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 40%, rgba(255,255,255,0.1) 70%, transparent 100%);
+    transform: scale(0);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.ripple.animate {
+    animation: ripple-expand 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ripple.held {
+    animation: ripple-expand-hold 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.ripple.release {
+    animation: ripple-fade-out 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ripple-expand {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+@keyframes ripple-expand-hold {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.7;
+    }
+}
+
+@keyframes ripple-fade-out {
+    0% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.2);
+    }
+}
 </style>
 
 </head>
 <body>
-<div class="filtre slide-upc" id="filtre">
+<div class="filtre slide-upc ripple-container" id="filtre">
     <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
 </div>
 
  <div class="menubottom">
-        <ul id="menubtm" class="menubottom-ul">
+        <ul id="menubtm" class="menubottom-ul ripple-container">
             <li>
-                <a onclick="afficherMenu()"><span class="icon"><img src="src/menu.png" id="menuicon" style="width: 40px; height: 40px;"></img></span> <span
+                <a onclick="afficherMenu()"><span class="icon"><img src="src/menu.png" id="menuicon" style="width: 35px; height: 35px;"></img></span> <span
                     class="title" data-i18n="menu">Menu</span></a>
             </li>
             <li>
-                <a onclick="showUpdatePopup('schedule.html')" id="clock"><span class="icon"><img src="src/horloge.png" id="myscheduleicon" style="width: 40px; height: 40px;"></img></span> <span
+                <a onclick="showUpdatePopup('schedule.html')" id="clock"><span class="icon"><img src="src/horloge.png" id="myscheduleicon" style="width: 35px; height: 35px;"></img></span> <span
                         class="title" data-i18n="schedule">Horaires</span></a>
             </li>
             <li>
-                <a id="menubutton"><span class="icon"><img src="src/bus.png" id="vehicleicon" style="width: 40px; height: 40px;"></img></span> <span
+                <a id="menubutton"><span class="icon"><img src="src/bus.png" id="vehicleicon" style="width: 35px; height: 35px;"></img></span> <span
                         class="title" data-i18n="network">Réseau</span></a>
             </li>
             <li>
-                <a onclick="showUpdatePopup('alerts.html');" id="histovecbutton"><span class="icon"><img id="actuicon" src="src/newspaper.png" style="width: 40px; height: 40px;"></img></span> <span
+                <a onclick="showUpdatePopup('alerts.html');" id="histovecbutton"><span class="icon"><img id="actuicon" src="src/newspaper.png" style="width: 35px; height: 35px;"></img></span> <span
                         class="title" data-i18n="news">Actualités</span></a>
             </li>
         </ul>
@@ -1907,6 +1975,164 @@
 
  <script src="src/js/toastjs.js"></script>       
  <script src="../build.js"></script>
+
+     <script>
+        // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
+        // simply add class "ripple-container" to element you want the effect on it
+        class RippleEffect {
+            constructor() {
+                this.activeRipples = new Map();
+                this.init();
+            }
+
+            init() {
+                document.addEventListener('mousedown', this.handlePointerDown.bind(this));
+                document.addEventListener('mouseup', this.handlePointerUp.bind(this));
+                document.addEventListener('mousemove', this.handlePointerMove.bind(this));
+                document.addEventListener('mouseleave', this.handlePointerUp.bind(this));
+                
+                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
+                document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
+                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
+                document.addEventListener('touchcancel', this.handlePointerUp.bind(this), { passive: true });
+                
+                document.addEventListener('click', this.handleClick.bind(this), { passive: true });
+
+            }
+
+            handlePointerDown(e) {
+                const container = e.target.closest('.ripple-container');
+                if (!container) return;
+
+                e.preventDefault();
+                
+                const pointer = this.getPointerPosition(e);
+                const rect = container.getBoundingClientRect();
+                
+                const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
+                
+                this.activeRipples.set(container, {
+                    element: ripple,
+                    startTime: Date.now(),
+                    isHeld: false
+                });
+
+                setTimeout(() => {
+                    const activeRipple = this.activeRipples.get(container);
+                    if (activeRipple && !activeRipple.isReleased) {
+                        ripple.classList.remove('animate');
+                        ripple.classList.add('held');
+                        activeRipple.isHeld = true;
+                    }
+                }, 150);
+            }
+
+            handlePointerMove(e) {
+                const container = e.target.closest('.ripple-container');
+                if (!container) return;
+
+                const activeRipple = this.activeRipples.get(container);
+                if (!activeRipple || !activeRipple.isHeld) return;
+
+                const pointer = this.getPointerPosition(e);
+                const rect = container.getBoundingClientRect();
+                
+                const x = pointer.x - rect.left;
+                const y = pointer.y - rect.top;
+                
+                const ripple = activeRipple.element;
+                const size = parseFloat(ripple.style.width);
+                ripple.style.left = (x - size / 2) + 'px';
+                ripple.style.top = (y - size / 2) + 'px';
+            }
+
+            handlePointerUp(e) {
+                if (e.type === 'mouseleave' || e.type === 'touchcancel') {
+                    this.cleanupAllRipples();
+                    return;
+                }
+
+                const container = e.target.closest('.ripple-container');
+                if (!container) {
+                    this.cleanupAllRipples();
+                    return;
+                }
+
+                const activeRipple = this.activeRipples.get(container);
+                if (!activeRipple) return;
+
+                activeRipple.isReleased = true;
+                
+                if (activeRipple.isHeld) {
+                    activeRipple.element.classList.remove('held');
+                    activeRipple.element.classList.add('release');
+                } else {
+                    const timeHeld = Date.now() - activeRipple.startTime;
+                    if (timeHeld < 150) {
+                        return;
+                    }
+                }
+
+                setTimeout(() => {
+                    this.cleanupRipple(container);
+                }, 400);
+            }
+
+            cleanupAllRipples() {
+                for (const [container, rippleData] of this.activeRipples) {
+                    rippleData.isReleased = true;
+                    rippleData.element.classList.remove('held');
+                    rippleData.element.classList.add('release');
+                    
+                    setTimeout(() => {
+                        this.cleanupRipple(container);
+                    }, 400);
+                }
+            }
+
+            cleanupRipple(container) {
+                const activeRipple = this.activeRipples.get(container);
+                if (activeRipple && activeRipple.element.parentNode) {
+                    activeRipple.element.parentNode.removeChild(activeRipple.element);
+                }
+                this.activeRipples.delete(container);
+            }
+
+            createRipple(container, x, y) {
+                const rect = container.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height) * 2.5;
+                
+                const ripple = document.createElement('div');
+                ripple.classList.add('ripple', 'animate');
+                
+                ripple.style.width = size + 'px';
+                ripple.style.height = size + 'px';
+                ripple.style.left = (x - size / 2) + 'px';
+                ripple.style.top = (y - size / 2) + 'px';
+                
+                container.appendChild(ripple);
+                
+                setTimeout(() => {
+                    if (ripple.parentNode && ripple.classList.contains('animate')) {
+                        this.cleanupRipple(container);
+                    }
+                }, 600);
+                
+                return ripple;
+            }
+
+            getPointerPosition(e) {
+                if (e.touches && e.touches.length > 0) {
+                    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                }
+                return { x: e.clientX, y: e.clientY };
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new RippleEffect();
+        });
+    </script>
 
  <script>
     document.addEventListener('gesturestart', function (e) {
@@ -2549,7 +2775,7 @@
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "ver", {
                 icon: "ℹ️",
                 label: "Version",
-                description: "3.1.0.0 Beta 1",
+                description: "3.1.0.0 Beta 2",
                 onclick: function () {
                     return;
                 }
@@ -4045,8 +4271,12 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
     const color = lineColors[route_id] || '#000000';
+    
+    const lighterColor = adjustBrightness(color, 30);
+    const darkerColor = adjustBrightness(color, -20);
+    
     const markerHtmlStyles = `
-        background-color: ${color};
+        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
         width: 12px;
         height: 12px;
         display: block;
@@ -4055,7 +4285,35 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         position: relative;
         border-radius: 50%;
         border: 2px solid white;
-        transition: transform 0.2s ease, background-color 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                    0 2px 6px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+    `;
+
+    const pulseAnimation = `
+        @keyframes pulse-${route_id} {
+            0% { 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                           0 2px 6px rgba(0, 0, 0, 0.15),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                           0 0 0 0 ${color}40;
+            }
+            50% {
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 
+                           0 3px 8px rgba(0, 0, 0, 0.2),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                           0 0 0 8px ${color}20;
+            }
+            100% { 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                           0 2px 6px rgba(0, 0, 0, 0.15),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                           0 0 0 0 ${color}00;
+            }
+        }
     `;
 
     const arrowSvg = `
@@ -4067,8 +4325,20 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             top: -2px;
             transform-origin: 2px; 
             transform: rotate(${bearing - 90}deg);
-            transition: transform 0.5s ease;"
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));"
             viewBox="0 0 24 24">
+            
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="rgba(0, 0, 0, 0.3)"
+                stroke-width="5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(1, 1)"
+            />
+            
             <path 
                 d="M8 4 L16 12 L8 20"
                 fill="none"
@@ -4077,10 +4347,17 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 stroke-linecap="round"
                 stroke-linejoin="round"
             />
+            
+            <defs>
+                <linearGradient id="arrow-gradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:${lighterColor};stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:${darkerColor};stop-opacity:1" />
+                </linearGradient>
+            </defs>
             <path 
                 d="M8 4 L16 12 L8 20"
                 fill="none"
-                stroke="${color}"
+                stroke="url(#arrow-gradient-${route_id})"
                 stroke-width="3"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -4089,13 +4366,23 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         </svg>
     `;
 
+    if (!document.getElementById(`pulse-style-${route_id}`)) {
+        const style = document.createElement('style');
+        style.id = `pulse-style-${route_id}`;
+        style.textContent = pulseAnimation;
+        document.head.appendChild(style);
+    }
+
     const icon = L.divIcon({
-        className: "my-custom-pin",
+        className: "my-custom-pin-enhanced",
         iconAnchor: [0, 0],
-        popupAnchor: [0, 5],
+        popupAnchor: [0, -5],
         html: `
-            <div style="position: relative;">
-                <span style="${markerHtmlStyles}" class="marker-icon" />
+            <div style="position: relative;" class="marker-container">
+                <span style="${markerHtmlStyles}" 
+                      class="marker-icon enhanced-marker" 
+                      onmouseover="this.style.transform='scale(1.2)'; this.style.animation='pulse-${route_id} 1.5s infinite';"
+                      onmouseout="this.style.transform='scale(1)'; this.style.animation='none';" />
                 ${arrowSvg}
             </div>
         `
@@ -4526,9 +4813,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         if (marker.styleId) {
                             const oldStyle = document.getElementById(marker.styleId);
                             if (oldStyle) {
-                                setTimeout(() => {
-                                    oldStyle.remove();
-                                }, 500);
+                                oldStyle.remove();
                             }
                         }
                     }
@@ -4541,6 +4826,43 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 });
     return marker;
 }
+
+function adjustBrightness(hex, percent) {
+    const num = parseInt(hex.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255))
+        .toString(16).slice(1);
+}
+
+const additionalCSS = `
+.my-custom-pin-enhanced {
+    background: transparent !important;
+    border: none !important;
+}
+
+.marker-container {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.enhanced-marker {
+    position: relative;
+    z-index: 1000;
+}
+
+.enhanced-marker:hover {
+    z-index: 1001;
+}
+
+.marker-arrow {
+    pointer-events: none;
+}
+`;
 
 function animateMarker(marker, newPosition) {
     const startLatLng = marker.getLatLng();
@@ -6058,7 +6380,7 @@ async function fetchVehiclePositions() {
                     }
                     
                     const popupContent = `
-                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px #0000009c; background-color: ${backgroundColor}9c; color: ${textColor};">
+                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
                             <button onclick="shareVehicleId('${vehicle.vehicle.id}')" title="${t("share")}" class="share-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -7729,6 +8051,7 @@ sortedLines.forEach(line => {
     lineSection.dataset.line = line;
     lineSection.style.backgroundColor = lineColor;
     lineSection.classList.add('linesection');
+    lineSection.classList.add('ripple-container');
     lineSection.style.marginBottom = '10px';
     lineSection.style.marginLeft = '10px';
     lineSection.style.marginRight = '10px';
@@ -7812,6 +8135,7 @@ sortedLines.forEach(line => {
 
             busesByLineAndDestination[line][destination].forEach(bus => {
                 const busItem = document.createElement('div');
+                busItem.classList.add('ripple-container');
                 const marker = bus.vehicle;
                 const popupContent = marker.getPopup().getContent();
                 
