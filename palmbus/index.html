@@ -1802,13 +1802,23 @@
 }
 
 .ripple-container {
-    position: relative;
+    position: fixed;
     overflow: hidden;
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-origin: center;
+}
+
+.ripple-container.stretch-left {
+    transform: scaleX(1.02) translateX(-2px);
+}
+
+.ripple-container.stretch-right {
+    transform: scaleX(1.02) translateX(2px);
 }
 
 .ripple {
@@ -1981,6 +1991,7 @@
         class RippleEffect {
             constructor() {
                 this.activeRipples = new Map();
+                this.stretchData = new Map();
                 this.init();
             }
 
@@ -1989,9 +2000,10 @@
                 document.addEventListener('mouseup', this.handlePointerUp.bind(this));
                 document.addEventListener('mousemove', this.handlePointerMove.bind(this));
                 document.addEventListener('mouseleave', this.handlePointerUp.bind(this));
-                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: false });
+                
+                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
                 document.addEventListener('touchend', this.handlePointerUp.bind(this));
-                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: false });
+                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
                 document.addEventListener('touchcancel', this.handlePointerUp.bind(this));
             }
 
@@ -1999,12 +2011,24 @@
                 const container = e.target.closest('.ripple-container');
                 if (!container) return;
 
-                e.preventDefault();
+                const isClickable = e.target.matches('button, a, input, select, textarea, [onclick], [role="button"]') ||
+                                  e.target.closest('button, a, input, select, textarea, [onclick], [role="button"]');
+                
+                if (!isClickable) {
+                    e.preventDefault();
+                }
                 
                 const pointer = this.getPointerPosition(e);
                 const rect = container.getBoundingClientRect();
+                const startX = pointer.x - rect.left;
                 
-                const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
+                const ripple = this.createRipple(container, startX, pointer.y - rect.top);
+                
+                this.stretchData.set(container, {
+                    startX: startX,
+                    currentX: startX,
+                    centerX: rect.width / 2
+                });
                 
                 this.activeRipples.set(container, {
                     element: ripple,
@@ -2027,7 +2051,9 @@
                 if (!container) return;
 
                 const activeRipple = this.activeRipples.get(container);
-                if (!activeRipple || !activeRipple.isHeld) return;
+                const stretchInfo = this.stretchData.get(container);
+                
+                if (!activeRipple && !stretchInfo) return;
 
                 const pointer = this.getPointerPosition(e);
                 const rect = container.getBoundingClientRect();
@@ -2035,10 +2061,29 @@
                 const x = pointer.x - rect.left;
                 const y = pointer.y - rect.top;
                 
-                const ripple = activeRipple.element;
-                const size = parseFloat(ripple.style.width);
-                ripple.style.left = (x - size / 2) + 'px';
-                ripple.style.top = (y - size / 2) + 'px';
+                if (stretchInfo && activeRipple && activeRipple.isHeld) {
+                    const deltaX = x - stretchInfo.startX;
+                    const threshold = 20; 
+                    
+                    container.classList.remove('stretch-left', 'stretch-right');
+                    
+                    if (Math.abs(deltaX) > threshold) {
+                        if (deltaX > 0) {
+                            container.classList.add('stretch-right');
+                        } else {
+                            container.classList.add('stretch-left');
+                        }
+                    }
+                    
+                    stretchInfo.currentX = x;
+                }
+                
+                if (activeRipple && activeRipple.isHeld) {
+                    const ripple = activeRipple.element;
+                    const size = parseFloat(ripple.style.width);
+                    ripple.style.left = (x - size / 2) + 'px';
+                    ripple.style.top = (y - size / 2) + 'px';
+                }
             }
 
             handlePointerUp(e) {
@@ -2056,6 +2101,8 @@
                 const activeRipple = this.activeRipples.get(container);
                 if (!activeRipple) return;
 
+                this.resetStretch(container);
+
                 activeRipple.isReleased = true;
                 
                 if (activeRipple.isHeld) {
@@ -2064,6 +2111,7 @@
                 } else {
                     const timeHeld = Date.now() - activeRipple.startTime;
                     if (timeHeld < 150) {
+                        this.resetStretch(container);
                         return;
                     }
                 }
@@ -2079,6 +2127,8 @@
                     rippleData.element.classList.remove('held');
                     rippleData.element.classList.add('release');
                     
+                    this.resetStretch(container);
+                    
                     setTimeout(() => {
                         this.cleanupRipple(container);
                     }, 400);
@@ -2091,6 +2141,12 @@
                     activeRipple.element.parentNode.removeChild(activeRipple.element);
                 }
                 this.activeRipples.delete(container);
+                this.stretchData.delete(container);
+            }
+
+            resetStretch(container) {
+                container.classList.remove('stretch-left', 'stretch-right');
+                this.stretchData.delete(container);
             }
 
             createRipple(container, x, y) {
@@ -2127,6 +2183,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             new RippleEffect();
         });
+        
     </script>
 
  <script>
