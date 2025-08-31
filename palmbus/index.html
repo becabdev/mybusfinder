@@ -4903,11 +4903,259 @@ let selectedLines = [];
 
 
 
+// Variables globales
+let welcomePopup = null;
+let isWelcomeVisible = false;
+let networkLegend = null;
+let busLines = null;
+let busStops = null;
+let routeInfo = {}; // Pour stocker les infos des lignes
+
+// Fonction pour créer la popup de bienvenue
+function createWelcomePopup() {
+    if (welcomePopup) {
+        map.removeControl(welcomePopup);
+    }
+
+    welcomePopup = L.control({position: 'topleft'});
+    
+    welcomePopup.onAdd = function() {
+        const div = L.DomUtil.create('div', 'welcome-popup');
+        div.innerHTML = `
+            <div class="welcome-header">
+                <h3>🚌 Bienvenue sur le réseau</h3>
+                <button class="close-btn" onclick="hideWelcomePopup()">&times;</button>
+            </div>
+            <div class="network-lines" id="networkLines">
+                <p>Chargement des lignes...</p>
+            </div>
+            <div class="welcome-actions">
+                <button onclick="zoomToNetwork()" class="action-btn">📍 Voir tout le réseau</button>
+                <button onclick="showNearestStops()" class="action-btn">📍 Arrêts proches</button>
+            </div>
+        `;
+        
+        // Empêcher la propagation des événements de clic sur la popup
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        
+        return div;
+    };
+
+    return welcomePopup;
+}
+
+// Fonction pour afficher la popup de bienvenue
+function showWelcomePopup() {
+    if (!isWelcomeVisible) {
+        createWelcomePopup().addTo(map);
+        isWelcomeVisible = true;
+        updateNetworkLines();
+    }
+}
+
+// Fonction pour masquer la popup de bienvenue
+function hideWelcomePopup() {
+    if (welcomePopup && isWelcomeVisible) {
+        map.removeControl(welcomePopup);
+        isWelcomeVisible = false;
+    }
+}
+
+// Fonction pour mettre à jour la liste des lignes
+function updateNetworkLines() {
+    const networkLinesDiv = document.getElementById('networkLines');
+    if (!networkLinesDiv || !routeInfo) return;
+
+    let linesHtml = '';
+    const routeIds = Object.keys(routeInfo);
+    
+    if (routeIds.length === 0) {
+        linesHtml = '<p>Aucune ligne trouvée</p>';
+    } else {
+        routeIds.forEach(routeId => {
+            const color = lineColors[routeId] || '#3388ff';
+            const route = routeInfo[routeId];
+            const routeType = route.route_type === '3' ? '🚌' : '🚊';
+            const isDashed = route.route_type === '3' ? ' (ligne pointillée)' : '';
+            
+            linesHtml += `
+                <div class="line-item" onclick="focusOnLine('${routeId}')">
+                    <span class="line-color" style="background-color: ${color}"></span>
+                    <span class="line-info">
+                        ${routeType} Ligne ${route.route_short_name || routeId}
+                        <small>${route.route_long_name || ''}</small>
+                    </span>
+                </div>
+            `;
+        });
+    }
+    
+    networkLinesDiv.innerHTML = linesHtml;
+}
+
+// Fonction pour zoomer sur tout le réseau
+function zoomToNetwork() {
+    if (busLines && busStops) {
+        const group = L.featureGroup([busLines, busStops]);
+        map.fitBounds(group.getBounds(), {padding: [20, 20]});
+    }
+    hideWelcomePopup();
+}
+
+// Fonction pour afficher les arrêts les plus proches
+function showNearestStops() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const userLat = position.coords.latitude;
+            const userLng = position.coords.longitude;
+            
+            // Marquer la position de l'utilisateur
+            const userMarker = L.marker([userLat, userLng], {
+                icon: L.divIcon({
+                    className: 'user-location-marker',
+                    html: '📍',
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                })
+            }).addTo(map);
+            
+            // Trouver les 5 arrêts les plus proches
+            let nearestStops = [];
+            busStopLayers.forEach(function(layer) {
+                if (layer.getLatLng) {
+                    const distance = L.latLng(userLat, userLng).distanceTo(layer.getLatLng());
+                    nearestStops.push({
+                        layer: layer,
+                        distance: distance,
+                        properties: layer.feature.properties
+                    });
+                }
+            });
+            
+            nearestStops.sort((a, b) => a.distance - b.distance);
+            nearestStops = nearestStops.slice(0, 5);
+            
+            // Créer une popup avec les arrêts proches
+            let popupContent = '<h4>Arrêts les plus proches :</h4>';
+            nearestStops.forEach(function(stop, index) {
+                const distance = Math.round(stop.distance);
+                const stopName = stop.properties.stop_name || 'Arrêt sans nom';
+                popupContent += `<p><strong>${index + 1}.</strong> ${stopName} (${distance}m)</p>`;
+            });
+            
+            userMarker.bindPopup(popupContent).openPopup();
+            map.setView([userLat, userLng], 16);
+            
+        }, function(error) {
+            alert('Impossible d\'obtenir votre position : ' + error.message);
+        });
+    } else {
+        alert('La géolocalisation n\'est pas supportée par votre navigateur');
+    }
+    hideWelcomePopup();
+}
+
+// Fonction pour se concentrer sur une ligne spécifique
+function focusOnLine(routeId) {
+    const lineLayers = [];
+    geoJsonLines.forEach(function(layer) {
+        if (layer.feature && layer.feature.properties.route_id === routeId) {
+            lineLayers.push(layer);
+        }
+    });
+    
+    if (lineLayers.length > 0) {
+        const group = L.featureGroup(lineLayers);
+        map.fitBounds(group.getBounds(), {padding: [50, 50]});
+        
+        // Faire clignoter la ligne
+        lineLayers.forEach(function(layer) {
+            const originalOpacity = layer.options.opacity;
+            let blinkCount = 0;
+            const blinkInterval = setInterval(function() {
+                layer.setStyle({opacity: blinkCount % 2 === 0 ? 0.2 : 1});
+                blinkCount++;
+                if (blinkCount >= 6) {
+                    clearInterval(blinkInterval);
+                    layer.setStyle({opacity: originalOpacity});
+                }
+            }, 300);
+        });
+    }
+    hideWelcomePopup();
+}
+
+// Fonction pour créer une légende permanente
+function createNetworkLegend() {
+    if (networkLegend) {
+        map.removeControl(networkLegend);
+    }
+
+    networkLegend = L.control({position: 'bottomright'});
+    
+    networkLegend.onAdd = function() {
+        const div = L.DomUtil.create('div', 'network-legend');
+        div.innerHTML = `
+            <div class="legend-header" onclick="toggleLegend()">
+                <span>Légende</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="legend-content" id="legendContent">
+                <div class="legend-item">
+                    <span class="legend-symbol bus-stop"></span>
+                    <span>Arrêts de bus</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-line solid"></span>
+                    <span>Lignes de tramway</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-line dashed"></span>
+                    <span>Lignes de bus</span>
+                </div>
+            </div>
+        `;
+        
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+    };
+
+    return networkLegend;
+}
+
+// Fonction pour basculer l'affichage de la légende
+function toggleLegend() {
+    const content = document.getElementById('legendContent');
+    const icon = document.querySelector('.toggle-icon');
+    if (content && icon) {
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            icon.textContent = '▼';
+        } else {
+            content.style.display = 'none';
+            icon.textContent = '▶';
+        }
+    }
+}
+
+// Fonction principale modifiée
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    const busLines = L.geoJSON(geoJsonData, {
+    // Extraire les informations des routes
+    geoJsonData.features.forEach(function(feature) {
+        if (feature.properties && feature.properties.route_id) {
+            routeInfo[feature.properties.route_id] = {
+                route_short_name: feature.properties.route_short_name,
+                route_long_name: feature.properties.route_long_name,
+                route_type: feature.properties.route_type
+            };
+        }
+    });
+
+    busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
             return feature.geometry.type === 'LineString';
         },
@@ -4915,22 +5163,32 @@ async function loadGeoJsonLines() {
             return {
                 color: lineColors[feature.properties.route_id] || '#3388ff',
                 weight: 6,
-                opacity: 0.7,  
+                opacity: 0.7,
                 lineJoin: 'round',
                 lineCap: 'round',
-                className: 'bus-line', 
+                className: 'bus-line',
                 dashArray: feature.properties.route_type === '3' ? '5, 5' : null
             };
         },
         onEachFeature: function(feature, layer) {
-            
             if (feature.properties && feature.properties.route_id) {
                 geoJsonLines.push(layer);
+                
+                // Ajouter une popup avec les infos de la ligne
+                const routeId = feature.properties.route_id;
+                const route = routeInfo[routeId];
+                const routeType = route.route_type === '3' ? 'Bus' : 'Tramway';
+                
+                layer.bindPopup(`
+                    <h4>${routeType} ${route.route_short_name || routeId}</h4>
+                    <p>${route.route_long_name || 'Ligne de transport'}</p>
+                    <button onclick="focusOnLine('${routeId}')">Centrer sur cette ligne</button>
+                `);
             }
         }
     }).addTo(map);
 
-    const busStops = L.geoJSON(geoJsonData, {
+    busStops = L.geoJSON(geoJsonData, {
         filter: function(feature) {
             return feature.geometry && feature.geometry.type === 'Point';
         },
@@ -4943,17 +5201,216 @@ async function loadGeoJsonLines() {
                 opacity: 0.7,
                 fillOpacity: 0.6
             });
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties && feature.properties.stop_name) {
+                layer.bindPopup(`
+                    <h4>📍 ${feature.properties.stop_name}</h4>
+                    <p>Ligne: ${feature.properties.route_id || 'Non spécifiée'}</p>
+                    ${feature.properties.stop_desc ? `<p>${feature.properties.stop_desc}</p>` : ''}
+                `);
+            }
         }
     }).addTo(map);
-    
+
     busStops.eachLayer(function(layer) {
         if (layer.feature && layer.feature.properties) {
             layer.busLine = layer.feature.properties.route_id || null;
             busStopLayers.push(layer);
         }
     });
-    
+
+    // Créer la légende
+    createNetworkLegend().addTo(map);
 }
+
+// Événement de zoom pour afficher/masquer la popup de bienvenue
+map.on('zoomend', function() {
+    const currentZoom = map.getZoom();
+    // Afficher la popup quand on dézoome beaucoup (zoom < 12 par exemple)
+    if (currentZoom < 12) {
+        showWelcomePopup();
+    } else if (currentZoom >= 14 && isWelcomeVisible) {
+        hideWelcomePopup();
+    }
+});
+
+// CSS à ajouter
+const style = document.createElement('style');
+style.textContent = `
+.welcome-popup {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    padding: 0;
+    min-width: 280px;
+    max-width: 350px;
+    font-family: Arial, sans-serif;
+    z-index: 1000;
+}
+
+.welcome-header {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.welcome-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.network-lines {
+    padding: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.line-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.line-item:hover {
+    background-color: #f5f5f5;
+}
+
+.line-color {
+    width: 20px;
+    height: 4px;
+    margin-right: 10px;
+    border-radius: 2px;
+}
+
+.line-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.line-info small {
+    color: #666;
+    font-size: 11px;
+}
+
+.welcome-actions {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    flex: 1;
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.action-btn:hover {
+    background: #1976D2;
+}
+
+.network-legend {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    padding: 0;
+    min-width: 150px;
+}
+
+.legend-header {
+    background: #333;
+    color: white;
+    padding: 10px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.legend-content {
+    padding: 10px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.legend-symbol {
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+}
+
+.bus-stop {
+    background: white;
+    border: 1px solid #000;
+    border-radius: 50%;
+}
+
+.legend-line {
+    width: 20px;
+    height: 3px;
+    margin-right: 8px;
+    background: #3388ff;
+}
+
+.legend-line.dashed {
+    background: repeating-linear-gradient(
+        to right,
+        #3388ff,
+        #3388ff 3px,
+        transparent 3px,
+        transparent 6px
+    );
+}
+
+.user-location-marker {
+    font-size: 16px;
+    text-align: center;
+    line-height: 20px;
+}
+`;
+
+document.head.appendChild(style);
 
 
 
