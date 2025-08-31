@@ -4903,13 +4903,14 @@ let selectedLines = [];
 
 
 
-// Variables globales
+// Variables globales - Initialisation sécurisée
 let welcomePopup = null;
 let isWelcomeVisible = false;
 let networkLegend = null;
 let busLines = null;
 let busStops = null;
 let routeInfo = {}; // Pour stocker les infos des lignes
+
 
 // Fonction pour créer la popup de bienvenue
 function createWelcomePopup() {
@@ -5005,6 +5006,11 @@ function zoomToNetwork() {
 
 // Fonction pour afficher les arrêts les plus proches
 function showNearestStops() {
+    if (!gtfsInitialized || !window.busStopLayers) {
+        alert('Les données des arrêts ne sont pas encore chargées');
+        return;
+    }
+    
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
             const userLat = position.coords.latitude;
@@ -5022,13 +5028,13 @@ function showNearestStops() {
             
             // Trouver les 5 arrêts les plus proches
             let nearestStops = [];
-            busStopLayers.forEach(function(layer) {
+            window.busStopLayers.forEach(function(layer) {
                 if (layer.getLatLng) {
                     const distance = L.latLng(userLat, userLng).distanceTo(layer.getLatLng());
                     nearestStops.push({
                         layer: layer,
                         distance: distance,
-                        properties: layer.feature.properties
+                        properties: layer.feature ? layer.feature.properties : {}
                     });
                 }
             });
@@ -5058,20 +5064,26 @@ function showNearestStops() {
 
 // Fonction pour se concentrer sur une ligne spécifique
 function focusOnLine(routeId) {
+    // Vérifier que les données sont chargées
+    if (!gtfsInitialized || !window.geoJsonLines) {
+        console.log('Les données GTFS ne sont pas encore chargées');
+        return;
+    }
+    
     const lineLayers = [];
-    geoJsonLines.forEach(function(layer) {
-        if (layer.feature && layer.feature.properties.route_id === routeId) {
+    window.geoJsonLines.forEach(function(layer) {
+        if (layer.feature && layer.feature.properties && layer.feature.properties.route_id === routeId) {
             lineLayers.push(layer);
         }
     });
     
-    if (lineLayers.length > 0) {
+    if (lineLayers.length > 0 && typeof map !== 'undefined' && map) {
         const group = L.featureGroup(lineLayers);
         map.fitBounds(group.getBounds(), {padding: [50, 50]});
         
         // Faire clignoter la ligne
         lineLayers.forEach(function(layer) {
-            const originalOpacity = layer.options.opacity;
+            const originalOpacity = layer.options.opacity || 0.7;
             let blinkCount = 0;
             const blinkInterval = setInterval(function() {
                 layer.setStyle({opacity: blinkCount % 2 === 0 ? 0.2 : 1});
@@ -5139,101 +5151,174 @@ function toggleLegend() {
     }
 }
 
-// Fonction principale modifiée
+// Fonction principale modifiée avec gestion d'erreurs
 async function loadGeoJsonLines() {
-    const response = await fetch('proxy-cors/proxy_geojson.php');
-    const geoJsonData = await response.json();
-
-    // Extraire les informations des routes
-    geoJsonData.features.forEach(function(feature) {
-        if (feature.properties && feature.properties.route_id) {
-            routeInfo[feature.properties.route_id] = {
-                route_short_name: feature.properties.route_short_name,
-                route_long_name: feature.properties.route_long_name,
-                route_type: feature.properties.route_type
-            };
+    try {
+        const response = await fetch('proxy-cors/proxy_geojson.php');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    });
+        
+        const geoJsonData = await response.json();
+        
+        // Vérifier que les données sont valides
+        if (!geoJsonData || !geoJsonData.features) {
+            throw new Error('Données GeoJSON invalides');
+        }
 
-    busLines = L.geoJSON(geoJsonData, {
-        filter: function(feature) {
-            return feature.geometry.type === 'LineString';
-        },
-        style: function(feature) {
-            return {
-                color: lineColors[feature.properties.route_id] || '#3388ff',
-                weight: 6,
-                opacity: 0.7,
-                lineJoin: 'round',
-                lineCap: 'round',
-                className: 'bus-line',
-                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
-            };
-        },
-        onEachFeature: function(feature, layer) {
+        // Initialiser les variables si elles n'existent pas
+        if (!window.geoJsonLines) {
+            window.geoJsonLines = [];
+        }
+        if (!window.busStopLayers) {
+            window.busStopLayers = [];
+        }
+        if (!window.lineColors) {
+            window.lineColors = {};
+        }
+
+        // Réinitialiser les arrays
+        routeInfo = {};
+
+        // Extraire les informations des routes
+        geoJsonData.features.forEach(function(feature) {
             if (feature.properties && feature.properties.route_id) {
-                geoJsonLines.push(layer);
-                
-                // Ajouter une popup avec les infos de la ligne
-                const routeId = feature.properties.route_id;
-                const route = routeInfo[routeId];
-                const routeType = route.route_type === '3' ? 'Bus' : 'Tramway';
-                
-                layer.bindPopup(`
-                    <h4>${routeType} ${route.route_short_name || routeId}</h4>
-                    <p>${route.route_long_name || 'Ligne de transport'}</p>
-                    <button onclick="focusOnLine('${routeId}')">Centrer sur cette ligne</button>
-                `);
+                routeInfo[feature.properties.route_id] = {
+                    route_short_name: feature.properties.route_short_name,
+                    route_long_name: feature.properties.route_long_name,
+                    route_type: feature.properties.route_type
+                };
             }
-        }
-    }).addTo(map);
+        });
 
-    busStops = L.geoJSON(geoJsonData, {
-        filter: function(feature) {
-            return feature.geometry && feature.geometry.type === 'Point';
-        },
-        pointToLayer: function(feature, latlng) {
-            return L.circleMarker(latlng, {
-                radius: 3,
-                fillColor: '#ffffff',
-                color: '#000000',
-                weight: 0.5,
-                opacity: 0.7,
-                fillOpacity: 0.6
-            });
-        },
-        onEachFeature: function(feature, layer) {
-            if (feature.properties && feature.properties.stop_name) {
-                layer.bindPopup(`
-                    <h4>📍 ${feature.properties.stop_name}</h4>
-                    <p>Ligne: ${feature.properties.route_id || 'Non spécifiée'}</p>
-                    ${feature.properties.stop_desc ? `<p>${feature.properties.stop_desc}</p>` : ''}
-                `);
+        busLines = L.geoJSON(geoJsonData, {
+            filter: function(feature) {
+                return feature.geometry && feature.geometry.type === 'LineString';
+            },
+            style: function(feature) {
+                const routeId = feature.properties ? feature.properties.route_id : null;
+                return {
+                    color: (window.lineColors && routeId) ? window.lineColors[routeId] || '#3388ff' : '#3388ff',
+                    weight: 6,
+                    opacity: 0.7,
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                    className: 'bus-line',
+                    dashArray: (feature.properties && feature.properties.route_type === '3') ? '5, 5' : null
+                };
+            },
+            onEachFeature: function(feature, layer) {
+                if (feature.properties && feature.properties.route_id) {
+                    window.geoJsonLines.push(layer);
+                    
+                    // Ajouter une popup avec les infos de la ligne
+                    const routeId = feature.properties.route_id;
+                    const route = routeInfo[routeId] || {};
+                    const routeType = route.route_type === '3' ? 'Bus' : 'Tramway';
+                    
+                    layer.bindPopup(`
+                        <h4>${routeType} ${route.route_short_name || routeId}</h4>
+                        <p>${route.route_long_name || 'Ligne de transport'}</p>
+                        <button onclick="focusOnLine('${routeId}')">Centrer sur cette ligne</button>
+                    `);
+                }
             }
-        }
-    }).addTo(map);
+        });
 
-    busStops.eachLayer(function(layer) {
-        if (layer.feature && layer.feature.properties) {
-            layer.busLine = layer.feature.properties.route_id || null;
-            busStopLayers.push(layer);
+        // Vérifier que la carte existe avant d'ajouter les couches
+        if (typeof map !== 'undefined' && map) {
+            busLines.addTo(map);
+        } else {
+            console.error('La carte Leaflet n\'est pas initialisée');
+            return;
         }
-    });
 
-    // Créer la légende
-    createNetworkLegend().addTo(map);
+        busStops = L.geoJSON(geoJsonData, {
+            filter: function(feature) {
+                return feature.geometry && feature.geometry.type === 'Point';
+            },
+            pointToLayer: function(feature, latlng) {
+                return L.circleMarker(latlng, {
+                    radius: 3,
+                    fillColor: '#ffffff',
+                    color: '#000000',
+                    weight: 0.5,
+                    opacity: 0.7,
+                    fillOpacity: 0.6
+                });
+            },
+            onEachFeature: function(feature, layer) {
+                if (feature.properties && feature.properties.stop_name) {
+                    layer.bindPopup(`
+                        <h4>📍 ${feature.properties.stop_name}</h4>
+                        <p>Ligne: ${feature.properties.route_id || 'Non spécifiée'}</p>
+                        ${feature.properties.stop_desc ? `<p>${feature.properties.stop_desc}</p>` : ''}
+                    `);
+                }
+            }
+        }).addTo(map);
+
+        busStops.eachLayer(function(layer) {
+            if (layer.feature && layer.feature.properties) {
+                layer.busLine = layer.feature.properties.route_id || null;
+                window.busStopLayers.push(layer);
+            }
+        });
+
+        // Créer la légende
+        createNetworkLegend().addTo(map);
+        
+        // Marquer comme initialisé
+        gtfsInitialized = true;
+        
+        console.log('GeoJSON chargé avec succès:', {
+            lignes: Object.keys(routeInfo).length,
+            arrêts: window.busStopLayers.length
+        });
+
+    } catch (error) {
+        console.error('Erreur lors du chargement du GeoJSON:', error);
+        // Afficher un message d'erreur à l'utilisateur
+        if (typeof map !== 'undefined' && map) {
+            L.popup()
+                .setLatLng(map.getCenter())
+                .setContent(`
+                    <h4>⚠️ Erreur de chargement</h4>
+                    <p>Impossible de charger les données du réseau de transport.</p>
+                    <p><small>${error.message}</small></p>
+                `)
+                .openOn(map);
+        }
+    }
 }
 
 // Événement de zoom pour afficher/masquer la popup de bienvenue
-map.on('zoomend', function() {
-    const currentZoom = map.getZoom();
-    // Afficher la popup quand on dézoome beaucoup (zoom < 12 par exemple)
-    if (currentZoom < 12) {
-        showWelcomePopup();
-    } else if (currentZoom >= 14 && isWelcomeVisible) {
-        hideWelcomePopup();
-    }
-});
+// S'assurer que la carte existe avant d'ajouter les événements
+if (typeof map !== 'undefined' && map) {
+    map.on('zoomend', function() {
+        const currentZoom = map.getZoom();
+        // Afficher la popup quand on dézoome beaucoup (zoom < 12 par exemple)
+        if (currentZoom < 12 && gtfsInitialized) {
+            showWelcomePopup();
+        } else if (currentZoom >= 14 && isWelcomeVisible) {
+            hideWelcomePopup();
+        }
+    });
+} else {
+    // Si la carte n'est pas encore initialisée, attendre un peu et réessayer
+    setTimeout(function() {
+        if (typeof map !== 'undefined' && map) {
+            map.on('zoomend', function() {
+                const currentZoom = map.getZoom();
+                if (currentZoom < 12 && gtfsInitialized) {
+                    showWelcomePopup();
+                } else if (currentZoom >= 14 && isWelcomeVisible) {
+                    hideWelcomePopup();
+                }
+            });
+        }
+    }, 1000);
+}
 
 // CSS à ajouter
 const style = document.createElement('style');
