@@ -4049,43 +4049,98 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
     const color = lineColors[route_id] || '#000000';
+    
+    // Couleurs dérivées pour les effets
+    const lighterColor = adjustBrightness(color, 30);
+    const darkerColor = adjustBrightness(color, -20);
+    
     const markerHtmlStyles = `
-        background-color: ${color};
-        width: 12px;
-        height: 12px;
+        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
+        width: 16px;
+        height: 16px;
         display: block;
-        left: -6px;
-        top: -6px;
+        left: -8px;
+        top: -8px;
         position: relative;
         border-radius: 50%;
-        border: 2px solid white;
-        transition: transform 0.2s ease, background-color 0.3s ease;
+        border: 3px solid white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                    0 2px 6px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+    `;
+
+    const pulseAnimation = `
+        @keyframes pulse-${route_id} {
+            0% { 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                           0 2px 6px rgba(0, 0, 0, 0.15),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                           0 0 0 0 ${color}40;
+            }
+            50% {
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 
+                           0 3px 8px rgba(0, 0, 0, 0.2),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                           0 0 0 8px ${color}20;
+            }
+            100% { 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                           0 2px 6px rgba(0, 0, 0, 0.15),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                           0 0 0 0 ${color}00;
+            }
+        }
     `;
 
     const arrowSvg = `
         <svg class="marker-arrow" style="
             position: absolute;
-            width: 16px;
-            height: 16px;
-            left: 4px;
+            width: 20px;
+            height: 20px;
+            left: 2px;
             top: -2px;
-            transform-origin: 2px; 
+            transform-origin: 10px 10px; 
             transform: rotate(${bearing - 90}deg);
-            transition: transform 0.5s ease;"
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));"
             viewBox="0 0 24 24">
+            
+            <!-- Ombre de la flèche -->
             <path 
-                d="M8 4 L16 12 L8 20"
+                d="M7 3 L17 12 L7 21"
+                fill="none"
+                stroke="rgba(0, 0, 0, 0.3)"
+                stroke-width="5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(1, 1)"
+            />
+            
+            <!-- Contour blanc -->
+            <path 
+                d="M7 3 L17 12 L7 21"
                 fill="none"
                 stroke="white"
-                stroke-width="6"
+                stroke-width="4"
                 stroke-linecap="round"
                 stroke-linejoin="round"
             />
+            
+            <!-- Flèche colorée avec dégradé -->
+            <defs>
+                <linearGradient id="arrow-gradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:${lighterColor};stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:${darkerColor};stop-opacity:1" />
+                </linearGradient>
+            </defs>
             <path 
-                d="M8 4 L16 12 L8 20"
+                d="M7 3 L17 12 L7 21"
                 fill="none"
-                stroke="${color}"
-                stroke-width="3"
+                stroke="url(#arrow-gradient-${route_id})"
+                stroke-width="2.5"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 class="marker-arrow-path"
@@ -4093,13 +4148,24 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         </svg>
     `;
 
+    // Injection du style d'animation
+    if (!document.getElementById(`pulse-style-${route_id}`)) {
+        const style = document.createElement('style');
+        style.id = `pulse-style-${route_id}`;
+        style.textContent = pulseAnimation;
+        document.head.appendChild(style);
+    }
+
     const icon = L.divIcon({
-        className: "my-custom-pin",
+        className: "my-custom-pin-enhanced",
         iconAnchor: [0, 0],
-        popupAnchor: [0, 5],
+        popupAnchor: [0, -5],
         html: `
-            <div style="position: relative;">
-                <span style="${markerHtmlStyles}" class="marker-icon" />
+            <div style="position: relative;" class="marker-container">
+                <span style="${markerHtmlStyles}" 
+                      class="marker-icon enhanced-marker" 
+                      onmouseover="this.style.transform='scale(1.2)'; this.style.animation='pulse-${route_id} 1.5s infinite';"
+                      onmouseout="this.style.transform='scale(1)'; this.style.animation='none';" />
                 ${arrowSvg}
             </div>
         `
@@ -4543,6 +4609,45 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 });
     return marker;
 }
+
+function adjustBrightness(hex, percent) {
+    // Convertir hex en RGB
+    const num = parseInt(hex.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255))
+        .toString(16).slice(1);
+}
+
+// CSS supplémentaire à ajouter dans votre feuille de style
+const additionalCSS = `
+.my-custom-pin-enhanced {
+    background: transparent !important;
+    border: none !important;
+}
+
+.marker-container {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+}
+
+.enhanced-marker {
+    position: relative;
+    z-index: 1000;
+}
+
+.enhanced-marker:hover {
+    z-index: 1001;
+}
+
+.marker-arrow {
+    pointer-events: none;
+}
+`;
 
 function animateMarker(marker, newPosition) {
     const startLatLng = marker.getLatLng();
