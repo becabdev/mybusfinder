@@ -8049,7 +8049,6 @@ sortedLines.forEach(line => {
     lineSection.dataset.line = line;
     lineSection.style.backgroundColor = lineColor;
     lineSection.classList.add('linesection');
-    lineSection.classList.add('ripple-container');
     lineSection.style.marginBottom = '10px';
     lineSection.style.marginLeft = '10px';
     lineSection.style.marginRight = '10px';
@@ -8133,6 +8132,7 @@ sortedLines.forEach(line => {
 
             busesByLineAndDestination[line][destination].forEach(bus => {
                 const busItem = document.createElement('div');
+                busItem.classList.add('ripple-container');
                 const marker = bus.vehicle;
                 const popupContent = marker.getPopup().getContent();
                 
