@@ -8048,7 +8048,8 @@ sortedLines.forEach(line => {
     const lineSection = document.createElement('div');
     lineSection.dataset.line = line;
     lineSection.style.backgroundColor = lineColor;
-    lineSection.classList.add('linesection ripple-container');
+    lineSection.classList.add('linesection');
+    lineSection.classList.add('ripple-container');
     lineSection.style.marginBottom = '10px';
     lineSection.style.marginLeft = '10px';
     lineSection.style.marginRight = '10px';
