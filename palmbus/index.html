@@ -7288,480 +7288,10 @@ function closeMenu() {
     }, 10);
 }
 
-// Variables globales pour la gestion du menu
-let menuCache = {
-    lastUpdate: 0,
-    busesByLineAndDestination: {},
-    sortedLines: [],
-    searchTerm: '',
-    showOnlyFavorites: false,
-    showOnlyActive: false,
-    compactMode: false
-};
-
-let updateInterval;
-let searchTimeout;
-
-// Nouvelle fonction pour mettre à jour uniquement les données sans regénérer le DOM
-function updateMenuData() {
-    const now = Date.now();
-    
-    // Éviter les mises à jour trop fréquentes
-    if (now - menuCache.lastUpdate < 2000) return;
-    
-    menuCache.lastUpdate = now;
-    
-    // Réorganiser les données des véhicules
-    const newBusesByLineAndDestination = {};
-    
-    Object.keys(markers).forEach(id => {
-        const vehicle = markers[id];
-        const line = vehicle.line;
-        
-        let destination = "Inconnue";
-        const popupContent = vehicle.getPopup().getContent();
-        
-        const patterns = [
-            /<strong[^>]*>➜\s*(.*?)<\/strong>/,
-            />➜\s*(.*?)</,
-            /Ligne \d+<\/p>\s*<strong[^>]*>➜\s*(.*?)<\/strong>/
-        ];
-
-        for (const pattern of patterns) {
-            const match = popupContent.match(pattern);
-            if (match && match[1]) {
-                destination = match[1].trim();
-                if (destination.toLowerCase() !== 'destination inconnue') {
-                    break;
-                }
-            }
-        }
-
-        if (!newBusesByLineAndDestination[line]) {
-            newBusesByLineAndDestination[line] = {};
-        }
-
-        if (!newBusesByLineAndDestination[line][destination]) {
-            newBusesByLineAndDestination[line][destination] = [];
-        }
-
-        newBusesByLineAndDestination[line][destination].push({
-            parkNumber: vehicle.id,
-            vehicle,
-            lastUpdate: now
-        });
-    });
-
-    // Détecter les changements et mettre à jour seulement les éléments modifiés
-    updateChangedElements(newBusesByLineAndDestination);
-    
-    menuCache.busesByLineAndDestination = newBusesByLineAndDestination;
-    
-    // Mettre à jour les statistiques en temps réel
-    updateMenuStatistics();
-}
-
-// Fonction pour mettre à jour seulement les éléments qui ont changé
-function updateChangedElements(newData) {
-    Object.keys(newData).forEach(line => {
-        const lineSection = document.querySelector(`[data-line="${line}"]`);
-        if (!lineSection) return;
-
-        Object.keys(newData[line]).forEach(destination => {
-            newData[line][destination].forEach(newBus => {
-                const busElement = lineSection.querySelector(`[data-bus-id="${newBus.parkNumber}"]`);
-                if (busElement) {
-                    // Mettre à jour les informations du véhicule sans recréer l'élément
-                    updateBusElement(busElement, newBus);
-                }
-            });
-        });
-        
-        // Mettre à jour le compteur de véhicules pour la ligne
-        updateLineCounter(lineSection, line, newData[line]);
-    });
-}
-
-// Fonction pour mettre à jour un élément de véhicule spécifique
-function updateBusElement(busElement, busData) {
-    const vehicle = busData.vehicle;
-    const popupContent = vehicle.getPopup().getContent();
-    
-    // Extraire les nouvelles informations
-    let nextStopInfo = '';
-    let terminusInfo = '';
-    
-    const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
-    const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
-    
-    if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
-        const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-        const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
-        
-        if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
-            const stopName = firstStopNameMatch[1].trim();
-            const timeInfo = firstTimeMatch[1].trim();
-            if (stopName && timeInfo) {
-                nextStopInfo = `${stopName}`;
-            }
-        }
-    }
-    
-    // Mettre à jour le contenu avec une animation subtile
-    const infoElement = busElement.querySelector('.bus-info-text');
-    if (infoElement && infoElement.textContent !== nextStopInfo) {
-        infoElement.style.opacity = '0.5';
-        setTimeout(() => {
-            infoElement.textContent = nextStopInfo;
-            infoElement.style.opacity = '1';
-        }, 150);
-    }
-    
-    // Ajouter un indicateur de mise à jour récente
-    busElement.setAttribute('data-last-update', Date.now());
-    busElement.classList.add('recently-updated');
-    setTimeout(() => {
-        busElement.classList.remove('recently-updated');
-    }, 3000);
-}
-
-// Fonction pour mettre à jour le compteur de véhicules d'une ligne
-function updateLineCounter(lineSection, line, destinationsData) {
-    let totalVehicles = 0;
-    Object.values(destinationsData).forEach(buses => {
-        totalVehicles += buses.length;
-    });
-    
-    let counterElement = lineSection.querySelector('.vehicle-counter');
-    if (!counterElement) {
-        counterElement = document.createElement('div');
-        counterElement.className = 'vehicle-counter';
-        counterElement.style.cssText = `
-            position: absolute;
-            top: 5px;
-            right: 35px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        `;
-        lineSection.appendChild(counterElement);
-    }
-    
-    counterElement.textContent = totalVehicles;
-}
-
-// Fonction pour mettre à jour les statistiques globales du menu
-function updateMenuStatistics() {
-    let totalLines = Object.keys(menuCache.busesByLineAndDestination).length;
-    let totalVehicles = 0;
-    let activeLines = 0;
-    
-    Object.values(menuCache.busesByLineAndDestination).forEach(destinations => {
-        let lineVehicleCount = 0;
-        Object.values(destinations).forEach(buses => {
-            lineVehicleCount += buses.length;
-        });
-        totalVehicles += lineVehicleCount;
-        if (lineVehicleCount > 0) activeLines++;
-    });
-    
-    // Mettre à jour l'en-tête avec les statistiques
-    const title = document.querySelector('.menu-top-bar .menu-title');
-    if (title) {
-        title.innerHTML = `
-            <div>${t("network")}</div>
-            <div style="font-size: 12px; opacity: 0.8;">
-                ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
-            </div>
-        `;
-    }
-}
-
-// Fonction de recherche en temps réel
-function setupMenuSearch() {
-    const topBar = document.querySelector('.menu-top-bar');
-    if (!topBar) return;
-    
-    // Créer la barre de recherche
-    const searchContainer = document.createElement('div');
-    searchContainer.className = 'search-container';
-    searchContainer.style.cssText = `
-        display: flex;
-        align-items: center;
-        margin: 10px;
-        padding: 8px 12px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        backdrop-filter: blur(10px);
-    `;
-    
-    const searchIcon = document.createElement('div');
-    searchIcon.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M21 21L16.514 16.506L21 21ZM18.485 10.485C18.485 15.22 14.67 19.035 9.935 19.035C5.2 19.035 1.385 15.22 1.385 10.485C1.385 5.75 5.2 1.935 9.935 1.935C14.67 1.935 18.485 5.75 18.485 10.485Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    `;
-    searchIcon.style.marginRight = '8px';
-    
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = t("searchlines") || 'Rechercher des lignes...';
-    searchInput.style.cssText = `
-        background: none;
-        border: none;
-        color: white;
-        outline: none;
-        flex: 1;
-        font-size: 14px;
-    `;
-    
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            filterMenuBySearch(e.target.value);
-        }, 300);
-    });
-    
-    searchContainer.appendChild(searchIcon);
-    searchContainer.appendChild(searchInput);
-    
-    // Insérer après la barre de titre
-    const spacer = document.querySelector('.menu-top-bar').nextElementSibling;
-    spacer.parentNode.insertBefore(searchContainer, spacer);
-}
-
-// Fonction de filtrage par recherche
-function filterMenuBySearch(searchTerm) {
-    menuCache.searchTerm = searchTerm.toLowerCase();
-    
-    const lineSections = document.querySelectorAll('.linesection');
-    lineSections.forEach(section => {
-        const line = section.dataset.line;
-        const lineName = lineName[line] || '';
-        const lineNameText = lineName.toLowerCase();
-        const lineNumber = line.toLowerCase();
-        
-        const matches = lineNameText.includes(menuCache.searchTerm) || 
-                       lineNumber.includes(menuCache.searchTerm) ||
-                       menuCache.searchTerm === '';
-        
-        section.style.display = matches ? 'block' : 'none';
-    });
-}
-
-// Fonction pour les contrôles de filtrage avancé
-function setupAdvancedFilters() {
-    const menu = document.getElementById('menu');
-    
-    // Créer le panneau de filtres
-    const filterPanel = document.createElement('div');
-    filterPanel.className = 'filter-panel';
-    filterPanel.style.cssText = `
-        margin: 10px;
-        padding: 12px;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 12px;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    `;
-    
-    // Bouton favoris uniquement
-    const favoritesToggle = createFilterButton('★ Favoris', menuCache.showOnlyFavorites);
-    favoritesToggle.onclick = () => {
-        menuCache.showOnlyFavorites = !menuCache.showOnlyFavorites;
-        favoritesToggle.classList.toggle('active', menuCache.showOnlyFavorites);
-        applyFilters();
-    };
-    
-    // Bouton lignes actives uniquement
-    const activeToggle = createFilterButton('● Actives', menuCache.showOnlyActive);
-    activeToggle.onclick = () => {
-        menuCache.showOnlyActive = !menuCache.showOnlyActive;
-        activeToggle.classList.toggle('active', menuCache.showOnlyActive);
-        applyFilters();
-    };
-    
-    // Bouton mode compact
-    const compactToggle = createFilterButton('⚏ Compact', menuCache.compactMode);
-    compactToggle.onclick = () => {
-        menuCache.compactMode = !menuCache.compactMode;
-        compactToggle.classList.toggle('active', menuCache.compactMode);
-        toggleCompactMode();
-    };
-    
-    filterPanel.appendChild(favoritesToggle);
-    filterPanel.appendChild(activeToggle);
-    filterPanel.appendChild(compactToggle);
-    
-    // Insérer après la barre de recherche
-    const searchContainer = document.querySelector('.search-container');
-    if (searchContainer) {
-        searchContainer.parentNode.insertBefore(filterPanel, searchContainer.nextSibling);
-    }
-}
-
-// Fonction utilitaire pour créer un bouton de filtre
-function createFilterButton(text, active) {
-    const button = document.createElement('button');
-    button.textContent = text;
-    button.className = 'filter-button';
-    button.style.cssText = `
-        padding: 6px 12px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
-        color: white;
-        font-size: 12px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    `;
-    
-    if (active) {
-        button.classList.add('active');
-        button.style.background = 'rgba(255, 255, 255, 0.2)';
-        button.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-    }
-    
-    button.addEventListener('mouseenter', () => {
-        if (!button.classList.contains('active')) {
-            button.style.background = 'rgba(255, 255, 255, 0.15)';
-        }
-    });
-    
-    button.addEventListener('mouseleave', () => {
-        if (!button.classList.contains('active')) {
-            button.style.background = 'rgba(255, 255, 255, 0.1)';
-        }
-    });
-    
-    return button;
-}
-
-// Appliquer les filtres
-function applyFilters() {
-    const lineSections = document.querySelectorAll('.linesection');
-    lineSections.forEach(section => {
-        const line = section.dataset.line;
-        let shouldShow = true;
-        
-        // Filtre favoris
-        if (menuCache.showOnlyFavorites) {
-            shouldShow = shouldShow && favoriteLines.has(line);
-        }
-        
-        // Filtre lignes actives
-        if (menuCache.showOnlyActive) {
-            const vehicleCount = section.querySelector('.vehicle-counter');
-            const count = vehicleCount ? parseInt(vehicleCount.textContent) : 0;
-            shouldShow = shouldShow && count > 0;
-        }
-        
-        // Filtre recherche
-        if (menuCache.searchTerm) {
-            const lineName = (lineName[line] || '').toLowerCase();
-            const lineNumber = line.toLowerCase();
-            shouldShow = shouldShow && (
-                lineName.includes(menuCache.searchTerm) || 
-                lineNumber.includes(menuCache.searchTerm)
-            );
-        }
-        
-        section.style.display = shouldShow ? 'block' : 'none';
-    });
-}
-
-// Mode compact
-function toggleCompactMode() {
-    const busItems = document.querySelectorAll('.menu-item');
-    busItems.forEach(item => {
-        if (menuCache.compactMode) {
-            item.style.padding = '3px 8px';
-            item.style.fontSize = '0.9em';
-            item.querySelector('.bus-arrival-info').style.display = 'none';
-        } else {
-            item.style.padding = '5px 10px';
-            item.style.fontSize = '1.2em';
-            const arrivalInfo = item.querySelector('.bus-arrival-info');
-            if (arrivalInfo) arrivalInfo.style.display = 'block';
-        }
-    });
-}
-
-// Fonction pour gérer les gestes tactiles
-function setupTouchGestures() {
-    const menu = document.getElementById('menu');
-    let startY = 0;
-    let startTime = 0;
-    
-    menu.addEventListener('touchstart', (e) => {
-        startY = e.touches[0].clientY;
-        startTime = Date.now();
-    });
-    
-    menu.addEventListener('touchend', (e) => {
-        const endY = e.changedTouches[0].clientY;
-        const endTime = Date.now();
-        const deltaY = endY - startY;
-        const deltaTime = endTime - startTime;
-        
-        // Geste de rafraîchissement (swipe down en haut du menu)
-        if (deltaY > 50 && deltaTime < 500 && menu.scrollTop < 10) {
-            triggerMenuRefresh();
-        }
-    });
-}
-
-// Rafraîchissement du menu avec animation
-function triggerMenuRefresh() {
-    const topBar = document.querySelector('.menu-top-bar');
-    const refreshIcon = document.createElement('div');
-    refreshIcon.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M1 4V10H7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M23 20V14H17" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14L18.36 18.36A9 9 0 0 1 3.51 15" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    `;
-    refreshIcon.style.cssText = `
-        position: absolute;
-        right: 45px;
-        top: 50%;
-        transform: translateY(-50%);
-        animation: spin 1s linear infinite;
-    `;
-    
-    // Ajouter l'animation CSS
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes spin {
-            from { transform: translateY(-50%) rotate(0deg); }
-            to { transform: translateY(-50%) rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(style);
-    
-    topBar.appendChild(refreshIcon);
-    
-    // Déclencher la mise à jour
-    updateMenuData();
-    
-    // Retirer l'icône après l'animation
-    setTimeout(() => {
-        refreshIcon.remove();
-        style.remove();
-    }, 1000);
-}
-
-// Fonction principale mise à jour avec les nouvelles fonctionnalités
 function updateMenu() {
     const menu = document.getElementById('menu');
     menu.innerHTML = '';
     
-    // Créer la barre supérieure
     const topBar = document.createElement('div');
     topBar.classList.add('menu-top-bar');
     topBar.style.cssText = `
@@ -7779,8 +7309,8 @@ function updateMenu() {
         backdrop-filter: blur(8px); 
         -webkit-backdrop-filter: blur(8px);
     `;
+    menu.appendChild(topBar);
     
-    // Bouton retour
     const backButton = document.createElement('div');
     backButton.innerHTML = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -7799,11 +7329,33 @@ function updateMenu() {
     `;
     backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
     backButton.onmouseout = () => backButton.style.background = 'transparent';
+
     backButton.onclick = closeMenu;
     topBar.appendChild(backButton);
+
     
-    // Titre avec statistiques
-    const title = document.createElement('div');
+    let totalLines = Object.keys(busesByLineAndDestination).length;
+    let totalVehicles = 0;
+    let activeLines = 0;
+    
+    Object.values(busesByLineAndDestination).forEach(destinations => {
+        let lineVehicleCount = 0;
+        Object.values(destinations).forEach(buses => {
+            lineVehicleCount += buses.length;
+        });
+        totalVehicles += lineVehicleCount;
+        if (lineVehicleCount > 0) activeLines++;
+    });
+    
+    const title = document.querySelector('.menu-top-bar .menu-title');
+    if (title) {
+        title.innerHTML = `
+            <div>${t("network")}</div>
+            <div style="font-size: 12px; opacity: 0.8;">
+                ${activeLines}/${totalLines} lignes • ${totalVehicles} véhicules
+            </div>
+        `;
+    }
     title.className = 'menu-title';
     title.textContent = t("network");
     title.style.cssText = `
@@ -7811,23 +7363,23 @@ function updateMenu() {
         font-weight: 500;
     `;
     topBar.appendChild(title);
+
     
-    menu.appendChild(topBar);
-    
-    // Spacer
     const spacer = document.createElement('div');
-    spacer.style.height = '15px';
+    spacer.style.height = '15px'; 
     menu.appendChild(spacer);
-    
-    // Configuration de la logique de scroll pour la barre supérieure
+
     let lastScrollTop = 0;
+    
     menu.addEventListener('scroll', function() {
         const scrollTop = menu.scrollTop;
+        
         if (scrollTop > lastScrollTop && scrollTop > 50) {
             topBar.style.transform = 'translateY(-100%)';
         } else {
             topBar.style.transform = 'translateY(0)';
         }
+        
         lastScrollTop = scrollTop;
     });
 
@@ -8022,507 +7574,91 @@ function getNextStopInfo(vehicleId) {
 }
 
 
-    // Initialiser les données
-    updateMenuData();
-    
-    // Configurer les nouvelles fonctionnalités
-    setupMenuSearch();
-    setupAdvancedFilters();
-    setupTouchGestures();
-    
-    // Générer le contenu initial des lignes (votre code existant adapté)
-    generateLineContent();
-    
-    // Démarrer les mises à jour automatiques
-    if (updateInterval) clearInterval(updateInterval);
-    updateInterval = setInterval(updateMenuData, 5000); // Mise à jour toutes les 5 secondes
-}
-
-// Fonction pour générer le contenu des lignes (adaptée de votre code original)
-function generateLineContent() {
-    const menu = document.getElementById('menu');
-    
-    // Réorganisation des véhicules (votre logique existante)
     const busesByLineAndDestination = {};
-    
+
     Object.keys(markers).forEach(id => {
-        const vehicle = markers[id];
-        const line = vehicle.line;
-        
-        let destination = "Inconnue";
-        const popupContent = vehicle.getPopup().getContent();
-        
-        const patterns = [
-            /<strong[^>]*>➜\s*(.*?)<\/strong>/,
-            />➜\s*(.*?)</,
-            /Ligne \d+<\/p>\s*<strong[^>]*>➜\s*(.*?)<\/strong>/
-        ];
-
-        for (const pattern of patterns) {
-            const match = popupContent.match(pattern);
-            if (match && match[1]) {
-                destination = match[1].trim();
-                if (destination.toLowerCase() !== 'destination inconnue') {
-                    break;
-                }
-            }
-        }
-
-        if (!busesByLineAndDestination[line]) {
-            busesByLineAndDestination[line] = {};
-        }
-
-        if (!busesByLineAndDestination[line][destination]) {
-            busesByLineAndDestination[line][destination] = [];
-        }
-
-        busesByLineAndDestination[line][destination].push({
-            parkNumber: vehicle.id,
-            vehicle
-        });
-    });
+    const vehicle = markers[id];
+    const line = vehicle.line;
     
-    menuCache.busesByLineAndDestination = busesByLineAndDestination;
+    let destination = "Inconnue";
+    const popupContent = vehicle.getPopup().getContent();
     
-    // Tri des lignes (votre logique existante)
-    const sortedLines = Object.keys(busesByLineAndDestination).sort((a, b) => {
-        const aIsFavorite = favoriteLines.has(a);
-        const bIsFavorite = favoriteLines.has(b);
-        
-        if (aIsFavorite && !bIsFavorite) return -1;
-        if (!aIsFavorite && bIsFavorite) return 1;
-        
-        const getSortKey = (line) => {
-            let typeValue = 1000;
-            
-            if (/^[A-Za-z]$/.test(line)) {
-                typeValue = 100;
-            } else if (/^\d+$/.test(line)) {
-                typeValue = 200;
-            } else if (/^\d+[A-Za-z]+$/.test(line)) {
-                const numPart = parseInt(line.match(/^\d+/)[0], 10);
-                typeValue = 200;
-                return typeValue + numPart + 0.5;
-            }
-            
-            if (typeValue === 200) {
-                return typeValue + parseInt(line, 10);
-            }
-            
-            if (typeValue === 100) {
-                return typeValue + line.charCodeAt(0);
-            }
-            
-            return typeValue;
-        };
+    const patterns = [
+        /<strong[^>]*>➜\s*(.*?)<\/strong>/,
+        />➜\s*(.*?)</,
+        /Ligne \d+<\/p>\s*<strong[^>]*>➜\s*(.*?)<\/strong>/
+    ];
 
-        const valueA = getSortKey(a);
-        const valueB = getSortKey(b);
-
-        if (valueA !== valueB) {
-            return valueA - valueB;
-        }
-
-        return a.localeCompare(b);
-    });
-    
-    menuCache.sortedLines = sortedLines;
-    
-    // Générer le DOM pour chaque ligne (adaptation de votre code)
-    sortedLines.forEach(line => {
-        const lineNameText = lineName[line] || t("unknown_line");
-        const lineColor = lineColors[line] || '#000000';
-        const textColor = getTextColor(lineColor);
-
-        const lineSection = document.createElement('div');
-        lineSection.dataset.line = line;
-        lineSection.style.backgroundColor = lineColor;
-        lineSection.classList.add('linesection');
-        lineSection.style.marginBottom = '10px';
-        lineSection.style.marginLeft = '10px';
-        lineSection.style.marginRight = '10px';
-        lineSection.style.padding = '10px';
-        lineSection.style.borderRadius = '16px';
-        lineSection.style.position = 'relative';
-        lineSection.style.overflow = 'hidden';
-
-        // Effets visuels (votre code existant)
-        const beam1 = document.createElement('div');
-        beam1.classList.add('light-beam', 'beam1');
-        lineSection.appendChild(beam1);
-
-        const beam2 = document.createElement('div');
-        beam2.classList.add('light-beam', 'beam2');
-        lineSection.appendChild(beam2);
-
-        const beam3 = document.createElement('div');
-        beam3.classList.add('light-beam', 'beam3');
-        lineSection.appendChild(beam3);
-
-        // Interactions hover (votre code existant)
-        lineSection.onmouseover = () => {
-            lineSection.style.transform = 'scale(0.99,0.99)';
-            lineSection.style.opacity = '0.9';
-            lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
-        };  
-
-        lineSection.onmouseout = () => {
-            lineSection.style.transform = 'scale(1,1)';
-            lineSection.style.opacity = '0.9';
-            lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
-        };
-
-        // Bouton favori (votre code existant)
-        const favoriteButton = document.createElement('button');
-        favoriteButton.style.position = 'absolute';
-        favoriteButton.style.right = '5px';
-        favoriteButton.style.top = '5px';
-        favoriteButton.style.background = 'none';
-        favoriteButton.style.border = 'none';
-        favoriteButton.style.color = textColor;
-        favoriteButton.style.fontSize = '20px';
-        favoriteButton.style.cursor = 'pointer';
-        favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
-        favoriteButton.onclick = async (e) => {
-            e.stopPropagation();
-            const lineSection = e.target.closest('.linesection');
-            const isFavorite = favoriteLines.has(line);
-            await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
-        };
-
-        const lineTitle = document.createElement('div');
-        lineTitle.textContent = `${t("line")} ${lineNameText}`;
-        lineTitle.style.fontSize = '20px';
-        lineTitle.style.fontWeight = 'normal';
-        lineTitle.style.color = textColor;
-        lineTitle.style.paddingRight = '30px';
-        lineTitle.style.paddingLeft = '10px';
-
-        lineSection.appendChild(lineTitle);
-        lineSection.appendChild(favoriteButton);
-
-        // Générer les véhicules pour cette ligne
-        Object.keys(busesByLineAndDestination[line])
-            .sort()
-            .forEach(destination => {
-                const destinationSection = document.createElement('div');
-                destinationSection.style.marginTop = '5px';
-                destinationSection.style.paddingLeft = '10px';
-
-                const destinationTitle = document.createElement('div');
-                destinationTitle.textContent = `➜ ${destination}`;
-                destinationTitle.style.fontSize = '16px';
-                destinationTitle.style.fontWeight = 'normal';
-                destinationTitle.style.marginBottom = '4px';
-                destinationTitle.style.color = textColor;
-                destinationSection.appendChild(destinationTitle);
-
-                busesByLineAndDestination[line][destination].forEach(bus => {
-                    const busItem = createBusElement(bus, line, textColor);
-                    busItem.setAttribute('data-bus-id', bus.parkNumber);
-                    destinationSection.appendChild(busItem);
-                });
-
-                lineSection.appendChild(destinationSection);
-            });
-
-        // Click handler pour la ligne (votre code existant)
-        lineSection.onclick = () => {
-            if (localStorage.getItem('astuce') !== 'true') {
-                localStorage.setItem('astuce', 'true');
-                toastBottomRight.info(`${t("astuceselectligne")}`);
-            }
-            const mapp = document.getElementById('map');
-            mapp.style.opacity = '1';
-            safeVibrate([50, 30, 50], true);
-            soundsUX('MBF_Menu_LineSelect');
-            const lineId = line;
-            selectedLine = lineId;
-            filterByLine(lineId);
-            const map = document.getElementById('map');
-            map.style.opacity = '1';
-            menu.classList.add('hidden');
-            if (localStorage.getItem('transparency') === 'true') {
-                const map = document.getElementById('map');
-                map.classList.remove('hiddennotransition');
-                map.classList.add('appearnotransition');
-                map.classList.remove('hidden');
-                map.classList.remove('appear');
-            } else {
-                const map = document.getElementById('map');
-                map.classList.remove('hidden');
-                map.classList.add('appear');
-                map.classList.remove('hiddennotransition');
-                map.classList.remove('appearnotransition');
-            }
-            window.isMenuShowed = false;
-            menu.addEventListener('animationend', function onAnimationEnd(event) {
-                if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                    menu.style.display = 'none';
-                }
-            });
-            isMenuVisible = false;
-            const filtre = document.getElementById('filtre');
-            menubottom1.style.display = 'flex';
-            setTimeout(() => {
-                menubottom1.classList.remove('slide-upb');
-                menubottom1.classList.add('slide-downb');
-                if (selectedLine) {
-                    filtre.classList.remove('slide-upc');
-                    filtre.classList.add('slide-downc');
-                    filtre.style.display = 'flex';
-                }
-            }, 10);
-            event.stopPropagation();
-        };
-
-        menu.appendChild(lineSection);
-    });
-    
-    // Mettre à jour les statistiques initiales
-    updateMenuStatistics();
-}
-
-// Fonction pour créer un élément de véhicule
-function createBusElement(bus, line, textColor) {
-    const busItem = document.createElement('div');
-    const marker = bus.vehicle;
-    const popupContent = marker.getPopup().getContent();
-    
-    let nextStopInfo = '';
-    let terminusInfo = '';
-    
-    // Extraction des informations (votre logique existante)
-    const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
-    const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
-    
-    if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
-        const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-        const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
-        
-        if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
-            const stopName = firstStopNameMatch[1].trim();
-            const timeInfo = firstTimeMatch[1].trim();
-            if (stopName && timeInfo) {
-                nextStopInfo = `${stopName}`;
-            }
-        }
-        
-        if (stopNameContainers.length > 1 && timeDisplays.length > 1) {
-            const lastIndex = stopNameContainers.length - 1;
-            const lastStopNameMatch = stopNameContainers[lastIndex].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-            const lastTimeMatch = timeDisplays[lastIndex].match(/data-time-left="([^"]*)"/);
-            
-            if (lastStopNameMatch && lastStopNameMatch[1] && lastTimeMatch && lastTimeMatch[1]) {
-                const terminusName = lastStopNameMatch[1].trim();
-                const terminusTime = lastTimeMatch[1].trim();
-                if (terminusName && terminusTime) {
-                    terminusInfo = `${t("arrivalat")} ${terminusName} ${terminusTime !== t("imminent") ? t("in") + ' ' + terminusTime : t("imminent")}.`;
-                }
+    for (const pattern of patterns) {
+        const match = popupContent.match(pattern);
+        if (match && match[1]) {
+            destination = match[1].trim();
+            if (destination.toLowerCase() !== 'Destination inconnue') {
+                break;
             }
         }
     }
-    
-    if (!nextStopInfo || !terminusInfo) {
-        const stopsHeaderMatch = popupContent.match(/<p style="margin: 0; font-size: 18px; text-align: right;">(.*?)<\/p>/);
-        if (stopsHeaderMatch && stopsHeaderMatch[1]) {
-            const headerText = stopsHeaderMatch[1].trim();
-            if (headerText.includes('imminent')) {
-                nextStopInfo = t("imminentdeparture") + '.';
-            } else if (headerText.includes('min')) {
-                const minMatch = headerText.match(/dans (\d+) min/);
-                if (minMatch && minMatch[1]) {
-                    nextStopInfo = `${t("departurein")} ${minMatch[1]} ${t("min")}.`;
-                }
-            }
+
+    if (!busesByLineAndDestination[line]) {
+        busesByLineAndDestination[line] = {};
+    }
+
+    if (!busesByLineAndDestination[line][destination]) {
+        busesByLineAndDestination[line][destination] = [];
+    }
+
+    busesByLineAndDestination[line][destination].push({
+        parkNumber: vehicle.id,
+        vehicle
+    });
+});
+
+    const sortedLines = Object.keys(busesByLineAndDestination)
+        .sort((a, b) => {
+            const aIsFavorite = favoriteLines.has(a);
+            const bIsFavorite = favoriteLines.has(b);
+            
+            if (aIsFavorite && !bIsFavorite) return -1;
+            if (!aIsFavorite && bIsFavorite) return 1;
+            
+    const getSortKey = (line) => {
+        
+        let typeValue = 1000; 
+        
+        if (/^[A-Za-z]$/.test(line)) {
+            typeValue = 100;
+        } 
+        else if (/^\d+$/.test(line)) {
+            typeValue = 200;
+        } 
+        else if (/^\d+[A-Za-z]+$/.test(line)) {
+            const numPart = parseInt(line.match(/^\d+/)[0], 10);
+            typeValue = 200; 
+            return typeValue + numPart + 0.5; 
         }
         
-        if (!terminusInfo) {
-            const destination = Object.keys(menuCache.busesByLineAndDestination[line]).find(dest => 
-                menuCache.busesByLineAndDestination[line][dest].some(b => b.parkNumber === bus.parkNumber)
-            );
-            terminusInfo = `${t("indirectionof")} ${destination || 'Inconnue'}.`;
+        if (typeValue === 200) {
+            return typeValue + parseInt(line, 10);
         }
-    }
-
-    // Création du contenu principal
-    const mainText = document.createElement('div');
-    
-    const labelMatch = popupContent.match(/<span class="parc-number-hidden">([^<]+)<\/span>/);
-    const labelMatchFallback = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-
-    const vehicleLabel = labelMatch ? labelMatch[1].trim() : 
-                        (labelMatchFallback ? labelMatchFallback[1].trim() : "Véhicule inconnu");
-
-    const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
-    const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
-    
-    // Configuration du style flex
-    mainText.style.display = 'flex';
-    mainText.style.alignItems = 'center';
-    mainText.style.gap = '10px';
-    mainText.style.fontSize = '1.2em';
-    mainText.style.fontWeight = '500';
-    mainText.style.color = textColor;
-
-    // Boîte du numéro de parc
-    const busIdBox = document.createElement('div');
-    busIdBox.textContent = displayLabel;
-    busIdBox.style.cssText = `
-        padding: 5px 10px;
-        background-color: #00000017;
-        border-radius: 6px;
-        font-weight: bold;
-        color: ${textColor};
-        display: inline-block;
-        text-align: center;
-    `;
-
-    // Texte d'information
-    const infoText = document.createElement('span');
-    infoText.className = 'bus-info-text';
-    infoText.textContent = nextStopInfo;
-
-    mainText.appendChild(infoText);
-
-    // Texte d'arrivée
-    const arrivalText = document.createElement('div');
-    arrivalText.className = 'bus-arrival-info';
-    arrivalText.textContent = terminusInfo;
-    arrivalText.style.cssText = `
-        font-size: 0.9em; 
-        opacity: 0.8;  
-        color: ${textColor};
-    `;
-
-    // Conteneur de contenu
-    const contentContainer = document.createElement('div');
-    contentContainer.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        flex-grow: 1;
-    `;
-    contentContainer.appendChild(mainText);
-    contentContainer.appendChild(arrivalText);
-
-    // Configuration de l'élément bus
-    busItem.style.position = 'relative';
-    
-    // Conteneur d'arrière-plan avec logo
-    const backgroundContainer = document.createElement('div');
-    backgroundContainer.style.cssText = `
-        position: absolute;
-        right: 8px;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        pointer-events: none; 
-        opacity: 0.2;
-        z-index: 0; 
-        scale: 1.7;
-    `;
-    backgroundContainer.innerHTML = vehicleBrandHtmlLight;
-    
-    const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
-    if (thumbnailImg) {
-        thumbnailImg.style.cssText = `
-            height: 80%;
-            width: auto;
-            max-height: 40px;
-            object-fit: contain;
-        `;
-    }
-
-    // Configuration finale de l'élément bus
-    busItem.textContent = '';
-    busItem.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        overflow: hidden; 
-        box-shadow: 0 0 7px 0px rgb(0 0 0 / 24%);
-        cursor: pointer;
-        font-family: League Spartan;
-        color: ${textColor};
-        padding: 5px 10px;
-        margin-bottom: 8px;
-        background-color: rgba(0, 0, 0, 0.05);
-        border-radius: 8px;
-        position: relative;
-        transition: all 0.2s ease;
-    `;
-    
-    busItem.classList.add('menu-item');
-    
-    // Effet hover
-    busItem.addEventListener('mouseenter', () => {
-        busItem.style.transform = 'translateX(2px)';
-        busItem.style.boxShadow = '0 0 12px 0px rgb(0 0 0 / 35%)';
-    });
-    
-    busItem.addEventListener('mouseleave', () => {
-        busItem.style.transform = 'translateX(0px)';
-        busItem.style.boxShadow = '0 0 7px 0px rgb(0 0 0 / 24%)';
-    });
-    
-    // Assemblage des éléments
-    busItem.appendChild(backgroundContainer);
-    
-    const frontContent = document.createElement('div');
-    frontContent.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-        position: relative;
-        z-index: 1;
-    `;
-    
-    frontContent.appendChild(busIdBox);
-    frontContent.appendChild(contentContainer);
-    busItem.appendChild(frontContent);
-
-    // Gestionnaire de clic
-    busItem.onclick = (event) => {
-        event.stopPropagation();
-        safeVibrate([50, 300, 50, 30, 50], true);
-        soundsUX('MBF_Menu_VehicleSelect');
-        map.setView(bus.vehicle.getLatLng(), 15);
-        bus.vehicle.openPopup();
-        const mapp = document.getElementById('map');
-        mapp.style.opacity = '1';
-        const menu = document.getElementById('menu');
-        menu.classList.add('hidden');
-        if (localStorage.getItem('transparency') === 'true') {
-            const map = document.getElementById('map');
-            map.classList.remove('hiddennotransition');
-            map.classList.add('appearnotransition');
-            map.classList.remove('hidden');
-            map.classList.remove('appear');
-        } else {
-            const map = document.getElementById('map');
-            map.classList.remove('hidden');
-            map.classList.add('appear');
-            map.classList.remove('hiddennotransition');
-            map.classList.remove('appearnotransition');
+        
+        if (typeValue === 100) {
+            return typeValue + line.charCodeAt(0);
         }
-        window.isMenuShowed = false;
-        menu.addEventListener('animationend', function onAnimationEnd(event) {
-            if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                menu.style.display = 'none';
-            }
-        });
-        isMenuVisible = false;
-        if (selectedLine) {
-            resetMapView();
-        }
+        
+        return typeValue;
     };
 
-    return busItem;
-}
+    const valueA = getSortKey(a);
+    const valueB = getSortKey(b);
 
-// Fonctions utilitaires pour les couleurs (votre code existant)
+    if (valueA !== valueB) {
+        return valueA - valueB;
+    }
+
+    return a.localeCompare(b);
+    });
+
+
 function hexToRgb(hex) {
     hex = hex.replace(/^#/, '');
     
@@ -8537,9 +7673,11 @@ function hexToRgb(hex) {
     return { r, g, b };
 }
 
+
 function calculateLuminance(r, g, b) {
     return (r * 0.299 + g * 0.587 + b * 0.114);
 }
+
 
 function getTextColor(backgroundColor) {
     try {
@@ -8550,7 +7688,9 @@ function getTextColor(backgroundColor) {
         }
         
         const { r, g, b } = hexToRgb(hexColor);
+        
         const luminance = calculateLuminance(r, g, b);
+        
         const threshold = 150;
                 
         return luminance > threshold ? '#000000' : '#ffffff';
@@ -8559,134 +7699,352 @@ function getTextColor(backgroundColor) {
     }
 }
 
-// Fonction pour nettoyer les ressources lors de la fermeture du menu
-function cleanupMenu() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-        updateInterval = null;
-    }
-    
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
-        searchTimeout = null;
-    }
-    
-    // Réinitialiser le cache
-    menuCache = {
-        lastUpdate: 0,
-        busesByLineAndDestination: {},
-        sortedLines: [],
-        searchTerm: '',
-        showOnlyFavorites: false,
-        showOnlyActive: false,
-        compactMode: false
+
+sortedLines.forEach(line => {
+    const lineNameText = lineName[line] || t("unknown_line");
+    const lineColor = lineColors[line] || '#000000';
+    const textColor = getTextColor(lineColor);
+
+    const lineSection = document.createElement('div');
+    lineSection.dataset.line = line;
+    lineSection.style.backgroundColor = lineColor;
+    lineSection.classList.add('linesection');
+    lineSection.style.marginBottom = '10px';
+    lineSection.style.marginLeft = '10px';
+    lineSection.style.marginRight = '10px';
+    lineSection.style.padding = '10px';
+    lineSection.style.borderRadius = '16px';
+    lineSection.style.position = 'relative';
+    lineSection.style.overflow = 'hidden';
+
+    const beam1 = document.createElement('div');
+    beam1.classList.add('light-beam', 'beam1');
+    lineSection.appendChild(beam1);
+
+    const beam2 = document.createElement('div');
+    beam2.classList.add('light-beam', 'beam2');
+    lineSection.appendChild(beam2);
+
+    const beam3 = document.createElement('div');
+    beam3.classList.add('light-beam', 'beam3');
+    lineSection.appendChild(beam3);
+
+    lineSection.onmouseover = () => {
+        lineSection.style.transform = 'scale(0.99,0.99)';
+        lineSection.style.opacity = '0.9';
+        lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
+        };  
+
+    lineSection.onmouseout = () => {
+        lineSection.style.transform = 'scale(1,1)';
+        lineSection.style.opacity = '0.9';
+        lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
     };
-}
 
-// Fonction pour sauvegarder les préférences utilisateur
-function saveMenuPreferences() {
-    const preferences = {
-        compactMode: menuCache.compactMode,
-        showOnlyFavorites: menuCache.showOnlyFavorites,
-        showOnlyActive: menuCache.showOnlyActive
+    
+
+    const favoriteButton = document.createElement('button');
+    favoriteButton.style.position = 'absolute';
+    favoriteButton.style.right = '5px';
+    favoriteButton.style.top = '5px';
+    favoriteButton.style.background = 'none';
+    favoriteButton.style.border = 'none';
+    favoriteButton.style.color = textColor;
+    favoriteButton.style.fontSize = '20px';
+    favoriteButton.style.cursor = 'pointer';
+    favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
+    favoriteButton.onclick = async (e) => {
+        e.stopPropagation();
+        const lineSection = e.target.closest('.linesection');
+        const isFavorite = favoriteLines.has(line);
+        await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
     };
-    
-    localStorage.setItem('menuPreferences', JSON.stringify(preferences));
-}
 
-// Fonction pour charger les préférences utilisateur
-function loadMenuPreferences() {
-    const saved = localStorage.getItem('menuPreferences');
-    if (saved) {
-        try {
-            const preferences = JSON.parse(saved);
-            menuCache.compactMode = preferences.compactMode || false;
-            menuCache.showOnlyFavorites = preferences.showOnlyFavorites || false;
-            menuCache.showOnlyActive = preferences.showOnlyActive || false;
-        } catch (e) {
-            console.error('Erreur lors du chargement des préférences:', e);
-        }
-    }
-}
+    const lineTitle = document.createElement('div');
+    lineTitle.textContent = `${t("line")} ${lineNameText}`;
+    lineTitle.style.fontSize = '20px';
+    lineTitle.style.fontWeight = 'normal';
+    lineTitle.style.color = textColor;
+    lineTitle.style.paddingRight = '30px';
+    lineTitle.style.paddingLeft = '10px';
 
-// Fonction pour ajouter des styles CSS pour les nouvelles fonctionnalités
-function addMenuStyles() {
-    if (document.getElementById('enhanced-menu-styles')) return;
-    
-    const style = document.createElement('style');
-    style.id = 'enhanced-menu-styles';
-    style.textContent = `
-        .recently-updated {
-            animation: pulse 0.5s ease-in-out;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.02); }
-            100% { transform: scale(1); }
-        }
-        
-        .filter-button.active {
-            background: rgba(255, 255, 255, 0.2) !important;
-            border-color: rgba(255, 255, 255, 0.4) !important;
-        }
-        
-        .search-container input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .menu-item.compact {
-            padding: 3px 8px !important;
-            font-size: 0.9em !important;
-        }
-        
-        .menu-item.compact .bus-arrival-info {
-            display: none !important;
-        }
-        
-        .vehicle-counter {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        
-        .linesection {
-            transition: all 0.3s ease;
-        }
-        
-        .linesection.hidden-by-filter {
-            opacity: 0;
-            transform: translateY(-10px);
-            pointer-events: none;
-        }
-        
-        @media (max-width: 480px) {
-            .filter-panel {
-                flex-direction: column;
-                align-items: stretch;
-            }
+    lineSection.appendChild(lineTitle);
+    lineSection.appendChild(favoriteButton);
+
+    Object.keys(busesByLineAndDestination[line])
+        .sort()
+        .forEach(destination => {
             
-            .filter-button {
-                text-align: center;
-                margin: 2px 0;
-            }
-        }
-    `;
-    
-    document.head.appendChild(style);
-}
+            const destinationSection = document.createElement('div');
+            destinationSection.style.marginTop = '5px';
+            destinationSection.style.paddingLeft = '10px';
 
-// Initialisation complète du système de menu amélioré
-function initEnhancedMenu() {
-    addMenuStyles();
-    loadMenuPreferences();
-    updateMenu();
-    
-    // Sauvegarder les préférences lors des changements
-    window.addEventListener('beforeunload', saveMenuPreferences);
+            const destinationTitle = document.createElement('div');
+            destinationTitle.textContent = `➜ ${destination}`;
+            destinationTitle.style.fontSize = '16px';
+            destinationTitle.style.fontWeight = 'normal';
+            destinationTitle.style.marginBottom = '4px';
+            destinationTitle.style.color = textColor;
+            destinationSection.appendChild(destinationTitle);
+
+       
+
+
+            busesByLineAndDestination[line][destination].forEach(bus => {
+                const busItem = document.createElement('div');
+                const marker = bus.vehicle;
+                const popupContent = marker.getPopup().getContent();
+                
+                let nextStopInfo = '';
+                let terminusInfo = '';
+                
+                const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
+                const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
+                
+                if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
+                    const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
+                    const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
+                    
+                    if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
+                        const stopName = firstStopNameMatch[1].trim();
+                        const timeInfo = firstTimeMatch[1].trim();
+                        if (stopName && timeInfo) {
+                            nextStopInfo = `${stopName}`;
+                        }
+                    }
+                    
+                    if (stopNameContainers.length > 1 && timeDisplays.length > 1) {
+                        const lastIndex = stopNameContainers.length - 1;
+                        const lastStopNameMatch = stopNameContainers[lastIndex].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
+                        const lastTimeMatch = timeDisplays[lastIndex].match(/data-time-left="([^"]*)"/);
+                        
+                        if (lastStopNameMatch && lastStopNameMatch[1] && lastTimeMatch && lastTimeMatch[1]) {
+                            const terminusName = lastStopNameMatch[1].trim();
+                            const terminusTime = lastTimeMatch[1].trim();
+                            if (terminusName && terminusTime) {
+                                terminusInfo = `${t("arrivalat")} ${destination} ${terminusTime !== t("imminent") ? t("in") + ' ' + terminusTime : t("imminent")}.`;
+                            }
+                        }
+                    }
+                }
+                
+                if (!nextStopInfo || !terminusInfo) {
+                    const stopsHeaderMatch = popupContent.match(/<p style="margin: 0; font-size: 18px; text-align: right;">(.*?)<\/p>/);
+                    if (stopsHeaderMatch && stopsHeaderMatch[1]) {
+                        const headerText = stopsHeaderMatch[1].trim();
+                        if (headerText.includes('imminent')) {
+                            nextStopInfo = t("imminentdeparture") + '.';
+                        } else if (headerText.includes('min')) {
+                            const minMatch = headerText.match(/dans (\d+) min/);
+                            if (minMatch && minMatch[1]) {
+                                nextStopInfo = `${t("departurein")} ${minMatch[1]} ${t("min")}.`;
+                            }
+                        }
+                    }
+                    
+                    if (!terminusInfo) {
+                        terminusInfo = `${t("indirectionof")} ${destination}.`;
+                    }
+                }
+
+                const mainText = document.createElement('div');
+
+                const labelMatch = popupContent.match(/<span class="parc-number-hidden">([^<]+)<\/span>/);
+                const labelMatchFallback = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
+
+                const vehicleLabel = labelMatch ? labelMatch[1].trim() : 
+                                    (labelMatchFallback ? labelMatchFallback[1].trim() : "Véhicule inconnu");
+
+                const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
+                const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
+                
+                // création de disp flexbox pour aligner parc et les info
+                mainText.style.display = 'flex';
+                mainText.style.alignItems = 'center';
+                mainText.style.gap = '10px';
+                mainText.style.fontSize = '1.2em';
+                mainText.style.fontWeight = '500';
+                mainText.style.color = textColor;
+
+                // création boîte pour parc
+                const busIdBox = document.createElement('div');
+                busIdBox.textContent = displayLabel;
+                busIdBox.style.padding = '2px 8px';
+                busIdBox.style.backgroundColor = '#00000017';
+                busIdBox.style.borderRadius = '6px';
+                busIdBox.style.fontWeight = 'bold';
+                busIdBox.style.color = textColor;
+                busIdBox.style.display = 'inline-block';
+                busIdBox.style.textAlign = 'center';
+                busIdBox.style.padding = '5px 10px';
+
+                // statut véc
+                const infoText = document.createElement('span');
+                infoText.textContent = `${nextStopInfo}`;
+
+                // ajout des éléments au dom
+                mainText.appendChild(infoText);
+
+                const arrivalText = document.createElement('div');
+                arrivalText.textContent = terminusInfo;
+                arrivalText.style.fontSize = '0.9em'; 
+                arrivalText.style.opacity = '0.8';  
+                arrivalText.style.color = textColor;
+
+                const contentContainer = document.createElement('div');
+                contentContainer.style.display = 'flex';
+                contentContainer.style.flexDirection = 'column';
+                contentContainer.style.flexGrow = '1';
+                contentContainer.appendChild(mainText);
+                contentContainer.appendChild(arrivalText);
+
+                busItem.style.position = 'relative';
+                
+                const backgroundContainer = document.createElement('div');
+                backgroundContainer.style.position = 'absolute';
+                backgroundContainer.style.right = '8px';
+                backgroundContainer.style.bottom = '0';
+                backgroundContainer.style.display = 'flex';
+                backgroundContainer.style.alignItems = 'center';
+                backgroundContainer.style.justifyContent = 'flex-end';
+                backgroundContainer.style.pointerEvents = 'none'; 
+                backgroundContainer.style.opacity = '0.2';
+                backgroundContainer.style.zIndex = '0'; 
+                backgroundContainer.style.scale = '1.7';
+                backgroundContainer.innerHTML = vehicleBrandHtmlLight;
+                
+                const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
+                if (thumbnailImg) {
+                    thumbnailImg.style.height = '80%';
+                    thumbnailImg.style.width = 'auto';
+                    thumbnailImg.style.maxHeight = '40px';
+                    thumbnailImg.style.objectFit = 'contain';
+                }
+
+                busItem.textContent = '';
+                busItem.style.display = 'flex';
+                busItem.style.alignItems = 'center';
+                busItem.style.gap = '10px';
+                busItem.style.overflow = 'hidden'; 
+                busItem.style.boxShadow = '0 0 7px 0px rgb(0 0 0 / 24%)';
+
+
+                
+                busItem.appendChild(backgroundContainer);
+                
+                const frontContent = document.createElement('div');
+                frontContent.style.display = 'flex';
+                frontContent.style.alignItems = 'center';
+                frontContent.style.gap = '10px';
+                frontContent.style.width = '100%';
+                frontContent.style.position = 'relative';
+                frontContent.style.zIndex = '1';
+                
+                frontContent.appendChild(busIdBox);
+                frontContent.appendChild(contentContainer);
+                busItem.appendChild(frontContent);
+
+                busItem.style.cursor = 'pointer';
+                busItem.classList.add('menu-item');
+                busItem.style.fontFamily = 'League Spartan';
+                busItem.style.color = textColor;
+                busItem.style.padding = '5px 10px';
+                busItem.style.marginBottom = '8px';
+                busItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                busItem.style.borderRadius = '8px';
+
+                lineSection.onclick = () => {
+                    if (localStorage.getItem('astuce') !== 'true') {
+                        localStorage.setItem('astuce', 'true');
+                        toastBottomRight.info(`${t("astuceselectligne")}`);
+                    }
+                    const mapp = document.getElementById('map');
+                    mapp.style.opacity = '1';
+                    safeVibrate([50, 30, 50], true);
+                    soundsUX('MBF_Menu_LineSelect');
+                    const lineId = line;
+                    selectedLine = lineId;
+                    filterByLine(lineId);
+                    const map = document.getElementById('map');
+                    map.style.opacity = '1';
+                    menu.classList.add('hidden');
+                    if (localStorage.getItem('transparency') === 'true') {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.add('appearnotransition');
+                        map.classList.remove('hidden');
+                        map.classList.remove('appear');
+                    } else {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hidden');
+                        map.classList.add('appear');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.remove('appearnotransition');
+                    }
+                    window.isMenuShowed = false;
+                    menu.addEventListener('animationend', function onAnimationEnd(event) {
+                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+                            menu.style.display = 'none';
+                        }
+                    });
+                    isMenuVisible = false;
+                    const filtre = document.getElementById('filtre');
+                    menubottom1.style.display = 'flex';
+                    setTimeout(() => {
+                        menubottom1.classList.remove('slide-upb');
+                        menubottom1.classList.add('slide-downb');
+                        if (selectedLine) {
+                            filtre.classList.remove('slide-upc');
+                            filtre.classList.add('slide-downc');
+                            filtre.style.display = 'flex';
+                        }
+                    }, 10);
+                    event.stopPropagation();
+
+                };
+
+                busItem.onclick = (event) => {
+                    event.stopPropagation();
+                    safeVibrate([50, 300, 50, 30, 50], true);
+                    soundsUX('MBF_Menu_VehicleSelect');
+                    map.setView(bus.vehicle.getLatLng(), 15);
+                    bus.vehicle.openPopup();
+                    const mapp = document.getElementById('map');
+                    mapp.style.opacity = '1';
+                    menu.classList.add('hidden');
+                    if (localStorage.getItem('transparency') === 'true') {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.add('appearnotransition');
+                        map.classList.remove('hidden');
+                        map.classList.remove('appear');
+                    } else {
+                        const map = document.getElementById('map');
+                        map.classList.remove('hidden');
+                        map.classList.add('appear');
+                        map.classList.remove('hiddennotransition');
+                        map.classList.remove('appearnotransition');
+                    }
+                    window.isMenuShowed = false;
+                    menu.addEventListener('animationend', function onAnimationEnd(event) {
+                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+                            menu.style.display = 'none';
+                        }
+                    });
+                    isMenuVisible = false;
+                    if (selectedLine) {
+                        resetMapView();
+                    }
+                };
+
+                destinationSection.appendChild(busItem);
+            });
+
+            lineSection.appendChild(destinationSection);
+        });
+
+    menu.appendChild(lineSection);
+});
 }
 
 const menubottom1 = document.getElementById('menubtm');
