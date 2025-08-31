@@ -6389,7 +6389,7 @@ async function fetchVehiclePositions() {
                                 </svg>
                             </button>
 
-                            <div class="vehicle-info-section ripple-container" style="color: ${textColor};">
+                            <div class="vehicle-info-section" style="color: ${textColor};">
                                 <div class="light-beam beam1"></div>
                                 <div class="light-beam beam2"></div>
                                 <div class="light-beam beam3"></div>
@@ -8048,7 +8048,7 @@ sortedLines.forEach(line => {
     const lineSection = document.createElement('div');
     lineSection.dataset.line = line;
     lineSection.style.backgroundColor = lineColor;
-    lineSection.classList.add('linesection');
+    lineSection.classList.add('linesection ripple-container');
     lineSection.style.marginBottom = '10px';
     lineSection.style.marginLeft = '10px';
     lineSection.style.marginRight = '10px';
