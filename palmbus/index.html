@@ -6616,7 +6616,6 @@ async function fetchVehiclePositions() {
                         if (markers[id].minimalPopup) {
                             createOrUpdateMinimalTooltip(id, false);
                         }
-                        marker.openPopup();
                     });
                         animateMarker(markers[id], [latitude, longitude]);
                         // Mettre à jour la position du tooltip minimal s'il existe
