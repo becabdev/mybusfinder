@@ -17,9 +17,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-    body,
     html {
-        height: var(--app-height);
+        height: 100%;
+        width: 100vw;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        padding: 0;
+        font-family: "League Spartan", sans-serif;
+        background-color: #c7c7c7;
+        color: #333;
+        transition: background-color 0.5s;
+        overflow: hidden;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+
+    }
+    body {
+        height: 100%;
         width: 100vw;
         display: flex;
         justify-content: center;
@@ -52,6 +69,9 @@
         top: 0;
         left: 0;
         transition: 0.4s cubic-bezier(0.32, 0.64, 0.45, 1);
+        margin: 0;
+        height: 100%;
+        width: 100%;
     }
     .update-popup {
         position: fixed;
@@ -133,8 +153,8 @@
         transform: scale(1) translateY(0);
         opacity: 1;
         filter: blur(0);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
     }
     .leaflet-popup-content-wrapper.hide,
     .leaflet-popup-tip.hide {
@@ -591,11 +611,7 @@
             background: linear-gradient(45deg, #fff, #f0f0f0, #fff);
         }
     }
-    :root {
-        --base_scale: 3vh;
-        --floor: 15vh;
-        --color: #836ee5;
-    }
+
     input,
     textarea {
         user-select: text;
@@ -753,6 +769,7 @@
         }
     }
     .filtre {
+        display: none;
         position: absolute;
         cursor: pointer;
         bottom: 10px;
@@ -760,7 +777,7 @@
         transform: translateX(-50%) translateY(-100%);
         opacity: 0;
         filter: blur(5px);
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
+        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
         padding: 10px 15px;
         border: none;
         list-style: none;
@@ -778,19 +795,18 @@
     }
     .menubottom-ul {
         display: flex;
-        position: absolute;
+        position: fixed;
         bottom: 10px;
         left: 50%;
         transform: translateX(-50%);
-        border: none;
+        border: 1px solid rgba(255, 255, 255, 0.3);
         list-style: none;
         margin: 0;
         z-index: 10000;
         padding: 0 9px;
         background-color: #0f056b9c;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
         border-radius: 18px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
@@ -997,7 +1013,6 @@
         transform: translateY(100%) translateX(-50%);
         opacity: 0;
         filter: blur(5px);
-        transition: transform 0.2s ease-in, opacity 0.2s ease-in, filter 0.2s ease-in;
     }
     #popup1::-webkit-scrollbar {
         width: 8px;
@@ -1330,11 +1345,6 @@
         margin: 0 0 5px;
         font-weight: 700;
     }
-    #map,
-    #map-container {
-        height: 100%;
-        width: 100%;
-    }
     #sun-overlay {
         position: absolute;
         top: 0;
@@ -1651,8 +1661,10 @@
     color: #333;
     border-radius: 15px;
     overflow: hidden;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(1px);
+    -webkit-backdrop-filter: blur(1px);
+    box-shadow: 0px 4px 20px 5px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .share-button {
@@ -1897,15 +1909,6 @@
  <script src="../build.js"></script>
 
  <script>
-  function setAppHeight() {
-    const doc = document.documentElement;
-    doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-  }
-
-  window.addEventListener('resize', setAppHeight);
-  window.addEventListener('orientationchange', setAppHeight);
-  setAppHeight(); 
-  
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
     });
@@ -3323,9 +3326,10 @@ function showUpdatePopupmusic(link) {
         const filtre = document.getElementById('filtre');
         filtre.classList.add('slide-upc');
         filtre.classList.remove('slide-downc');
-        filtre.addEventListener('animationend', () => {
+        setTimeout(() => {
             filtre.style.display = 'none';
-        });
+        }, 500);
+            
         resetMapView();            
     }
 
@@ -3482,22 +3486,18 @@ document.getElementById('close-popup1').addEventListener('click', closeUpdatePop
 
 
 function hideLoadingScreen() {
-    if(!localStorage.getItem('OutOfBoxExperienceTerminee')) {
-            const iframeeee = document.getElementById("webview-frameaccueil");
-            iframeeee.src = "../oobe.html";
-    } 
     setTimeout(() => {
         const loadingScreen = document.getElementById('loading-screen');
 
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Mise à jour vers ' + window.BUILD_VERSION + ' en cours';
+            loadingtext.textContent = 'Update to ' + window.BUILD_VERSION + ' in progress...';
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
                     window.location.reload();
-                }, 4000);
+                }, 1000);
 
         } else {
 
@@ -4650,9 +4650,9 @@ function filterByLine(lineId) {
     const filtre = document.getElementById('filtre');
     filtre.classList.add('slide-upc');
     filtre.classList.remove('slide-downc');
-    filtre.addEventListener('animationend', () => {
+    setTimeout(() => {
         filtre.style.display = 'none';
-    });
+    }, 500);
     resetMapView();
   } else if (selectedLines.length === 1) {
     zoomToSelectedLine(selectedLines[0]);
@@ -4781,9 +4781,9 @@ function showPopup() {
                 const filtre = document.getElementById('filtre');
                 filtre.classList.add('slide-upc');
                 filtre.classList.remove('slide-downc');
-                filtre.addEventListener('animationend', () => {
+                setTimeout(() => {
                     filtre.style.display = 'none';
-                });
+                }, 500);
         }
 
             menubottom1.addEventListener('transitionend', () => {
@@ -4839,9 +4839,9 @@ const filtre = document.getElementById('filtre');
         if (selectedLine) {
             filtre.classList.add('slide-upc');
             filtre.classList.remove('slide-downc');
-            filtre.addEventListener('animationend', () => {
+            setTimeout(() => {
                 filtre.style.display = 'none';
-            });
+            }, 500);
     resetMapView();
     }
 };
@@ -5131,7 +5131,7 @@ function getVehicleOptionsBadges(parkNumber) {
         }
         if (params.isGnv) {
             badges += `<span style="${badgeStyle}">
-                <svg style="${svgStyle}" width="17" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#ffffff" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M17,8C8,10,5.9,16.17,3.82,21.34L5.71,22l1-2.3A4.49,4.49,0,0,0,8,20C19,20,22,3,22,3,21,5,14,5.25,9,6.25S2,11.5,2,13.5a6.22,6.22,0,0,0,1.75,3.75C7,8,17,8,17,8Z"></path> <rect width="24" height="24" fill="none"></rect> </g></svg>             
+                <svg style="${svgStyle}" width="17" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M17,8C8,10,5.9,16.17,3.82,21.34L5.71,22l1-2.3A4.49,4.49,0,0,0,8,20C19,20,22,3,22,3,21,5,14,5.25,9,6.25S2,11.5,2,13.5a6.22,6.22,0,0,0,1.75,3.75C7,8,17,8,17,8Z"></path> <rect width="24" height="24" fill="none"></rect> </g></svg>             
                 <span style="${textStyle}">${t("gnv")}</span>
             </span> `;
         }
@@ -6058,7 +6058,7 @@ async function fetchVehiclePositions() {
                     }
                     
                     const popupContent = `
-                        <div class="popup-container" style="box-shadow: 0px 0px 20px 4px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
+                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px #0000009c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
                             <button onclick="shareVehicleId('${vehicle.vehicle.id}')" title="${t("share")}" class="share-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -6618,7 +6618,6 @@ async function fetchVehiclePositions() {
                         if (markers[id].minimalPopup) {
                             createOrUpdateMinimalTooltip(id, false);
                         }
-                        marker.openPopup();
                     });
                         animateMarker(markers[id], [latitude, longitude]);
                         // Mettre à jour la position du tooltip minimal s'il existe
@@ -7334,14 +7333,53 @@ function updateMenu() {
     backButton.onclick = closeMenu;
     topBar.appendChild(backButton);
 
-    
     const title = document.createElement('div');
-    title.textContent = `${t("network")}`;
+    title.className = 'menu-title';
+    title.textContent = t("network"); 
     title.style.cssText = `
         font-size: 20px;
         font-weight: 500;
     `;
     topBar.appendChild(title);
+
+    function updateMenuStatistics() {
+        let totalLines = Object.keys(busesByLineAndDestination).length;
+        let totalVehicles = 0;
+        let activeLines = 0;
+        
+        Object.values(busesByLineAndDestination).forEach(destinations => {
+            let lineVehicleCount = 0;
+            Object.values(destinations).forEach(buses => {
+                lineVehicleCount += buses.length;
+            });
+            totalVehicles += lineVehicleCount;
+            if (lineVehicleCount > 0) activeLines++;
+        });
+
+        if (activeLines === totalLines) {
+            memeNombre = true;
+        }
+        
+        const titleElement = document.querySelector('.menu-top-bar .menu-title');
+        if (titleElement) {
+            if (memeNombre) {
+                titleElement.innerHTML = `
+                    <div>${t("network")}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">
+                        ${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
+                    </div>
+                `;
+            } else {
+                titleElement.innerHTML = `
+                    <div>${t("network")}</div>
+                    <div style="font-size: 12px; opacity: 0.8;">
+                        ${activeLines}/${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
+                    </div>
+                `;
+            }
+        }
+    }
+
 
     
     const spacer = document.createElement('div');
@@ -7591,6 +7629,9 @@ function getNextStopInfo(vehicleId) {
         vehicle
     });
 });
+
+updateMenuStatistics();
+
 
     const sortedLines = Object.keys(busesByLineAndDestination)
         .sort((a, b) => {
@@ -8063,9 +8104,9 @@ const menubottom1 = document.getElementById('menubtm');
                 const filtre = document.getElementById('filtre');
                 filtre.classList.add('slide-upc');
                 filtre.classList.remove('slide-downc');
-                filtre.addEventListener('animationend', () => {
+                setTimeout(() => {
                     filtre.style.display = 'none';
-                });
+                }, 500);
         }
 
             menubottom1.addEventListener('transitionend', () => {
