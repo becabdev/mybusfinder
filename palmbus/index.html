@@ -70,7 +70,7 @@
         left: 0;
         transition: 0.4s cubic-bezier(0.32, 0.64, 0.45, 1);
         margin: 0;
-        height: 100vw;
+        height: 100%;
         width: 100%;
     }
     .update-popup {
@@ -1002,6 +1002,7 @@
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.2s ease-in, filter 0.2s ease-in;
     }
     .slide-downc {
+        display: flex;
         transform: translateY(-220%) translateX(-50%);
         opacity: 1;
         filter: blur(0);
@@ -1009,6 +1010,7 @@
         -webkit-backdrop-filter: blur(1px);
     }
     .slide-upc {
+        display: none;
         transform: translateY(100%) translateX(-50%);
         opacity: 0;
         filter: blur(5px);
