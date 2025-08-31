@@ -17,8 +17,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <style>
-    body,
     html {
+        height: 100%;
+        width: 100vw;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        padding: 0;
+        font-family: "League Spartan", sans-serif;
+        background-color: #c7c7c7;
+        color: #333;
+        transition: background-color 0.5s;
+        overflow: hidden;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+
+    }
+    body {
         height: min-content;
         width: 100vw;
         display: flex;
