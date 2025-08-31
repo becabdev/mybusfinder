@@ -19,7 +19,7 @@
     <style>
     body,
     html {
-        height: 100%;
+        height: min-content;
         width: 100vw;
         display: flex;
         justify-content: center;
@@ -1897,15 +1897,6 @@
  <script src="../build.js"></script>
 
  <script>
-  function setAppHeight() {
-    const doc = document.documentElement;
-    doc.style.setProperty('--app-height', `${window.innerHeight}px`);
-  }
-
-  window.addEventListener('resize', setAppHeight);
-  window.addEventListener('orientationchange', setAppHeight);
-  setAppHeight(); 
-  
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
     });
