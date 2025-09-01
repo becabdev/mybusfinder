@@ -2004,8 +2004,6 @@
                 const container = e.target.closest('.ripple-container');
                 if (!container) return;
 
-                e.preventDefault();
-                
                 const pointer = this.getPointerPosition(e);
                 const rect = container.getBoundingClientRect();
                 
@@ -5500,9 +5498,6 @@ function getVehicleBrandHtml(parkNumber) {
 
     return `
         <div class="vehicle-model">
-            <img src="${defaultImagePath}" 
-                 alt="Bus par défaut" 
-                 class="vehicle-thumbnail"  />
             <span style="margin-top: 6px; margin-left: 20px; font-size: 12px;">${t("abus")}</span>
         </div>
     `;
