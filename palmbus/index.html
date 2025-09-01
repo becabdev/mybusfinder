@@ -6384,7 +6384,7 @@ async function fetchVehiclePositions() {
                         return contentCache.get(cacheKey);
                     }
 
-                    if (localStorage.getItem('displayOptionsBadgesUnderThumbnail')) {
+                    if (localStorage.getItem('displayOptionsBadgesUnderThumbnail') === 'true') {
                         const popupContent = `
                             <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                                 
