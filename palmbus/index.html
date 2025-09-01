@@ -1867,78 +1867,71 @@
 
 .rainbow-border {
     position: relative;
-    border: 1px solid transparent;
-    background: linear-gradient(white, white) padding-box,
-                linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3) border-box;
-    background-size: 100% 100%, 400% 400%;
-    animation: none;
 }
 
-.rainbow-border.animate {
-    animation: rainbow-border-pulse 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+.rainbow-border::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(from 0deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    opacity: 0;
+    transform: scale(0);
+    transform-origin: var(--ripple-x, 50%) var(--ripple-y, 50%);
+    pointer-events: none;
+    z-index: 999;
 }
 
-.rainbow-border.held {
-    animation: rainbow-border-hold 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards,
-               rainbow-glow 2s linear infinite;
+.rainbow-border.animate::before {
+    animation: rainbow-ripple-expand 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.rainbow-border.release {
-    animation: rainbow-border-fadeout 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+.rainbow-border.held::before {
+    animation: rainbow-ripple-hold 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
-@keyframes rainbow-border-pulse {
+.rainbow-border.release::before {
+    animation: rainbow-ripple-release 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes rainbow-ripple-expand {
     0% {
-        background-position: 0% 0%, 0% 50%;
-        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
-    }
-    50% {
-        background-position: 0% 0%, 50% 50%;
-        box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+        transform: scale(0) rotate(0deg);
+        opacity: 1;
     }
     100% {
-        background-position: 0% 0%, 100% 50%;
-        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+        transform: scale(1) rotate(180deg);
+        opacity: 0;
     }
 }
 
-@keyframes rainbow-border-hold {
+@keyframes rainbow-ripple-hold {
     0% {
-        background-position: 0% 0%, 0% 50%;
-        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+        transform: scale(0) rotate(0deg);
+        opacity: 1;
     }
     100% {
-        background-position: 0% 0%, 25% 50%;
-        box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+        transform: scale(0.8) rotate(90deg);
+        opacity: 0.8;
     }
 }
 
-@keyframes rainbow-glow {
+@keyframes rainbow-ripple-release {
     0% {
-        background-position: 0% 0%, 0% 50%;
-    }
-    25% {
-        background-position: 0% 0%, 25% 50%;
-    }
-    50% {
-        background-position: 0% 0%, 50% 50%;
-    }
-    75% {
-        background-position: 0% 0%, 75% 50%;
+        opacity: 0.8;
+        transform: scale(0.8) rotate(90deg);
     }
     100% {
-        background-position: 0% 0%, 100% 50%;
-    }
-}
-
-@keyframes rainbow-border-fadeout {
-    0% {
-        box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
-        background-position: 0% 0%, 25% 50%;
-    }
-    100% {
-        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
-        background-position: 0% 0%, 100% 50%;
+        opacity: 0;
+        transform: scale(1.2) rotate(270deg);
     }
 }
 </style>
@@ -2084,6 +2077,15 @@
                 const pointer = this.getPointerPosition(e);
                 const rect = container.getBoundingClientRect();
                 
+                const relativeX = ((pointer.x - rect.left) / rect.width) * 100;
+                const relativeY = ((pointer.y - rect.top) / rect.height) * 100;
+                
+                if (container.classList.contains('rainbow-border')) {
+                    container.style.setProperty('--ripple-x', `${relativeX}%`);
+                    container.style.setProperty('--ripple-y', `${relativeY}%`);
+                    container.classList.add('animate');
+                }
+                
                 const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
                 
                 this.activeRipples.set(container, {
@@ -2097,6 +2099,12 @@
                     if (activeRipple && !activeRipple.isReleased) {
                         ripple.classList.remove('animate');
                         ripple.classList.add('held');
+                        
+                        if (container.classList.contains('rainbow-border')) {
+                            container.classList.remove('animate');
+                            container.classList.add('held');
+                        }
+                        
                         activeRipple.isHeld = true;
                     }
                 }, 150);
@@ -2141,6 +2149,11 @@
                 if (activeRipple.isHeld) {
                     activeRipple.element.classList.remove('held');
                     activeRipple.element.classList.add('release');
+                    
+                    if (container.classList.contains('rainbow-border')) {
+                        container.classList.remove('held');
+                        container.classList.add('release');
+                    }
                 } else {
                     const timeHeld = Date.now() - activeRipple.startTime;
                     if (timeHeld < 150) {
@@ -2150,6 +2163,10 @@
 
                 setTimeout(() => {
                     this.cleanupRipple(container);
+                    
+                    if (container.classList.contains('rainbow-border')) {
+                        container.classList.remove('animate', 'held', 'release');
+                    }
                 }, 400);
             }
 
