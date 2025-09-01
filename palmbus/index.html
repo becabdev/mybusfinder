@@ -1095,7 +1095,7 @@
     }
     .vehicle-model {
         display: flex;
-        align-items: right;
+        align-items: left;
         justify-content: flex-end;
         flex-direction: column;
     }
@@ -5488,7 +5488,7 @@ function getVehicleBrandHtml(parkNumber) {
 
                 <img src="${model.thumbnail}" 
                      onerror="this.onerror=null; this.src='${defaultImagePath}';" 
-                     alt="Thumbnail ${model.name}" 
+                     alt="${model.name}" 
                      class="vehicle-thumbnail"  />
 
                 <span style="margin-top: 6px; margin-left: 20px; font-size: 12px; ">${t("determinantun")} ${model.name}</span>
@@ -5496,8 +5496,7 @@ function getVehicleBrandHtml(parkNumber) {
         `;
     }
 
-    return `
-    `;
+    return ``;
 }
 
 function getVehicleBrandHtmlLight(parkNumber) {
@@ -5513,9 +5512,7 @@ function getVehicleBrandHtmlLight(parkNumber) {
         `;
     }
 
-    return `
-
-    `;
+    return ``;
 }
 
 
