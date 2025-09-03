@@ -2134,8 +2134,8 @@
         });
 
 
-        VERSION_NAME = '3.1.0.0 Release Candidate 1';
-        
+        VERSION_NAME = '3.1.0.0 Beta 3';
+
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
     });
@@ -4215,6 +4215,23 @@ async function decodeProtobuf(buffer) {
         const tripId = event.data.tripId;
         const stopId = event.data.stopId;
         const routeId = event.data.routeId;
+
+        safeVibrate([30], true);
+        const accueil = document.getElementById('accueil');
+        accueil.classList.add('hide');
+        accueil.classList.remove("affiche")
+        const menubottom1 = document.getElementById('menubtm');
+        menubottom1.style.display = 'flex';
+        window.isMenuShowed = false;
+    
+        setTimeout(() => {
+            menubottom1.classList.remove('slide-upb');
+            menubottom1.classList.add('slide-downb');
+            setTimeout(() => {
+                accueil.style.display = 'none';
+            }, 500);
+        }, 10);
+
         
         const marker = findMarkerByVehicleId(vehicleId);
         if (marker) {
