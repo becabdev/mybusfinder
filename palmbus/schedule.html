@@ -48,16 +48,11 @@ body {
     margin: 0;
     padding: 0;
     color: var(--text-primary);
-    background-image: -webkit-linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483); /* Préfixe Safari */
-    background-image: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483); /* Standard */
+    background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483);
     background-size: 400% 400%;
-    animation: gradient-shift 15s ease infinite;
     overflow-x: hidden;
     position: relative;
 }
-
-
-
 
 body::after {
     content: '';
