@@ -2132,9 +2132,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             new RippleEffect();
         });
-    </script>
 
- <script>
+
+        VERSION_NAME = '3.1.0.0 Release Candidate 1';
+        
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
     });
@@ -2775,7 +2776,7 @@
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "ver", {
                 icon: "ℹ️",
                 label: "Version",
-                description: "3.1.0.0 Release Candidate 1",
+                description: window.VERSION_NAME,
                 onclick: function () {
                     return;
                 }
@@ -3718,7 +3719,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Update to ' + window.BUILD_VERSION + ' in progress...';
+            loadingtext.textContent = 'Update to ' + window.VERSION_NAME + ' - ' + window.BUILD_VERSION + ' in progress...';
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
