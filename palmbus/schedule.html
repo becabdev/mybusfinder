@@ -42,30 +42,6 @@
     --transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@-webkit-keyframes gradient-shift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
-@keyframes gradient-shift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
-    }
-}
-
 body {
     height: 100vh;
     font-family: 'League Spartan', sans-serif;
@@ -74,9 +50,8 @@ body {
     color: var(--text-primary);
     background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483);
     background-size: 400% 400%;
-    background-position: 0% 50%; 
-    animation: gradient-shift 15s ease infinite;
-    -webkit-animation: gradient-shift 15s ease infinite;
+    background-position: 0% 50%;
+    /* sans anim pour tester */
     overflow-x: hidden;
     position: relative;
 }
