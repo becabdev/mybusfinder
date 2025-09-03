@@ -285,7 +285,7 @@
     .ripple::after {
         content: "";
         position: absolute;
-        background: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.938);
         border-radius: 50%;
         transform: scale(0);
         opacity: 0;
@@ -816,6 +816,9 @@
         border-radius: 40px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     }
+    .menubottom-ul:active {
+        transform: translateX(-50%) scale(1.05); 
+    }
     .menubottom ul li {
         margin: auto;
     }
@@ -1095,7 +1098,7 @@
     }
     .vehicle-model {
         display: flex;
-        align-items: right;
+        align-items: left;
         justify-content: flex-end;
         flex-direction: column;
     }
@@ -1815,7 +1818,7 @@
 .ripple {
     position: absolute;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 40%, rgba(255,255,255,0.1) 70%, transparent 100%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.849) 0%, rgba(255, 255, 255, 0.521) 40%, rgba(255, 255, 255, 0.37) 70%, transparent 100%);
     transform: scale(0);
     pointer-events: none;
     z-index: 1000;
@@ -1864,6 +1867,8 @@
         transform: scale(1.2);
     }
 }
+
+
 </style>
 
 </head>
@@ -2004,8 +2009,6 @@
                 const container = e.target.closest('.ripple-container');
                 if (!container) return;
 
-                e.preventDefault();
-                
                 const pointer = this.getPointerPosition(e);
                 const rect = container.getBoundingClientRect();
                 
@@ -2132,9 +2135,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             new RippleEffect();
         });
-    </script>
 
- <script>
+
+        VERSION_NAME = '3.1.0.0 Beta 3';
+
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
     });
@@ -2775,7 +2779,7 @@
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "ver", {
                 icon: "ℹ️",
                 label: "Version",
-                description: "3.1.0.0 Beta 2",
+                description: window.VERSION_NAME,
                 onclick: function () {
                     return;
                 }
@@ -3718,7 +3722,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Update to ' + window.BUILD_VERSION + ' in progress...';
+            loadingtext.textContent = 'Updating to MBF ' + window.VERSION_NAME + '...';
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -4214,6 +4218,23 @@ async function decodeProtobuf(buffer) {
         const tripId = event.data.tripId;
         const stopId = event.data.stopId;
         const routeId = event.data.routeId;
+
+        safeVibrate([30], true);
+        const accueil = document.getElementById('accueil');
+        accueil.classList.add('hide');
+        accueil.classList.remove("affiche")
+        const menubottom1 = document.getElementById('menubtm');
+        menubottom1.style.display = 'flex';
+        window.isMenuShowed = false;
+    
+        setTimeout(() => {
+            menubottom1.classList.remove('slide-upb');
+            menubottom1.classList.add('slide-downb');
+            setTimeout(() => {
+                accueil.style.display = 'none';
+            }, 500);
+        }, 10);
+
         
         const marker = findMarkerByVehicleId(vehicleId);
         if (marker) {
@@ -5490,7 +5511,7 @@ function getVehicleBrandHtml(parkNumber) {
 
                 <img src="${model.thumbnail}" 
                      onerror="this.onerror=null; this.src='${defaultImagePath}';" 
-                     alt="Thumbnail ${model.name}" 
+                     alt="${model.name}" 
                      class="vehicle-thumbnail"  />
 
                 <span style="margin-top: 6px; margin-left: 20px; font-size: 12px; ">${t("determinantun")} ${model.name}</span>
@@ -5498,14 +5519,7 @@ function getVehicleBrandHtml(parkNumber) {
         `;
     }
 
-    return `
-        <div class="vehicle-model">
-            <img src="${defaultImagePath}" 
-                 alt="Bus par défaut" 
-                 class="vehicle-thumbnail"  />
-            <span style="margin-top: 6px; margin-left: 20px; font-size: 12px;">${t("abus")}</span>
-        </div>
-    `;
+    return ``;
 }
 
 function getVehicleBrandHtmlLight(parkNumber) {
@@ -5521,9 +5535,7 @@ function getVehicleBrandHtmlLight(parkNumber) {
         `;
     }
 
-    return `
-
-    `;
+    return ``;
 }
 
 
