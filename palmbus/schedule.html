@@ -42,6 +42,30 @@
     --transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@-webkit-keyframes gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes gradient-shift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
 body {
     height: 100vh;
     font-family: 'League Spartan', sans-serif;
@@ -50,26 +74,13 @@ body {
     color: var(--text-primary);
     background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483);
     background-size: 400% 400%;
+    background-position: 0% 50%; 
     animation: gradient-shift 15s ease infinite;
+    -webkit-animation: gradient-shift 15s ease infinite;
     overflow-x: hidden;
     position: relative;
 }
 
-body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: 
-        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.4) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(168, 85, 247, 0.2) 0%, transparent 50%);
-    animation: aurora 20s ease-in-out infinite alternate;
-    pointer-events: none;
-    z-index: -1;
-}
 
 body::after {
     content: '';
@@ -834,7 +845,6 @@ h1, h2, h3, h4 {
     transition: var(--transition-fast);
 }
 
-/* Animation d'apparition pour les éléments */
 .initial-fade-in {
     animation: slide-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     opacity: 0;
@@ -845,7 +855,6 @@ h1, h2, h3, h4 {
     display: none !important;
 }
 
-/* Scrollbar personnalisée */
 ::-webkit-scrollbar {
     width: 12px;
 }
@@ -867,13 +876,11 @@ h1, h2, h3, h4 {
     box-shadow: 0 0 10px var(--glow-color);
 }
 
-/* Animations d'apparition échelonnées pour les listes */
 .bus-item:nth-child(5) { animation-delay: 0.5s; }
 .bus-item:nth-child(6) { animation-delay: 0.6s; }
 .bus-item:nth-child(7) { animation-delay: 0.7s; }
 .bus-item:nth-child(8) { animation-delay: 0.8s; }
 
-/* Effet de particules en mouvement */
 @keyframes float-particles {
     0% { 
         transform: translateY(100vh) translateX(0) rotate(0deg);
@@ -891,7 +898,6 @@ h1, h2, h3, h4 {
     }
 }
 
-/* Optimisations pour mobile */
 @media (max-width: 768px) {
     .container {
         padding: 16px;
