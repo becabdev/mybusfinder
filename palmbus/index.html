@@ -4302,12 +4302,10 @@ let lastActiveColor = null;
 window.isMenuShowed = false;
 
 
-// Cache pour éviter les recalculs
 const colorCache = new Map();
 const styleCache = new Map();
 const animationCache = new Map();
 
-// Pool d'objets réutilisables pour éviter les allocations
 const objectPool = {
     positions: [],
     colors: [],
@@ -4321,7 +4319,6 @@ const objectPool = {
     }
 };
 
-// Optimisation des couleurs avec cache
 function getCachedColors(route_id, baseColor) {
     const cacheKey = `${route_id}-${baseColor}`;
     
@@ -4342,7 +4339,6 @@ function getCachedColors(route_id, baseColor) {
     return colors;
 }
 
-// Optimisation de la fonction de luminance
 const luminanceCache = new Map();
 
 function getCachedLuminance(color) {
@@ -4364,7 +4360,6 @@ function getCachedLuminance(color) {
     return luminance;
 }
 
-// Version optimisée de getOptimalTextColor
 function getOptimalTextColor(bgColor, options = {}) {
     const cacheKey = `${bgColor}-${JSON.stringify(options)}`;
     
@@ -4398,7 +4393,6 @@ function getOptimalTextColor(bgColor, options = {}) {
             return darkColor;
         }
     } else {
-        // Normalisation des couleurs hex courtes
         if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
             bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
                 (_, r, g, b) => '#' + r + r + g + g + b + b);
@@ -4414,7 +4408,6 @@ function getOptimalTextColor(bgColor, options = {}) {
         }
     }
 
-    // Clamp des valeurs
     r = Math.max(0, Math.min(255, r));
     g = Math.max(0, Math.min(255, g));
     b = Math.max(0, Math.min(255, b));
@@ -4452,18 +4445,15 @@ function getOptimalTextColor(bgColor, options = {}) {
     return result;
 }
 
-// Générateur d'ID optimisé avec pool
 const idPool = [];
 const generateUniqueId = () => {
     return idPool.pop() || `popup-style-${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Fonction principale optimisée
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const baseColor = lineColors[route_id] || '#000000';
     const colors = getCachedColors(route_id, baseColor);
     
-    // Template de styles avec variables CSS pour de meilleures performances
     const markerHtmlStyles = `
         --marker-base-color: ${colors.base};
         --marker-light-color: ${colors.lighter};
@@ -4702,78 +4692,16 @@ function adjustBrightness(hex, percent) {
     return result;
 }
 
-const additionalCSS = `
-.my-custom-pin-enhanced {
-    background: transparent !important;
-    border: none !important;
-    transform: translateZ(0);
-}
-
-.marker-container {
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
-    transform: translateZ(0);
-    will-change: transform;
-}
-
-.enhanced-marker {
-    position: relative;
-    z-index: 1000;
-    transform: translateZ(0);
-    will-change: transform, box-shadow;
-}
-
-.enhanced-marker:hover {
-    z-index: 1001;
-}
-
-.marker-arrow {
-    pointer-events: none;
-    transform: translateZ(0);
-}
-
-.marker-arrow-path {
-    transition: all 0.3s ease;
-}
-
-/* Animation de pulsation globale pour tous les marqueurs */
-@keyframes global-pulse {
-    0%, 100% { transform: scale(1) translateZ(0); }
-    50% { transform: scale(1.05) translateZ(0); }
-}
-
-.marker-container.active {
-    animation: global-pulse 2s infinite;
-}
-
-/* Styles pour les marqueurs en mouvement */
-.marker-moving {
-    transition: none !important;
-    animation: none !important;
-}
-
-.marker-moving .enhanced-marker {
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
-}
-`;
 
 function animateMarker(marker, newPosition, options = {}) {
     const {
         duration = 1000,
         easing = 'easeInOutQuad',
-        onComplete = null,
-        updateBearing = true
+        onComplete = null
     } = options;
     
     const startLatLng = marker.getLatLng();
     const endLatLng = L.latLng(newPosition[0], newPosition[1]);
-    
-    let bearing = 0;
-    if (updateBearing) {
-        const deltaLat = endLatLng.lat - startLatLng.lat;
-        const deltaLng = endLatLng.lng - startLatLng.lng;
-        bearing = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
-    }
-    
     const startTime = performance.now();
     
     if (marker.animationFrame) {
@@ -4806,14 +4734,6 @@ function animateMarker(marker, newPosition, options = {}) {
         const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
         
         marker.setLatLng([lat, lng]);
-        
-        if (updateBearing && container) {
-            const arrow = container.querySelector('.marker-arrow');
-            if (arrow) {
-                const currentBearing = bearing * easedProgress;
-                arrow.style.transform = `rotate(${currentBearing - 90}deg)`;
-            }
-        }
 
         if (linearProgress < 1) {
             marker.animationFrame = requestAnimationFrame(animate);
