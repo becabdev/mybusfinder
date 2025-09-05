@@ -4423,17 +4423,13 @@ function findMarkerByVehicleId(vehicleId) {
     return null;
 }
 
-let lastActiveMarkerId = null;
 
-let lastActiveColor = null;
 window.isMenuShowed = false;
-
-
-// Cache pour éviter les recalculs répétitifs
 const colorCache = new Map();
 const styleCache = new Map();
 let globalStyleSheet = null;
-
+let lastActiveMarkerId = null;
+let lastActiveColor = null;
 
 // Fonction optimisée pour calculer la couleur de texte optimale (mise en cache)
 function getOptimalTextColor(bgColor, options = {}) {
@@ -4917,10 +4913,68 @@ function cleanupMarkerResources() {
     }
 }
 
-// Appel de nettoyage recommandé périodiquement ou lors du déchargement de la pag
+// Appel de nettoyage recommandé périodiquement ou lors du déchargement de la page
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', cleanupMarkerResources);
 }
+
+// CSS optimisé avec will-change pour les performances
+const additionalCSS = `
+.my-custom-pin-enhanced {
+    background: transparent !important;
+    border: none !important;
+}
+
+.marker-container {
+    will-change: transform;
+}
+
+.enhanced-marker {
+    position: relative;
+    z-index: 1000;
+    will-change: transform, box-shadow;
+}
+
+.enhanced-marker:hover {
+    z-index: 1001;
+}
+
+.marker-arrow {
+    pointer-events: none;
+    will-change: transform;
+}
+
+/* Optimisation des transitions globales */
+#menubtm, #filtre {
+    will-change: background-color;
+}
+`;
+
+// Injection du CSS optimisé
+if (!document.getElementById('optimized-marker-styles')) {
+    const style = document.createElement('style');
+    style.id = 'optimized-marker-styles';
+    style.textContent = additionalCSS;
+    document.head.appendChild(style);
+}
+
+// Nettoyage périodique du cache (optionnel)
+const cleanupCache = () => {
+    if (colorCache.size > 1000) {
+        const entries = Array.from(colorCache.entries());
+        const toKeep = entries.slice(-500);
+        colorCache.clear();
+        toKeep.forEach(([key, value]) => colorCache.set(key, value));
+    }
+};
+
+// Nettoyage toutes les 5 minutes
+setInterval(cleanupCache, 300000);
+let busStopLayers = [];
+let selectedLines = [];
+
+
+
 
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
