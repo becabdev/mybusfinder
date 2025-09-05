@@ -5757,9 +5757,7 @@ function shareVehicleId(id) {
 
 
 async function fetchVehiclePositions() {
-        if (!gtfsInitialized) {
-            return;
-        }
+
 
         if (!window.timeAnimationStyleAdded) {
         const timeAnimationStyle = `
@@ -9360,13 +9358,16 @@ async function main() {
         gtfsInitialized = true;
         
         await loadGeoJsonLines();
-        
-        await Promise.all([
-            fetchTripUpdates().catch(console.error),
-            fetchVehiclePositions(),
-            hideLoadingScreen()
-        ]);
-        
+            if (!gtfsInitialized) {
+                return;
+            } else {
+                await Promise.all([
+                    fetchTripUpdates().catch(console.error),
+                    fetchVehiclePositions(),
+                    hideLoadingScreen()
+                ]);
+            }   
+
         requestAnimationFrame(scheduleFetchUpdates);
         
     } catch (error) {
