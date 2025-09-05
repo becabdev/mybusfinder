@@ -1994,8 +1994,14 @@
 
  <script src="src/js/toastjs.js"></script>       
  <script src="../build.js"></script>
+ <script src="../lazysizes.js" async=""></script>
+ <script src="../quicklink.js"></script>
 
      <script>
+        window.addEventListener('load', () => {
+            quicklink.listen();
+        });
+        
         // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
         // simply add class "ripple-container" to element you want the effect on it
         class RippleEffect {
