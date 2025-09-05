@@ -2003,60 +2003,103 @@
             quicklink.listen();
         });
 
-        // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
-        // simply add class "ripple-container" to element you want the effect on it
-        class RippleEffect {
-            constructor() {
-                this.activeRipples = new Map();
-                this.init();
-            }
+// Ripple Effect Implementation for iOS26-like behavior - by BecabDev (Optimized)
+// Simply add class "ripple-container" to element you want the effect on it
+class RippleEffect {
+    constructor() {
+        this.activeRipples = new Map();
+        this.animationFrame = null;
+        this.pendingCleanups = new Set();
+        this.isPassiveSupported = this.checkPassiveSupport();
+        this.init();
+    }
 
-            init() {
-                document.addEventListener('mousedown', this.handlePointerDown.bind(this));
-                document.addEventListener('mouseup', this.handlePointerUp.bind(this));
-                document.addEventListener('mousemove', this.handlePointerMove.bind(this));
-                document.addEventListener('mouseleave', this.handlePointerUp.bind(this));
-                
-                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
-                document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
-                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
-                document.addEventListener('touchcancel', this.handlePointerUp.bind(this), { passive: true });
-                
-                document.addEventListener('click', this.handleClick.bind(this), { passive: true });
+    checkPassiveSupport() {
+        let passive = false;
+        try {
+            const opts = Object.defineProperty({}, 'passive', {
+                get: () => { passive = true; }
+            });
+            window.addEventListener('testPassive', null, opts);
+            window.removeEventListener('testPassive', null, opts);
+        } catch (e) {}
+        return passive;
+    }
 
-            }
+    init() {
+        const options = this.isPassiveSupported ? { passive: true } : false;
+        const activeOptions = this.isPassiveSupported ? { passive: false } : false;
 
-            handlePointerDown(e) {
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
+        // Mouse events (non-passive for preventDefault capability if needed)
+        document.addEventListener('mousedown', this.handlePointerDown.bind(this), activeOptions);
+        document.addEventListener('mouseup', this.handlePointerUp.bind(this), options);
+        document.addEventListener('mousemove', this.handlePointerMove.bind(this), options);
+        document.addEventListener('mouseleave', this.handlePointerUp.bind(this), options);
+        
+        // Touch events
+        document.addEventListener('touchstart', this.handlePointerDown.bind(this), options);
+        document.addEventListener('touchend', this.handlePointerUp.bind(this), options);
+        document.addEventListener('touchmove', this.handlePointerMove.bind(this), options);
+        document.addEventListener('touchcancel', this.handlePointerUp.bind(this), options);
+        
+        document.addEventListener('click', this.handleClick.bind(this), options);
+    }
 
-                const pointer = this.getPointerPosition(e);
-                const rect = container.getBoundingClientRect();
-                
-                const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
-                
-                this.activeRipples.set(container, {
-                    element: ripple,
-                    startTime: Date.now(),
-                    isHeld: false
-                });
+    handlePointerDown(e) {
+        const container = e.target.closest('.ripple-container');
+        if (!container) return;
 
-                setTimeout(() => {
-                    const activeRipple = this.activeRipples.get(container);
-                    if (activeRipple && !activeRipple.isReleased) {
+        // Éviter les ripples multiples sur le même conteneur
+        if (this.activeRipples.has(container)) {
+            this.cleanupRipple(container);
+        }
+
+        const pointer = this.getPointerPosition(e);
+        const rect = container.getBoundingClientRect();
+        
+        const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
+        
+        const rippleData = {
+            element: ripple,
+            startTime: performance.now(), // Plus précis que Date.now()
+            isHeld: false,
+            isReleased: false,
+            timeoutId: null
+        };
+
+        this.activeRipples.set(container, rippleData);
+
+        // Utiliser un timeout optimisé
+        rippleData.timeoutId = setTimeout(() => {
+            const activeRipple = this.activeRipples.get(container);
+            if (activeRipple && !activeRipple.isReleased) {
+                // Utiliser requestAnimationFrame pour les changements de classe
+                this.scheduleClassChange(() => {
+                    if (ripple.parentNode) {
                         ripple.classList.remove('animate');
                         ripple.classList.add('held');
                         activeRipple.isHeld = true;
                     }
-                }, 150);
+                });
             }
+        }, 150);
+    }
 
-            handlePointerMove(e) {
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
+    handlePointerMove(e) {
+        const container = e.target.closest('.ripple-container');
+        if (!container) return;
 
-                const activeRipple = this.activeRipples.get(container);
-                if (!activeRipple || !activeRipple.isHeld) return;
+        const activeRipple = this.activeRipples.get(container);
+        if (!activeRipple || !activeRipple.isHeld) return;
+
+        // Throttle les mouvements avec requestAnimationFrame
+        if (!activeRipple.moveScheduled) {
+            activeRipple.moveScheduled = true;
+            requestAnimationFrame(() => {
+                if (!activeRipple.element.parentNode) {
+                    activeRipple.moveScheduled = false;
+                    return;
+                }
 
                 const pointer = this.getPointerPosition(e);
                 const rect = container.getBoundingClientRect();
@@ -2065,98 +2108,158 @@
                 const y = pointer.y - rect.top;
                 
                 const ripple = activeRipple.element;
-                const size = parseFloat(ripple.style.width);
-                ripple.style.left = (x - size / 2) + 'px';
-                ripple.style.top = (y - size / 2) + 'px';
-            }
-
-            handlePointerUp(e) {
-                if (e.type === 'mouseleave' || e.type === 'touchcancel') {
-                    this.cleanupAllRipples();
-                    return;
-                }
-
-                const container = e.target.closest('.ripple-container');
-                if (!container) {
-                    this.cleanupAllRipples();
-                    return;
-                }
-
-                const activeRipple = this.activeRipples.get(container);
-                if (!activeRipple) return;
-
-                activeRipple.isReleased = true;
+                const size = parseFloat(ripple.dataset.size || ripple.style.width);
                 
-                if (activeRipple.isHeld) {
+                // Utiliser transform au lieu de left/top pour de meilleures performances
+                const translateX = x - size / 2;
+                const translateY = y - size / 2;
+                ripple.style.transform = `translate(${translateX}px, ${translateY}px)`;
+                
+                activeRipple.moveScheduled = false;
+            });
+        }
+    }
+
+    handlePointerUp(e) {
+        if (e.type === 'mouseleave' || e.type === 'touchcancel') {
+            this.cleanupAllRipples();
+            return;
+        }
+
+        const container = e.target.closest('.ripple-container');
+        if (!container) {
+            this.cleanupAllRipples();
+            return;
+        }
+
+        const activeRipple = this.activeRipples.get(container);
+        if (!activeRipple) return;
+
+        activeRipple.isReleased = true;
+        
+        // Annuler le timeout s'il existe
+        if (activeRipple.timeoutId) {
+            clearTimeout(activeRipple.timeoutId);
+            activeRipple.timeoutId = null;
+        }
+        
+        if (activeRipple.isHeld) {
+            this.scheduleClassChange(() => {
+                if (activeRipple.element.parentNode) {
                     activeRipple.element.classList.remove('held');
                     activeRipple.element.classList.add('release');
-                } else {
-                    const timeHeld = Date.now() - activeRipple.startTime;
-                    if (timeHeld < 150) {
-                        return;
-                    }
                 }
-
-                setTimeout(() => {
-                    this.cleanupRipple(container);
-                }, 400);
-            }
-
-            cleanupAllRipples() {
-                for (const [container, rippleData] of this.activeRipples) {
-                    rippleData.isReleased = true;
-                    rippleData.element.classList.remove('held');
-                    rippleData.element.classList.add('release');
-                    
-                    setTimeout(() => {
-                        this.cleanupRipple(container);
-                    }, 400);
-                }
-            }
-
-            cleanupRipple(container) {
-                const activeRipple = this.activeRipples.get(container);
-                if (activeRipple && activeRipple.element.parentNode) {
-                    activeRipple.element.parentNode.removeChild(activeRipple.element);
-                }
-                this.activeRipples.delete(container);
-            }
-
-            createRipple(container, x, y) {
-                const rect = container.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height) * 2.5;
-                
-                const ripple = document.createElement('div');
-                ripple.classList.add('ripple', 'animate');
-                
-                ripple.style.width = size + 'px';
-                ripple.style.height = size + 'px';
-                ripple.style.left = (x - size / 2) + 'px';
-                ripple.style.top = (y - size / 2) + 'px';
-                
-                container.appendChild(ripple);
-                
-                setTimeout(() => {
-                    if (ripple.parentNode && ripple.classList.contains('animate')) {
-                        this.cleanupRipple(container);
-                    }
-                }, 600);
-                
-                return ripple;
-            }
-
-            getPointerPosition(e) {
-                if (e.touches && e.touches.length > 0) {
-                    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                }
-                return { x: e.clientX, y: e.clientY };
+            });
+        } else {
+            const timeHeld = performance.now() - activeRipple.startTime;
+            if (timeHeld < 150) {
+                return;
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            new RippleEffect();
-        });
+        this.scheduleCleanup(container, 400);
+    }
 
+    cleanupAllRipples() {
+        for (const [container, rippleData] of this.activeRipples) {
+            rippleData.isReleased = true;
+            
+            if (rippleData.timeoutId) {
+                clearTimeout(rippleData.timeoutId);
+                rippleData.timeoutId = null;
+            }
+            
+            this.scheduleClassChange(() => {
+                if (rippleData.element.parentNode) {
+                    rippleData.element.classList.remove('held');
+                    rippleData.element.classList.add('release');
+                }
+            });
+            
+            this.scheduleCleanup(container, 400);
+        }
+    }
+
+    scheduleCleanup(container, delay) {
+        if (this.pendingCleanups.has(container)) return;
+        
+        this.pendingCleanups.add(container);
+        setTimeout(() => {
+            this.cleanupRipple(container);
+            this.pendingCleanups.delete(container);
+        }, delay);
+    }
+
+    cleanupRipple(container) {
+        const activeRipple = this.activeRipples.get(container);
+        if (activeRipple) {
+            if (activeRipple.timeoutId) {
+                clearTimeout(activeRipple.timeoutId);
+            }
+            if (activeRipple.element && activeRipple.element.parentNode) {
+                activeRipple.element.remove(); // Plus efficace que removeChild
+            }
+            this.activeRipples.delete(container);
+        }
+    }
+
+    createRipple(container, x, y) {
+        const rect = container.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height) * 2.5;
+        
+        const ripple = document.createElement('div');
+        ripple.classList.add('ripple', 'animate');
+        
+        // Stocker la taille pour éviter les recalculs
+        ripple.dataset.size = size;
+        
+        ripple.style.width = size + 'px';
+        ripple.style.height = size + 'px';
+        
+        // Utiliser transform dès le début pour la cohérence
+        const translateX = x - size / 2;
+        const translateY = y - size / 2;
+        ripple.style.transform = `translate(${translateX}px, ${translateY}px)`;
+        ripple.style.left = '0px';
+        ripple.style.top = '0px';
+        
+        container.appendChild(ripple);
+        
+        // Cleanup automatique de sécurité avec un délai plus long
+        setTimeout(() => {
+            if (ripple.parentNode && ripple.classList.contains('animate')) {
+                this.cleanupRipple(container);
+            }
+        }, 800); // Augmenté pour éviter les cleanups prématurés
+        
+        return ripple;
+    }
+
+    scheduleClassChange(callback) {
+        requestAnimationFrame(callback);
+    }
+
+    getPointerPosition(e) {
+        if (e.touches && e.touches.length > 0) {
+            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+        return { x: e.clientX, y: e.clientY };
+    }
+
+    handleClick(e) {
+        // Méthode vide maintenue pour compatibilité
+        // L'événement est géré par les autres méthodes
+    }
+}
+
+// Utiliser un pattern plus robuste pour l'initialisation
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        new RippleEffect();
+    });
+} else {
+    new RippleEffect();
+}
 
         VERSION_NAME = '3.1.0.0 Release Candidate 1';
 
