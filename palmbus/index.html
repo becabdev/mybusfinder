@@ -4433,12 +4433,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     
     const color = lineColors[route_id] || '#000000';
     
-    // Couleur plus claire pour l'effet de lueur
-    const lightColor = lightenColor(color, 20);
-    const shadowColor = darkenColor(color, 30);
-    
+    // Styles modernes pour le marqueur avec animations
     const markerHtmlStyles = `
-        background: linear-gradient(135deg, ${color} 0%, ${lightenColor(color, 15)} 50%, ${color} 100%);
+        background: linear-gradient(135deg, ${color} 0%, ${adjustColorBrightness(color, -20)} 100%);
         width: 12px;
         height: 12px;
         display: block;
@@ -4446,19 +4443,15 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         top: -6px;
         position: relative;
         border-radius: 50%;
-        border: 2px solid rgba(255, 255, 255, 0.9);
-        box-shadow: 
-            0 0 0 1px rgba(0, 0, 0, 0.1),
-            0 2px 8px rgba(0, 0, 0, 0.15),
-            0 0 12px rgba(${hexToRgb(color).r}, ${hexToRgb(color).g}, ${hexToRgb(color).b}, 0.3),
-            inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        transition: all 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 
+                    0 0 0 0 ${color};
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
-        backdrop-filter: blur(4px);
-        animation: markerPulse 3s ease-in-out infinite;
+        animation: breathe 2s ease-in-out infinite alternate;
     `;
 
-    // SVG arrow modernisé avec gradient et animations
+    // Flèche améliorée avec ombre et animation
     const arrowSvg = `
         <svg class="marker-arrow" style="
             position: absolute;
@@ -4468,45 +4461,22 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             top: -2px;
             transform-origin: 2px; 
             transform: rotate(${bearing - 90}deg);
-            transition: all 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));"
             viewBox="0 0 24 24">
-            <defs>
-                <linearGradient id="arrowGradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color: white; stop-opacity: 1"/>
-                    <stop offset="50%" style="stop-color: rgba(255, 255, 255, 0.9); stop-opacity: 1"/>
-                    <stop offset="100%" style="stop-color: rgba(255, 255, 255, 0.8); stop-opacity: 1"/>
-                </linearGradient>
-                <linearGradient id="arrowStroke-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color: ${color}; stop-opacity: 1"/>
-                    <stop offset="100%" style="stop-color: ${darkenColor(color, 15)}; stop-opacity: 1"/>
-                </linearGradient>
-            </defs>
-            <!-- Ombre de la flèche -->
             <path 
-                d="M8.5 4.5 L16.5 12.5 L8.5 20.5"
+                d="M8 4 L16 12 L8 20"
                 fill="none"
-                stroke="rgba(0, 0, 0, 0.2)"
+                stroke="white"
                 stroke-width="6"
                 stroke-linecap="round"
                 stroke-linejoin="round"
             />
-            <!-- Contour principal -->
             <path 
                 d="M8 4 L16 12 L8 20"
                 fill="none"
-                stroke="url(#arrowStroke-${route_id})"
-                stroke-width="4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="marker-arrow-stroke"
-            />
-            <!-- Flèche principale -->
-            <path 
-                d="M8 4 L16 12 L8 20"
-                fill="none"
-                stroke="url(#arrowGradient-${route_id})"
-                stroke-width="2.5"
+                stroke="${color}"
+                stroke-width="3"
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 class="marker-arrow-path"
@@ -4514,54 +4484,44 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         </svg>
     `;
 
-    const icon = L.divIcon({
-        className: "my-custom-pin",
-        iconAnchor: [0, 0],
-        popupAnchor: [0, 5],
-        html: `
-            <div class="marker-container" style="position: relative;">
-                <span style="${markerHtmlStyles}" class="marker-icon" />
-                ${arrowSvg}
-                <div class="marker-ripple" style="
-                    position: absolute;
-                    width: 12px;
-                    height: 12px;
-                    left: -6px;
-                    top: -6px;
-                    border-radius: 50%;
-                    border: 2px solid ${color};
-                    opacity: 0;
+    // Styles CSS pour les animations
+    const animationStyles = `
+        <style id="marker-animations-${generateUniqueId()}">
+            @keyframes breathe {
+                0% { 
                     transform: scale(1);
-                    pointer-events: none;
-                    animation: none;
-                "></div>
-            </div>
-        `
-    });
-
-    const marker = L.marker([lat, lon], { icon });
-    const styleId = generateUniqueId();
-    
-    // Ajout des styles CSS pour les animations
-    if (!document.getElementById('modern-marker-styles')) {
-        const modernStyles = document.createElement('style');
-        modernStyles.id = 'modern-marker-styles';
-        modernStyles.textContent = `
-            @keyframes markerPulse {
-                0%, 100% {
-                    transform: scale(1);
-                    opacity: 1;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 
+                                0 0 0 0 ${color};
                 }
-                50% {
+                100% { 
                     transform: scale(1.05);
-                    opacity: 0.9;
+                    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4), 
+                                0 0 0 2px ${color}40;
                 }
             }
             
-            @keyframes markerRipple {
+            @keyframes pulse {
+                0% { 
+                    transform: scale(1);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 
+                                0 0 0 0 ${color};
+                }
+                50% { 
+                    transform: scale(1.2);
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 
+                                0 0 0 8px ${color}30;
+                }
+                100% { 
+                    transform: scale(1);
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 
+                                0 0 0 0 ${color};
+                }
+            }
+            
+            @keyframes ripple {
                 0% {
                     transform: scale(1);
-                    opacity: 0.6;
+                    opacity: 1;
                 }
                 100% {
                     transform: scale(3);
@@ -4569,85 +4529,109 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 }
             }
             
-            @keyframes markerBounce {
-                0%, 20%, 50%, 80%, 100% {
-                    transform: translateY(0) scale(1);
-                }
-                40% {
-                    transform: translateY(-4px) scale(1.1);
-                }
-                60% {
-                    transform: translateY(-2px) scale(1.05);
-                }
+            .marker-hover {
+                background: linear-gradient(135deg, ${adjustColorBrightness(color, 20)} 0%, ${color} 100%) !important;
+                transform: scale(1.15) !important;
+                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 
+                            0 0 0 4px ${color}50 !important;
+                animation: none !important;
             }
             
-            @keyframes arrowSpin {
-                0% {
-                    transform: rotate(${bearing - 90}deg);
+            .marker-active {
+                animation: pulse 1.5s ease-in-out !important;
+                background: linear-gradient(135deg, ${adjustColorBrightness(color, 30)} 0%, ${adjustColorBrightness(color, 10)} 100%) !important;
+            }
+            
+            .marker-ripple::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: ${color}40;
+                transform: translate(-50%, -50%);
+                animation: ripple 0.6s ease-out;
+                pointer-events: none;
+            }
+        </style>
+    `;
+
+    const icon = L.divIcon({
+        className: "my-custom-pin",
+        iconAnchor: [0, 0],
+        popupAnchor: [0, 5],
+        html: `
+            ${animationStyles}
+            <div style="position: relative;" class="marker-container">
+                <span style="${markerHtmlStyles}" class="marker-icon" />
+                ${arrowSvg}
+            </div>
+        `
+    });
+
+    const marker = L.marker([lat, lon], { icon });
+    const styleId = generateUniqueId();
+    
+    // Ajouter les événements de survol
+    marker.on('add', function() {
+        const markerElement = marker.getElement();
+        if (markerElement) {
+            const markerIcon = markerElement.querySelector('.marker-icon');
+            const markerContainer = markerElement.querySelector('.marker-container');
+            
+            markerElement.addEventListener('mouseenter', () => {
+                if (markerIcon) {
+                    markerIcon.classList.add('marker-hover');
                 }
-                25% {
-                    transform: rotate(${bearing - 90 + 10}deg);
+            });
+            
+            markerElement.addEventListener('mouseleave', () => {
+                if (markerIcon) {
+                    markerIcon.classList.remove('marker-hover');
                 }
-                75% {
-                    transform: rotate(${bearing - 90 - 10}deg);
+            });
+            
+            markerElement.addEventListener('click', () => {
+                if (markerContainer) {
+                    markerContainer.classList.add('marker-ripple');
+                    setTimeout(() => {
+                        markerContainer.classList.remove('marker-ripple');
+                    }, 600);
                 }
-                100% {
-                    transform: rotate(${bearing - 90}deg);
-                }
-            }
-            
-            .marker-container:hover .marker-icon {
-                transform: scale(1.15);
-                box-shadow: 
-                    0 0 0 1px rgba(0, 0, 0, 0.15),
-                    0 4px 15px rgba(0, 0, 0, 0.25),
-                    0 0 20px rgba(${hexToRgb(color).r}, ${hexToRgb(color).g}, ${hexToRgb(color).b}, 0.5),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-                animation: none;
-            }
-            
-            .marker-container:hover .marker-arrow {
-                animation: arrowSpin 0.8s ease-in-out;
-            }
-            
-            .marker-container:active .marker-icon {
-                transform: scale(0.95);
-                transition: all 0.1s ease;
-            }
-            
-            .marker-container:active .marker-ripple {
-                animation: markerRipple 0.6s ease-out;
-            }
-            
-            .marker-selected .marker-icon {
-                animation: markerBounce 1s ease-in-out;
-                box-shadow: 
-                    0 0 0 2px rgba(255, 255, 255, 0.9),
-                    0 0 0 4px ${color},
-                    0 6px 20px rgba(0, 0, 0, 0.3),
-                    0 0 25px rgba(${hexToRgb(color).r}, ${hexToRgb(color).g}, ${hexToRgb(color).b}, 0.6);
-            }
-        `;
-        document.head.appendChild(modernStyles);
-    }
+            });
+        }
+    });
     
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
         const filtre = document.getElementById('filtre');
         safeVibrate([50]);
         soundsUX('MBF_VehicleOpen');
-        
-        // Ajouter classe de sélection avec animation
+
+        // Animation d'activation du marqueur
         const markerElement = marker.getElement();
         if (markerElement) {
-            markerElement.querySelector('.marker-container').classList.add('marker-selected');
+            const markerIcon = markerElement.querySelector('.marker-icon');
+            if (markerIcon) {
+                markerIcon.classList.add('marker-active');
+                // Créer un effet de pulsation continue
+                setTimeout(() => {
+                    markerIcon.style.animation = 'pulse 2s ease-in-out infinite';
+                }, 1500);
+            }
         }
 
         if (menubtm) {
             const markerId = marker.id;
             const color = lineColors[route_id] || '#000000';
-
+            
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
+                // Animation fluide du changement de couleur
+                menubtm.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                filtre.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                
                 menubtm.style.backgroundColor = `${color}9c`;
                 filtre.style.backgroundColor = `${color}9c`;
 
@@ -4662,22 +4646,24 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
-                        transition: color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+                        transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     }
 
                     #filtre * {
                         color: ${textColor};
-                        transition: color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+                        transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     }
                 `;
                 
                 document.head.appendChild(styleSheet);
                 marker.styleId = styleId;
             } else {
-                const currentColor = window.getComputedStyle(menubtm).backgroundColor;
                 const textColor = getOptimalTextColor(color);
                 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                
+                menubtm.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                filtre.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
                 
                 menubtm.style.backgroundColor = `${color}9c`;
                 filtre.style.backgroundColor = `${color}9c`;
@@ -4689,12 +4675,12 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
-                        transition: color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+                        transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     }
 
                     #filtre * {
                         color: ${textColor};
-                        transition: color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+                        transition: color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                     }
                 `;
                 
@@ -4713,10 +4699,14 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         safeVibrate([50]);
         soundsUX('MBF_VehicleClose');
         
-        // Retirer classe de sélection
+        // Retirer l'animation active du marqueur
         const markerElement = marker.getElement();
         if (markerElement) {
-            markerElement.querySelector('.marker-container').classList.remove('marker-selected');
+            const markerIcon = markerElement.querySelector('.marker-icon');
+            if (markerIcon) {
+                markerIcon.classList.remove('marker-active');
+                markerIcon.style.animation = 'breathe 2s ease-in-out infinite alternate';
+            }
         }
         
         if (menubtm && filtre) {
@@ -4731,14 +4721,14 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             
                             if (!menubtmCurrentTransition.includes('background-color')) {
                                 menubtm.style.transition = menubtmCurrentTransition 
-                                    ? `${menubtmCurrentTransition}, background-color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)` 
-                                    : 'background-color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)';
+                                    ? `${menubtmCurrentTransition}, background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1)` 
+                                    : 'background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
                             }
                             
                             if (!filtreCurrentTransition.includes('background-color')) {
                                 filtre.style.transition = filtreCurrentTransition 
-                                    ? `${filtreCurrentTransition}, background-color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)` 
-                                    : 'background-color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1)';
+                                    ? `${filtreCurrentTransition}, background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1)` 
+                                    : 'background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
                             }
                             
                             menubtm.style.backgroundColor = `${window.colorbkg9c}`;
@@ -4750,16 +4740,16 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             styleSheet.classList.add('menu-color-style');
                             
                             const textColor = getOptimalTextColor(color);
-                            
+                                
                             styleSheet.textContent = `
-                                #menubtm * {
-                                    color: ${textColor};
-                                    transition: color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
-                                }
+                            #menubtm * {
+                                color: ${textColor};
+                                transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                            }
 
                                 #filtre * {
                                     color: ${textColor};
-                                    transition: color 0.5s cubic-bezier(0.4, 0.0, 0.2, 1);
+                                    transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                                 }
                             `;
                             
@@ -4784,74 +4774,61 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             }
         }
     });
-    
+
     return marker;
 }
 
-// Fonctions utilitaires pour les couleurs
-function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
-
-function lightenColor(color, amount) {
-    const usePound = color[0] === '#';
-    const col = usePound ? color.slice(1) : color;
-    const num = parseInt(col, 16);
-    let r = (num >> 16) + amount;
-    let g = (num >> 8 & 0x00FF) + amount;
-    let b = (num & 0x0000FF) + amount;
-    r = r > 255 ? 255 : r < 0 ? 0 : r;
-    g = g > 255 ? 255 : g < 0 ? 0 : g;
-    b = b > 255 ? 255 : b < 0 ? 0 : b;
-    return (usePound ? '#' : '') + (r << 16 | g << 8 | b).toString(16).padStart(6, '0');
-}
-
-function darkenColor(color, amount) {
-    return lightenColor(color, -amount);
+// Fonction utilitaire pour ajuster la luminosité des couleurs
+function adjustColorBrightness(hex, percent) {
+    const num = parseInt(hex.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+        (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
 }
 
 function animateMarker(marker, newPosition) {
     const startLatLng = marker.getLatLng();
     const endLatLng = L.latLng(newPosition[0], newPosition[1]);
-    const duration = 1200; // Durée légèrement augmentée pour plus de fluidité
+    const duration = 1000; 
     const startTime = performance.now();
 
     if (marker.animationFrame) {
         cancelAnimationFrame(marker.animationFrame);
     }
 
-    // Courbe d'animation plus sophistiquée
-    function easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
+    // Animation plus fluide avec spring effect
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     function animate(time) {
         const elapsed = time - startTime;
         const linearProgress = Math.min(elapsed / duration, 1);
         
-        const easedProgress = easeOutCubic(linearProgress);
+        const easedProgress = easeInOutCubic(linearProgress);
         
         const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
         const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
         
         marker.setLatLng([lat, lng]);
-        
-        // Animation de bounce à l'arrivée
-        if (linearProgress >= 0.8 && linearProgress < 1) {
+
+        // Ajouter un léger effet de rebond à la fin
+        if (linearProgress === 1) {
             const markerElement = marker.getElement();
             if (markerElement) {
-                const bounceIntensity = Math.sin((linearProgress - 0.8) * Math.PI * 10) * (1 - linearProgress) * 3;
-                markerElement.style.transform = `translateY(${bounceIntensity}px)`;
-            }
-        } else if (linearProgress === 1) {
-            const markerElement = marker.getElement();
-            if (markerElement) {
-                markerElement.style.transform = '';
+                const markerIcon = markerElement.querySelector('.marker-icon');
+                if (markerIcon) {
+                    markerIcon.style.animation = 'none';
+                    markerIcon.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        markerIcon.style.transform = 'scale(1)';
+                        markerIcon.style.animation = 'breathe 2s ease-in-out infinite alternate';
+                    }, 100);
+                }
             }
         }
 
@@ -4863,7 +4840,7 @@ function animateMarker(marker, newPosition) {
     marker.animationFrame = requestAnimationFrame(animate);
 }
 
-// Fonction getOptimalTextColor conservée (code existant)
+// Fonction getOptimalTextColor (conservée de l'original)
 function getOptimalTextColor(bgColor, options = {}) {
     const {
         contrastRatio = 4.5,
