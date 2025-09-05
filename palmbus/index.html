@@ -5788,7 +5788,7 @@ function shareVehicleId(id) {
 
 
 async function fetchVehiclePositions() {
-        if (!gtfsInitialized) {
+        if (gtfsInitialized === false) {
             return;
         }
 
