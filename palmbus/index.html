@@ -4650,6 +4650,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             
                             const textColor = getOptimalTextColor(window.colorbkg9c);
                             
+                            // Réutilisation du styleSheet existant
                             const existingStyle = document.getElementById(styleId);
                             if (existingStyle) {
                                 existingStyle.textContent = `
@@ -4674,6 +4675,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     return marker;
 }
 
+// Version optimisée d'adjustBrightness avec cache
 function adjustBrightness(hex, percent) {
     const cacheKey = `${hex}-${percent}`;
     
@@ -4692,7 +4694,62 @@ function adjustBrightness(hex, percent) {
     return result;
 }
 
+// CSS amélioré avec optimisations GPU
+const additionalCSS = `
+.my-custom-pin-enhanced {
+    background: transparent !important;
+    border: none !important;
+    transform: translateZ(0);
+}
 
+.marker-container {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.enhanced-marker {
+    position: relative;
+    z-index: 1000;
+    transform: translateZ(0);
+    will-change: transform, box-shadow;
+}
+
+.enhanced-marker:hover {
+    z-index: 1001;
+}
+
+.marker-arrow {
+    pointer-events: none;
+    transform: translateZ(0);
+}
+
+.marker-arrow-path {
+    transition: all 0.3s ease;
+}
+
+/* Animation de pulsation globale pour tous les marqueurs */
+@keyframes global-pulse {
+    0%, 100% { transform: scale(1) translateZ(0); }
+    50% { transform: scale(1.05) translateZ(0); }
+}
+
+.marker-container.active {
+    animation: global-pulse 2s infinite;
+}
+
+/* Styles pour les marqueurs en mouvement */
+.marker-moving {
+    transition: none !important;
+    animation: none !important;
+}
+
+.marker-moving .enhanced-marker {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3) !important;
+}
+`;
+
+// Animation optimisée avec mécanisme original pour les flèches
 function animateMarker(marker, newPosition, options = {}) {
     const {
         duration = 1000,
@@ -4704,15 +4761,18 @@ function animateMarker(marker, newPosition, options = {}) {
     const endLatLng = L.latLng(newPosition[0], newPosition[1]);
     const startTime = performance.now();
     
+    // Annulation de l'animation précédente
     if (marker.animationFrame) {
         cancelAnimationFrame(marker.animationFrame);
     }
     
+    // Ajout de la classe de mouvement
     const container = marker.getElement()?.querySelector('.marker-container');
     if (container) {
         container.classList.add('marker-moving');
     }
 
+    // Fonctions d'easing optimisées
     const easingFunctions = {
         linear: t => t,
         easeInQuad: t => t * t,
@@ -4730,6 +4790,7 @@ function animateMarker(marker, newPosition, options = {}) {
         const linearProgress = Math.min(elapsed / duration, 1);
         const easedProgress = easingFunction(linearProgress);
         
+        // Interpolation optimisée
         const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
         const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
         
@@ -4738,6 +4799,7 @@ function animateMarker(marker, newPosition, options = {}) {
         if (linearProgress < 1) {
             marker.animationFrame = requestAnimationFrame(animate);
         } else {
+            // Animation terminée
             if (container) {
                 container.classList.remove('marker-moving');
             }
@@ -4750,6 +4812,7 @@ function animateMarker(marker, newPosition, options = {}) {
     marker.animationFrame = requestAnimationFrame(animate);
 }
 
+// Fonction utilitaire pour animer plusieurs marqueurs
 function animateMarkers(markersData, options = {}) {
     const promises = markersData.map(({ marker, position, customOptions = {} }) => {
         return new Promise(resolve => {
@@ -4764,6 +4827,7 @@ function animateMarkers(markersData, options = {}) {
     return Promise.all(promises);
 }
 
+// Fonction de nettoyage des caches (à appeler périodiquement)
 function cleanupCaches() {
     if (colorCache.size > 1000) {
         colorCache.clear();
@@ -5788,7 +5852,7 @@ function shareVehicleId(id) {
 
 
 async function fetchVehiclePositions() {
-        if (gtfsInitialized === undefined || null || false || '') {
+        if (!gtfsInitialized) {
             return;
         }
 
