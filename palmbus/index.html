@@ -4424,167 +4424,18 @@ function findMarkerByVehicleId(vehicleId) {
 }
 
 
-window.isMenuShowed = false;
-const colorCache = new Map();
-const styleCache = new Map();
-let globalStyleSheet = null;
 let lastActiveMarkerId = null;
+
 let lastActiveColor = null;
+window.isMenuShowed = false;
 
-// Fonction optimisée pour calculer la couleur de texte optimale (mise en cache)
-function getOptimalTextColor(bgColor, options = {}) {
-    if (colorCache.has(bgColor)) {
-        return colorCache.get(bgColor);
-    }
-    
-    const {
-        contrastRatio = 4.5,
-        darkColor = '#1a1a1a',
-        lightColor = '#f8f9fa'
-    } = options;
-
-    let r, g, b;
-
-    if (!bgColor) return darkColor;
-
-    bgColor = bgColor.trim();
-
-    if (bgColor.startsWith('rgb')) {
-        const values = bgColor.match(/\d+(\.\d+)?/g);
-        if (values) {
-            r = parseInt(values[0]);
-            g = parseInt(values[1]);
-            b = parseInt(values[2]);
-        } else {
-            return darkColor;
-        }
-    } else {
-        // Optimisation: traitement hex simplifié
-        if (bgColor.length === 4) {
-            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                (_, r, g, b) => '#' + r + r + g + g + b + b);
-        }
-
-        if (bgColor.length === 7) {
-            r = parseInt(bgColor.slice(1, 3), 16);
-            g = parseInt(bgColor.slice(3, 5), 16);
-            b = parseInt(bgColor.slice(5, 7), 16);
-        } else if (bgColor.length >= 8) {
-            r = parseInt(bgColor.slice(1, 3), 16);
-            g = parseInt(bgColor.slice(3, 5), 16);
-            b = parseInt(bgColor.slice(5, 7), 16);
-        } else {
-            return darkColor;
-        }
-    }
-
-    // Calcul de luminance optimisé
-    const srgb = [r, g, b].map(c => {
-        const val = c / 255;
-        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-    });
-    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-    // Calcul simplifié pour de meilleures performances
-    const result = luminance > 0.18 ? darkColor : lightColor;
-    
-    // Mise en cache du résultat
-    colorCache.set(bgColor, result);
-    return result;
-}
-
-// Fonction optimisée pour ajuster la luminosité (mise en cache)
-function adjustBrightness(hex, percent) {
-    const cacheKey = `${hex}-${percent}`;
-    if (colorCache.has(cacheKey)) {
-        return colorCache.get(cacheKey);
-    }
-    
-    const num = parseInt(hex.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = Math.max(0, Math.min(255, (num >> 16) + amt));
-    const G = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amt));
-    const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
-    
-    const result = "#" + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
-    
-    colorCache.set(cacheKey, result);
-    return result;
-}
-
-// Initialisation du CSS global optimisé
-function initializeGlobalStyles() {
-    if (globalStyleSheet) return;
-    
-    globalStyleSheet = document.createElement('style');
-    globalStyleSheet.id = 'enhanced-markers-global-styles';
-    globalStyleSheet.textContent = `
-        .my-custom-pin-enhanced {
-            background: transparent !important;
-            border: none !important;
-        }
-
-        .marker-container {
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
-            will-change: transform;
-        }
-
-        .enhanced-marker {
-            position: relative;
-            z-index: 1000;
-            will-change: transform, box-shadow;
-        }
-
-        .enhanced-marker:hover {
-            z-index: 1001;
-        }
-
-        .marker-arrow {
-            pointer-events: none;
-            will-change: transform;
-        }
-
-        .marker-arrow-path {
-            will-change: stroke;
-        }
-
-        /* Optimisation des animations */
-        .enhanced-marker {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-    `;
-    document.head.appendChild(globalStyleSheet);
-}
-
-// Pool d'objets pour réutiliser les éléments DOM
-const domPool = {
-    styleElements: [],
-    getStyleElement() {
-        return this.styleElements.pop() || document.createElement('style');
-    },
-    returnStyleElement(element) {
-        element.textContent = '';
-        element.id = '';
-        element.className = '';
-        this.styleElements.push(element);
-    }
-};
 
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
-    // Initialiser les styles globaux une seule fois
-    initializeGlobalStyles();
-    
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
     const color = lineColors[route_id] || '#000000';
-    
-    // Utilisation du cache pour les couleurs
-    const lighterColor = adjustBrightness(color, 30);
-    const darkerColor = adjustBrightness(color, -20);
-    
-    // Styles optimisés avec will-change pour de meilleures performances
     const markerHtmlStyles = `
-        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
+        background-color: ${color};
         width: 12px;
         height: 12px;
         display: block;
@@ -4593,49 +4444,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         position: relative;
         border-radius: 50%;
         border: 2px solid white;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
-                    0 2px 6px rgba(0, 0, 0, 0.15),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        backdrop-filter: blur(4px);
-        will-change: transform, box-shadow;
+        transition: transform 0.2s ease, background-color 0.3s ease;
     `;
 
-    // Optimisation : créer l'animation CSS une seule fois par route_id
-    if (!styleCache.has(`pulse-${route_id}`)) {
-        const pulseAnimation = `
-            @keyframes pulse-${route_id} {
-                0% { 
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
-                               0 2px 6px rgba(0, 0, 0, 0.15),
-                               inset 0 1px 0 rgba(255, 255, 255, 0.3),
-                               0 0 0 0 ${color}40;
-                }
-                50% {
-                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 
-                               0 3px 8px rgba(0, 0, 0, 0.2),
-                               inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                               0 0 0 8px ${color}20;
-                }
-                100% { 
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
-                               0 2px 6px rgba(0, 0, 0, 0.15),
-                               inset 0 1px 0 rgba(255, 255, 255, 0.3),
-                               0 0 0 0 ${color}00;
-                }
-            }
-        `;
-        
-        const style = document.createElement('style');
-        style.id = `pulse-style-${route_id}`;
-        style.textContent = pulseAnimation;
-        document.head.appendChild(style);
-        
-        styleCache.set(`pulse-${route_id}`, true);
-    }
-
-    // SVG optimisé avec moins d'éléments DOM
     const arrowSvg = `
         <svg class="marker-arrow" style="
             position: absolute;
@@ -4643,30 +4454,10 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             height: 16px;
             left: 4px;
             top: -2px;
-            transform-origin: center; 
+            transform-origin: 2px; 
             transform: rotate(${bearing - 90}deg);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-            will-change: transform;"
+            transition: transform 0.5s ease;"
             viewBox="0 0 24 24">
-            
-            <defs>
-                <linearGradient id="arrow-gradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:${lighterColor};stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:${darkerColor};stop-opacity:1" />
-                </linearGradient>
-            </defs>
-            
-            <path 
-                d="M8 4 L16 12 L8 20"
-                fill="none"
-                stroke="rgba(0, 0, 0, 0.3)"
-                stroke-width="5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                transform="translate(1, 1)"
-            />
-            
             <path 
                 d="M8 4 L16 12 L8 20"
                 fill="none"
@@ -4675,11 +4466,10 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 stroke-linecap="round"
                 stroke-linejoin="round"
             />
-            
             <path 
                 d="M8 4 L16 12 L8 20"
                 fill="none"
-                stroke="url(#arrow-gradient-${route_id})"
+                stroke="${color}"
                 stroke-width="3"
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -4689,15 +4479,12 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     `;
 
     const icon = L.divIcon({
-        className: "my-custom-pin-enhanced",
+        className: "my-custom-pin",
         iconAnchor: [0, 0],
-        popupAnchor: [0, -5],
+        popupAnchor: [0, 5],
         html: `
-            <div style="position: relative;" class="marker-container">
-                <span style="${markerHtmlStyles}" 
-                      class="marker-icon enhanced-marker" 
-                      onmouseover="this.style.transform='scale(1.2)'; this.style.animation='pulse-${route_id} 1.5s infinite';"
-                      onmouseout="this.style.transform='scale(1)'; this.style.animation='none';" />
+            <div style="position: relative;">
+                <span style="${markerHtmlStyles}" class="marker-icon" />
                 ${arrowSvg}
             </div>
         `
@@ -4705,115 +4492,415 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
     const marker = L.marker([lat, lon], { icon });
     const styleId = generateUniqueId();
-    marker.id = Math.random().toString(36).substr(2, 9); // Fix: ajout d'un ID unique
-    
-    // Optimisation des event listeners avec throttling
-    let popupOpenTimeout = null;
     
     marker.on('popupopen', function(e) {
-        if (popupOpenTimeout) {
-            clearTimeout(popupOpenTimeout);
-        }
-        
-        popupOpenTimeout = setTimeout(() => {
-            const menubtm = document.getElementById('menubtm');
-            const filtre = document.getElementById('filtre');
+        const menubtm = document.getElementById('menubtm');
+        const filtre = document.getElementById('filtre');
+            safeVibrate([50]);
+            soundsUX('MBF_VehicleOpen');
+
+        if (menubtm) {
+            const markerId = marker.id;
+            const color = lineColors[route_id] || '#000000';
             
-            if (typeof safeVibrate === 'function') safeVibrate([50]);
-            if (typeof soundsUX === 'function') soundsUX('MBF_VehicleOpen');
 
-            if (menubtm && filtre) {
-                const markerId = marker.id;
-                const markerColor = lineColors[route_id] || '#000000';
-                
-                // Optimisation : éviter les recalculs inutiles
-                if (lastActiveMarkerId !== markerId) {
-                    menubtm.style.backgroundColor = `${markerColor}9c`;
-                    filtre.style.backgroundColor = `${markerColor}9c`;
+            if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
+                menubtm.style.backgroundColor = `${color}9c`;
+                filtre.style.backgroundColor = `${color}9c`;
 
-                    const textColor = getOptimalTextColor(markerColor);
-                    
-                    // Réutilisation d'éléments de style existants
-                    document.querySelectorAll('.menu-color-style').forEach(style => {
-                        domPool.returnStyleElement(style);
-                        style.remove();
+                    function getOptimalTextColor(bgColor, options = {}) {
+                    const {
+                        contrastRatio = 4.5,
+                        darkColor = '#1a1a1a',
+                        lightColor = '#f8f9fa',
+                        useGradient = false 
+                    } = options;
+
+                    let r, g, b, a = 1;
+
+                    if (!bgColor) return darkColor;
+
+                    bgColor = bgColor.trim();
+
+                    if (bgColor.startsWith('rgb')) {
+                        const values = bgColor.match(/\d+(\.\d+)?/g);
+                        if (values) {
+                            r = parseInt(values[0]);
+                            g = parseInt(values[1]);
+                            b = parseInt(values[2]);
+                            a = values[3] ? parseFloat(values[3]) : 1;
+                        } else {
+                            return darkColor;
+                        }
+                    } else {
+                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                (_, r, g, b) => '#' + r + r + g + g + b + b);
+                        }
+
+                        if (bgColor.length === 7) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                        } else if (bgColor.length === 9) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else {
+                            return darkColor;
+                        }
+                    }
+
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    const srgb = [r, g, b].map(c => {
+                        const val = c / 255;
+                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
                     });
-                    
-                    const styleSheet = domPool.getStyleElement();
-                    styleSheet.id = styleId;
-                    styleSheet.classList.add('menu-color-style');
-                    
-                    styleSheet.textContent = `
-                        #menubtm * {
-                            color: ${textColor};
-                        }
-                        #filtre * {
-                            color: ${textColor};
-                            transition: color 0.5s ease;
-                        }
-                    `;
-                    
-                    document.head.appendChild(styleSheet);
-                    marker.styleId = styleId;
-                    
-                    lastActiveMarkerId = markerId;
-                    lastActiveColor = markerColor;
-                }
-            }
-        }, 10); // Micro-délai pour éviter les appels multiples rapides
-    });
+                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 
-    // Event listener optimisé pour popupclose
-    let popupCloseTimeout = null;
-    
-    marker.on('popupclose', function(e) {
-        if (popupCloseTimeout) {
-            clearTimeout(popupCloseTimeout);
-        }
-        
-        popupCloseTimeout = setTimeout(async () => {
-            const menubtm = document.getElementById('menubtm');
-            const filtre = document.getElementById('filtre');
-            
-            if (typeof safeVibrate === 'function') safeVibrate([50]);
-            if (typeof soundsUX === 'function') soundsUX('MBF_VehicleClose');
-            
-            if (menubtm && filtre && lastActiveMarkerId === marker.id) {
-                try {
-                    let data = null;
+                    const getLuminance = (color) => {
+                        const hex = color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16) / 255;
+                        const g = parseInt(hex.substr(2, 2), 16) / 255;
+                        const b = parseInt(hex.substr(4, 2), 16) / 255;
+                        const srgb = [r, g, b].map(c => 
+                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                        );
+                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                    };
+
+                    const darkLuminance = getLuminance(darkColor);
+                    const lightLuminance = getLuminance(lightColor);
+
+                    const contrastWithDark = luminance > darkLuminance 
+                        ? (luminance + 0.05) / (darkLuminance + 0.05)
+                        : (darkLuminance + 0.05) / (luminance + 0.05);
                     
-                    // Optimisation : vérifier d'abord si getSetvar existe
-                    if (typeof getSetvar === 'function') {
-                        data = await getSetvar();
+                    const contrastWithLight = luminance > lightLuminance 
+                        ? (luminance + 0.05) / (lightLuminance + 0.05)
+                        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } else if (contrastWithDark >= contrastRatio) {
+                        return darkColor;
+                    } else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } else {
+
+                        if (luminance < 0.18) {
+                            return lightColor; 
+                        }
+                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
                     }
                     
-                    if (data && window.colorbkg9c) {
-                        // Optimisation des transitions
-                        const menubtmTransition = 'background-color 0.5s ease';
-                        const filtreTransition = 'background-color 0.5s ease';
+                    }
+
+                    const textColor = getOptimalTextColor(color);
+
+                
+                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.id = styleId;
+                styleSheet.classList.add('menu-color-style');
+                
+                styleSheet.textContent = `
+                    #menubtm * {
+                        color: ${textColor};
+                    }
+
+                    #filtre * {
+                        color: ${textColor};
+                        transition: color 0.5s ease;
+                    }
+                `;
+                
+                document.head.appendChild(styleSheet);
+                marker.styleId = styleId;
+            } else {
+                const currentColor = window.getComputedStyle(menubtm).backgroundColor;
+                
+                    function getOptimalTextColor(bgColor, options = {}) {
+                    const {
+                        contrastRatio = 4.5,
+                        darkColor = '#1a1a1a',
+                        lightColor = '#f8f9fa',
+                        useGradient = false 
+                    } = options;
+
+                    let r, g, b, a = 1;
+
+                    if (!bgColor) return darkColor;
+
+                    bgColor = bgColor.trim();
+
+                    if (bgColor.startsWith('rgb')) {
+                        const values = bgColor.match(/\d+(\.\d+)?/g);
+                        if (values) {
+                            r = parseInt(values[0]);
+                            g = parseInt(values[1]);
+                            b = parseInt(values[2]);
+                            a = values[3] ? parseFloat(values[3]) : 1;
+                        } else {
+                            return darkColor;
+                        }
+                    } else {
+                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                (_, r, g, b) => '#' + r + r + g + g + b + b);
+                        }
+
+                        if (bgColor.length === 7) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                        } else if (bgColor.length === 9) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else {
+                            return darkColor;
+                        }
+                    }
+
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    const srgb = [r, g, b].map(c => {
+                        const val = c / 255;
+                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                    });
+                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                    const getLuminance = (color) => {
+                        const hex = color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16) / 255;
+                        const g = parseInt(hex.substr(2, 2), 16) / 255;
+                        const b = parseInt(hex.substr(4, 2), 16) / 255;
+                        const srgb = [r, g, b].map(c => 
+                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                        );
+                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                    };
+
+                    const darkLuminance = getLuminance(darkColor);
+                    const lightLuminance = getLuminance(lightColor);
+
+                    const contrastWithDark = luminance > darkLuminance 
+                        ? (luminance + 0.05) / (darkLuminance + 0.05)
+                        : (darkLuminance + 0.05) / (luminance + 0.05);
+                    
+                    const contrastWithLight = luminance > lightLuminance 
+                        ? (luminance + 0.05) / (lightLuminance + 0.05)
+                        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } else if (contrastWithDark >= contrastRatio) {
+                        return darkColor;
+                    } else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } else {
+
+                        if (luminance < 0.18) {
+                            return lightColor; 
+                        }
+                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                    }
+                    }
+
+                    const textColor = getOptimalTextColor(color);
+
+                
+                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                
+                menubtm.style.backgroundColor = `${color}9c`;
+                filtre.style.backgroundColor = `${color}9c`;
+
+                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.id = styleId;
+                styleSheet.classList.add('menu-color-style');
+                
+                styleSheet.textContent = `
+                    #menubtm * {
+                        color: ${textColor};
+                    }
+
+                        #filtre * {
+                        color: ${textColor};
+                        transition: color 0.5s ease;
+                    }
+                `;
+                
+                document.head.appendChild(styleSheet);
+                marker.styleId = styleId;
+            }
+            
+            lastActiveMarkerId = markerId;
+            lastActiveColor = color;
+        }
+    });
+
+    marker.on('popupclose', async function(e) {
+    const menubtm = document.getElementById('menubtm');
+    const filtre = document.getElementById('filtre');
+    safeVibrate([50]);
+    soundsUX('MBF_VehicleClose');
+    
+    if (menubtm && filtre) {
+        try {
+            setTimeout(async () => {
+                if (lastActiveMarkerId === marker.id) {
+                    const data = await getSetvar();
+                    
+                    if (data) {
+                        const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
+                        const filtreCurrentTransition = window.getComputedStyle(filtre).transition;
                         
-                        menubtm.style.transition = menubtmTransition;
-                        filtre.style.transition = filtreTransition;
+                        if (!menubtmCurrentTransition.includes('background-color')) {
+                            menubtm.style.transition = menubtmCurrentTransition 
+                                ? `${menubtmCurrentTransition}, background-color 0.5s ease` 
+                                : 'background-color 0.5s ease';
+                        }
                         
-                        menubtm.style.backgroundColor = window.colorbkg9c;
-                        filtre.style.backgroundColor = window.colorbkg9c;
+                        if (!filtreCurrentTransition.includes('background-color')) {
+                            filtre.style.transition = filtreCurrentTransition 
+                                ? `${filtreCurrentTransition}, background-color 0.5s ease` 
+                                : 'background-color 0.5s ease';
+                        }
                         
-                        const textColor = getOptimalTextColor(window.colorbkg9c);
+                        menubtm.style.backgroundColor = `${window.colorbkg9c}`;
+                        filtre.style.backgroundColor = `${window.colorbkg9c}`;
                         
-                        // Nettoyage optimisé des styles
-                        document.querySelectorAll('.menu-color-style').forEach(style => {
-                            domPool.returnStyleElement(style);
-                            style.remove();
-                        });
-                        
-                        const styleSheet = domPool.getStyleElement();
+                        document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                        const styleSheet = document.createElement('style');
                         styleSheet.id = styleId;
                         styleSheet.classList.add('menu-color-style');
                         
+                    function getOptimalTextColor(bgColor, options = {}) {
+                    const {
+                        contrastRatio = 4.5,
+                        darkColor = '#1a1a1a',
+                        lightColor = '#f8f9fa',
+                        useGradient = false 
+                    } = options;
+
+                    let r, g, b, a = 1;
+
+                    if (!bgColor) return darkColor;
+
+                    bgColor = bgColor.trim();
+
+                    if (bgColor.startsWith('rgb')) {
+                        const values = bgColor.match(/\d+(\.\d+)?/g);
+                        if (values) {
+                            r = parseInt(values[0]);
+                            g = parseInt(values[1]);
+                            b = parseInt(values[2]);
+                            a = values[3] ? parseFloat(values[3]) : 1;
+                        } else {
+                            return darkColor;
+                        }
+                    } else {
+                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                (_, r, g, b) => '#' + r + r + g + g + b + b);
+                        }
+
+                        if (bgColor.length === 7) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                        } else if (bgColor.length === 9) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else {
+                            return darkColor;
+                        }
+                    }
+
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    const srgb = [r, g, b].map(c => {
+                        const val = c / 255;
+                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                    });
+                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                    const getLuminance = (color) => {
+                        const hex = color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16) / 255;
+                        const g = parseInt(hex.substr(2, 2), 16) / 255;
+                        const b = parseInt(hex.substr(4, 2), 16) / 255;
+                        const srgb = [r, g, b].map(c => 
+                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                        );
+                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                    };
+
+                    const darkLuminance = getLuminance(darkColor);
+                    const lightLuminance = getLuminance(lightColor);
+
+                    const contrastWithDark = luminance > darkLuminance 
+                        ? (luminance + 0.05) / (darkLuminance + 0.05)
+                        : (darkLuminance + 0.05) / (luminance + 0.05);
+                    
+                    const contrastWithLight = luminance > lightLuminance 
+                        ? (luminance + 0.05) / (lightLuminance + 0.05)
+                        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } else if (contrastWithDark >= contrastRatio) {
+                        return darkColor;
+                    } else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } else {
+
+                        if (luminance < 0.18) {
+                            return lightColor; 
+                        }
+                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                    }
+
+                }
+
+                    const textColor = getOptimalTextColor(color);
+
+                        
                         styleSheet.textContent = `
-                            #menubtm * {
-                                color: ${textColor};
-                            }
+                        #menubtm * {
+                            color: ${textColor};
+                        }
+
                             #filtre * {
                                 color: ${textColor};
                                 transition: color 0.5s ease;
@@ -4825,151 +4912,58 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         lastActiveMarkerId = null;
                         lastActiveColor = null;
                         
-                        // Nettoyage des anciens styles
                         if (marker.styleId) {
                             const oldStyle = document.getElementById(marker.styleId);
                             if (oldStyle) {
-                                domPool.returnStyleElement(oldStyle);
-                                oldStyle.remove();
+                                setTimeout(() => {
+                                    oldStyle.remove();
+                                }, 500);
                             }
                         }
                     }
-                } catch (error) {
-                    console.warn('Erreur lors de la fermeture du popup:', error);
                 }
-            }
-        }, 50);
-    });
-    
+            }, 50); 
+        } catch (error) {
+            return false;
+        }
+    }
+});
     return marker;
 }
 
-// Animation optimisée avec requestAnimationFrame pool
-const animationPool = {
-    activeAnimations: new Set(),
-    
-    animateMarker(marker, newPosition) {
-        // Annuler l'animation précédente si elle existe
-        if (marker.animationFrame) {
-            cancelAnimationFrame(marker.animationFrame);
-            this.activeAnimations.delete(marker.animationFrame);
-        }
-
-        const startLatLng = marker.getLatLng();
-        const endLatLng = L.latLng(newPosition[0], newPosition[1]);
-        const duration = 1000;
-        const startTime = performance.now();
-
-        // Fonction d'easing optimisée
-        const easeInOutQuad = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-
-        const animate = (time) => {
-            const elapsed = time - startTime;
-            const linearProgress = Math.min(elapsed / duration, 1);
-            
-            if (linearProgress >= 1) {
-                // Animation terminée
-                marker.setLatLng(endLatLng);
-                this.activeAnimations.delete(marker.animationFrame);
-                marker.animationFrame = null;
-                return;
-            }
-            
-            const easedProgress = easeInOutQuad(linearProgress);
-            
-            const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
-            const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
-            
-            marker.setLatLng([lat, lng]);
-            
-            marker.animationFrame = requestAnimationFrame(animate);
-            this.activeAnimations.add(marker.animationFrame);
-        };
-
-        marker.animationFrame = requestAnimationFrame(animate);
-        this.activeAnimations.add(marker.animationFrame);
-    }
-};
-
-// Fonction d'animation globale optimisée
 function animateMarker(marker, newPosition) {
-    animationPool.animateMarker(marker, newPosition);
-}
+    const startLatLng = marker.getLatLng();
+    const endLatLng = L.latLng(newPosition[0], newPosition[1]);
+    const duration = 1000; 
+    const startTime = performance.now();
 
-// Nettoyage des ressources pour éviter les fuites mémoire
-function cleanupMarkerResources() {
-    // Annuler toutes les animations actives
-    animationPool.activeAnimations.forEach(frame => {
-        cancelAnimationFrame(frame);
-    });
-    animationPool.activeAnimations.clear();
-    
-    // Vider les caches si nécessaire
-    if (colorCache.size > 1000) {
-        colorCache.clear();
+    if (marker.animationFrame) {
+        cancelAnimationFrame(marker.animationFrame);
     }
-    if (styleCache.size > 100) {
-        styleCache.clear();
+
+    function easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
-}
 
-// Appel de nettoyage recommandé périodiquement ou lors du déchargement de la page
-if (typeof window !== 'undefined') {
-    window.addEventListener('beforeunload', cleanupMarkerResources);
-}
+    function animate(time) {
+        const elapsed = time - startTime;
+        const linearProgress = Math.min(elapsed / duration, 1);
+        
+        const easedProgress = easeInOutQuad(linearProgress);
+        
+        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
+        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
+        
+        marker.setLatLng([lat, lng]);
 
-// CSS optimisé avec will-change pour les performances
-const additionalCSS = `
-.my-custom-pin-enhanced {
-    background: transparent !important;
-    border: none !important;
-}
-
-.marker-container {
-    will-change: transform;
-}
-
-.enhanced-marker {
-    position: relative;
-    z-index: 1000;
-    will-change: transform, box-shadow;
-}
-
-.enhanced-marker:hover {
-    z-index: 1001;
-}
-
-.marker-arrow {
-    pointer-events: none;
-    will-change: transform;
-}
-
-/* Optimisation des transitions globales */
-#menubtm, #filtre {
-    will-change: background-color;
-}
-`;
-
-// Injection du CSS optimisé
-if (!document.getElementById('optimized-marker-styles')) {
-    const style = document.createElement('style');
-    style.id = 'optimized-marker-styles';
-    style.textContent = additionalCSS;
-    document.head.appendChild(style);
-}
-
-// Nettoyage périodique du cache (optionnel)
-const cleanupCache = () => {
-    if (colorCache.size > 1000) {
-        const entries = Array.from(colorCache.entries());
-        const toKeep = entries.slice(-500);
-        colorCache.clear();
-        toKeep.forEach(([key, value]) => colorCache.set(key, value));
+        if (linearProgress < 1) {
+            marker.animationFrame = requestAnimationFrame(animate);
+        }
     }
-};
 
-// Nettoyage toutes les 5 minutes
-setInterval(cleanupCache, 300000);
+    marker.animationFrame = requestAnimationFrame(animate);
+}
+
 let busStopLayers = [];
 let selectedLines = [];
 
