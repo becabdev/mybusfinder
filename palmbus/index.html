@@ -2003,263 +2003,253 @@
             quicklink.listen();
         });
 
-// Ripple Effect Implementation for iOS26-like behavior - by BecabDev (Optimized)
-// Simply add class "ripple-container" to element you want the effect on it
-class RippleEffect {
-    constructor() {
-        this.activeRipples = new Map();
-        this.animationFrame = null;
-        this.pendingCleanups = new Set();
-        this.isPassiveSupported = this.checkPassiveSupport();
-        this.init();
-    }
-
-    checkPassiveSupport() {
-        let passive = false;
-        try {
-            const opts = Object.defineProperty({}, 'passive', {
-                get: () => { passive = true; }
-            });
-            window.addEventListener('testPassive', null, opts);
-            window.removeEventListener('testPassive', null, opts);
-        } catch (e) {}
-        return passive;
-    }
-
-    init() {
-        const options = this.isPassiveSupported ? { passive: true } : false;
-        const activeOptions = this.isPassiveSupported ? { passive: false } : false;
-
-        // Mouse events (non-passive for preventDefault capability if needed)
-        document.addEventListener('mousedown', this.handlePointerDown.bind(this), activeOptions);
-        document.addEventListener('mouseup', this.handlePointerUp.bind(this), options);
-        document.addEventListener('mousemove', this.handlePointerMove.bind(this), options);
-        document.addEventListener('mouseleave', this.handlePointerUp.bind(this), options);
-        
-        // Touch events
-        document.addEventListener('touchstart', this.handlePointerDown.bind(this), options);
-        document.addEventListener('touchend', this.handlePointerUp.bind(this), options);
-        document.addEventListener('touchmove', this.handlePointerMove.bind(this), options);
-        document.addEventListener('touchcancel', this.handlePointerUp.bind(this), options);
-        
-        document.addEventListener('click', this.handleClick.bind(this), options);
-    }
-
-    handlePointerDown(e) {
-        const container = e.target.closest('.ripple-container');
-        if (!container) return;
-
-        // Éviter les ripples multiples sur le même conteneur
-        if (this.activeRipples.has(container)) {
-            this.cleanupRipple(container);
+    // Ripple Effect Implementation for iOS26-like behavior - by BecabDev (Optimized)
+    // Simply add class "ripple-container" to element you want the effect on it
+    class RippleEffect {
+        constructor() {
+            this.activeRipples = new Map();
+            this.animationFrame = null;
+            this.pendingCleanups = new Set();
+            this.isPassiveSupported = this.checkPassiveSupport();
+            this.init();
         }
 
-        const pointer = this.getPointerPosition(e);
-        const rect = container.getBoundingClientRect();
-        
-        const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
-        
-        const rippleData = {
-            element: ripple,
-            startTime: performance.now(), // Plus précis que Date.now()
-            isHeld: false,
-            isReleased: false,
-            timeoutId: null
-        };
-
-        this.activeRipples.set(container, rippleData);
-
-        // Utiliser un timeout optimisé
-        rippleData.timeoutId = setTimeout(() => {
-            const activeRipple = this.activeRipples.get(container);
-            if (activeRipple && !activeRipple.isReleased) {
-                // Utiliser requestAnimationFrame pour les changements de classe
-                this.scheduleClassChange(() => {
-                    if (ripple.parentNode) {
-                        ripple.classList.remove('animate');
-                        ripple.classList.add('held');
-                        activeRipple.isHeld = true;
-                    }
+        checkPassiveSupport() {
+            let passive = false;
+            try {
+                const opts = Object.defineProperty({}, 'passive', {
+                    get: () => { passive = true; }
                 });
-            }
-        }, 150);
-    }
-
-    handlePointerMove(e) {
-        const container = e.target.closest('.ripple-container');
-        if (!container) return;
-
-        const activeRipple = this.activeRipples.get(container);
-        if (!activeRipple || !activeRipple.isHeld) return;
-
-        // Throttle les mouvements avec requestAnimationFrame
-        if (!activeRipple.moveScheduled) {
-            activeRipple.moveScheduled = true;
-            requestAnimationFrame(() => {
-                if (!activeRipple.element.parentNode) {
-                    activeRipple.moveScheduled = false;
-                    return;
-                }
-
-                const pointer = this.getPointerPosition(e);
-                const rect = container.getBoundingClientRect();
-                
-                const x = pointer.x - rect.left;
-                const y = pointer.y - rect.top;
-                
-                const ripple = activeRipple.element;
-                const size = parseFloat(ripple.dataset.size || ripple.style.width);
-                
-                // Utiliser transform au lieu de left/top pour de meilleures performances
-                const translateX = x - size / 2;
-                const translateY = y - size / 2;
-                ripple.style.transform = `translate(${translateX}px, ${translateY}px)`;
-                
-                activeRipple.moveScheduled = false;
-            });
-        }
-    }
-
-    handlePointerUp(e) {
-        if (e.type === 'mouseleave' || e.type === 'touchcancel') {
-            this.cleanupAllRipples();
-            return;
+                window.addEventListener('testPassive', null, opts);
+                window.removeEventListener('testPassive', null, opts);
+            } catch (e) {}
+            return passive;
         }
 
-        const container = e.target.closest('.ripple-container');
-        if (!container) {
-            this.cleanupAllRipples();
-            return;
-        }
+        init() {
+            const options = this.isPassiveSupported ? { passive: true } : false;
+            const activeOptions = this.isPassiveSupported ? { passive: false } : false;
 
-        const activeRipple = this.activeRipples.get(container);
-        if (!activeRipple) return;
-
-        activeRipple.isReleased = true;
-        
-        // Annuler le timeout s'il existe
-        if (activeRipple.timeoutId) {
-            clearTimeout(activeRipple.timeoutId);
-            activeRipple.timeoutId = null;
-        }
-        
-        if (activeRipple.isHeld) {
-            this.scheduleClassChange(() => {
-                if (activeRipple.element.parentNode) {
-                    activeRipple.element.classList.remove('held');
-                    activeRipple.element.classList.add('release');
-                }
-            });
-        } else {
-            const timeHeld = performance.now() - activeRipple.startTime;
-            if (timeHeld < 150) {
-                return;
-            }
-        }
-
-        this.scheduleCleanup(container, 400);
-    }
-
-    cleanupAllRipples() {
-        for (const [container, rippleData] of this.activeRipples) {
-            rippleData.isReleased = true;
+            // Mouse events (non-passive for preventDefault capability if needed)
+            document.addEventListener('mousedown', this.handlePointerDown.bind(this), activeOptions);
+            document.addEventListener('mouseup', this.handlePointerUp.bind(this), options);
+            document.addEventListener('mousemove', this.handlePointerMove.bind(this), options);
+            document.addEventListener('mouseleave', this.handlePointerUp.bind(this), options);
             
-            if (rippleData.timeoutId) {
-                clearTimeout(rippleData.timeoutId);
-                rippleData.timeoutId = null;
-            }
+            // Touch events
+            document.addEventListener('touchstart', this.handlePointerDown.bind(this), options);
+            document.addEventListener('touchend', this.handlePointerUp.bind(this), options);
+            document.addEventListener('touchmove', this.handlePointerMove.bind(this), options);
+            document.addEventListener('touchcancel', this.handlePointerUp.bind(this), options);
             
-            this.scheduleClassChange(() => {
-                if (rippleData.element.parentNode) {
-                    rippleData.element.classList.remove('held');
-                    rippleData.element.classList.add('release');
-                }
-            });
-            
-            this.scheduleCleanup(container, 400);
+            document.addEventListener('click', this.handleClick.bind(this), options);
         }
-    }
 
-    scheduleCleanup(container, delay) {
-        if (this.pendingCleanups.has(container)) return;
-        
-        this.pendingCleanups.add(container);
-        setTimeout(() => {
-            this.cleanupRipple(container);
-            this.pendingCleanups.delete(container);
-        }, delay);
-    }
+        handlePointerDown(e) {
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
 
-    cleanupRipple(container) {
-        const activeRipple = this.activeRipples.get(container);
-        if (activeRipple) {
-            if (activeRipple.timeoutId) {
-                clearTimeout(activeRipple.timeoutId);
-            }
-            if (activeRipple.element && activeRipple.element.parentNode) {
-                activeRipple.element.remove(); // Plus efficace que removeChild
-            }
-            this.activeRipples.delete(container);
-        }
-    }
-
-    createRipple(container, x, y) {
-        const rect = container.getBoundingClientRect();
-        const size = Math.max(rect.width, rect.height) * 2.5;
-        
-        const ripple = document.createElement('div');
-        ripple.classList.add('ripple', 'animate');
-        
-        // Stocker la taille pour éviter les recalculs
-        ripple.dataset.size = size;
-        
-        ripple.style.width = size + 'px';
-        ripple.style.height = size + 'px';
-        
-        // Utiliser transform dès le début pour la cohérence
-        const translateX = x - size / 2;
-        const translateY = y - size / 2;
-        ripple.style.transform = `translate(${translateX}px, ${translateY}px)`;
-        ripple.style.left = '0px';
-        ripple.style.top = '0px';
-        
-        container.appendChild(ripple);
-        
-        // Cleanup automatique de sécurité avec un délai plus long
-        setTimeout(() => {
-            if (ripple.parentNode && ripple.classList.contains('animate')) {
+            if (this.activeRipples.has(container)) {
                 this.cleanupRipple(container);
             }
-        }, 800); // Augmenté pour éviter les cleanups prématurés
-        
-        return ripple;
-    }
 
-    scheduleClassChange(callback) {
-        requestAnimationFrame(callback);
-    }
+            const pointer = this.getPointerPosition(e);
+            const rect = container.getBoundingClientRect();
+            
+            const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
+            
+            const rippleData = {
+                element: ripple,
+                startTime: performance.now(), 
+                isHeld: false,
+                isReleased: false,
+                timeoutId: null
+            };
 
-    getPointerPosition(e) {
-        if (e.touches && e.touches.length > 0) {
-            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            this.activeRipples.set(container, rippleData);
+
+            rippleData.timeoutId = setTimeout(() => {
+                const activeRipple = this.activeRipples.get(container);
+                if (activeRipple && !activeRipple.isReleased) {
+                    this.scheduleClassChange(() => {
+                        if (ripple.parentNode) {
+                            ripple.classList.remove('animate');
+                            ripple.classList.add('held');
+                            activeRipple.isHeld = true;
+                        }
+                    });
+                }
+            }, 150);
         }
-        return { x: e.clientX, y: e.clientY };
+
+        handlePointerMove(e) {
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
+
+            const activeRipple = this.activeRipples.get(container);
+            if (!activeRipple || !activeRipple.isHeld) return;
+
+            if (!activeRipple.moveScheduled) {
+                activeRipple.moveScheduled = true;
+                requestAnimationFrame(() => {
+                    if (!activeRipple.element.parentNode) {
+                        activeRipple.moveScheduled = false;
+                        return;
+                    }
+
+                    const pointer = this.getPointerPosition(e);
+                    const rect = container.getBoundingClientRect();
+                    
+                    const x = pointer.x - rect.left;
+                    const y = pointer.y - rect.top;
+                    
+                    const ripple = activeRipple.element;
+                    const size = parseFloat(ripple.dataset.size || ripple.style.width);
+                    
+                    const translateX = x - size / 2;
+                    const translateY = y - size / 2;
+                    ripple.style.transform = `translate(${translateX}px, ${translateY}px)`;
+                    
+                    activeRipple.moveScheduled = false;
+                });
+            }
+        }
+
+        handlePointerUp(e) {
+            if (e.type === 'mouseleave' || e.type === 'touchcancel') {
+                this.cleanupAllRipples();
+                return;
+            }
+
+            const container = e.target.closest('.ripple-container');
+            if (!container) {
+                this.cleanupAllRipples();
+                return;
+            }
+
+            const activeRipple = this.activeRipples.get(container);
+            if (!activeRipple) return;
+
+            activeRipple.isReleased = true;
+            
+            if (activeRipple.timeoutId) {
+                clearTimeout(activeRipple.timeoutId);
+                activeRipple.timeoutId = null;
+            }
+            
+            if (activeRipple.isHeld) {
+                this.scheduleClassChange(() => {
+                    if (activeRipple.element.parentNode) {
+                        activeRipple.element.classList.remove('held');
+                        activeRipple.element.classList.add('release');
+                    }
+                });
+            } else {
+                const timeHeld = performance.now() - activeRipple.startTime;
+                if (timeHeld < 150) {
+                    return;
+                }
+            }
+
+            this.scheduleCleanup(container, 400);
+        }
+
+        cleanupAllRipples() {
+            for (const [container, rippleData] of this.activeRipples) {
+                rippleData.isReleased = true;
+                
+                if (rippleData.timeoutId) {
+                    clearTimeout(rippleData.timeoutId);
+                    rippleData.timeoutId = null;
+                }
+                
+                this.scheduleClassChange(() => {
+                    if (rippleData.element.parentNode) {
+                        rippleData.element.classList.remove('held');
+                        rippleData.element.classList.add('release');
+                    }
+                });
+                
+                this.scheduleCleanup(container, 400);
+            }
+        }
+
+        scheduleCleanup(container, delay) {
+            if (this.pendingCleanups.has(container)) return;
+            
+            this.pendingCleanups.add(container);
+            setTimeout(() => {
+                this.cleanupRipple(container);
+                this.pendingCleanups.delete(container);
+            }, delay);
+        }
+
+        cleanupRipple(container) {
+            const activeRipple = this.activeRipples.get(container);
+            if (activeRipple) {
+                if (activeRipple.timeoutId) {
+                    clearTimeout(activeRipple.timeoutId);
+                }
+                if (activeRipple.element && activeRipple.element.parentNode) {
+                    activeRipple.element.remove();
+                }
+                this.activeRipples.delete(container);
+            }
+        }
+
+        createRipple(container, x, y) {
+            const rect = container.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height) * 2.5;
+            
+            const ripple = document.createElement('div');
+            ripple.classList.add('ripple', 'animate');
+            
+            ripple.dataset.size = size;
+            
+            ripple.style.width = size + 'px';
+            ripple.style.height = size + 'px';
+            
+            const translateX = x - size / 2;
+            const translateY = y - size / 2;
+            ripple.style.transform = `translate(${translateX}px, ${translateY}px)`;
+            ripple.style.left = '0px';
+            ripple.style.top = '0px';
+            
+            container.appendChild(ripple);
+            
+            setTimeout(() => {
+                if (ripple.parentNode && ripple.classList.contains('animate')) {
+                    this.cleanupRipple(container);
+                }
+            }, 800);
+            
+            return ripple;
+        }
+
+        scheduleClassChange(callback) {
+            requestAnimationFrame(callback);
+        }
+
+        getPointerPosition(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        handleClick(e) {
+            // methode vide maintenue pour compatibilité
+            // levénement est géré par les autres méthodes
+        }
     }
 
-    handleClick(e) {
-        // Méthode vide maintenue pour compatibilité
-        // L'événement est géré par les autres méthodes
-    }
-}
-
-// Utiliser un pattern plus robuste pour l'initialisation
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            new RippleEffect();
+        });
+    } else {
         new RippleEffect();
-    });
-} else {
-    new RippleEffect();
-}
+    }
 
         VERSION_NAME = '3.1.0.0 Release Candidate 1';
 
@@ -4439,97 +4429,73 @@ let lastActiveColor = null;
 window.isMenuShowed = false;
 
 
-// Cache global pour éviter les recalculs
+// Cache pour éviter les recalculs répétitifs
 const colorCache = new Map();
 const styleCache = new Map();
-const animationCache = new Set();
+let globalStyleSheet = null;
 
-// Pool d'objets réutilisables
-const markerPool = {
-    ids: [],
-    styles: [],
-    getUniqueId() {
-        if (this.ids.length > 0) {
-            return this.ids.pop();
-        }
-        return `popup-style-${Math.random().toString(36).substr(2, 9)}`;
-    },
-    releaseId(id) {
-        this.ids.push(id);
+
+// Fonction optimisée pour calculer la couleur de texte optimale (mise en cache)
+function getOptimalTextColor(bgColor, options = {}) {
+    if (colorCache.has(bgColor)) {
+        return colorCache.get(bgColor);
     }
-};
-
-// Fonction optimisée pour calculer la couleur optimale du texte (mise en cache)
-const getOptimalTextColor = (() => {
-    const cache = new Map();
     
-    return function(bgColor, options = {}) {
-        const cacheKey = `${bgColor}-${JSON.stringify(options)}`;
-        if (cache.has(cacheKey)) {
-            return cache.get(cacheKey);
-        }
+    const {
+        contrastRatio = 4.5,
+        darkColor = '#1a1a1a',
+        lightColor = '#f8f9fa'
+    } = options;
 
-        const {
-            contrastRatio = 4.5,
-            darkColor = '#1a1a1a',
-            lightColor = '#f8f9fa'
-        } = options;
+    let r, g, b;
 
-        let r, g, b;
+    if (!bgColor) return darkColor;
 
-        if (!bgColor) {
-            cache.set(cacheKey, darkColor);
+    bgColor = bgColor.trim();
+
+    if (bgColor.startsWith('rgb')) {
+        const values = bgColor.match(/\d+(\.\d+)?/g);
+        if (values) {
+            r = parseInt(values[0]);
+            g = parseInt(values[1]);
+            b = parseInt(values[2]);
+        } else {
             return darkColor;
         }
-
-        bgColor = bgColor.trim();
-
-        // Parsing optimisé des couleurs
-        if (bgColor.startsWith('rgb')) {
-            const values = bgColor.match(/\d+(\.\d+)?/g);
-            if (values) {
-                [r, g, b] = values.map(v => parseInt(v));
-            } else {
-                cache.set(cacheKey, darkColor);
-                return darkColor;
-            }
-        } else {
-            // Traitement hex optimisé
-            const hex = bgColor.replace('#', '');
-            const hexLength = hex.length;
-            
-            if (hexLength === 3) {
-                r = parseInt(hex[0] + hex[0], 16);
-                g = parseInt(hex[1] + hex[1], 16);
-                b = parseInt(hex[2] + hex[2], 16);
-            } else if (hexLength === 6 || hexLength === 8) {
-                r = parseInt(hex.substr(0, 2), 16);
-                g = parseInt(hex.substr(2, 2), 16);
-                b = parseInt(hex.substr(4, 2), 16);
-            } else {
-                cache.set(cacheKey, darkColor);
-                return darkColor;
-            }
+    } else {
+        // Optimisation: traitement hex simplifié
+        if (bgColor.length === 4) {
+            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                (_, r, g, b) => '#' + r + r + g + g + b + b);
         }
 
-        // Calcul de luminance optimisé
-        const getLuminance = (r, g, b) => {
-            const [rs, gs, bs] = [r, g, b].map(c => {
-                const val = c / 255;
-                return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-            });
-            return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-        };
+        if (bgColor.length === 7) {
+            r = parseInt(bgColor.slice(1, 3), 16);
+            g = parseInt(bgColor.slice(3, 5), 16);
+            b = parseInt(bgColor.slice(5, 7), 16);
+        } else if (bgColor.length >= 8) {
+            r = parseInt(bgColor.slice(1, 3), 16);
+            g = parseInt(bgColor.slice(3, 5), 16);
+            b = parseInt(bgColor.slice(5, 7), 16);
+        } else {
+            return darkColor;
+        }
+    }
 
-        const luminance = getLuminance(r, g, b);
-        
-        // Calcul simplifié du contraste
-        const result = luminance > 0.18 ? darkColor : lightColor;
-        
-        cache.set(cacheKey, result);
-        return result;
-    };
-})();
+    // Calcul de luminance optimisé
+    const srgb = [r, g, b].map(c => {
+        const val = c / 255;
+        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+    });
+    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+    // Calcul simplifié pour de meilleures performances
+    const result = luminance > 0.18 ? darkColor : lightColor;
+    
+    // Mise en cache du résultat
+    colorCache.set(bgColor, result);
+    return result;
+}
 
 // Fonction optimisée pour ajuster la luminosité (mise en cache)
 function adjustBrightness(hex, percent) {
@@ -4537,64 +4503,82 @@ function adjustBrightness(hex, percent) {
     if (colorCache.has(cacheKey)) {
         return colorCache.get(cacheKey);
     }
-
+    
     const num = parseInt(hex.replace("#", ""), 16);
     const amt = Math.round(2.55 * percent);
     const R = Math.max(0, Math.min(255, (num >> 16) + amt));
-    const G = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amt));
+    const G = Math.max(0, Math.min(255, (num >> 8 & 0x00FF) + amt));
     const B = Math.max(0, Math.min(255, (num & 0x0000FF) + amt));
     
-    const result = "#" + ((R << 16) | (G << 8) | B).toString(16).padStart(6, '0');
+    const result = "#" + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
     
     colorCache.set(cacheKey, result);
     return result;
 }
 
-// Gestionnaire d'événements optimisé avec debounce
-const createDebouncedHandler = (fn, delay) => {
-    let timeoutId;
-    return function(...args) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => fn.apply(this, args), delay);
-    };
-};
-
-// Gestionnaire de styles centralisé
-const StyleManager = {
-    activeStyles: new Set(),
+// Initialisation du CSS global optimisé
+function initializeGlobalStyles() {
+    if (globalStyleSheet) return;
     
-    createStyle(id, content) {
-        this.removeStyle(id);
-        
-        const style = document.createElement('style');
-        style.id = id;
-        style.classList.add('menu-color-style');
-        style.textContent = content;
-        
-        document.head.appendChild(style);
-        this.activeStyles.add(id);
-        
-        return style;
-    },
-    
-    removeStyle(id) {
-        const existing = document.getElementById(id);
-        if (existing) {
-            existing.remove();
-            this.activeStyles.delete(id);
+    globalStyleSheet = document.createElement('style');
+    globalStyleSheet.id = 'enhanced-markers-global-styles';
+    globalStyleSheet.textContent = `
+        .my-custom-pin-enhanced {
+            background: transparent !important;
+            border: none !important;
         }
+
+        .marker-container {
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+            will-change: transform;
+        }
+
+        .enhanced-marker {
+            position: relative;
+            z-index: 1000;
+            will-change: transform, box-shadow;
+        }
+
+        .enhanced-marker:hover {
+            z-index: 1001;
+        }
+
+        .marker-arrow {
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .marker-arrow-path {
+            will-change: stroke;
+        }
+
+        /* Optimisation des animations */
+        .enhanced-marker {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    `;
+    document.head.appendChild(globalStyleSheet);
+}
+
+// Pool d'objets pour réutiliser les éléments DOM
+const domPool = {
+    styleElements: [],
+    getStyleElement() {
+        return this.styleElements.pop() || document.createElement('style');
     },
-    
-    removeAllMenuStyles() {
-        document.querySelectorAll('.menu-color-style').forEach(style => {
-            style.remove();
-            this.activeStyles.delete(style.id);
-        });
+    returnStyleElement(element) {
+        element.textContent = '';
+        element.id = '';
+        element.className = '';
+        this.styleElements.push(element);
     }
 };
 
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
-    const styleId = markerPool.getUniqueId();
+    // Initialiser les styles globaux une seule fois
+    initializeGlobalStyles();
+    
+    const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
     const color = lineColors[route_id] || '#000000';
     
@@ -4602,7 +4586,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const lighterColor = adjustBrightness(color, 30);
     const darkerColor = adjustBrightness(color, -20);
     
-    // Styles CSS optimisés (réutilisation)
+    // Styles optimisés avec will-change pour de meilleures performances
     const markerHtmlStyles = `
         background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
         width: 12px;
@@ -4613,37 +4597,49 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         position: relative;
         border-radius: 50%;
         border: 2px solid white;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                    0 2px 6px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         backdrop-filter: blur(4px);
         will-change: transform, box-shadow;
     `;
 
-    // Animation CSS optimisée
-    if (!animationCache.has(route_id)) {
+    // Optimisation : créer l'animation CSS une seule fois par route_id
+    if (!styleCache.has(`pulse-${route_id}`)) {
         const pulseAnimation = `
             @keyframes pulse-${route_id} {
                 0% { 
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 0 ${color}40;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                               0 2px 6px rgba(0, 0, 0, 0.15),
+                               inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                               0 0 0 0 ${color}40;
                 }
                 50% {
-                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 0 3px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 0 8px ${color}20;
+                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 
+                               0 3px 8px rgba(0, 0, 0, 0.2),
+                               inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                               0 0 0 8px ${color}20;
                 }
                 100% { 
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 0 0 ${color}00;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                               0 2px 6px rgba(0, 0, 0, 0.15),
+                               inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                               0 0 0 0 ${color}00;
                 }
             }
         `;
-
+        
         const style = document.createElement('style');
         style.id = `pulse-style-${route_id}`;
         style.textContent = pulseAnimation;
         document.head.appendChild(style);
-        animationCache.add(route_id);
+        
+        styleCache.set(`pulse-${route_id}`, true);
     }
 
-    // SVG optimisé avec réutilisation
+    // SVG optimisé avec moins d'éléments DOM
     const arrowSvg = `
         <svg class="marker-arrow" style="
             position: absolute;
@@ -4651,20 +4647,48 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             height: 16px;
             left: 4px;
             top: -2px;
-            transform-origin: 2px; 
+            transform-origin: center; 
             transform: rotate(${bearing - 90}deg);
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));"
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            will-change: transform;"
             viewBox="0 0 24 24">
+            
             <defs>
                 <linearGradient id="arrow-gradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" style="stop-color:${lighterColor};stop-opacity:1" />
                     <stop offset="100%" style="stop-color:${darkerColor};stop-opacity:1" />
                 </linearGradient>
             </defs>
-            <path d="M8 4 L16 12 L8 20" fill="none" stroke="rgba(0, 0, 0, 0.3)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" transform="translate(1, 1)" />
-            <path d="M8 4 L16 12 L8 20" fill="none" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M8 4 L16 12 L8 20" fill="none" stroke="url(#arrow-gradient-${route_id})" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="rgba(0, 0, 0, 0.3)"
+                stroke-width="5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(1, 1)"
+            />
+            
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="white"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+            
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="url(#arrow-gradient-${route_id})"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="marker-arrow-path"
+            />
         </svg>
     `;
 
@@ -4673,7 +4697,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         iconAnchor: [0, 0],
         popupAnchor: [0, -5],
         html: `
-            <div class="marker-container" style="position: relative;">
+            <div style="position: relative;" class="marker-container">
                 <span style="${markerHtmlStyles}" 
                       class="marker-icon enhanced-marker" 
                       onmouseover="this.style.transform='scale(1.2)'; this.style.animation='pulse-${route_id} 1.5s infinite';"
@@ -4684,184 +4708,219 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     });
 
     const marker = L.marker([lat, lon], { icon });
-    marker.id = styleId;
-    marker.styleId = styleId;
-
-    // Gestionnaires d'événements optimisés
-    const handlePopupOpen = createDebouncedHandler(function(e) {
-        const menubtm = document.getElementById('menubtm');
-        const filtre = document.getElementById('filtre');
-        
-        if (typeof safeVibrate === 'function') safeVibrate([50]);
-        if (typeof soundsUX === 'function') soundsUX('MBF_VehicleOpen');
-
-        if (menubtm && filtre) {
-            const textColor = getOptimalTextColor(color);
-            
-            // Mise à jour optimisée des styles
-            requestAnimationFrame(() => {
-                menubtm.style.backgroundColor = `${color}9c`;
-                filtre.style.backgroundColor = `${color}9c`;
-                
-                StyleManager.createStyle(styleId, `
-                    #menubtm *, #filtre * {
-                        color: ${textColor};
-                        transition: color 0.5s ease;
-                    }
-                `);
-            });
-            
-            window.lastActiveMarkerId = marker.id;
-            window.lastActiveColor = color;
+    const styleId = generateUniqueId();
+    marker.id = Math.random().toString(36).substr(2, 9); // Fix: ajout d'un ID unique
+    
+    // Optimisation des event listeners avec throttling
+    let popupOpenTimeout = null;
+    
+    marker.on('popupopen', function(e) {
+        if (popupOpenTimeout) {
+            clearTimeout(popupOpenTimeout);
         }
-    }, 10);
+        
+        popupOpenTimeout = setTimeout(() => {
+            const menubtm = document.getElementById('menubtm');
+            const filtre = document.getElementById('filtre');
+            
+            if (typeof safeVibrate === 'function') safeVibrate([50]);
+            if (typeof soundsUX === 'function') soundsUX('MBF_VehicleOpen');
 
-    const handlePopupClose = createDebouncedHandler(async function(e) {
-        if (typeof safeVibrate === 'function') safeVibrate([50]);
-        if (typeof soundsUX === 'function') soundsUX('MBF_VehicleClose');
-        
-        const menubtm = document.getElementById('menubtm');
-        const filtre = document.getElementById('filtre');
-        
-        if (menubtm && filtre && window.lastActiveMarkerId === marker.id) {
-            try {
-                const data = typeof getSetvar === 'function' ? await getSetvar() : null;
+            if (menubtm && filtre) {
+                const markerId = marker.id;
+                const markerColor = lineColors[route_id] || '#000000';
                 
-                if (data && window.colorbkg9c) {
-                    requestAnimationFrame(() => {
-                        menubtm.style.transition = 'background-color 0.5s ease';
-                        filtre.style.transition = 'background-color 0.5s ease';
+                // Optimisation : éviter les recalculs inutiles
+                if (lastActiveMarkerId !== markerId) {
+                    menubtm.style.backgroundColor = `${markerColor}9c`;
+                    filtre.style.backgroundColor = `${markerColor}9c`;
+
+                    const textColor = getOptimalTextColor(markerColor);
+                    
+                    // Réutilisation d'éléments de style existants
+                    document.querySelectorAll('.menu-color-style').forEach(style => {
+                        domPool.returnStyleElement(style);
+                        style.remove();
+                    });
+                    
+                    const styleSheet = domPool.getStyleElement();
+                    styleSheet.id = styleId;
+                    styleSheet.classList.add('menu-color-style');
+                    
+                    styleSheet.textContent = `
+                        #menubtm * {
+                            color: ${textColor};
+                        }
+                        #filtre * {
+                            color: ${textColor};
+                            transition: color 0.5s ease;
+                        }
+                    `;
+                    
+                    document.head.appendChild(styleSheet);
+                    marker.styleId = styleId;
+                    
+                    lastActiveMarkerId = markerId;
+                    lastActiveColor = markerColor;
+                }
+            }
+        }, 10); // Micro-délai pour éviter les appels multiples rapides
+    });
+
+    // Event listener optimisé pour popupclose
+    let popupCloseTimeout = null;
+    
+    marker.on('popupclose', function(e) {
+        if (popupCloseTimeout) {
+            clearTimeout(popupCloseTimeout);
+        }
+        
+        popupCloseTimeout = setTimeout(async () => {
+            const menubtm = document.getElementById('menubtm');
+            const filtre = document.getElementById('filtre');
+            
+            if (typeof safeVibrate === 'function') safeVibrate([50]);
+            if (typeof soundsUX === 'function') soundsUX('MBF_VehicleClose');
+            
+            if (menubtm && filtre && lastActiveMarkerId === marker.id) {
+                try {
+                    let data = null;
+                    
+                    // Optimisation : vérifier d'abord si getSetvar existe
+                    if (typeof getSetvar === 'function') {
+                        data = await getSetvar();
+                    }
+                    
+                    if (data && window.colorbkg9c) {
+                        // Optimisation des transitions
+                        const menubtmTransition = 'background-color 0.5s ease';
+                        const filtreTransition = 'background-color 0.5s ease';
+                        
+                        menubtm.style.transition = menubtmTransition;
+                        filtre.style.transition = filtreTransition;
+                        
                         menubtm.style.backgroundColor = window.colorbkg9c;
                         filtre.style.backgroundColor = window.colorbkg9c;
                         
                         const textColor = getOptimalTextColor(window.colorbkg9c);
-                        StyleManager.createStyle(styleId, `
-                            #menubtm *, #filtre * {
+                        
+                        // Nettoyage optimisé des styles
+                        document.querySelectorAll('.menu-color-style').forEach(style => {
+                            domPool.returnStyleElement(style);
+                            style.remove();
+                        });
+                        
+                        const styleSheet = domPool.getStyleElement();
+                        styleSheet.id = styleId;
+                        styleSheet.classList.add('menu-color-style');
+                        
+                        styleSheet.textContent = `
+                            #menubtm * {
+                                color: ${textColor};
+                            }
+                            #filtre * {
                                 color: ${textColor};
                                 transition: color 0.5s ease;
                             }
-                        `);
-                    });
+                        `;
+                        
+                        document.head.appendChild(styleSheet);
+                        
+                        lastActiveMarkerId = null;
+                        lastActiveColor = null;
+                        
+                        // Nettoyage des anciens styles
+                        if (marker.styleId) {
+                            const oldStyle = document.getElementById(marker.styleId);
+                            if (oldStyle) {
+                                domPool.returnStyleElement(oldStyle);
+                                oldStyle.remove();
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Erreur lors de la fermeture du popup:', error);
                 }
-                
-                window.lastActiveMarkerId = null;
-                window.lastActiveColor = null;
-            } catch (error) {
-                console.warn('Error in popup close handler:', error);
             }
-        }
-    }, 50);
-
-    marker.on('popupopen', handlePopupOpen);
-    marker.on('popupclose', handlePopupClose);
-
-    // Nettoyage automatique lors de la suppression du marker
-    marker.on('remove', function() {
-        StyleManager.removeStyle(styleId);
-        markerPool.releaseId(styleId);
-        
-        if (marker.animationFrame) {
-            cancelAnimationFrame(marker.animationFrame);
-        }
+        }, 50);
     });
-
+    
     return marker;
 }
 
-// Animation optimisée avec RAF et easing pré-calculé
-function animateMarker(marker, newPosition) {
-    if (marker.animationFrame) {
-        cancelAnimationFrame(marker.animationFrame);
-    }
-
-    const startLatLng = marker.getLatLng();
-    const endLatLng = L.latLng(newPosition[0], newPosition[1]);
-    const duration = 1000;
-    const startTime = performance.now();
+// Animation optimisée avec requestAnimationFrame pool
+const animationPool = {
+    activeAnimations: new Set(),
     
-    // Pré-calcul des différences
-    const latDiff = endLatLng.lat - startLatLng.lat;
-    const lngDiff = endLatLng.lng - startLatLng.lng;
-
-    function animate(time) {
-        const elapsed = time - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing optimisé
-        const easedProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
-        const lat = startLatLng.lat + latDiff * easedProgress;
-        const lng = startLatLng.lng + lngDiff * easedProgress;
-        
-        marker.setLatLng([lat, lng]);
-
-        if (progress < 1) {
-            marker.animationFrame = requestAnimationFrame(animate);
-        } else {
-            marker.animationFrame = null;
+    animateMarker(marker, newPosition) {
+        // Annuler l'animation précédente si elle existe
+        if (marker.animationFrame) {
+            cancelAnimationFrame(marker.animationFrame);
+            this.activeAnimations.delete(marker.animationFrame);
         }
-    }
 
-    marker.animationFrame = requestAnimationFrame(animate);
-}
+        const startLatLng = marker.getLatLng();
+        const endLatLng = L.latLng(newPosition[0], newPosition[1]);
+        const duration = 1000;
+        const startTime = performance.now();
 
-// CSS optimisé avec will-change pour les performances
-const additionalCSS = `
-.my-custom-pin-enhanced {
-    background: transparent !important;
-    border: none !important;
-}
+        // Fonction d'easing optimisée
+        const easeInOutQuad = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-.marker-container {
-    will-change: transform;
-}
+        const animate = (time) => {
+            const elapsed = time - startTime;
+            const linearProgress = Math.min(elapsed / duration, 1);
+            
+            if (linearProgress >= 1) {
+                // Animation terminée
+                marker.setLatLng(endLatLng);
+                this.activeAnimations.delete(marker.animationFrame);
+                marker.animationFrame = null;
+                return;
+            }
+            
+            const easedProgress = easeInOutQuad(linearProgress);
+            
+            const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
+            const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
+            
+            marker.setLatLng([lat, lng]);
+            
+            marker.animationFrame = requestAnimationFrame(animate);
+            this.activeAnimations.add(marker.animationFrame);
+        };
 
-.enhanced-marker {
-    position: relative;
-    z-index: 1000;
-    will-change: transform, box-shadow;
-}
-
-.enhanced-marker:hover {
-    z-index: 1001;
-}
-
-.marker-arrow {
-    pointer-events: none;
-    will-change: transform;
-}
-
-/* Optimisation des transitions globales */
-#menubtm, #filtre {
-    will-change: background-color;
-}
-`;
-
-// Injection du CSS optimisé
-if (!document.getElementById('optimized-marker-styles')) {
-    const style = document.createElement('style');
-    style.id = 'optimized-marker-styles';
-    style.textContent = additionalCSS;
-    document.head.appendChild(style);
-}
-
-// Nettoyage périodique du cache (optionnel)
-const cleanupCache = () => {
-    if (colorCache.size > 1000) {
-        const entries = Array.from(colorCache.entries());
-        const toKeep = entries.slice(-500);
-        colorCache.clear();
-        toKeep.forEach(([key, value]) => colorCache.set(key, value));
+        marker.animationFrame = requestAnimationFrame(animate);
+        this.activeAnimations.add(marker.animationFrame);
     }
 };
 
-// Nettoyage toutes les 5 minutes
-setInterval(cleanupCache, 300000);
-let busStopLayers = [];
-let selectedLines = [];
+// Fonction d'animation globale optimisée
+function animateMarker(marker, newPosition) {
+    animationPool.animateMarker(marker, newPosition);
+}
 
+// Nettoyage des ressources pour éviter les fuites mémoire
+function cleanupMarkerResources() {
+    // Annuler toutes les animations actives
+    animationPool.activeAnimations.forEach(frame => {
+        cancelAnimationFrame(frame);
+    });
+    animationPool.activeAnimations.clear();
+    
+    // Vider les caches si nécessaire
+    if (colorCache.size > 1000) {
+        colorCache.clear();
+    }
+    if (styleCache.size > 100) {
+        styleCache.clear();
+    }
+}
 
-
+// Appel de nettoyage recommandé périodiquement ou lors du déchargement de la pag
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', cleanupMarkerResources);
+}
 
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
