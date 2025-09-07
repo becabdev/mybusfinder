@@ -7608,7 +7608,6 @@ function closeMenu() {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
         if (selectedLine) {
-            filtre.style.display = 'block';
             filtre.classList.add('slide-downc');
         }
     }, 10);
@@ -7770,7 +7769,6 @@ function toggleMapView(forceState) {
         menubottom1.classList.add('slide-downb');
         if (selectedLine) {
             const filtre = document.getElementById('filtre');
-            filtre.style.display = 'block';
             filtre.classList.add('slide-downc');
         }
     }, 10);
@@ -8341,7 +8339,6 @@ sortedLines.forEach(line => {
                         menubottom1.classList.remove('slide-upb');
                         menubottom1.classList.add('slide-downb');
                         if (selectedLine) {
-                            filtre.style.display = 'block';
                             filtre.classList.add('slide-downc');
                         }
                     }, 10);
@@ -8479,7 +8476,6 @@ const menubottom1 = document.getElementById('menubtm');
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
                 if (selectedLine) {
-                    filtre.style.display = 'block';
                     filtre.classList.add('slide-downc');
                 }
             }, 10);
