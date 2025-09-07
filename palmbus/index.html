@@ -774,31 +774,7 @@
             opacity: 1;
         }
     }
-    .filtre {
-        display: none;
-        position: absolute;
-        cursor: pointer;
-        bottom: 10px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-100%) scaleX(0.5);
-        opacity: 0;
-        filter: blur(5px);
-        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
-        padding: 10px 15px;
-        border: none;
-        list-style: none;
-        margin: 0;
-        z-index: 10000;
-        background-color: #0f056b9c;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-        border-radius: 18px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    }
-    .filtre-texte {
-        color: #fff;
-    }
+
     .menubottom-ul {
         display: flex;
         position: fixed;
@@ -1876,10 +1852,6 @@
 
 </head>
 <body>
-<div class="filtre ripple-container" id="filtre">
-    <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
-</div>
-
  <div class="menubottom">
         <ul id="menubtm" class="menubottom-ul ripple-container">
             <li>
@@ -3067,7 +3039,6 @@ async function changeColorBkg(selectedTheme = null) {
     localStorage.setItem("colorbkg", baseColor);
 
     document.getElementById("menubtm").style.backgroundColor = colorWithAlpha;
-    document.getElementById("filtre").style.backgroundColor = colorWithAlpha;
     document.documentElement.style.backgroundColor = colorWithAlpha;
 
     window.colorbkg = baseColor;
@@ -3465,11 +3436,6 @@ function showUpdatePopup(link) {
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
     if (selectedLine) {
-        const filtre = document.getElementById('filtre');
-        filtre.classList.remove('slide-downc');
-        filtre.addEventListener('animationend', () => {
-            filtre.style.display = 'none';
-        });
         resetMapView();            
     }
 
@@ -3554,12 +3520,6 @@ function showUpdatePopupmusic(link) {
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
     if (selectedLine) {
-        const filtre = document.getElementById('filtre');
-        filtre.classList.remove('slide-downc');
-        setTimeout(() => {
-            filtre.style.display = 'none';
-        }, 500);
-            
         resetMapView();            
     }
 
@@ -4410,7 +4370,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
-        const filtre = document.getElementById('filtre');
             safeVibrate([50]);
             soundsUX('MBF_VehicleOpen');
 
@@ -4421,7 +4380,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
                 menubtm.style.backgroundColor = `${color}9c`;
-                filtre.style.backgroundColor = `${color}9c`;
 
                     function getOptimalTextColor(bgColor, options = {}) {
                     const {
@@ -4532,11 +4490,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
-                    }
-
-                    #filtre * {
-                        color: ${textColor};
-                        transition: color 0.5s ease;
                     }
                 `;
                 
@@ -4647,7 +4600,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
                 menubtm.style.backgroundColor = `${color}9c`;
-                filtre.style.backgroundColor = `${color}9c`;
 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
@@ -4660,10 +4612,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         color: ${textColor};
                     }
 
-                        #filtre * {
-                        color: ${textColor};
-                        transition: color 0.5s ease;
-                    }
                 `;
                 
                 document.head.appendChild(styleSheet);
@@ -4677,11 +4625,10 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
     marker.on('popupclose', async function(e) {
     const menubtm = document.getElementById('menubtm');
-    const filtre = document.getElementById('filtre');
     safeVibrate([50]);
     soundsUX('MBF_VehicleClose');
     
-    if (menubtm && filtre) {
+    if (menubtm) {
         try {
             setTimeout(async () => {
                 if (lastActiveMarkerId === marker.id) {
@@ -4689,7 +4636,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                     
                     if (data) {
                         const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
-                        const filtreCurrentTransition = window.getComputedStyle(filtre).transition;
                         
                         if (!menubtmCurrentTransition.includes('background-color')) {
                             menubtm.style.transition = menubtmCurrentTransition 
@@ -4697,14 +4643,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                                 : 'background-color 0.5s ease';
                         }
                         
-                        if (!filtreCurrentTransition.includes('background-color')) {
-                            filtre.style.transition = filtreCurrentTransition 
-                                ? `${filtreCurrentTransition}, background-color 0.5s ease` 
-                                : 'background-color 0.5s ease';
-                        }
                         
                         menubtm.style.backgroundColor = `${window.colorbkg9c}`;
-                        filtre.style.backgroundColor = `${window.colorbkg9c}`;
                         
                         document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                         const styleSheet = document.createElement('style');
@@ -4815,11 +4755,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         #menubtm * {
                             color: ${textColor};
                         }
-
-                            #filtre * {
-                                color: ${textColor};
-                                transition: color 0.5s ease;
-                            }
                         `;
                         
                         document.head.appendChild(styleSheet);
@@ -4986,11 +4921,7 @@ function filterByLine(lineId) {
   updateLinesDisplay();
 
   if (selectedLines.length === 0) {
-    const filtre = document.getElementById('filtre');
-    filtre.classList.remove('slide-downc');
-    setTimeout(() => {
-        filtre.style.display = 'none';
-    }, 500);
+
     resetMapView();
   } else if (selectedLines.length === 1) {
     zoomToSelectedLine(selectedLines[0]);
@@ -5115,13 +5046,7 @@ function showPopup() {
             const menubotom = document.getElementById('menubottom');
             menubottom1.classList.remove('slide-downb');
             menubottom1.classList.add('slide-upb');
-            if (selectedLine) {
-                const filtre = document.getElementById('filtre');
-                filtre.classList.remove('slide-downc');
-                setTimeout(() => {
-                    filtre.style.display = 'none';
-                }, 500);
-        }
+
 
             menubottom1.addEventListener('transitionend', () => {
             if (menubottom1.classList.contains('slide-up')) {
@@ -5168,19 +5093,6 @@ function closePopup() {
 
 
 }
-
-
-
-const filtre = document.getElementById('filtre');
-    filtre.onclick = () => {
-        if (selectedLine) {
-            filtre.classList.remove('slide-downc');
-            setTimeout(() => {
-                filtre.style.display = 'none';
-            }, 500);
-    resetMapView();
-    }
-};
 
 
 
@@ -6821,12 +6733,10 @@ async function fetchVehiclePositions() {
                     
                     if (markers[id].isPopupOpen()) {
                         const menubtm = document.getElementById('menubtm');
-                        const filtre = document.getElementById('filtre');
                         if (menubtm) {
                             lastActiveColor = color;
                             
                             menubtm.style.backgroundColor = `${color}9c`;
-                            filtre.style.backgroundColor = `${color}9c`;
 
                             const textColor = getOptimalTextColor(color);
                             
@@ -6840,10 +6750,6 @@ async function fetchVehiclePositions() {
                                     color: ${textColor};
                                 }
 
-                                #filtre * {
-                                    color: ${textColor};
-                                    transition: color 0.5s ease;
-                                }
                             `;
                             
                             document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
@@ -7602,14 +7508,10 @@ function closeMenu() {
         }
     });
     isMenuVisible = false;
-    const filtre = document.getElementById('filtre');
     menubottom1.style.display = 'flex';
     setTimeout(() => {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
-        if (selectedLine) {
-            filtre.classList.add('slide-downc');
-        }
     }, 10);
 }
 
@@ -7767,10 +7669,6 @@ function toggleMapView(forceState) {
     setTimeout(() => {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
-        if (selectedLine) {
-            const filtre = document.getElementById('filtre');
-            filtre.classList.add('slide-downc');
-        }
     }, 10);
 
     applyMapView();
@@ -8333,14 +8231,10 @@ sortedLines.forEach(line => {
                         }
                     });
                     isMenuVisible = false;
-                    const filtre = document.getElementById('filtre');
                     menubottom1.style.display = 'flex';
                     setTimeout(() => {
                         menubottom1.classList.remove('slide-upb');
                         menubottom1.classList.add('slide-downb');
-                        if (selectedLine) {
-                            filtre.classList.add('slide-downc');
-                        }
                     }, 10);
                     event.stopPropagation();
 
@@ -8423,14 +8317,7 @@ const menubottom1 = document.getElementById('menubtm');
             isMenuVisible = true; 
             menubottom1.classList.remove('slide-downb');
             menubottom1.classList.add('slide-upb');
-            if (selectedLine) {
-                const filtre = document.getElementById('filtre');
-                filtre.classList.remove('slide-downc');
-                setTimeout(() => {
-                    filtre.style.display = 'none';
-                }, 500);
-        }
-
+ 
             menubottom1.addEventListener('transitionend', () => {
             if (menubottom1.classList.contains('slide-up')) {
             menubottom1.style.display = 'none';
@@ -8471,13 +8358,9 @@ const menubottom1 = document.getElementById('menubtm');
             const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'flex';
 
-            const filtre = document.getElementById('filtre');
             setTimeout(() => {
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
-                if (selectedLine) {
-                    filtre.classList.add('slide-downc');
-                }
             }, 10);
                 isMenuVisible = false; 
             };
