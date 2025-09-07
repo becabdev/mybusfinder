@@ -982,9 +982,7 @@
         cursor: pointer;
     }
 
-    .slide-downb.slide-downb:active {
-        transform: translateY(0) translateX(-50%) scale(1.05);
-    }
+
     @keyframes apparitionMenuBas {
         0% {
             transform: translateY(100%) translateX(-50%) scaleX(0.5);
@@ -1014,6 +1012,9 @@
             opacity: 0;
             filter: blur(10px);
         }
+    }
+    .slide-downb.slide-downb:active {
+        transform: translateY(0) translateX(-50%) scale(1.05);
     }
     .slide-downc {
         display: block;
