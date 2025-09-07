@@ -977,13 +977,12 @@
         filter: blur(0);
         backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(1px);
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.2s ease-in, filter 0.2s ease-in;
+        transform: translateY(0) translateX(-50%) scaleX(1);
+        transition: transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
-    .menubottom-agrandissement {
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
-    }
-    .menubottom-agrandissement:active {
-        transform: scale(1.05);
+
+    .slide-downb:active {
+        transform: translateY(0) translateX(-50%) scaleX(1.05);
     }
     @keyframes apparitionMenuBas {
         0% {
@@ -1882,7 +1881,6 @@
 </head>
 <body>
  <div class="menubottom">
-    <div class="menubottom-agrandissement">
         <ul id="menubtm" class="menubottom-ul ripple-container">
             <li>
                 <a onclick="afficherMenu()"><span class="icon"><img src="src/menu.png" id="menuicon" style="width: 35px; height: 35px;"></img></span> <span
@@ -1901,7 +1899,6 @@
                         class="title" data-i18n="news">Actualités</span></a>
             </li>
         </ul>
-    </div>
 </div>
 
 	
