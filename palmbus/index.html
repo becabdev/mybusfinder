@@ -1017,11 +1017,13 @@
         filter: blur(0);
         backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(1px);
+        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
     .slide-upc {
         transform: translateY(100%) translateX(-50%);
         opacity: 0;
         filter: blur(5px);
+        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
     #popup1::-webkit-scrollbar {
         width: 8px;
