@@ -7612,9 +7612,9 @@ function closeMenu() {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
         if (selectedLine) {
+            filtre.style.display = 'block';
             filtre.classList.remove('slide-upc');
             filtre.classList.add('slide-downc');
-            filtre.style.display = 'flex';
         }
     }, 10);
 }
@@ -7775,9 +7775,9 @@ function toggleMapView(forceState) {
         menubottom1.classList.add('slide-downb');
         if (selectedLine) {
             const filtre = document.getElementById('filtre');
+            filtre.style.display = 'block';
             filtre.classList.remove('slide-upc');
             filtre.classList.add('slide-downc');
-            filtre.style.display = 'flex';
         }
     }, 10);
 
@@ -8347,9 +8347,9 @@ sortedLines.forEach(line => {
                         menubottom1.classList.remove('slide-upb');
                         menubottom1.classList.add('slide-downb');
                         if (selectedLine) {
+                            filtre.style.display = 'block';
                             filtre.classList.remove('slide-upc');
                             filtre.classList.add('slide-downc');
-                            filtre.style.display = 'flex';
                         }
                     }, 10);
                     event.stopPropagation();
@@ -8487,9 +8487,9 @@ const menubottom1 = document.getElementById('menubtm');
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
                 if (selectedLine) {
+                    filtre.style.display = 'block';
                     filtre.classList.remove('slide-upc');
                     filtre.classList.add('slide-downc');
-                    filtre.style.display = 'flex';
                 }
             }, 10);
                 isMenuVisible = false; 
