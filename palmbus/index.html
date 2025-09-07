@@ -780,7 +780,7 @@
         cursor: pointer;
         bottom: 10px;
         left: 50%;
-        transform: translateX(-50%) translateY(-100%);
+        transform: translateX(-50%) translateY(-100%) scaleX(0.5);
         opacity: 0;
         filter: blur(5px);
         transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
@@ -1012,7 +1012,7 @@
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.2s ease-in, filter 0.2s ease-in;
     }
     .slide-downc {
-        transform: translateY(-220%) translateX(-50%);
+        transform: translateY(-220%) translateX(-50%) scaleX(1);
         opacity: 1;
         filter: blur(0);
         backdrop-filter: blur(1px);
@@ -1875,7 +1875,7 @@
 
 </head>
 <body>
-<div class="filtre slide-upc ripple-container" id="filtre">
+<div class="filtre ripple-container" id="filtre">
     <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
 </div>
 
@@ -3465,7 +3465,6 @@ function showUpdatePopup(link) {
     menubottom1.classList.add('slide-upb');
     if (selectedLine) {
         const filtre = document.getElementById('filtre');
-        filtre.classList.add('slide-upc');
         filtre.classList.remove('slide-downc');
         filtre.addEventListener('animationend', () => {
             filtre.style.display = 'none';
@@ -3555,7 +3554,6 @@ function showUpdatePopupmusic(link) {
     menubottom1.classList.add('slide-upb');
     if (selectedLine) {
         const filtre = document.getElementById('filtre');
-        filtre.classList.add('slide-upc');
         filtre.classList.remove('slide-downc');
         setTimeout(() => {
             filtre.style.display = 'none';
@@ -4988,7 +4986,6 @@ function filterByLine(lineId) {
 
   if (selectedLines.length === 0) {
     const filtre = document.getElementById('filtre');
-    filtre.classList.add('slide-upc');
     filtre.classList.remove('slide-downc');
     setTimeout(() => {
         filtre.style.display = 'none';
@@ -5119,7 +5116,6 @@ function showPopup() {
             menubottom1.classList.add('slide-upb');
             if (selectedLine) {
                 const filtre = document.getElementById('filtre');
-                filtre.classList.add('slide-upc');
                 filtre.classList.remove('slide-downc');
                 setTimeout(() => {
                     filtre.style.display = 'none';
@@ -5177,7 +5173,6 @@ function closePopup() {
 const filtre = document.getElementById('filtre');
     filtre.onclick = () => {
         if (selectedLine) {
-            filtre.classList.add('slide-upc');
             filtre.classList.remove('slide-downc');
             setTimeout(() => {
                 filtre.style.display = 'none';
@@ -7613,7 +7608,6 @@ function closeMenu() {
         menubottom1.classList.add('slide-downb');
         if (selectedLine) {
             filtre.style.display = 'block';
-            filtre.classList.remove('slide-upc');
             filtre.classList.add('slide-downc');
         }
     }, 10);
@@ -7776,7 +7770,6 @@ function toggleMapView(forceState) {
         if (selectedLine) {
             const filtre = document.getElementById('filtre');
             filtre.style.display = 'block';
-            filtre.classList.remove('slide-upc');
             filtre.classList.add('slide-downc');
         }
     }, 10);
@@ -8348,7 +8341,6 @@ sortedLines.forEach(line => {
                         menubottom1.classList.add('slide-downb');
                         if (selectedLine) {
                             filtre.style.display = 'block';
-                            filtre.classList.remove('slide-upc');
                             filtre.classList.add('slide-downc');
                         }
                     }, 10);
@@ -8435,7 +8427,6 @@ const menubottom1 = document.getElementById('menubtm');
             menubottom1.classList.add('slide-upb');
             if (selectedLine) {
                 const filtre = document.getElementById('filtre');
-                filtre.classList.add('slide-upc');
                 filtre.classList.remove('slide-downc');
                 setTimeout(() => {
                     filtre.style.display = 'none';
@@ -8488,7 +8479,6 @@ const menubottom1 = document.getElementById('menubtm');
                 menubottom1.classList.add('slide-downb');
                 if (selectedLine) {
                     filtre.style.display = 'block';
-                    filtre.classList.remove('slide-upc');
                     filtre.classList.add('slide-downc');
                 }
             }, 10);
