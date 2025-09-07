@@ -69,6 +69,19 @@
         font-weight: 400;
         font-style: normal;
     }
+    img {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        pointer-events: none;
+        -webkit-user-drag: none;
+        user-drag: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+        border: none;
+    }
     #map {
         position: absolute;
         top: 0;
@@ -188,7 +201,7 @@
         opacity: 0;
     }
     #menubtm {
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out, background-color 0.5s;
+        transition: transform 0.7s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out, background-color 0.5s;
     }
     @keyframes fadeInPopupSvc {
         from {
@@ -774,31 +787,7 @@
             opacity: 1;
         }
     }
-    .filtre {
-        display: none;
-        position: absolute;
-        cursor: pointer;
-        bottom: 10px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-100%);
-        opacity: 0;
-        filter: blur(5px);
-        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
-        padding: 10px 15px;
-        border: none;
-        list-style: none;
-        margin: 0;
-        z-index: 10000;
-        background-color: #0f056b9c;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-        border-radius: 18px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    }
-    .filtre-texte {
-        color: #fff;
-    }
+
     .menubottom-ul {
         display: flex;
         position: fixed;
@@ -815,9 +804,6 @@
         -webkit-backdrop-filter: blur(3px);
         border-radius: 40px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    }
-    .menubottom-ul:active {
-        transform: translateX(-50%) scale(1.05); 
     }
     .menubottom ul li {
         margin: auto;
@@ -999,29 +985,64 @@
         transition: transform 0.2s ease-in, opacity 0.2s ease-in, filter 0.2s ease-in;
     }
     .slide-downb {
-        transform: translateY(0) translateX(-50%);
+        animation: apparitionMenuBas 0.6s cubic-bezier(0.25, 1.5, 0.5, 1);
         opacity: 1;
         filter: blur(0);
         backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(1px);
+        transform: translateY(0) translateX(-50%) scaleX(1);
+        transition: transform 0.45s ease-out, opacity 0.2s ease-in, filter 0.2s ease-in;
+        cursor: pointer;
+    }
+
+
+    @keyframes apparitionMenuBas {
+        0% {
+            transform: translateY(100%) translateX(-50%) scaleX(0.5);
+            opacity: 0;
+            filter: blur(10px);
+        }
+        100% {
+            transform: translateY(0) translateX(-50%) scaleX(1);
+            opacity: 1;
+            filter: blur(0);
+        }
     }
     .slide-upb {
-        transform: translateY(100%) translateX(-50%);
+        animation: disparitionMenuBas 0.6s cubic-bezier(0.25, 1.5, 0.5, 1) forwards;
         opacity: 0;
         filter: blur(5px);
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.2s ease-in, filter 0.2s ease-in;
     }
+    @keyframes disparitionMenuBas {
+        0% {
+            transform: translateY(0) translateX(-50%) scaleX(1);
+            opacity: 1;
+            filter: blur(0);
+        }
+        100% {
+            transform: translateY(100%) translateX(-50%) scaleX(0.5);
+            opacity: 0;
+            filter: blur(10px);
+        }
+    }
+    .slide-downb:active {
+        transform: translateY(0) translateX(-50%) scale(1.05);
+    }
     .slide-downc {
-        transform: translateY(-220%) translateX(-50%);
+        display: block;
+        transform: translateY(-220%) translateX(-50%) scaleX(1);
         opacity: 1;
         filter: blur(0);
         backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(1px);
+        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
     .slide-upc {
         transform: translateY(100%) translateX(-50%);
         opacity: 0;
         filter: blur(5px);
+        transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
     #popup1::-webkit-scrollbar {
         width: 8px;
@@ -1869,14 +1890,11 @@
 }
 
 
+
 </style>
 
 </head>
 <body>
-<div class="filtre slide-upc ripple-container" id="filtre">
-    <span data-i18n="filtersreset" class="filtre-texte">Réinitialiser les filtres</span>
-</div>
-
  <div class="menubottom">
         <ul id="menubtm" class="menubottom-ul ripple-container">
             <li>
@@ -2137,7 +2155,7 @@
         });
 
 
-        VERSION_NAME = '3.1.0.0 Beta 3';
+        VERSION_NAME = '3.1.0.0 Release Candidate 1';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -2523,11 +2541,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
 
-    if (localStorage.getItem('transparency') !== 'true') {
-        if (window.innerWidth > 1024) {
+    if (localStorage.getItem('premiereUtilisation') !== 'true') {
+        if (localStorage.getItem('transparency') !== 'true') {
             localStorage.setItem('transparency', true);
-            toastBottomRight.info('Pour votre confort à l\'utilisation de l\'app sur PC, My Bus Finder a automatiquement activé le mode transparence rétracté pour le menu Véhicules en service. Vous pourrez désactiver ce paramètre à tout moment. ');
-            soundsUX('MBF_NotificationInfo');
+            localStorage.setItem('premiereUtilisation', true);
         }
     }
 
@@ -3065,7 +3082,6 @@ async function changeColorBkg(selectedTheme = null) {
     localStorage.setItem("colorbkg", baseColor);
 
     document.getElementById("menubtm").style.backgroundColor = colorWithAlpha;
-    document.getElementById("filtre").style.backgroundColor = colorWithAlpha;
     document.documentElement.style.backgroundColor = colorWithAlpha;
 
     window.colorbkg = baseColor;
@@ -3463,12 +3479,6 @@ function showUpdatePopup(link) {
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
     if (selectedLine) {
-        const filtre = document.getElementById('filtre');
-        filtre.classList.add('slide-upc');
-        filtre.classList.remove('slide-downc');
-        filtre.addEventListener('animationend', () => {
-            filtre.style.display = 'none';
-        });
         resetMapView();            
     }
 
@@ -3553,13 +3563,6 @@ function showUpdatePopupmusic(link) {
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
     if (selectedLine) {
-        const filtre = document.getElementById('filtre');
-        filtre.classList.add('slide-upc');
-        filtre.classList.remove('slide-downc');
-        setTimeout(() => {
-            filtre.style.display = 'none';
-        }, 500);
-            
         resetMapView();            
     }
 
@@ -4306,9 +4309,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         position: relative;
         border-radius: 50%;
         border: 2px solid white;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
-                    0 2px 6px rgba(0, 0, 0, 0.15),
-                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         backdrop-filter: blur(4px);
@@ -4346,8 +4346,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             top: -2px;
             transform-origin: 2px; 
             transform: rotate(${bearing - 90}deg);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));"
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"
             viewBox="0 0 24 24">
             
             <path 
@@ -4414,7 +4413,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
-        const filtre = document.getElementById('filtre');
             safeVibrate([50]);
             soundsUX('MBF_VehicleOpen');
 
@@ -4425,7 +4423,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
                 menubtm.style.backgroundColor = `${color}9c`;
-                filtre.style.backgroundColor = `${color}9c`;
 
                     function getOptimalTextColor(bgColor, options = {}) {
                     const {
@@ -4536,11 +4533,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
-                    }
-
-                    #filtre * {
-                        color: ${textColor};
-                        transition: color 0.5s ease;
                     }
                 `;
                 
@@ -4651,7 +4643,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
                 menubtm.style.backgroundColor = `${color}9c`;
-                filtre.style.backgroundColor = `${color}9c`;
 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
@@ -4664,10 +4655,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         color: ${textColor};
                     }
 
-                        #filtre * {
-                        color: ${textColor};
-                        transition: color 0.5s ease;
-                    }
                 `;
                 
                 document.head.appendChild(styleSheet);
@@ -4681,11 +4668,10 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
     marker.on('popupclose', async function(e) {
     const menubtm = document.getElementById('menubtm');
-    const filtre = document.getElementById('filtre');
     safeVibrate([50]);
     soundsUX('MBF_VehicleClose');
     
-    if (menubtm && filtre) {
+    if (menubtm) {
         try {
             setTimeout(async () => {
                 if (lastActiveMarkerId === marker.id) {
@@ -4693,7 +4679,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                     
                     if (data) {
                         const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
-                        const filtreCurrentTransition = window.getComputedStyle(filtre).transition;
                         
                         if (!menubtmCurrentTransition.includes('background-color')) {
                             menubtm.style.transition = menubtmCurrentTransition 
@@ -4701,14 +4686,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                                 : 'background-color 0.5s ease';
                         }
                         
-                        if (!filtreCurrentTransition.includes('background-color')) {
-                            filtre.style.transition = filtreCurrentTransition 
-                                ? `${filtreCurrentTransition}, background-color 0.5s ease` 
-                                : 'background-color 0.5s ease';
-                        }
                         
                         menubtm.style.backgroundColor = `${window.colorbkg9c}`;
-                        filtre.style.backgroundColor = `${window.colorbkg9c}`;
                         
                         document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                         const styleSheet = document.createElement('style');
@@ -4819,11 +4798,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         #menubtm * {
                             color: ${textColor};
                         }
-
-                            #filtre * {
-                                color: ${textColor};
-                                transition: color 0.5s ease;
-                            }
                         `;
                         
                         document.head.appendChild(styleSheet);
@@ -4990,12 +4964,7 @@ function filterByLine(lineId) {
   updateLinesDisplay();
 
   if (selectedLines.length === 0) {
-    const filtre = document.getElementById('filtre');
-    filtre.classList.add('slide-upc');
-    filtre.classList.remove('slide-downc');
-    setTimeout(() => {
-        filtre.style.display = 'none';
-    }, 500);
+
     resetMapView();
   } else if (selectedLines.length === 1) {
     zoomToSelectedLine(selectedLines[0]);
@@ -5120,14 +5089,7 @@ function showPopup() {
             const menubotom = document.getElementById('menubottom');
             menubottom1.classList.remove('slide-downb');
             menubottom1.classList.add('slide-upb');
-            if (selectedLine) {
-                const filtre = document.getElementById('filtre');
-                filtre.classList.add('slide-upc');
-                filtre.classList.remove('slide-downc');
-                setTimeout(() => {
-                    filtre.style.display = 'none';
-                }, 500);
-        }
+
 
             menubottom1.addEventListener('transitionend', () => {
             if (menubottom1.classList.contains('slide-up')) {
@@ -5174,20 +5136,6 @@ function closePopup() {
 
 
 }
-
-
-
-const filtre = document.getElementById('filtre');
-    filtre.onclick = () => {
-        if (selectedLine) {
-            filtre.classList.add('slide-upc');
-            filtre.classList.remove('slide-downc');
-            setTimeout(() => {
-                filtre.style.display = 'none';
-            }, 500);
-    resetMapView();
-    }
-};
 
 
 
@@ -6828,12 +6776,10 @@ async function fetchVehiclePositions() {
                     
                     if (markers[id].isPopupOpen()) {
                         const menubtm = document.getElementById('menubtm');
-                        const filtre = document.getElementById('filtre');
                         if (menubtm) {
                             lastActiveColor = color;
                             
                             menubtm.style.backgroundColor = `${color}9c`;
-                            filtre.style.backgroundColor = `${color}9c`;
 
                             const textColor = getOptimalTextColor(color);
                             
@@ -6847,10 +6793,6 @@ async function fetchVehiclePositions() {
                                     color: ${textColor};
                                 }
 
-                                #filtre * {
-                                    color: ${textColor};
-                                    transition: color 0.5s ease;
-                                }
                             `;
                             
                             document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
@@ -7609,16 +7551,10 @@ function closeMenu() {
         }
     });
     isMenuVisible = false;
-    const filtre = document.getElementById('filtre');
     menubottom1.style.display = 'flex';
     setTimeout(() => {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
-        if (selectedLine) {
-            filtre.classList.remove('slide-upc');
-            filtre.classList.add('slide-downc');
-            filtre.style.display = 'flex';
-        }
     }, 10);
 }
 
@@ -7776,12 +7712,6 @@ function toggleMapView(forceState) {
     setTimeout(() => {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
-        if (selectedLine) {
-            const filtre = document.getElementById('filtre');
-            filtre.classList.remove('slide-upc');
-            filtre.classList.add('slide-downc');
-            filtre.style.display = 'flex';
-        }
     }, 10);
 
     applyMapView();
@@ -8344,16 +8274,10 @@ sortedLines.forEach(line => {
                         }
                     });
                     isMenuVisible = false;
-                    const filtre = document.getElementById('filtre');
                     menubottom1.style.display = 'flex';
                     setTimeout(() => {
                         menubottom1.classList.remove('slide-upb');
                         menubottom1.classList.add('slide-downb');
-                        if (selectedLine) {
-                            filtre.classList.remove('slide-upc');
-                            filtre.classList.add('slide-downc');
-                            filtre.style.display = 'flex';
-                        }
                     }, 10);
                     event.stopPropagation();
 
@@ -8436,15 +8360,7 @@ const menubottom1 = document.getElementById('menubtm');
             isMenuVisible = true; 
             menubottom1.classList.remove('slide-downb');
             menubottom1.classList.add('slide-upb');
-            if (selectedLine) {
-                const filtre = document.getElementById('filtre');
-                filtre.classList.add('slide-upc');
-                filtre.classList.remove('slide-downc');
-                setTimeout(() => {
-                    filtre.style.display = 'none';
-                }, 500);
-        }
-
+ 
             menubottom1.addEventListener('transitionend', () => {
             if (menubottom1.classList.contains('slide-up')) {
             menubottom1.style.display = 'none';
@@ -8485,15 +8401,9 @@ const menubottom1 = document.getElementById('menubtm');
             const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'flex';
 
-            const filtre = document.getElementById('filtre');
             setTimeout(() => {
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
-                if (selectedLine) {
-                    filtre.classList.remove('slide-upc');
-                    filtre.classList.add('slide-downc');
-                    filtre.style.display = 'flex';
-                }
             }, 10);
                 isMenuVisible = false; 
             };
