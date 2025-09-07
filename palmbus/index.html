@@ -979,10 +979,11 @@
         -webkit-backdrop-filter: blur(1px);
         transform: translateY(0) translateX(-50%) scaleX(1);
         transition: transform 0.2s ease-out, opacity 0.2s ease-in, filter 0.2s ease-in;
+        cursor: pointer;
     }
 
-    .slide-downb:active {
-        transform: translateY(0) translateX(-50%) scaleX(1) scale(1.05);
+    .slide-downb.slide-downb:active {
+        transform: translateY(0) translateX(-50%) scale(1.05);
     }
     @keyframes apparitionMenuBas {
         0% {
