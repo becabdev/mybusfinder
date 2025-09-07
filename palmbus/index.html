@@ -1013,10 +1013,8 @@
             filter: blur(10px);
         }
     }
-    .agrandissement-bottom {
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
-    }
-    .agrandissement-bottom:active {
+    .slide-downb:active {
+        animation: none;
         transform: translateY(0) translateX(-50%) scale(1.05);
     }
     .slide-downc {
@@ -1886,7 +1884,7 @@
 </head>
 <body>
  <div class="menubottom">
-        <ul id="menubtm" class="agrandissement-bottom menubottom-ul ripple-container">
+        <ul id="menubtm" class="menubottom-ul ripple-container">
             <li>
                 <a onclick="afficherMenu()"><span class="icon"><img src="src/menu.png" id="menuicon" style="width: 35px; height: 35px;"></img></span> <span
                     class="title" data-i18n="menu">Menu</span></a>
