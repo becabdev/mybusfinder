@@ -500,7 +500,7 @@
                     const response = await fetch('setvar/settings/BusTrackerAPI/networkId.txt');
                     const networkId = (await response.text()).trim();
                     
-                    const busData = await this.safeFetch(`${this.API_BASE_URL}/vehicles?networkId=${networkId}&_=${Date.now()}`);
+                    const busData = await this.safeFetch(`${this.API_BASE_URL}/vehicles?networkId=${networkId.replace(" ", "")}&_=${Date.now()}`);
                     
                     const uniqueLineIds = [...new Set(busData.filter(bus => bus.lineId).map(bus => bus.lineId))];
                     await this.loadLineDetails(uniqueLineIds);
