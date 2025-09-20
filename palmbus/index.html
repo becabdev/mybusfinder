@@ -3218,7 +3218,7 @@ async function initMap() {
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-        const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
         
         const tileLayer = L.tileLayer(tileLayerUrl, {
             minZoom: 12,
@@ -3242,13 +3242,13 @@ async function initMap() {
     mapInstance.on('locationfound', onLocationFound);
     mapInstance.on('locationerror', onLocationError);
 
-
+    // INTÉGRATION ASSISTANT VOCAL INTELLIGENT
     setTimeout(() => {
-        if (typeof window.initVoiceAssistant === 'function') {
+        if (typeof window.initSmartVoiceAssistant === 'function') {
             try {
-                const voiceAssistant = window.initVoiceAssistant(mapInstance);
+                const voiceAssistant = window.initSmartVoiceAssistant(mapInstance);
                 if (voiceAssistant) {
-                    console.log('Assistant vocal initialisé avec succès');
+                    console.log('Assistant vocal intelligent initialisé avec succès');
                 } else {
                     console.warn('Assistant vocal non initialisé - vérifiez les éléments HTML');
                 }
@@ -3256,14 +3256,15 @@ async function initMap() {
                 console.error('Erreur lors de l\'initialisation de l\'assistant vocal:', error);
             }
         } else {
-            console.warn('Fonction initVoiceAssistant non trouvée - assistant vocal non disponible');
+            console.warn('Fonction initSmartVoiceAssistant non trouvée');
         }
-    }, 1500); 
+    }, 1500);
 
     return mapInstance;
 }
 
-class BusVoiceAssistant {
+// ASSISTANT VOCAL INTELLIGENT avec analyse HTML et système d'apprentissage
+class SmartBusVoiceAssistant {
     constructor(options = {}) {
         this.map = options.map;
         this.busMarkers = options.busMarkers || {};
@@ -3275,15 +3276,67 @@ class BusVoiceAssistant {
         this.isListening = false;
         this.isSupported = false;
         
+        // Système d'apprentissage et d'actions personnalisées
+        this.actionHandlers = new Map();
+        this.learningData = {
+            stopNames: new Set(),
+            lineNumbers: new Set(),
+            destinations: new Set(),
+            parkNumbers: new Set(),
+            phrases: []
+        };
+        
+        this.setupDefaultActions();
         this.init();
+    }
+    
+    setupDefaultActions() {
+        // Action pour rechercher un bus par numéro
+        this.addAction('find_bus_by_number', {
+            patterns: [/bus\s*(\d+)/i, /véhicule\s*(\d+)/i, /numéro\s*(\d+)/i],
+            handler: (matches, transcript) => this.findBusByNumber(matches[1], transcript),
+            description: 'Trouver un bus par son numéro'
+        });
+        
+        // Action pour rechercher par ligne
+        this.addAction('find_by_line', {
+            patterns: [/ligne\s*(\d+)/i, /line\s*(\d+)/i],
+            handler: (matches, transcript) => this.findBusByLine(matches[1], transcript),
+            description: 'Trouver des bus d\'une ligne spécifique'
+        });
+        
+        // Action pour rechercher par arrêt
+        this.addAction('find_by_stop', {
+            patterns: [
+                /arrêt\s*(.+)/i, 
+                /station\s*(.+)/i,
+                /va à\s*(.+)/i,
+                /direction\s*(.+)/i,
+                /vers\s*(.+)/i
+            ],
+            handler: (matches, transcript) => this.findBusByStop(matches[1], transcript),
+            description: 'Trouver un bus qui va à un arrêt'
+        });
+        
+        // Action pour rechercher par destination
+        this.addAction('find_by_destination', {
+            patterns: [
+                /destination\s*(.+)/i,
+                /terminus\s*(.+)/i,
+                /qui va vers\s*(.+)/i
+            ],
+            handler: (matches, transcript) => this.findBusByDestination(matches[1], transcript),
+            description: 'Trouver un bus par sa destination finale'
+        });
     }
     
     init() {
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             this.isSupported = true;
             this.setupRecognition();
+            this.analyzeExistingMarkers();
         } else {
-            this.updateStatus('❌ Speech Recognition non supporté par votre navigateur', 'error');
+            this.updateStatus('Speech Recognition non supporté', 'error');
             if (this.buttonElement) this.buttonElement.disabled = true;
             return;
         }
@@ -3292,6 +3345,64 @@ class BusVoiceAssistant {
             this.buttonElement.addEventListener('click', () => {
                 this.toggleListening();
             });
+        }
+    }
+    
+    // Analyse des marqueurs existants pour l'apprentissage
+    analyzeExistingMarkers() {
+        const markers = window.markers || {};
+        
+        Object.values(markers).forEach(marker => {
+            if (marker && marker._popup && marker._popup._content) {
+                this.extractDataFromMarker(marker);
+            }
+        });
+        
+        console.log('Données d\'apprentissage collectées:', this.learningData);
+    }
+    
+    extractDataFromMarker(marker) {
+        try {
+            const content = marker._popup._content;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // Extraire les noms d'arrêts depuis nextStopsHTML
+            const stopNames = tempDiv.querySelectorAll('.stop-name');
+            stopNames.forEach(stop => {
+                if (stop.textContent) {
+                    this.learningData.stopNames.add(stop.textContent.trim().toLowerCase());
+                }
+            });
+            
+            // Extraire les numéros de ligne
+            const lineElements = tempDiv.querySelectorAll('.line-title');
+            lineElements.forEach(line => {
+                const lineMatch = line.textContent.match(/ligne\s*(\w+)/i);
+                if (lineMatch) {
+                    this.learningData.lineNumbers.add(lineMatch[1].toLowerCase());
+                }
+            });
+            
+            // Extraire les destinations
+            const destinationElements = tempDiv.querySelectorAll('.vehicle-direction');
+            destinationElements.forEach(dest => {
+                const destText = dest.textContent.replace('➜', '').trim();
+                if (destText) {
+                    this.learningData.destinations.add(destText.toLowerCase());
+                }
+            });
+            
+            // Extraire les numéros de parc
+            const parcElements = tempDiv.querySelectorAll('.parc-number');
+            parcElements.forEach(parc => {
+                if (parc.textContent) {
+                    this.learningData.parkNumbers.add(parc.textContent.trim());
+                }
+            });
+            
+        } catch (error) {
+            console.warn('Erreur extraction données marqueur:', error);
         }
     }
     
@@ -3305,9 +3416,9 @@ class BusVoiceAssistant {
         
         this.recognition.onstart = () => {
             this.isListening = true;
-            this.updateStatus('🎤 Écoute en cours... Parlez maintenant', 'listening');
+            this.updateStatus('Écoute en cours... Parlez maintenant', 'listening');
             if (this.buttonElement) {
-                this.buttonElement.textContent = '⏹️ Arrêter l\'écoute';
+                this.buttonElement.textContent = 'Arrêter l\'écoute';
                 this.buttonElement.classList.add('listening');
             }
             this.updateDisplay('Écoute en cours...');
@@ -3329,37 +3440,259 @@ class BusVoiceAssistant {
             this.updateDisplay(`Texte reconnu: "${transcript}"`);
             
             if (isFinal) {
-                this.processCommand(transcript.trim());
+                this.processSmartCommand(transcript.trim());
             }
         };
         
         this.recognition.onerror = (event) => {
-            console.error('Erreur de reconnaissance vocale:', event.error);
             let errorMessage = 'Erreur de reconnaissance vocale';
-            
             switch(event.error) {
-                case 'no-speech':
-                    errorMessage = '🔇 Aucune parole détectée';
-                    break;
-                case 'audio-capture':
-                    errorMessage = '🎤 Microphone non accessible';
-                    break;
-                case 'not-allowed':
-                    errorMessage = '🚫 Permission microphone refusée';
-                    break;
-                case 'network':
-                    errorMessage = '🌐 Erreur réseau';
-                    break;
-                default:
-                    errorMessage = `❌ Erreur: ${event.error}`;
+                case 'no-speech': errorMessage = 'Aucune parole détectée'; break;
+                case 'audio-capture': errorMessage = 'Microphone non accessible'; break;
+                case 'not-allowed': errorMessage = 'Permission microphone refusée'; break;
+                case 'network': errorMessage = 'Erreur réseau'; break;
+                default: errorMessage = `Erreur: ${event.error}`;
             }
-            
             this.updateStatus(errorMessage, 'error');
             this.resetAssistant();
         };
         
         this.recognition.onend = () => {
             this.resetAssistant();
+        };
+    }
+    
+    processSmartCommand(transcript) {
+        this.updateStatus('Analyse intelligente de la commande...', 'processing');
+        this.updateDisplay(`Commande: "${transcript}"\n\nAnalyse en cours...`);
+        
+        // Enregistrer la phrase pour l'apprentissage
+        this.learningData.phrases.push({
+            text: transcript,
+            timestamp: Date.now()
+        });
+        
+        // Tester chaque action enregistrée
+        let actionFound = false;
+        
+        for (let [actionName, actionData] of this.actionHandlers) {
+            for (let pattern of actionData.patterns) {
+                const match = transcript.match(pattern);
+                if (match) {
+                    console.log(`Action trouvée: ${actionName}`, match);
+                    actionData.handler(match, transcript);
+                    actionFound = true;
+                    break;
+                }
+            }
+            if (actionFound) break;
+        }
+        
+        if (!actionFound) {
+            this.handleUnknownCommand(transcript);
+        }
+        
+        setTimeout(() => this.resetAssistant(), 3000);
+    }
+    
+    findBusByNumber(number, transcript) {
+        this.analyzeExistingMarkers(); // Mise à jour des données
+        
+        const busId = parseInt(number);
+        const markers = window.markers || {};
+        
+        if (markers[busId]) {
+            this.selectAndShowBus(markers[busId], `Bus ${number} trouvé`, transcript);
+        } else {
+            this.updateStatus(`Bus ${number} introuvable`, 'error');
+            this.updateDisplay(`Bus ${number} non trouvé sur la carte`);
+        }
+    }
+    
+    findBusByLine(lineNumber, transcript) {
+        this.analyzeExistingMarkers();
+        
+        const markers = window.markers || {};
+        const matchingBuses = [];
+        
+        Object.values(markers).forEach(marker => {
+            if (marker.line && marker.line.toString().toLowerCase().includes(lineNumber.toLowerCase())) {
+                matchingBuses.push(marker);
+            }
+        });
+        
+        if (matchingBuses.length > 0) {
+            // Prendre le premier bus de la ligne
+            this.selectAndShowBus(matchingBuses[0], `Bus de la ligne ${lineNumber} trouvé`, transcript);
+        } else {
+            this.updateStatus(`Aucun bus de la ligne ${lineNumber}`, 'error');
+            this.updateDisplay(`Ligne ${lineNumber} non trouvée`);
+        }
+    }
+    
+    findBusByStop(stopName, transcript) {
+        this.analyzeExistingMarkers();
+        
+        const markers = window.markers || {};
+        const matchingBuses = [];
+        const cleanStopName = stopName.trim().toLowerCase();
+        
+        Object.values(markers).forEach(marker => {
+            if (marker._popup && marker._popup._content) {
+                const content = marker._popup._content.toLowerCase();
+                
+                // Chercher dans le contenu HTML
+                if (content.includes(cleanStopName)) {
+                    // Vérifier si c'est dans les prochains arrêts
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = marker._popup._content;
+                    
+                    const stopElements = tempDiv.querySelectorAll('.stop-name');
+                    for (let stopEl of stopElements) {
+                        if (stopEl.textContent.toLowerCase().includes(cleanStopName)) {
+                            // Calculer la position dans la liste (priorité au premier)
+                            const allStops = Array.from(stopElements);
+                            const position = allStops.indexOf(stopEl);
+                            
+                            matchingBuses.push({
+                                marker: marker,
+                                priority: position,
+                                stopName: stopEl.textContent.trim()
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        
+        if (matchingBuses.length > 0) {
+            // Trier par priorité (position dans la liste des arrêts)
+            matchingBuses.sort((a, b) => a.priority - b.priority);
+            const bestMatch = matchingBuses[0];
+            
+            this.selectAndShowBus(
+                bestMatch.marker, 
+                `Bus vers ${bestMatch.stopName} trouvé`, 
+                transcript
+            );
+        } else {
+            this.updateStatus(`Aucun bus vers ${stopName}`, 'error');
+            this.updateDisplay(`Arrêt "${stopName}" non trouvé dans les prochains arrêts`);
+        }
+    }
+    
+    findBusByDestination(destination, transcript) {
+        this.analyzeExistingMarkers();
+        
+        const markers = window.markers || {};
+        const matchingBuses = [];
+        const cleanDestination = destination.trim().toLowerCase();
+        
+        Object.values(markers).forEach(marker => {
+            if (marker.destination && 
+                marker.destination.toLowerCase().includes(cleanDestination)) {
+                matchingBuses.push(marker);
+            }
+        });
+        
+        if (matchingBuses.length > 0) {
+            this.selectAndShowBus(matchingBuses[0], `Bus vers ${destination} trouvé`, transcript);
+        } else {
+            this.updateStatus(`Aucun bus vers ${destination}`, 'error');
+            this.updateDisplay(`Destination "${destination}" non trouvée`);
+        }
+    }
+    
+    selectAndShowBus(marker, successMessage, originalCommand) {
+        marker.openPopup();
+        this.map.setView(marker.getLatLng(), 15);
+        
+        this.updateStatus(successMessage, 'ready');
+        this.updateDisplay(`Commande exécutée!\n\n"${originalCommand}"\n➤ ${successMessage}`);
+    }
+    
+    handleUnknownCommand(transcript) {
+        // Essayer de deviner l'intention
+        const suggestions = this.generateSuggestions(transcript);
+        
+        this.updateStatus('Commande non comprise', 'error');
+        this.updateDisplay(
+            `Commande: "${transcript}"\n\n` +
+            `Suggestions:\n${suggestions.join('\n')}`
+        );
+    }
+    
+    generateSuggestions(transcript) {
+        const suggestions = [];
+        
+        // Chercher des nombres dans le transcript
+        const numbers = transcript.match(/\d+/g);
+        if (numbers) {
+            numbers.forEach(num => {
+                suggestions.push(`"Bus ${num}" ou "Ligne ${num}"`);
+            });
+        }
+        
+        // Chercher des correspondances partielles avec les arrêts connus
+        for (let stopName of this.learningData.stopNames) {
+            if (transcript.toLowerCase().includes(stopName.substring(0, 3))) {
+                suggestions.push(`"Arrêt ${stopName}"`);
+                break;
+            }
+        }
+        
+        if (suggestions.length === 0) {
+            suggestions.push(
+                '"Bus 432" - pour un bus spécifique',
+                '"Ligne A" - pour une ligne',
+                '"Arrêt Gare" - pour un arrêt'
+            );
+        }
+        
+        return suggestions.slice(0, 3);
+    }
+    
+    // API pour ajouter de nouvelles actions facilement
+    addAction(name, actionConfig) {
+        if (!actionConfig.patterns || !actionConfig.handler) {
+            throw new Error('Action doit avoir patterns et handler');
+        }
+        
+        this.actionHandlers.set(name, {
+            patterns: actionConfig.patterns,
+            handler: actionConfig.handler,
+            description: actionConfig.description || 'Action personnalisée'
+        });
+        
+        console.log(`Action "${name}" ajoutée:`, actionConfig.description);
+    }
+    
+    // API pour supprimer une action
+    removeAction(name) {
+        return this.actionHandlers.delete(name);
+    }
+    
+    // API pour lister les actions disponibles
+    getAvailableActions() {
+        const actions = {};
+        for (let [name, data] of this.actionHandlers) {
+            actions[name] = {
+                description: data.description,
+                patterns: data.patterns.map(p => p.toString())
+            };
+        }
+        return actions;
+    }
+    
+    // API pour obtenir les données d'apprentissage
+    getLearningData() {
+        return {
+            stopNames: Array.from(this.learningData.stopNames),
+            lineNumbers: Array.from(this.learningData.lineNumbers),
+            destinations: Array.from(this.learningData.destinations),
+            parkNumbers: Array.from(this.learningData.parkNumbers),
+            recentPhrases: this.learningData.phrases.slice(-10)
         };
     }
     
@@ -3370,60 +3703,6 @@ class BusVoiceAssistant {
             this.recognition.stop();
         } else {
             this.recognition.start();
-        }
-    }
-    
-    processCommand(transcript) {
-        this.updateStatus('🔄 Traitement de la commande...', 'processing');
-        this.updateDisplay(`Commande reçue: "${transcript}"\n\nAnalyse en cours...`);
-        
-        const patterns = [
-            /bus\s*(\d+)/i,
-            /numéro\s*(\d+)/i,
-            /ligne\s*(\d+)/i,
-            /afficher\s*bus\s*(\d+)/i,
-            /(\d+)/
-        ];
-        
-        let busNumber = null;
-        
-        for (const pattern of patterns) {
-            const match = transcript.match(pattern);
-            if (match && match[1]) {
-                busNumber = match[1];
-                break;
-            }
-        }
-        
-        if (busNumber) {
-            this.openBusPopup(busNumber, transcript);
-        } else {
-            this.updateStatus('❌ Numéro de bus non reconnu', 'error');
-            this.updateDisplay(`Commande non comprise: "${transcript}"\n\nEssayez: "Bus 432" ou "Ligne 156"`);
-        }
-        
-        setTimeout(() => {
-            this.resetAssistant();
-        }, 3000);
-    }
-    
-    openBusPopup(busNumber, originalCommand) {
-        const busId = parseInt(busNumber);
-        
-        if (window.markers) {
-            this.busMarkers = window.markers;
-        }
-        
-        if (this.busMarkers[busId]) {
-            this.busMarkers[busId].openPopup();
-            
-            this.map.setView(this.busMarkers[busId].getLatLng(), 15);
-            
-            this.updateStatus(`✅ Bus ${busNumber} trouvé et affiché`, 'ready');
-            this.updateDisplay(`✅ Commande exécutée avec succès!\n\nCommande: "${originalCommand}"\n➤ Popup du bus ${busNumber} ouverte`);
-        } else {
-            this.updateStatus(`⚠️ Bus ${busNumber} introuvable`, 'error');
-            this.updateDisplay(`❌ Bus non trouvé!\n\nCommande: "${originalCommand}"\n➤ Le bus ${busNumber} n'existe pas sur la carte`);
         }
     }
     
@@ -3443,18 +3722,14 @@ class BusVoiceAssistant {
     resetAssistant() {
         this.isListening = false;
         if (this.buttonElement) {
-            this.buttonElement.textContent = '🎤 Démarrer l\'Assistant Vocal';
+            this.buttonElement.textContent = 'Démarrer l\'Assistant Vocal';
             this.buttonElement.classList.remove('listening');
         }
         
         setTimeout(() => {
-            this.updateStatus('✅ Assistant prêt', 'ready');
+            this.updateStatus('Assistant prêt', 'ready');
             this.updateDisplay('Prêt à écouter vos commandes vocales...');
         }, 2000);
-    }
-    
-    addBus(id, marker) {
-        this.busMarkers[id] = marker;
     }
     
     startListening() {
@@ -3464,38 +3739,80 @@ class BusVoiceAssistant {
     }
 }
 
-window.initVoiceAssistant = function(mapInstance) {
+// FONCTION D'INITIALISATION DE L'ASSISTANT VOCAL INTELLIGENT
+window.initSmartVoiceAssistant = function(mapInstance) {
     const displayElement = document.getElementById('voiceDisplay');
     const statusElement = document.getElementById('voiceStatus');
     const buttonElement = document.getElementById('voiceButton');
     
     if (!displayElement || !statusElement || !buttonElement) {
-        console.warn('Éléments HTML de l\'assistant vocal non trouvés. Ajoutez les divs nécessaires à votre HTML.');
+        console.warn('Éléments HTML de l\'assistant vocal non trouvés');
         return null;
     }
     
-    const voiceAssistant = new BusVoiceAssistant({
+    const voiceAssistant = new SmartBusVoiceAssistant({
         map: mapInstance,
-        busMarkers: window.markers || {}, 
+        busMarkers: window.markers || {},
         displayElement: displayElement,
         statusElement: statusElement,
         buttonElement: buttonElement
     });
     
-    window.busVoiceAssistant = voiceAssistant;
+    window.smartVoiceAssistant = voiceAssistant;
     
+    // Synchronisation automatique
     const originalFetchVehiclePositions = window.fetchVehiclePositions;
     if (originalFetchVehiclePositions) {
         window.fetchVehiclePositions = async function() {
             await originalFetchVehiclePositions.apply(this, arguments);
-            if (window.busVoiceAssistant && window.markers) {
-                window.busVoiceAssistant.busMarkers = window.markers;
+            if (window.smartVoiceAssistant && window.markers) {
+                window.smartVoiceAssistant.busMarkers = window.markers;
+                // Re-analyser les marqueurs pour mettre à jour l'apprentissage
+                window.smartVoiceAssistant.analyzeExistingMarkers();
             }
         };
     }
     
     return voiceAssistant;
 };
+
+// API FACILITÉE POUR AJOUTER DES ACTIONS PERSONNALISÉES
+window.addVoiceAction = function(name, patterns, handler, description) {
+    if (window.smartVoiceAssistant) {
+        window.smartVoiceAssistant.addAction(name, {
+            patterns: Array.isArray(patterns) ? patterns : [patterns],
+            handler: handler,
+            description: description
+        });
+    } else {
+        console.warn('Assistant vocal non initialisé');
+    }
+};
+
+// EXEMPLES D'UTILISATION DE L'API D'APPRENTISSAGE
+/*
+// Exemple 1: Action pour centrer sur un point
+addVoiceAction(
+    'center_map', 
+    [/centre.*(gare|centre.ville)/i, /va au centre/i],
+    (matches, transcript) => {
+        map.setView([43.7102, 7.2620], 16);
+        console.log('Centrage sur le centre-ville');
+    },
+    'Centrer la carte sur le centre-ville'
+);
+
+// Exemple 2: Action pour afficher des statistiques
+addVoiceAction(
+    'show_stats',
+    [/combien.*bus/i, /statistiques/i, /nombre.*véhicules/i],
+    (matches, transcript) => {
+        const count = Object.keys(window.markers || {}).length;
+        alert(`Il y a actuellement ${count} bus sur la carte`);
+    },
+    'Afficher le nombre de bus'
+);
+*/
 
 function onLocationFound(e) {
     const radius = e.accuracy / 2;
