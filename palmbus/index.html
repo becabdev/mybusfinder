@@ -3263,7 +3263,7 @@ async function initMap() {
     return mapInstance;
 }
 
-// ASSISTANT VOCAL INTELLIGENT adapté à votre système exact
+// ASSISTANT VOCAL INTELLIGENT adapté à votre système fetchVehiclePositions
 class SmartBusVoiceAssistant {
     constructor(options = {}) {
         this.map = options.map;
@@ -3276,77 +3276,45 @@ class SmartBusVoiceAssistant {
         this.isListening = false;
         this.isSupported = false;
         
-        // Système d'apprentissage adapté à vos données
+        // Système d'apprentissage basé sur vos données réelles
         this.actionHandlers = new Map();
         this.learningData = {
-            stopNames: new Map(), // nom -> Set de bus IDs
-            lineNumbers: new Map(), // ligne -> Set de bus IDs  
-            destinations: new Map(), // destination -> Set de bus IDs
-            parkNumbers: new Map(), // numéro parc -> bus ID
-            vehicleData: new Map() // ID -> données complètes du véhicule
+            stopNames: new Set(),
+            lineNumbers: new Set(),
+            destinations: new Set(),
+            parkNumbers: new Set(),
+            phrases: []
         };
         
         this.setupDefaultActions();
         this.init();
     }
     
-    // Fonction de similarité de chaînes (Levenshtein distance)
-    calculateSimilarity(str1, str2) {
-        const s1 = str1.toLowerCase().trim();
-        const s2 = str2.toLowerCase().trim();
-        
-        if (s1 === s2) return 1;
-        if (s1.includes(s2) || s2.includes(s1)) return 0.8;
-        
-        const longer = s1.length > s2.length ? s1 : s2;
-        const shorter = s1.length > s2.length ? s2 : s1;
-        
-        if (longer.length === 0) return 1;
-        
-        const editDistance = this.levenshteinDistance(longer, shorter);
-        return (longer.length - editDistance) / longer.length;
-    }
-    
-    levenshteinDistance(str1, str2) {
-        const matrix = [];
-        for (let i = 0; i <= str2.length; i++) {
-            matrix[i] = [i];
-        }
-        for (let j = 0; j <= str1.length; j++) {
-            matrix[0][j] = j;
-        }
-        for (let i = 1; i <= str2.length; i++) {
-            for (let j = 1; j <= str1.length; j++) {
-                if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-                    matrix[i][j] = matrix[i - 1][j - 1];
-                } else {
-                    matrix[i][j] = Math.min(
-                        matrix[i - 1][j - 1] + 1,
-                        matrix[i][j - 1] + 1,
-                        matrix[i - 1][j] + 1
-                    );
-                }
-            }
-        }
-        return matrix[str2.length][str1.length];
-    }
-    
     setupDefaultActions() {
-        // Action pour rechercher un bus par numéro de parc
+        // Action pour rechercher un bus par numéro de parc (ID)
         this.addAction('find_bus_by_number', {
-            patterns: [/bus\s*(\d+)/i, /véhicule\s*(\d+)/i, /numéro\s*(\d+)/i, /parc\s*(\d+)/i],
+            patterns: [
+                /bus\s*(\d+)/i, 
+                /véhicule\s*(\d+)/i, 
+                /numéro\s*(\d+)/i,
+                /parc\s*(\d+)/i
+            ],
             handler: (matches, transcript) => this.findBusByNumber(matches[1], transcript),
             description: 'Trouver un bus par son numéro de parc'
         });
         
-        // Action pour rechercher par ligne
+        // Action pour rechercher par ligne (utilise lineName et line)
         this.addAction('find_by_line', {
-            patterns: [/ligne\s*([a-z0-9]+)/i, /line\s*([a-z0-9]+)/i],
+            patterns: [
+                /ligne\s*([a-zA-Z0-9]+)/i, 
+                /line\s*([a-zA-Z0-9]+)/i,
+                /bus.*ligne\s*([a-zA-Z0-9]+)/i
+            ],
             handler: (matches, transcript) => this.findBusByLine(matches[1], transcript),
             description: 'Trouver des bus d\'une ligne spécifique'
         });
         
-        // Action pour rechercher par arrêt avec tolérance
+        // Action pour rechercher par arrêt (analyse nextStopsHTML)
         this.addAction('find_by_stop', {
             patterns: [
                 /arrêt\s*(.+)/i, 
@@ -3354,13 +3322,13 @@ class SmartBusVoiceAssistant {
                 /va à\s*(.+)/i,
                 /direction\s*(.+)/i,
                 /vers\s*(.+)/i,
-                /prochain\s*arrêt\s*(.+)/i
+                /prochain.*arrêt\s*(.+)/i
             ],
             handler: (matches, transcript) => this.findBusByStop(matches[1], transcript),
-            description: 'Trouver un bus qui va à un arrêt'
+            description: 'Trouver un bus qui va à un arrêt spécifique'
         });
         
-        // Action pour rechercher par destination/terminus
+        // Action pour rechercher par destination (utilise lastStopName)
         this.addAction('find_by_destination', {
             patterns: [
                 /destination\s*(.+)/i,
@@ -3388,103 +3356,169 @@ class SmartBusVoiceAssistant {
                 this.toggleListening();
             });
         }
-        
-        // Surveillance des changements de marqueurs
-        this.startMarkerWatcher();
     }
     
-    startMarkerWatcher() {
-        // Observer les changements dans window.markers
-        setInterval(() => {
-            if (window.markers) {
-                this.analyzeExistingMarkers();
-            }
-        }, 2000); // Vérification toutes les 2 secondes
-    }
-    
-    // Analyse adaptée à votre structure de données exacte
+    // Analyse des marqueurs basée sur vos structures de données réelles
     analyzeExistingMarkers() {
         const markers = window.markers || {};
         
+        // Vider les données précédentes pour une nouvelle analyse
+        this.learningData.stopNames.clear();
+        this.learningData.lineNumbers.clear();
+        this.learningData.destinations.clear();
+        this.learningData.parkNumbers.clear();
+        
         Object.entries(markers).forEach(([markerId, marker]) => {
             try {
-                // Données du véhicule depuis marker.vehicleData (votre structure)
-                const vehicleData = marker.vehicleData;
-                const line = marker.line;
-                const destination = marker.destination;
+                // Extraire les données du marker selon votre structure
                 
-                if (vehicleData) {
-                    // Stocker les données complètes du véhicule
-                    this.learningData.vehicleData.set(markerId, {
-                        id: markerId,
-                        vehicleData: vehicleData,
-                        line: line,
-                        destination: destination,
-                        marker: marker
-                    });
-                    
-                    // Numéro de parc (depuis vehicle.label ou vehicle.id)
-                    const parkNumber = vehicleData.vehicle?.label || vehicleData.vehicle?.id;
-                    if (parkNumber) {
-                        this.learningData.parkNumbers.set(parkNumber.toString(), markerId);
-                    }
-                    
-                    // Ligne
-                    if (line) {
-                        if (!this.learningData.lineNumbers.has(line)) {
-                            this.learningData.lineNumbers.set(line, new Set());
-                        }
-                        this.learningData.lineNumbers.get(line).add(markerId);
-                    }
-                    
-                    // Destination
-                    if (destination) {
-                        if (!this.learningData.destinations.has(destination.toLowerCase())) {
-                            this.learningData.destinations.set(destination.toLowerCase(), new Set());
-                        }
-                        this.learningData.destinations.get(destination.toLowerCase()).add(markerId);
+                // 1. Numéros de parc (les IDs des marqueurs)
+                this.learningData.parkNumbers.add(markerId.toString());
+                
+                // 2. Numéros de ligne (marker.line)
+                if (marker.line) {
+                    this.learningData.lineNumbers.add(marker.line.toString());
+                }
+                
+                // 3. Destinations (marker.destination)
+                if (marker.destination) {
+                    this.learningData.destinations.add(marker.destination.toLowerCase());
+                }
+                
+                // 4. Données du véhicule
+                if (marker.vehicleData && marker.vehicleData.vehicle) {
+                    const vehicleLabel = marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id;
+                    if (vehicleLabel) {
+                        this.learningData.parkNumbers.add(vehicleLabel.toString());
                     }
                 }
                 
-                // Analyser le contenu HTML de la popup pour les arrêts
+                // 5. Analyser le contenu de la popup pour les arrêts
                 if (marker._popup && marker._popup._content) {
-                    this.extractStopsFromPopupContent(marker._popup._content, markerId);
+                    this.extractStopsFromPopupContent(marker._popup._content);
+                }
+                
+                // 6. Analyser _lastNextStopsHTML s'il existe
+                if (marker._lastNextStopsHTML) {
+                    this.extractStopsFromNextStopsHTML(marker._lastNextStopsHTML);
                 }
                 
             } catch (error) {
-                console.warn('Erreur analyse marqueur:', markerId, error);
+                console.warn('Erreur extraction données marqueur:', markerId, error);
             }
+        });
+        
+        console.log('Données d\'apprentissage mises à jour:', {
+            arrêts: Array.from(this.learningData.stopNames),
+            lignes: Array.from(this.learningData.lineNumbers),
+            destinations: Array.from(this.learningData.destinations),
+            parcs: Array.from(this.learningData.parkNumbers)
         });
     }
     
-    extractStopsFromPopupContent(content, markerId) {
+    extractStopsFromNextStopsHTML(nextStopsHTML) {
+        if (!nextStopsHTML) return;
+        
         try {
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = content;
+            tempDiv.innerHTML = nextStopsHTML;
             
-            // Chercher les éléments avec class "stop-name" (votre structure exacte)
-            const stopElements = tempDiv.querySelectorAll('.stop-name');
+            // Chercher les noms d'arrêts dans les éléments .stop-name
+            const stopNameElements = tempDiv.querySelectorAll('.stop-name');
+            stopNameElements.forEach(element => {
+                const stopName = element.textContent?.trim();
+                if (stopName && stopName !== 'Inconnu') {
+                    this.learningData.stopNames.add(stopName.toLowerCase());
+                }
+            });
             
-            stopElements.forEach((stopElement, index) => {
-                const stopName = stopElement.textContent.trim();
-                if (stopName) {
-                    const stopKey = stopName.toLowerCase();
-                    
-                    if (!this.learningData.stopNames.has(stopKey)) {
-                        this.learningData.stopNames.set(stopKey, new Map());
+            // Chercher aussi dans les li qui contiennent les arrêts
+            const listItems = tempDiv.querySelectorAll('li');
+            listItems.forEach(li => {
+                const stopNameContainer = li.querySelector('.stop-name-container .stop-name');
+                if (stopNameContainer) {
+                    const stopName = stopNameContainer.textContent?.trim();
+                    if (stopName && stopName !== 'Inconnu') {
+                        this.learningData.stopNames.add(stopName.toLowerCase());
                     }
-                    
-                    // Stocker avec priorité (index 0 = prochain arrêt)
-                    this.learningData.stopNames.get(stopKey).set(markerId, {
-                        priority: index,
-                        originalName: stopName
-                    });
                 }
             });
             
         } catch (error) {
-            console.warn('Erreur extraction arrêts:', error);
+            console.warn('Erreur extraction nextStopsHTML:', error);
         }
+    }
+    
+    extractStopsFromPopupContent(popupContent) {
+        if (!popupContent) return;
+        
+        try {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = popupContent;
+            
+            // Chercher la destination dans .vehicle-direction
+            const directionElements = tempDiv.querySelectorAll('.vehicle-direction');
+            directionElements.forEach(element => {
+                const direction = element.textContent?.replace('➜', '').trim();
+                if (direction && direction !== 'Inconnu') {
+                    this.learningData.destinations.add(direction.toLowerCase());
+                }
+            });
+            
+            // Chercher les arrêts dans le contenu des prochains arrêts
+            const nextStopsContent = tempDiv.querySelector('#nextStopsContent');
+            if (nextStopsContent) {
+                this.extractStopsFromNextStopsHTML(nextStopsContent.innerHTML);
+            }
+            
+        } catch (error) {
+            console.warn('Erreur extraction popup content:', error);
+        }
+    }
+    
+    // Fonction de similarité de chaînes (Levenshtein simplifiée)
+    calculateSimilarity(str1, str2) {
+        str1 = str1.toLowerCase().trim();
+        str2 = str2.toLowerCase().trim();
+        
+        if (str1 === str2) return 1.0;
+        
+        // Vérification de sous-chaînes
+        if (str1.includes(str2) || str2.includes(str1)) return 0.8;
+        
+        // Calcul de distance de Levenshtein simplifiée
+        const matrix = [];
+        const len1 = str1.length;
+        const len2 = str2.length;
+        
+        if (len1 === 0) return len2 === 0 ? 1.0 : 0.0;
+        if (len2 === 0) return 0.0;
+        
+        for (let i = 0; i <= len2; i++) {
+            matrix[i] = [i];
+        }
+        
+        for (let j = 0; j <= len1; j++) {
+            matrix[0][j] = j;
+        }
+        
+        for (let i = 1; i <= len2; i++) {
+            for (let j = 1; j <= len1; j++) {
+                if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        
+        const distance = matrix[len2][len1];
+        const maxLength = Math.max(len1, len2);
+        return 1.0 - (distance / maxLength);
     }
     
     setupRecognition() {
@@ -3547,8 +3581,14 @@ class SmartBusVoiceAssistant {
         this.updateStatus('Analyse intelligente de la commande...', 'processing');
         this.updateDisplay(`Commande: "${transcript}"\n\nAnalyse en cours...`);
         
-        // Analyser les marqueurs en temps réel
+        // Mettre à jour les données avant traitement
         this.analyzeExistingMarkers();
+        
+        // Enregistrer la phrase pour l'apprentissage
+        this.learningData.phrases.push({
+            text: transcript,
+            timestamp: Date.now()
+        });
         
         // Tester chaque action enregistrée
         let actionFound = false;
@@ -3574,23 +3614,24 @@ class SmartBusVoiceAssistant {
     }
     
     findBusByNumber(number, transcript) {
-        const parkNumber = number.toString();
+        const markers = window.markers || {};
+        const searchNumber = number.toString();
         
-        // Chercher par numéro de parc exact
-        if (this.learningData.parkNumbers.has(parkNumber)) {
-            const markerId = this.learningData.parkNumbers.get(parkNumber);
-            const marker = window.markers[markerId];
-            if (marker) {
-                this.selectAndShowBus(marker, `Bus ${number} trouvé`, transcript);
-                return;
-            }
+        // Chercher par ID du marqueur
+        if (markers[searchNumber]) {
+            this.selectAndShowBus(markers[searchNumber], `Bus ${number} trouvé par ID`, transcript);
+            return;
         }
         
-        // Chercher par ID de marqueur
-        const marker = window.markers[number];
-        if (marker) {
-            this.selectAndShowBus(marker, `Bus ${number} trouvé`, transcript);
-            return;
+        // Chercher par numéro de parc dans les données du véhicule
+        for (let [markerId, marker] of Object.entries(markers)) {
+            if (marker.vehicleData && marker.vehicleData.vehicle) {
+                const vehicleId = marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id;
+                if (vehicleId && vehicleId.toString() === searchNumber) {
+                    this.selectAndShowBus(marker, `Bus ${number} trouvé par numéro de parc`, transcript);
+                    return;
+                }
+            }
         }
         
         this.updateStatus(`Bus ${number} introuvable`, 'error');
@@ -3598,111 +3639,120 @@ class SmartBusVoiceAssistant {
     }
     
     findBusByLine(lineNumber, transcript) {
-        const lineLower = lineNumber.toLowerCase();
+        const markers = window.markers || {};
+        const matchingBuses = [];
+        const searchLine = lineNumber.toLowerCase();
         
-        // Chercher correspondance exacte
-        for (let [line, markerIds] of this.learningData.lineNumbers) {
-            if (line.toLowerCase() === lineLower) {
-                const firstMarkerId = Array.from(markerIds)[0];
-                const marker = window.markers[firstMarkerId];
-                if (marker) {
-                    this.selectAndShowBus(marker, `Bus de la ligne ${lineNumber} trouvé`, transcript);
-                    return;
+        Object.values(markers).forEach(marker => {
+            if (marker.line) {
+                // Vérification exacte
+                if (marker.line.toString().toLowerCase() === searchLine) {
+                    matchingBuses.push({marker, priority: 1});
+                }
+                // Vérification contient
+                else if (marker.line.toString().toLowerCase().includes(searchLine)) {
+                    matchingBuses.push({marker, priority: 0.8});
                 }
             }
-        }
+        });
         
-        // Chercher correspondance partielle
-        for (let [line, markerIds] of this.learningData.lineNumbers) {
-            if (line.toLowerCase().includes(lineLower) || lineLower.includes(line.toLowerCase())) {
-                const firstMarkerId = Array.from(markerIds)[0];
-                const marker = window.markers[firstMarkerId];
-                if (marker) {
-                    this.selectAndShowBus(marker, `Bus de la ligne ${line} trouvé`, transcript);
-                    return;
-                }
-            }
+        if (matchingBuses.length > 0) {
+            // Trier par priorité
+            matchingBuses.sort((a, b) => b.priority - a.priority);
+            this.selectAndShowBus(matchingBuses[0].marker, `Bus de la ligne ${lineNumber} trouvé`, transcript);
+        } else {
+            this.updateStatus(`Aucun bus de la ligne ${lineNumber}`, 'error');
+            this.updateDisplay(`Ligne ${lineNumber} non trouvée`);
         }
-        
-        this.updateStatus(`Aucun bus de la ligne ${lineNumber}`, 'error');
-        this.updateDisplay(`Ligne ${lineNumber} non trouvée`);
     }
     
     findBusByStop(stopName, transcript) {
-        const searchStop = stopName.trim().toLowerCase();
-        let bestMatch = null;
-        let bestScore = 0;
-        let bestPriority = Infinity;
+        const markers = window.markers || {};
+        const matchingBuses = [];
+        const cleanStopName = stopName.trim().toLowerCase();
         
-        // Chercher dans tous les arrêts avec tolérance
-        for (let [stopKey, markersMap] of this.learningData.stopNames) {
-            const similarity = this.calculateSimilarity(searchStop, stopKey);
-            
-            if (similarity >= 0.6) { // Seuil de tolérance 60%
-                for (let [markerId, stopInfo] of markersMap) {
-                    const marker = window.markers[markerId];
-                    if (marker) {
-                        // Prioriser par similarité ET position dans la liste
-                        const score = similarity - (stopInfo.priority * 0.1);
+        // Supprimer les mots de liaison pour améliorer la recherche
+        const cleanedSearchTerm = cleanStopName
+            .replace(/^(arrêt|station|vers|à|au|aux|de|du|des|la|le|les)\s+/i, '')
+            .trim();
+        
+        Object.values(markers).forEach(marker => {
+            try {
+                // Analyser les prochains arrêts depuis _lastNextStopsHTML
+                if (marker._lastNextStopsHTML) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = marker._lastNextStopsHTML;
+                    
+                    const stopElements = tempDiv.querySelectorAll('.stop-name');
+                    stopElements.forEach((stopElement, index) => {
+                        const stopText = stopElement.textContent?.trim().toLowerCase() || '';
                         
-                        if (score > bestScore || 
-                           (score === bestScore && stopInfo.priority < bestPriority)) {
-                            bestMatch = {
-                                marker: marker,
-                                stopName: stopInfo.originalName,
-                                similarity: similarity,
-                                priority: stopInfo.priority
-                            };
-                            bestScore = score;
-                            bestPriority = stopInfo.priority;
+                        if (stopText && stopText !== 'inconnu') {
+                            const similarity = this.calculateSimilarity(cleanedSearchTerm, stopText);
+                            
+                            if (similarity > 0.6) { // Seuil de similarité
+                                matchingBuses.push({
+                                    marker: marker,
+                                    stopName: stopElement.textContent.trim(),
+                                    position: index, // Position dans la liste (0 = prochain)
+                                    similarity: similarity,
+                                    priority: similarity * (1 / (index + 1)) // Plus proche = priorité plus haute
+                                });
+                            }
                         }
-                    }
+                    });
                 }
+            } catch (error) {
+                console.warn('Erreur analyse arrêts pour marqueur:', error);
             }
-        }
+        });
         
-        if (bestMatch) {
-            const positionText = bestMatch.priority === 0 ? 'prochain arrêt' : `arrêt ${bestMatch.priority + 1}`;
+        if (matchingBuses.length > 0) {
+            // Trier par priorité (similarité et position)
+            matchingBuses.sort((a, b) => b.priority - a.priority);
+            const bestMatch = matchingBuses[0];
+            
             this.selectAndShowBus(
                 bestMatch.marker, 
-                `Bus vers ${bestMatch.stopName} trouvé (${positionText})`, 
+                `Bus vers ${bestMatch.stopName} trouvé (${Math.round(bestMatch.similarity * 100)}% de correspondance)`, 
                 transcript
             );
         } else {
             this.updateStatus(`Aucun bus vers ${stopName}`, 'error');
-            this.updateDisplay(`Arrêt "${stopName}" non trouvé`);
+            this.updateDisplay(`Arrêt "${stopName}" non trouvé dans les prochains arrêts`);
         }
     }
     
     findBusByDestination(destination, transcript) {
-        const searchDestination = destination.trim().toLowerCase();
-        let bestMatch = null;
-        let bestScore = 0;
+        const markers = window.markers || {};
+        const matchingBuses = [];
+        const cleanDestination = destination.trim().toLowerCase()
+            .replace(/^(destination|terminus|vers|à|au|aux|de|du|des|la|le|les)\s+/i, '')
+            .trim();
         
-        // Chercher dans les destinations avec tolérance
-        for (let [destKey, markerIds] of this.learningData.destinations) {
-            const similarity = this.calculateSimilarity(searchDestination, destKey);
-            
-            if (similarity >= 0.5) { // Seuil de tolérance 50%
-                if (similarity > bestScore) {
-                    const firstMarkerId = Array.from(markerIds)[0];
-                    const marker = window.markers[firstMarkerId];
-                    if (marker) {
-                        bestMatch = {
-                            marker: marker,
-                            destination: this.learningData.vehicleData.get(firstMarkerId)?.destination || destKey,
-                            similarity: similarity
-                        };
-                        bestScore = similarity;
-                    }
+        Object.values(markers).forEach(marker => {
+            if (marker.destination) {
+                const markerDestination = marker.destination.toLowerCase();
+                const similarity = this.calculateSimilarity(cleanDestination, markerDestination);
+                
+                if (similarity > 0.6) {
+                    matchingBuses.push({
+                        marker: marker,
+                        destination: marker.destination,
+                        similarity: similarity
+                    });
                 }
             }
-        }
+        });
         
-        if (bestMatch) {
+        if (matchingBuses.length > 0) {
+            // Trier par similarité
+            matchingBuses.sort((a, b) => b.similarity - a.similarity);
+            const bestMatch = matchingBuses[0];
+            
             this.selectAndShowBus(
                 bestMatch.marker, 
-                `Bus vers ${bestMatch.destination} trouvé`, 
+                `Bus vers ${bestMatch.destination} trouvé (${Math.round(bestMatch.similarity * 100)}% de correspondance)`, 
                 transcript
             );
         } else {
@@ -3712,10 +3762,7 @@ class SmartBusVoiceAssistant {
     }
     
     selectAndShowBus(marker, successMessage, originalCommand) {
-        // Ouvrir la popup
         marker.openPopup();
-        
-        // Centrer la carte
         this.map.setView(marker.getLatLng(), 15);
         
         this.updateStatus(successMessage, 'ready');
@@ -3723,7 +3770,7 @@ class SmartBusVoiceAssistant {
     }
     
     handleUnknownCommand(transcript) {
-        const suggestions = this.generateIntelligentSuggestions(transcript);
+        const suggestions = this.generateSuggestions(transcript);
         
         this.updateStatus('Commande non comprise', 'error');
         this.updateDisplay(
@@ -3732,99 +3779,53 @@ class SmartBusVoiceAssistant {
         );
     }
     
-    generateIntelligentSuggestions(transcript) {
+    generateSuggestions(transcript) {
         const suggestions = [];
-        const transcriptLower = transcript.toLowerCase();
         
         // Chercher des nombres
         const numbers = transcript.match(/\d+/g);
         if (numbers) {
             numbers.forEach(num => {
-                if (this.learningData.parkNumbers.has(num)) {
-                    suggestions.push(`"Bus ${num}" (véhicule disponible)`);
-                } else {
-                    suggestions.push(`"Bus ${num}"`);
-                }
+                suggestions.push(`"Bus ${num}" ou "Ligne ${num}"`);
             });
         }
         
-        // Suggérer des arrêts similaires
-        let bestStopMatch = null;
-        let bestStopScore = 0;
-        
-        for (let stopKey of this.learningData.stopNames.keys()) {
-            const similarity = this.calculateSimilarity(transcriptLower, stopKey);
-            if (similarity > bestStopScore && similarity >= 0.4) {
-                bestStopMatch = stopKey;
-                bestStopScore = similarity;
+        // Chercher des correspondances partielles avec les arrêts
+        const words = transcript.toLowerCase().split(/\s+/);
+        for (let stopName of this.learningData.stopNames) {
+            for (let word of words) {
+                if (word.length > 2 && stopName.includes(word)) {
+                    suggestions.push(`"Arrêt ${stopName}"`);
+                    break;
+                }
             }
+            if (suggestions.length >= 2) break;
         }
         
-        if (bestStopMatch) {
-            // Récupérer le nom original du premier arrêt trouvé
-            const stopData = this.learningData.stopNames.get(bestStopMatch);
-            const originalName = Array.from(stopData.values())[0]?.originalName || bestStopMatch;
-            suggestions.push(`"Arrêt ${originalName}" (${Math.round(bestStopScore * 100)}% de correspondance)`);
+        if (suggestions.length === 0) {
+            suggestions.push(
+                '"Bus 432" - pour un bus spécifique',
+                '"Ligne A" - pour une ligne',
+                '"Arrêt Gare" - pour un arrêt'
+            );
         }
         
-        // Suggérer des lignes disponibles
-        if (this.learningData.lineNumbers.size > 0) {
-            const availableLines = Array.from(this.learningData.lineNumbers.keys()).slice(0, 3);
-            suggestions.push(`Lignes disponibles: ${availableLines.map(l => `"Ligne ${l}"`).join(', ')}`);
-        }
-        
-        return suggestions.slice(0, 4);
+        return suggestions.slice(0, 3);
     }
     
     // API pour ajouter de nouvelles actions
     addAction(name, actionConfig) {
-        if (!actionConfig.patterns || !actionConfig.handler) {
-            throw new Error('Action doit avoir patterns et handler');
-        }
-        
-        this.actionHandlers.set(name, {
-            patterns: actionConfig.patterns,
-            handler: actionConfig.handler,
-            description: actionConfig.description || 'Action personnalisée'
-        });
-        
-        console.log(`Action "${name}" ajoutée:`, actionConfig.description);
+        this.actionHandlers.set(name, actionConfig);
     }
     
-    removeAction(name) {
-        return this.actionHandlers.delete(name);
-    }
-    
-    getAvailableActions() {
-        const actions = {};
-        for (let [name, data] of this.actionHandlers) {
-            actions[name] = {
-                description: data.description,
-                patterns: data.patterns.map(p => p.toString())
-            };
-        }
-        return actions;
-    }
-    
+    // API pour obtenir les données d'apprentissage
     getLearningData() {
         return {
-            stopNames: Object.fromEntries(
-                Array.from(this.learningData.stopNames.entries()).map(([stop, markers]) => [
-                    stop, Array.from(markers.keys())
-                ])
-            ),
-            lineNumbers: Object.fromEntries(
-                Array.from(this.learningData.lineNumbers.entries()).map(([line, markers]) => [
-                    line, Array.from(markers)
-                ])
-            ),
-            destinations: Object.fromEntries(
-                Array.from(this.learningData.destinations.entries()).map(([dest, markers]) => [
-                    dest, Array.from(markers)
-                ])
-            ),
-            parkNumbers: Object.fromEntries(this.learningData.parkNumbers),
-            totalVehicles: this.learningData.vehicleData.size
+            stopNames: Array.from(this.learningData.stopNames),
+            lineNumbers: Array.from(this.learningData.lineNumbers),
+            destinations: Array.from(this.learningData.destinations),
+            parkNumbers: Array.from(this.learningData.parkNumbers),
+            recentPhrases: this.learningData.phrases.slice(-10)
         };
     }
     
@@ -3895,7 +3896,7 @@ window.initSmartVoiceAssistant = function(mapInstance) {
     return voiceAssistant;
 };
 
-// API SIMPLIFIÉE POUR AJOUTER DES ACTIONS
+// API SIMPLIFIÉE
 window.addVoiceAction = function(name, patterns, handler, description) {
     if (window.smartVoiceAssistant) {
         window.smartVoiceAssistant.addAction(name, {
@@ -3903,8 +3904,6 @@ window.addVoiceAction = function(name, patterns, handler, description) {
             handler: handler,
             description: description
         });
-    } else {
-        console.warn('Assistant vocal non initialisé');
     }
 };
 
