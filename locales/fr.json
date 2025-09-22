@@ -273,9 +273,11 @@
     "gnv": "GNV",
     "electric": "Électrique",
     "whatsnew": "🎉 Nouveautés de cette version",
+    "findline": "Repérage de ligne",
+    "findlinetext": "En sélectionnant un véhicule, seul son itinéraire s'affichera. Pratique pour repérer une ligne spécifique et son itinéraire précis !",
 
     "lines": "lignes en service",
     "vehicles": "véhicules",
 
-    "langversion": "1.0.7.3"
+    "langversion": "1.0.7.4"
   }
