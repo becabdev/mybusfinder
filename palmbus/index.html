@@ -5107,7 +5107,7 @@ let ligneselectionnee = false;
  */
 function saveAndFilterSingleLine(lineId) {
     if (localStorage.getItem('filterlinesonselect') === 'true') {
-        if (localStorage.getItem('firsttimeusefilter') != true) {
+        if (localStorage.getItem('firsttimeusefilter') === null) {
             localStorage.setItem('firsttimeusefilter', true);
             toastBottomRight.info('Nouveau : le mode repérage de ligne est désormais activé par défaut. Pour le désactiver, rdv dans les paramètres.');
         }
