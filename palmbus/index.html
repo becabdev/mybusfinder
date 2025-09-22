@@ -1889,7 +1889,9 @@
     }
 }
 
-
+.leaflet-marker-icon.leaflet-interactive {
+    z-index: 999999999999999999999;
+}
 
 </style>
 
@@ -4965,13 +4967,12 @@ async function loadGeoJsonLines() {
                 color: '#000000',
                 weight: 0.5,
                 opacity: 0.7,
-                fillOpacity: 0.6
+                fillOpacity: 0.6,
+                zIndex: 99999999999999999999 // juste pour être sûr mais c'est peut-être abusé jsais
             });
         }
     }).addTo(map);
-    
-    // Créer les associations arrêts-lignes par proximité géographique
-    console.log('Calcul des associations arrêts-lignes...');
+
     
     busStops.eachLayer(function(stopLayer) {
         if (stopLayer.feature && stopLayer.feature.properties) {
