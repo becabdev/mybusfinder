@@ -2155,7 +2155,7 @@
         });
 
 
-        VERSION_NAME = '3.1.0.0 Release Candidate 1';
+        VERSION_NAME = '3.1.0.0 Stable';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -2544,6 +2544,7 @@
     if (localStorage.getItem('premiereUtilisation') !== 'true') {
         if (localStorage.getItem('transparency') !== 'true') {
             localStorage.setItem('transparency', true);
+            localStorage.setItem('filterlinesonselect', true);
             localStorage.setItem('premiereUtilisation', true);
         }
     }
@@ -2593,6 +2594,8 @@
             const soundsuxtext = t("soundsuxtext");
             const customization = t("customization");
             const customizationtext = t("customizationtext");
+            const findline = t("findline");
+            const findlinetext = t("findlinetext");
 
                    
 
@@ -2701,6 +2704,21 @@
                 value: localStorage.getItem('soundsux') === 'true',
                 onChange: function (value) {
                 localStorage.setItem('soundsux', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
+                }
+            });
+
+            FluentSettingsMenu.addToggle("submenu-customization", "transparency", {
+                icon: "〰️",
+                label: findline,
+                description: findlinetext,
+                value: localStorage.getItem('filterlinesonselect') === 'true',
+                onChange: function (value) {
+                localStorage.setItem('filterlinesonselect', value);
                 if (value) {
                     soundsUX('MBF_SettingOn');
                 } else {
@@ -5083,22 +5101,27 @@ function resetMapView() {
 let savedFilterState = null;
 let ligneselectionnee = false;
 
-
 /**
  * Sauvegarde l'état actuel du filtrage et applique un filtrage sur une ligne unique
    @param {string} lineId - l'id de la ligne à filtrer exclusivement
  */
 function saveAndFilterSingleLine(lineId) {
-    if (ligneselectionnee === false) {
-        savedFilterState = {
-            selectedLines: [...selectedLines], 
-            selectedLine: selectedLine
-        };
-        ligneselectionnee = true;
+    if (localStorage.getItem('filterlinesonselect') === 'true') {
+        if (localStorage.getItem('firsttimeusefilter') != true) {
+            localStorage.setItem('firsttimeusefilter', 'true');
+            toastBottomRight.info('Nouveau : le mode repérage de ligne est désormais activé par défaut. Pour le désactiver, rdv dans les paramètres.');
+        }
+        if (ligneselectionnee === false) {
+            savedFilterState = {
+                selectedLines: [...selectedLines], 
+                selectedLine: selectedLine
+            };
+            ligneselectionnee = true;
+        }
+        selectedLines = [lineId];
+        selectedLine = lineId;
+        updateLinesDisplay();
     }
-    selectedLines = [lineId];
-    selectedLine = lineId;
-    updateLinesDisplay();
 }
 
 /**
@@ -5106,7 +5129,6 @@ function saveAndFilterSingleLine(lineId) {
  */
 function restoreFilterState() {
     if (savedFilterState === null) {
-        console.warn('Aucun état de filtrage sauvegardé à restaurer');
         return;
     }
     ligneselectionnee = false;
