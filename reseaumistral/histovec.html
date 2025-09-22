@@ -408,7 +408,7 @@
     <script>
         class FluentBusTracker {
             constructor() {
-                this.API_BASE_URL = "https://dev.bus-tracker.fr/api";
+                this.API_BASE_URL = "https://bus-tracker.fr/api";
                 this.buses = [];
                 this.currentBus = null;
                 this.currentMonth = this.getCurrentMonth();
@@ -500,7 +500,7 @@
                     const response = await fetch('setvar/settings/BusTrackerAPI/networkId.txt');
                     const networkId = (await response.text()).trim();
                     
-                    const busData = await this.safeFetch(`${this.API_BASE_URL}/vehicles?networkId=${networkId}&_=${Date.now()}`);
+                    const busData = await this.safeFetch(`${this.API_BASE_URL}/vehicles?networkId=${networkId.replace(" ", "")}&_=${Date.now()}`);
                     
                     const uniqueLineIds = [...new Set(busData.filter(bus => bus.lineId).map(bus => bus.lineId))];
                     await this.loadLineDetails(uniqueLineIds);

@@ -276,7 +276,7 @@
     #menu {
         position: absolute;
         top: 0;
-        right: 0;
+        left: 0;
         border-radius: 0;
         z-index: 1000;
         height: 100%;
@@ -377,7 +377,7 @@
     }
     @keyframes slideInBounce {
         0% {
-            transform: translateX(50%);
+            transform: translateX(-50%);
             opacity: 0;
         }
         100% {
@@ -387,7 +387,7 @@
     }
     @keyframes slideInBounceM {
         0% {
-            transform: translateX(-50%);
+            transform: translateX(50%);
             opacity: 0;
         }
         100% {
@@ -401,7 +401,7 @@
             opacity: 1;
         }
         100% {
-            transform: translateX(50%);
+            transform: translateX(-50%);
             opacity: 0;
         }
     }
@@ -412,7 +412,7 @@
             filter: blur(0px);
         }
         100% {
-            transform: translateX(-50%);
+            transform: translateX(50%);
             opacity: 0;
             filter: blur(0px);
         }
@@ -1889,7 +1889,9 @@
     }
 }
 
-
+.leaflet-marker-icon.leaflet-interactive {
+    z-index: 999999999999999999999;
+}
 
 </style>
 
@@ -2155,7 +2157,7 @@
         });
 
 
-        VERSION_NAME = '3.1.0.0 Release Candidate 1';
+        VERSION_NAME = '3.1 Stable';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -2541,9 +2543,10 @@
 
     document.addEventListener('DOMContentLoaded', () => {
 
-    if (localStorage.getItem('premiereUtilisation') !== 'true') {
+    if (localStorage.getItem('premiereuutilisation') !== 'true') {
         if (localStorage.getItem('transparency') !== 'true') {
             localStorage.setItem('transparency', true);
+            localStorage.setItem('filterlinesonselect', true);
             localStorage.setItem('premiereUtilisation', true);
         }
     }
@@ -2593,6 +2596,8 @@
             const soundsuxtext = t("soundsuxtext");
             const customization = t("customization");
             const customizationtext = t("customizationtext");
+            const findline = t("findline");
+            const findlinetext = t("findlinetext");
 
                    
 
@@ -2701,6 +2706,21 @@
                 value: localStorage.getItem('soundsux') === 'true',
                 onChange: function (value) {
                 localStorage.setItem('soundsux', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
+                }
+            });
+
+            FluentSettingsMenu.addToggle("submenu-customization", "transparency", {
+                icon: "〰️",
+                label: findline,
+                description: findlinetext,
+                value: localStorage.getItem('filterlinesonselect') === 'true',
+                onChange: function (value) {
+                localStorage.setItem('filterlinesonselect', value);
                 if (value) {
                     soundsUX('MBF_SettingOn');
                 } else {
@@ -2831,11 +2851,8 @@
 
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "fluentdesign", {
                 icon: "🖌️",
-                label: "Microsoft Fluent Design System",
-                description: "v2.0.0",
-                onclick: function () {
-                    window.open('https://fluent2.microsoft.design/', '_blank');
-                }
+                label: "BecabDev Design System",
+                description: "v1.0.0",
             });
 
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "protobuf", {
@@ -2880,6 +2897,15 @@
                 description: "becabtransit/mybusfinder",
                 onclick: function () {
                     window.open('https://github.com/becabtransit/mybusfinder', '_blank');
+                }
+            });
+
+            FluentSettingsMenu.addSubmenu("submenu-aboutsub", "freepalestine", {
+                icon: "🇵🇸",
+                label: "Free Palestine",
+                description: "Support and solidarity with the Palestinian people - donate to UNRWA",
+                onclick: function () {
+                    window.open('https://donate.unrwa.org/int/en/general', '_blank');
                 }
             });
 
@@ -4415,6 +4441,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         const menubtm = document.getElementById('menubtm');
             safeVibrate([50]);
             soundsUX('MBF_VehicleOpen');
+            saveAndFilterSingleLine(route_id);
+
 
         if (menubtm) {
             const markerId = marker.id;
@@ -4670,6 +4698,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const menubtm = document.getElementById('menubtm');
     safeVibrate([50]);
     soundsUX('MBF_VehicleClose');
+    restoreFilterState();
     
     if (menubtm) {
         try {
@@ -4894,13 +4923,16 @@ function animateMarker(marker, newPosition) {
 
 let busStopLayers = [];
 let selectedLines = [];
-
-
-
+let busStopsByLine = {}; 
+let allBusLines = []; 
 
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
+
+    busStopsByLine = {};
+    allBusLines = [];
+    busStopLayers = [];
 
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
@@ -4918,9 +4950,13 @@ async function loadGeoJsonLines() {
             };
         },
         onEachFeature: function(feature, layer) {
-            
             if (feature.properties && feature.properties.route_id) {
                 geoJsonLines.push(layer);
+                allBusLines.push({
+                    layer: layer,
+                    routeId: feature.properties.route_id,
+                    geometry: feature.geometry
+                });
             }
         }
     }).addTo(map);
@@ -4936,125 +4972,213 @@ async function loadGeoJsonLines() {
                 color: '#000000',
                 weight: 0.5,
                 opacity: 0.7,
-                fillOpacity: 0.6
+                fillOpacity: 0.6,
+                zIndex: 99999999999999999999 // juste pour être sûr mais c'est peut-être abusé jsais
             });
         }
     }).addTo(map);
+
     
-    busStops.eachLayer(function(layer) {
-        if (layer.feature && layer.feature.properties) {
-            layer.busLine = layer.feature.properties.route_id || null;
-            busStopLayers.push(layer);
+    busStops.eachLayer(function(stopLayer) {
+        if (stopLayer.feature && stopLayer.feature.properties) {
+            const stopLatLng = stopLayer.getLatLng();
+            const routeIds = [];
+            
+            const maxDistance = 50; 
+            
+            allBusLines.forEach(lineInfo => {
+                const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
+                if (distance <= maxDistance) {
+                    routeIds.push(lineInfo.routeId);
+                }
+            });
+            
+            stopLayer.routeIds = routeIds;
+            
+            routeIds.forEach(routeId => {
+                if (!busStopsByLine[routeId]) {
+                    busStopsByLine[routeId] = [];
+                }
+                busStopsByLine[routeId].push(stopLayer);
+            });
+            
+            busStopLayers.push(stopLayer);
         }
     });
     
 }
 
+function calculateDistanceToLine(point, lineGeometry) {
+    let minDistance = Infinity;
+    
+    const coordinates = lineGeometry.coordinates;
+    
+    for (let i = 0; i < coordinates.length - 1; i++) {
+        const segmentStart = L.latLng(coordinates[i][1], coordinates[i][0]);
+        const segmentEnd = L.latLng(coordinates[i + 1][1], coordinates[i + 1][0]);
+        
+        const distance = distanceToSegment(point, segmentStart, segmentEnd);
+        if (distance < minDistance) {
+            minDistance = distance;
+        }
+    }
+    
+    return minDistance;
+}
 
+function distanceToSegment(point, segmentStart, segmentEnd) {
+    const A = point.lat - segmentStart.lat;
+    const B = point.lng - segmentStart.lng;
+    const C = segmentEnd.lat - segmentStart.lat;
+    const D = segmentEnd.lng - segmentStart.lng;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    
+    if (lenSq === 0) {
+        return point.distanceTo(segmentStart);
+    }
+    
+    let param = dot / lenSq;
+
+    let xx, yy;
+
+    if (param < 0) {
+        xx = segmentStart.lat;
+        yy = segmentStart.lng;
+    } else if (param > 1) {
+        xx = segmentEnd.lat;
+        yy = segmentEnd.lng;
+    } else {
+        xx = segmentStart.lat + param * C;
+        yy = segmentStart.lng + param * D;
+    }
+
+    const dx = point.lat - xx;
+    const dy = point.lng - yy;
+    
+    const earthRadius = 6371000; 
+    const dLat = dx * Math.PI / 180;
+    const dLng = dy * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(point.lat * Math.PI / 180) * Math.cos(xx * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    return earthRadius * c;
+}
 
 function filterByLine(lineId) {
-  const lineIndex = selectedLines.indexOf(lineId);
+    const lineIndex = selectedLines.indexOf(lineId);
 
-  if (lineIndex !== -1) {
-    selectedLines.splice(lineIndex, 1);
-  } else {
-    selectedLines.push(lineId);
-  }
+    if (lineIndex !== -1) {
+        selectedLines.splice(lineIndex, 1);
+    } else {
+        selectedLines.push(lineId);
+    }
 
-  updateLinesDisplay();
+    updateLinesDisplay();
 
-  if (selectedLines.length === 0) {
-
-    resetMapView();
-  } else if (selectedLines.length === 1) {
-    zoomToSelectedLine(selectedLines[0]);
-  } else if (selectedLines.length > 1) {
-    zoomToMultipleLines(selectedLines);
-  }
+    if (selectedLines.length === 0) {
+        resetMapView();
+    } else if (selectedLines.length === 1) {
+        zoomToSelectedLine(selectedLines[0]);
+    } else if (selectedLines.length > 1) {
+        zoomToMultipleLines(selectedLines);
+    }
 }
 
 function zoomToSelectedLine(lineId) {
-  const bounds = L.latLngBounds();
+    const bounds = L.latLngBounds();
 
-  geoJsonLines.forEach(layer => {
-    if (layer.feature.properties.route_id === lineId) {
-      bounds.extend(layer.getBounds());
-    }
-  });
-
-  if (bounds.isValid()) {
-    map.fitBounds(bounds, {
-      padding: [10, 10], 
-      maxZoom: 17        
+    geoJsonLines.forEach(layer => {
+        if (layer.feature.properties.route_id === lineId) {
+            bounds.extend(layer.getBounds());
+        }
     });
-  }
+
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+            padding: [10, 10], 
+            maxZoom: 17        
+        });
+    }
 }
 
 function zoomToMultipleLines(lineIds) {
-  const bounds = L.latLngBounds();
+    const bounds = L.latLngBounds();
 
-  geoJsonLines.forEach(layer => {
-    if (lineIds.includes(layer.feature.properties.route_id)) {
-      bounds.extend(layer.getBounds());
-    }
-  });
-
-  if (bounds.isValid()) {
-    map.fitBounds(bounds, {
-      padding: [50, 50], 
-      maxZoom: 15       
+    geoJsonLines.forEach(layer => {
+        if (lineIds.includes(layer.feature.properties.route_id)) {
+            bounds.extend(layer.getBounds());
+        }
     });
-  }
+
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+            padding: [50, 50], 
+            maxZoom: 15       
+        });
+    }
 }
 
 function updateLinesDisplay() {
-  geoJsonLines.forEach(layer => {
-    const routeId = layer.feature.properties.route_id;
+    geoJsonLines.forEach(layer => {
+        const routeId = layer.feature.properties.route_id;
 
-    if (selectedLines.length === 0 || selectedLines.includes(routeId)) {
-      if (!map.hasLayer(layer)) {
-        map.addLayer(layer);
-      }
-    } else {
-      if (map.hasLayer(layer)) {
-        map.removeLayer(layer);
-      }
-    }
-  });
-
-  busStopLayers.forEach(layer => {
-    const busLine = layer.busLine;
-    
-    if (selectedLines.length === 0 || selectedLines.includes(busLine)) {
-      if (!map.hasLayer(layer)) {
-        map.addLayer(layer);
-      }
-    } else {
-      if (map.hasLayer(layer)) {
-        map.removeLayer(layer);
-      }
-    }
-  });
-
-  Object.entries(markers).forEach(([id, marker]) => {
-    if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
-      if (!map.hasLayer(marker)) {
-        map.addLayer(marker);
-      }
-    } else {
-      if (map.hasLayer(marker)) {
-        if (marker.isPopupOpen()) {
-          marker.closePopup();
+        if (selectedLines.length === 0 || selectedLines.includes(routeId)) {
+            if (!map.hasLayer(layer)) {
+                map.addLayer(layer);
+            }
+        } else {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            }
         }
-        map.removeLayer(marker);
-      }
+    });
+
+    busStopLayers.forEach(layer => {
+        let shouldShow = false;
+        
+        if (selectedLines.length === 0) {
+            shouldShow = true;
+        } else {
+            if (layer.routeIds && layer.routeIds.length > 0) {
+                shouldShow = layer.routeIds.some(routeId => selectedLines.includes(routeId));
+            }
+        }
+        
+        if (shouldShow) {
+            if (!map.hasLayer(layer)) {
+                map.addLayer(layer);
+            }
+        } else {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            }
+        }
+    });
+
+    if (typeof markers !== 'undefined') {
+        Object.entries(markers).forEach(([id, marker]) => {
+            if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
+                if (!map.hasLayer(marker)) {
+                    map.addLayer(marker);
+                }
+            } else {
+                if (map.hasLayer(marker)) {
+                    if (marker.isPopupOpen()) {
+                        marker.closePopup();
+                    }
+                    map.removeLayer(marker);
+                }
+            }
+        });
     }
-  });
 }
 
 function resetMapView() {
     selectedLines = [];
-
     selectedLine = null;
 
     geoJsonLines.forEach(layer => {
@@ -5069,11 +5193,92 @@ function resetMapView() {
         }
     });
 
-    Object.values(markers).forEach(marker => {
-        if (!map.hasLayer(marker)) {
-            map.addLayer(marker);
+    if (typeof markers !== 'undefined') {
+        Object.values(markers).forEach(marker => {
+            if (!map.hasLayer(marker)) {
+                map.addLayer(marker);
+            }
+        });
+    }
+}
+
+let savedFilterState = null;
+let ligneselectionnee = false;
+
+/**
+ * Sauvegarde l'état actuel du filtrage et applique un filtrage sur une ligne unique
+ * @param {string} lineId - l'id de la ligne à filtrer exclusivement
+ */
+function saveAndFilterSingleLine(lineId) {
+    if (localStorage.getItem('filterlinesonselect') === 'true') {
+        if (localStorage.getItem('firsttimeusefilter') === null) {
+            localStorage.setItem('firsttimeusefilter', true);
+            toastBottomRight.info('Nouveau : le mode repérage de ligne est désormais activé par défaut. Pour le désactiver, rdv dans les Paramètres > Personnalisation > Repérage de ligne.');
         }
+        if (ligneselectionnee === false) {
+            savedFilterState = {
+                selectedLines: [...selectedLines], 
+                selectedLine: selectedLine
+            };
+            ligneselectionnee = true;
+        }
+        selectedLines = [lineId];
+        selectedLine = lineId;
+        updateLinesDisplay();
+    }
+}
+
+/**
+ * Restaure l'état de filtrage précédemment sauvegardé
+ */
+function restoreFilterState() {
+    if (savedFilterState === null) {
+        return;
+    }
+    ligneselectionnee = false;
+    selectedLines = [...savedFilterState.selectedLines]; 
+    selectedLine = savedFilterState.selectedLine;
+    
+    updateLinesDisplay();
+    
+    if (selectedLines.length === 0) {
+        resetMapView();
+    } else if (selectedLines.length === 1) {
+        zoomToSelectedLine(selectedLines[0]);
+    } else if (selectedLines.length > 1) {
+        zoomToMultipleLines(selectedLines);
+    }
+    
+    savedFilterState = null;
+}
+
+
+function adjustProximityDistance(newDistance) {
+    
+    busStopsByLine = {};
+    
+    busStopLayers.forEach(stopLayer => {
+        const stopLatLng = stopLayer.getLatLng();
+        const routeIds = [];
+        
+        allBusLines.forEach(lineInfo => {
+            const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
+            if (distance <= newDistance) {
+                routeIds.push(lineInfo.routeId);
+            }
+        });
+        
+        stopLayer.routeIds = routeIds;
+        
+        routeIds.forEach(routeId => {
+            if (!busStopsByLine[routeId]) {
+                busStopsByLine[routeId] = [];
+            }
+            busStopsByLine[routeId].push(stopLayer);
+        });
     });
+    
+    updateLinesDisplay();
 }
 
 function showPopup() {
