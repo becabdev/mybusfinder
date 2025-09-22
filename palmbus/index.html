@@ -4966,35 +4966,62 @@ async function loadGeoJsonLines() {
     busStops.eachLayer(function(layer) {
         if (layer.feature && layer.feature.properties) {
             const routeIds = [];
+            const props = layer.feature.properties;
             
-            // Méthode 1: Si route_id existe directement
-            if (layer.feature.properties.route_id) {
-                routeIds.push(layer.feature.properties.route_id);
-            }
+            // Recherche automatique dans toutes les propriétés qui pourraient contenir des lignes
+            const possibleRouteKeys = [
+                'route_id', 'route_ids', 'routes', 'ligne', 'lignes', 
+                'line', 'lines', 'bus_routes', 'transport_routes',
+                'route_short_name', 'route_ref', 'ref'
+            ];
             
-            // Méthode 2: Si les lignes sont stockées dans un autre champ (à adapter selon vos données)
-            if (layer.feature.properties.routes) {
-                if (Array.isArray(layer.feature.properties.routes)) {
-                    routeIds.push(...layer.feature.properties.routes);
-                } else if (typeof layer.feature.properties.routes === 'string') {
-                    routeIds.push(...layer.feature.properties.routes.split(',').map(s => s.trim()));
+            possibleRouteKeys.forEach(key => {
+                if (props[key]) {
+                    if (Array.isArray(props[key])) {
+                        routeIds.push(...props[key]);
+                    } else if (typeof props[key] === 'string') {
+                        // Essayer différents séparateurs
+                        const separators = [',', ';', '|', ' '];
+                        let values = [props[key]];
+                        
+                        for (let sep of separators) {
+                            if (props[key].includes(sep)) {
+                                values = props[key].split(sep).map(s => s.trim()).filter(s => s);
+                                break;
+                            }
+                        }
+                        routeIds.push(...values);
+                    } else {
+                        routeIds.push(String(props[key]));
+                    }
                 }
-            }
+            });
             
-            // Méthode 3: Si les lignes sont dans route_ids
-            if (layer.feature.properties.route_ids) {
-                if (Array.isArray(layer.feature.properties.route_ids)) {
-                    routeIds.push(...layer.feature.properties.route_ids);
-                } else if (typeof layer.feature.properties.route_ids === 'string') {
-                    routeIds.push(...layer.feature.properties.route_ids.split(',').map(s => s.trim()));
+            // Recherche dans toutes les propriétés pour tout ce qui ressemble à un ID de ligne
+            Object.keys(props).forEach(key => {
+                const value = props[key];
+                const lowerKey = key.toLowerCase();
+                
+                // Si la clé contient "route", "line", "bus" et qu'on ne l'a pas déjà traitée
+                if ((lowerKey.includes('route') || lowerKey.includes('line') || lowerKey.includes('bus')) 
+                    && !possibleRouteKeys.includes(key) && value) {
+                    
+                    if (Array.isArray(value)) {
+                        routeIds.push(...value);
+                    } else if (typeof value === 'string' || typeof value === 'number') {
+                        routeIds.push(String(value));
+                    }
                 }
-            }
+            });
+            
+            // Nettoyer et dédupliquer les IDs
+            const cleanRouteIds = [...new Set(routeIds.filter(id => id && String(id).trim()))];
             
             // Associer l'arrêt à toutes ses lignes
-            layer.routeIds = routeIds;
+            layer.routeIds = cleanRouteIds;
             
             // Créer l'index inverse (ligne -> arrêts)
-            routeIds.forEach(routeId => {
+            cleanRouteIds.forEach(routeId => {
                 if (!busStopsByLine[routeId]) {
                     busStopsByLine[routeId] = [];
                 }
@@ -5203,9 +5230,45 @@ function debugBusStops() {
     console.log('Nombre total d\'arrêts:', busStopLayers.length);
     console.log('Lignes disponibles:', Object.keys(busStopsByLine));
     
+    // Examiner les 5 premiers arrêts pour comprendre la structure
+    console.log('=== STRUCTURE DES ARRÊTS (5 premiers) ===');
+    for (let i = 0; i < Math.min(5, busStopLayers.length); i++) {
+        const stop = busStopLayers[i];
+        console.log(`Arrêt ${i + 1}:`, {
+            properties: stop.feature.properties,
+            routeIds: stop.routeIds
+        });
+    }
+    
     selectedLines.forEach(lineId => {
         console.log(`Ligne ${lineId}: ${busStopsByLine[lineId] ? busStopsByLine[lineId].length : 0} arrêts`);
     });
+}
+
+// Fonction pour analyser la structure complète des données
+function analyzeGeoJsonStructure() {
+    fetch('proxy-cors/proxy_geojson.php')
+        .then(response => response.json())
+        .then(data => {
+            console.log('=== ANALYSE STRUCTURE GEOJSON ===');
+            
+            // Analyser les points (arrêts)
+            const points = data.features.filter(f => f.geometry.type === 'Point');
+            console.log('Nombre de points (arrêts):', points.length);
+            
+            if (points.length > 0) {
+                console.log('Propriétés du premier arrêt:', points[0].properties);
+                console.log('Toutes les clés des propriétés:', Object.keys(points[0].properties));
+            }
+            
+            // Analyser les lignes
+            const lines = data.features.filter(f => f.geometry.type === 'LineString');
+            console.log('Nombre de lignes:', lines.length);
+            
+            if (lines.length > 0) {
+                console.log('Propriétés de la première ligne:', lines[0].properties);
+            }
+        });
 }
 
 function showPopup() {
