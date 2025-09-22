@@ -4415,10 +4415,11 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         const menubtm = document.getElementById('menubtm');
             safeVibrate([50]);
             soundsUX('MBF_VehicleOpen');
+            saveAndFilterSingleLine(route_id);
+
 
         if (menubtm) {
             const markerId = marker.id;
-            saveAndFilterSingleLine(markerId);
             const color = lineColors[route_id] || '#000000';
             
 
@@ -5086,17 +5087,16 @@ let savedFilterState = null;
    @param {string} lineId - l'id de la ligne à filtrer exclusivement
  */
 function saveAndFilterSingleLine(lineId) {
-    savedFilterState = {
-        selectedLines: [...selectedLines], 
-        selectedLine: selectedLine
-    };
-    
+    if (ligneselectionnee === false) {
+        savedFilterState = {
+            selectedLines: [...selectedLines], 
+            selectedLine: selectedLine
+        };
+        ligneselectionnee = true;
+    }
     selectedLines = [lineId];
     selectedLine = lineId;
-    
     updateLinesDisplay();
-    
-    zoomToSelectedLine(lineId);
 }
 
 /**
@@ -5107,7 +5107,7 @@ function restoreFilterState() {
         console.warn('Aucun état de filtrage sauvegardé à restaurer');
         return;
     }
-    
+    ligneselectionnee = false;
     selectedLines = [...savedFilterState.selectedLines]; 
     selectedLine = savedFilterState.selectedLine;
     
