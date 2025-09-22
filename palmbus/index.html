@@ -4927,10 +4927,20 @@ async function loadGeoJsonLines() {
     allBusLines = [];
     busStopLayers = [];
 
-    // S'assurer que le pane pour les arrêts existe et est au dessus
+    // S'assurer que les panes sont bien organisés par ordre de z-index
+    if (!map.getPane('busLinesPane')) {
+        map.createPane('busLinesPane');
+        map.getPane('busLinesPane').style.zIndex = 400; // Lignes de bus en arrière-plan
+    }
+    
     if (!map.getPane('busStopsPane')) {
         map.createPane('busStopsPane');
-        map.getPane('busStopsPane').style.zIndex = 650; // Au dessus des overlays (600) et des tooltips (650)
+        map.getPane('busStopsPane').style.zIndex = 450; // Arrêts au dessus des lignes
+    }
+    
+    if (!map.getPane('busMarkersPane')) {
+        map.createPane('busMarkersPane');
+        map.getPane('busMarkersPane').style.zIndex = 500; // Marqueurs au dessus des arrêts mais sous les marqueurs Leaflet (600+)
     }
 
     const busLines = L.geoJSON(geoJsonData, {
@@ -4946,7 +4956,7 @@ async function loadGeoJsonLines() {
                 lineCap: 'round',
                 className: 'bus-line', 
                 dashArray: feature.properties.route_type === '3' ? '5, 5' : null,
-                pane: 'overlayPane' // Les lignes restent dans le pane normal
+                pane: 'busLinesPane' // Utiliser le pane dédié aux lignes
             };
         },
         onEachFeature: function(feature, layer) {
@@ -4979,7 +4989,7 @@ async function loadGeoJsonLines() {
     });
     
     // Fusionner les arrêts en doublon avant de les ajouter à la carte
-    const mergedStops = mergeNearbyStops(busStops, 8); // 8 mètres pour fusion
+    const mergedStops = mergeNearbyStops(busStops, 25); // 25 mètres pour fusion
     mergedStops.addTo(map);
     
     // Créer les associations arrêts-lignes par proximité géographique
@@ -5033,7 +5043,7 @@ function mergeNearbyStops(stopsLayer, mergeDistance) {
         });
     });
     
-    console.log(`Fusion des arrêts proches (${stops.length} arrêts initiaux)...`);
+    console.log(`Fusion des arrêts proches (${stops.length} arrêts initiaux, distance: ${mergeDistance}m)...`);
     
     // Processus de fusion
     for (let i = 0; i < stops.length; i++) {
@@ -5277,12 +5287,23 @@ function updateLinesDisplay() {
         }
     });
 
-    // Filtrage des marqueurs (inchangé)
+    // Filtrage des marqueurs avec pane forcé
     if (typeof markers !== 'undefined') {
         Object.entries(markers).forEach(([id, marker]) => {
+            // Forcer le pane du marqueur pour qu'il soit toujours au bon endroit
+            if (marker.options) {
+                marker.options.pane = 'busMarkersPane';
+            }
+            
             if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
                 if (!map.hasLayer(marker)) {
                     map.addLayer(marker);
+                }
+                // Re-forcer le pane après ajout au cas où
+                if (marker._pane !== map.getPane('busMarkersPane')) {
+                    marker.remove();
+                    marker.options.pane = 'busMarkersPane';
+                    marker.addTo(map);
                 }
             } else {
                 if (map.hasLayer(marker)) {
@@ -5314,8 +5335,20 @@ function resetMapView() {
 
     if (typeof markers !== 'undefined') {
         Object.values(markers).forEach(marker => {
+            // Forcer le bon pane même lors du reset
+            if (marker.options) {
+                marker.options.pane = 'busMarkersPane';
+            }
+            
             if (!map.hasLayer(marker)) {
                 map.addLayer(marker);
+            }
+            
+            // Re-forcer le pane après ajout
+            if (marker._pane !== map.getPane('busMarkersPane')) {
+                marker.remove();
+                marker.options.pane = 'busMarkersPane';
+                marker.addTo(map);
             }
         });
     }
@@ -5371,7 +5404,23 @@ function restoreFilterState() {
     savedFilterState = null;
 }
 
-// Fonction utilitaire pour debug
+// Fonction utilitaire pour forcer tous les marqueurs existants dans le bon pane
+function fixMarkersPanes() {
+    if (typeof markers !== 'undefined') {
+        Object.values(markers).forEach(marker => {
+            if (map.hasLayer(marker)) {
+                // Retirer et remettre avec le bon pane
+                marker.remove();
+                marker.options.pane = 'busMarkersPane';
+                marker.addTo(map);
+            } else {
+                // Juste définir le pane pour la prochaine fois
+                marker.options.pane = 'busMarkersPane';
+            }
+        });
+    }
+    console.log('Panes des marqueurs corrigés');
+}
 function debugBusStops() {
     console.log('=== DEBUG ARRÊTS DE BUS ===');
     console.log('Nombre total d\'arrêts:', busStopLayers.length);
