@@ -5189,17 +5189,19 @@ function resetMapView() {
     selectedLines = [];
     selectedLine = null;
 
+    busStopLayers.forEach(layer => {
+        if (!map.hasLayer(layer)) {
+            map.addLayer(layer);
+        }
+    });
+
     geoJsonLines.forEach(layer => {
         if (!map.hasLayer(layer)) {
             map.addLayer(layer);
         }
     });
 
-    busStopLayers.forEach(layer => {
-        if (!map.hasLayer(layer)) {
-            map.addLayer(layer);
-        }
-    });
+
 
     if (typeof markers !== 'undefined') {
         Object.values(markers).forEach(marker => {
