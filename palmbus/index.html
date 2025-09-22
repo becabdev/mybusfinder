@@ -4913,6 +4913,11 @@ function animateMarker(marker, newPosition) {
     marker.animationFrame = requestAnimationFrame(animate);
 }
 
+let busStopLayers = [];
+let selectedLines = [];
+let busStopsByLine = {}; // Pour associer les arrêts aux lignes
+let allBusLines = []; // Stocker toutes les lignes pour les calculs de proximité
+
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
