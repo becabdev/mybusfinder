@@ -274,10 +274,12 @@
   "gnv": "GNV",
   "electric": "Elettrico",
   "whatsnew": "🎉 Novità di questa versione",
+  "findline": "Tracciamento linea",
+  "findlinetext": "Selezionando un veicolo, verrà visualizzato solo il suo itinerario. Utile per tracciare una linea specifica e il suo percorso esatto!",
 
   "lines": "linee in servizio",
   "vehicles": "veicoli",
 
-  "langversion": "1.0.7.3"
+  "langversion": "1.0.7.4"
 
 }
