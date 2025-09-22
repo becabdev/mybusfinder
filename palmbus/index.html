@@ -4418,6 +4418,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
         if (menubtm) {
             const markerId = marker.id;
+            saveAndFilterSingleLine(markerId);
             const color = lineColors[route_id] || '#000000';
             
 
@@ -4670,6 +4671,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const menubtm = document.getElementById('menubtm');
     safeVibrate([50]);
     soundsUX('MBF_VehicleClose');
+    restoreFilterState();
     
     if (menubtm) {
         try {
@@ -4902,26 +4904,6 @@ async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    // Créer un mapping des arrêts par ligne pour GTFS
-    const stopsByRoute = {};
-    
-    // Traiter d'abord les features pour créer les associations
-    geoJsonData.features.forEach(feature => {
-        if (feature.geometry.type === 'Point' && feature.properties.route_id) {
-            // Pour GTFS, les arrêts peuvent avoir plusieurs route_id
-            const routeIds = Array.isArray(feature.properties.route_id) 
-                ? feature.properties.route_id 
-                : [feature.properties.route_id];
-                
-            routeIds.forEach(routeId => {
-                if (!stopsByRoute[routeId]) {
-                    stopsByRoute[routeId] = [];
-                }
-                stopsByRoute[routeId].push(feature);
-            });
-        }
-    });
-
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
             return feature.geometry.type === 'LineString';
@@ -4938,13 +4920,13 @@ async function loadGeoJsonLines() {
             };
         },
         onEachFeature: function(feature, layer) {
+            
             if (feature.properties && feature.properties.route_id) {
                 geoJsonLines.push(layer);
             }
         }
     }).addTo(map);
 
-    // Créer les arrêts avec les bonnes associations
     const busStops = L.geoJSON(geoJsonData, {
         filter: function(feature) {
             return feature.geometry && feature.geometry.type === 'Point';
@@ -4958,38 +4940,16 @@ async function loadGeoJsonLines() {
                 opacity: 0.7,
                 fillOpacity: 0.6
             });
-        },
-        onEachFeature: function(feature, layer) {
-            // Améliorer les popups avec plus d'infos GTFS
-            if (feature.properties) {
-                let popupContent = `<strong>${feature.properties.stop_name || 'Arrêt'}</strong>`;
-                if (feature.properties.stop_code) {
-                    popupContent += `<br>Code: ${feature.properties.stop_code}`;
-                }
-                if (feature.properties.route_id) {
-                    const routes = Array.isArray(feature.properties.route_id) 
-                        ? feature.properties.route_id.join(', ') 
-                        : feature.properties.route_id;
-                    popupContent += `<br>Lignes: ${routes}`;
-                }
-                layer.bindPopup(popupContent);
-            }
         }
     }).addTo(map);
     
-    // Améliorer l'association des arrêts aux lignes
     busStops.eachLayer(function(layer) {
         if (layer.feature && layer.feature.properties) {
-            // Gérer les arrêts avec plusieurs lignes (cas GTFS courant)
-            const routeIds = layer.feature.properties.route_id;
-            if (routeIds) {
-                layer.busLines = Array.isArray(routeIds) ? routeIds : [routeIds];
-            } else {
-                layer.busLines = [];
-            }
+            layer.busLine = layer.feature.properties.route_id || null;
             busStopLayers.push(layer);
         }
     });
+    
 }
 
 
@@ -5016,127 +4976,82 @@ function filterByLine(lineId) {
 }
 
 function zoomToSelectedLine(lineId) {
-    const bounds = L.latLngBounds();
+  const bounds = L.latLngBounds();
 
-    // Ajouter les bounds de la ligne
-    geoJsonLines.forEach(layer => {
-        if (layer.feature.properties.route_id === lineId) {
-            bounds.extend(layer.getBounds());
-        }
-    });
-
-    // Ajouter les bounds des arrêts de cette ligne
-    const lineStops = getStopsForLine(lineId);
-    lineStops.forEach(stop => {
-        bounds.extend(stop.getLatLng());
-    });
-
-    if (bounds.isValid()) {
-        map.fitBounds(bounds, {
-            padding: [10, 10], 
-            maxZoom: 17        
-        });
+  geoJsonLines.forEach(layer => {
+    if (layer.feature.properties.route_id === lineId) {
+      bounds.extend(layer.getBounds());
     }
+  });
+
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {
+      padding: [10, 10], 
+      maxZoom: 17        
+    });
+  }
 }
 
 function zoomToMultipleLines(lineIds) {
-    const bounds = L.latLngBounds();
+  const bounds = L.latLngBounds();
 
-    // Ajouter les bounds des lignes
-    geoJsonLines.forEach(layer => {
-        if (lineIds.includes(layer.feature.properties.route_id)) {
-            bounds.extend(layer.getBounds());
-        }
-    });
-
-    // Ajouter les bounds des arrêts de ces lignes
-    lineIds.forEach(lineId => {
-        const lineStops = getStopsForLine(lineId);
-        lineStops.forEach(stop => {
-            bounds.extend(stop.getLatLng());
-        });
-    });
-
-    if (bounds.isValid()) {
-        map.fitBounds(bounds, {
-            padding: [50, 50], 
-            maxZoom: 15       
-        });
+  geoJsonLines.forEach(layer => {
+    if (lineIds.includes(layer.feature.properties.route_id)) {
+      bounds.extend(layer.getBounds());
     }
+  });
+
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {
+      padding: [50, 50], 
+      maxZoom: 15       
+    });
+  }
 }
 
 function updateLinesDisplay() {
-    // Afficher/masquer les lignes
-    geoJsonLines.forEach(layer => {
-        const routeId = layer.feature.properties.route_id;
+  geoJsonLines.forEach(layer => {
+    const routeId = layer.feature.properties.route_id;
 
-        if (selectedLines.length === 0 || selectedLines.includes(routeId)) {
-            if (!map.hasLayer(layer)) {
-                map.addLayer(layer);
-            }
-        } else {
-            if (map.hasLayer(layer)) {
-                map.removeLayer(layer);
-            }
-        }
-    });
+    if (selectedLines.length === 0 || selectedLines.includes(routeId)) {
+      if (!map.hasLayer(layer)) {
+        map.addLayer(layer);
+      }
+    } else {
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+    }
+  });
 
-    // Amélioration pour les arrêts : vérifier toutes les lignes associées
-    busStopLayers.forEach(layer => {
-        let shouldShow = false;
-        
-        if (selectedLines.length === 0) {
-            shouldShow = true;
-        } else if (layer.busLines && layer.busLines.length > 0) {
-            // Vérifier si au moins une des lignes de l'arrêt est sélectionnée
-            shouldShow = layer.busLines.some(busLine => selectedLines.includes(busLine));
-        }
-        
-        if (shouldShow) {
-            if (!map.hasLayer(layer)) {
-                map.addLayer(layer);
-            }
-        } else {
-            if (map.hasLayer(layer)) {
-                map.removeLayer(layer);
-            }
-        }
-    });
+  busStopLayers.forEach(layer => {
+    const busLine = layer.busLine;
+    
+    if (selectedLines.length === 0 || selectedLines.includes(busLine)) {
+      if (!map.hasLayer(layer)) {
+        map.addLayer(layer);
+      }
+    } else {
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+    }
+  });
 
-    // Gérer les marqueurs personnalisés
-    Object.entries(markers).forEach(([id, marker]) => {
-        let shouldShow = false;
-        
-        if (selectedLines.length === 0) {
-            shouldShow = true;
-        } else if (marker.lines && Array.isArray(marker.lines)) {
-            // Si le marqueur a plusieurs lignes
-            shouldShow = marker.lines.some(line => selectedLines.includes(line));
-        } else if (marker.line) {
-            // Si le marqueur n'a qu'une ligne
-            shouldShow = selectedLines.includes(marker.line);
+  Object.entries(markers).forEach(([id, marker]) => {
+    if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
+      if (!map.hasLayer(marker)) {
+        map.addLayer(marker);
+      }
+    } else {
+      if (map.hasLayer(marker)) {
+        if (marker.isPopupOpen()) {
+          marker.closePopup();
         }
-        
-        if (shouldShow) {
-            if (!map.hasLayer(marker)) {
-                map.addLayer(marker);
-            }
-        } else {
-            if (map.hasLayer(marker)) {
-                if (marker.isPopupOpen && marker.isPopupOpen()) {
-                    marker.closePopup();
-                }
-                map.removeLayer(marker);
-            }
-        }
-    });
-}
-
-// Fonction utilitaire pour obtenir tous les arrêts d'une ligne spécifique
-function getStopsForLine(lineId) {
-    return busStopLayers.filter(layer => 
-        layer.busLines && layer.busLines.includes(lineId)
-    );
+        map.removeLayer(marker);
+      }
+    }
+  });
 }
 
 function resetMapView() {
@@ -5161,6 +5076,52 @@ function resetMapView() {
             map.addLayer(marker);
         }
     });
+}
+
+
+let savedFilterState = null;
+
+/**
+ * Sauvegarde l'état actuel du filtrage et applique un filtrage sur une ligne unique
+   @param {string} lineId - l'id de la ligne à filtrer exclusivement
+ */
+function saveAndFilterSingleLine(lineId) {
+    savedFilterState = {
+        selectedLines: [...selectedLines], 
+        selectedLine: selectedLine
+    };
+    
+    selectedLines = [lineId];
+    selectedLine = lineId;
+    
+    updateLinesDisplay();
+    
+    zoomToSelectedLine(lineId);
+}
+
+/**
+ * Restaure l'état de filtrage précédemment sauvegardé
+ */
+function restoreFilterState() {
+    if (savedFilterState === null) {
+        console.warn('Aucun état de filtrage sauvegardé à restaurer');
+        return;
+    }
+    
+    selectedLines = [...savedFilterState.selectedLines]; 
+    selectedLine = savedFilterState.selectedLine;
+    
+    updateLinesDisplay();
+    
+    if (selectedLines.length === 0) {
+        resetMapView();
+    } else if (selectedLines.length === 1) {
+        zoomToSelectedLine(selectedLines[0]);
+    } else if (selectedLines.length > 1) {
+        zoomToMultipleLines(selectedLines);
+    }
+    
+    savedFilterState = null;
 }
 
 function showPopup() {
