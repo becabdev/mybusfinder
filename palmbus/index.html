@@ -4917,14 +4917,13 @@ function animateMarker(marker, newPosition) {
 
 let busStopLayers = [];
 let selectedLines = [];
-let busStopsByLine = {}; // Pour associer les arrêts aux lignes
-let allBusLines = []; // Stocker toutes les lignes pour les calculs de proximité
+let busStopsByLine = {}; 
+let allBusLines = []; 
 
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    // Réinitialiser
     busStopsByLine = {};
     allBusLines = [];
     busStopLayers = [];
@@ -4979,8 +4978,7 @@ async function loadGeoJsonLines() {
             const stopLatLng = stopLayer.getLatLng();
             const routeIds = [];
             
-            // Distance maximum en mètres pour considérer qu'un arrêt appartient à une ligne
-            const maxDistance = 50; // 50 mètres
+            const maxDistance = 50; 
             
             allBusLines.forEach(lineInfo => {
                 const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
@@ -4989,10 +4987,8 @@ async function loadGeoJsonLines() {
                 }
             });
             
-            // Associer l'arrêt à ses lignes
             stopLayer.routeIds = routeIds;
             
-            // Créer l'index inverse (ligne -> arrêts)
             routeIds.forEach(routeId => {
                 if (!busStopsByLine[routeId]) {
                     busStopsByLine[routeId] = [];
@@ -5004,10 +5000,8 @@ async function loadGeoJsonLines() {
         }
     });
     
-    console.log('Associations créées:', busStopsByLine);
 }
 
-// Fonction pour calculer la distance d'un point à une ligne
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
     
@@ -5026,7 +5020,6 @@ function calculateDistanceToLine(point, lineGeometry) {
     return minDistance;
 }
 
-// Fonction pour calculer la distance d'un point à un segment de ligne
 function distanceToSegment(point, segmentStart, segmentEnd) {
     const A = point.lat - segmentStart.lat;
     const B = point.lng - segmentStart.lng;
@@ -5037,7 +5030,6 @@ function distanceToSegment(point, segmentStart, segmentEnd) {
     const lenSq = C * C + D * D;
     
     if (lenSq === 0) {
-        // Le segment est en fait un point
         return point.distanceTo(segmentStart);
     }
     
@@ -5059,8 +5051,7 @@ function distanceToSegment(point, segmentStart, segmentEnd) {
     const dx = point.lat - xx;
     const dy = point.lng - yy;
     
-    // Convertir en mètres approximativement
-    const earthRadius = 6371000; // Rayon de la Terre en mètres
+    const earthRadius = 6371000; 
     const dLat = dx * Math.PI / 180;
     const dLng = dy * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -5126,7 +5117,6 @@ function zoomToMultipleLines(lineIds) {
 }
 
 function updateLinesDisplay() {
-    // Filtrage des lignes
     geoJsonLines.forEach(layer => {
         const routeId = layer.feature.properties.route_id;
 
@@ -5141,15 +5131,12 @@ function updateLinesDisplay() {
         }
     });
 
-    // Filtrage des arrêts de bus basé sur les associations calculées
     busStopLayers.forEach(layer => {
         let shouldShow = false;
         
         if (selectedLines.length === 0) {
-            // Si aucune ligne sélectionnée, montrer tous les arrêts
             shouldShow = true;
         } else {
-            // Vérifier si l'arrêt appartient à au moins une des lignes sélectionnées
             if (layer.routeIds && layer.routeIds.length > 0) {
                 shouldShow = layer.routeIds.some(routeId => selectedLines.includes(routeId));
             }
@@ -5166,7 +5153,6 @@ function updateLinesDisplay() {
         }
     });
 
-    // Filtrage des marqueurs (inchangé)
     if (typeof markers !== 'undefined') {
         Object.entries(markers).forEach(([id, marker]) => {
             if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
@@ -5189,19 +5175,17 @@ function resetMapView() {
     selectedLines = [];
     selectedLine = null;
 
-    busStopLayers.forEach(layer => {
-        if (!map.hasLayer(layer)) {
-            map.addLayer(layer);
-        }
-    });
-
     geoJsonLines.forEach(layer => {
         if (!map.hasLayer(layer)) {
             map.addLayer(layer);
         }
     });
 
-
+    busStopLayers.forEach(layer => {
+        if (!map.hasLayer(layer)) {
+            map.addLayer(layer);
+        }
+    });
 
     if (typeof markers !== 'undefined') {
         Object.values(markers).forEach(marker => {
@@ -5262,33 +5246,9 @@ function restoreFilterState() {
     savedFilterState = null;
 }
 
-// Fonction utilitaire pour debug
-function debugBusStops() {
-    console.log('=== DEBUG ARRÊTS DE BUS ===');
-    console.log('Nombre total d\'arrêts:', busStopLayers.length);
-    console.log('Lignes disponibles:', Object.keys(busStopsByLine));
-    
-    // Statistiques par ligne
-    Object.entries(busStopsByLine).forEach(([lineId, stops]) => {
-        console.log(`Ligne ${lineId}: ${stops.length} arrêts`);
-    });
-    
-    // Examiner quelques arrêts avec leurs lignes
-    console.log('=== ARRÊTS AVEC LIGNES (5 premiers avec des lignes) ===');
-    const stopsWithRoutes = busStopLayers.filter(stop => stop.routeIds && stop.routeIds.length > 0);
-    for (let i = 0; i < Math.min(5, stopsWithRoutes.length); i++) {
-        const stop = stopsWithRoutes[i];
-        console.log(`Arrêt "${stop.feature.properties.name}": lignes [${stop.routeIds.join(', ')}]`);
-    }
-    
-    console.log(`Arrêts sans lignes: ${busStopLayers.length - stopsWithRoutes.length}`);
-}
 
-// Fonction pour ajuster la distance de proximité si nécessaire
 function adjustProximityDistance(newDistance) {
-    console.log(`Recalcul avec distance de ${newDistance}m...`);
     
-    // Réinitialiser les associations
     busStopsByLine = {};
     
     busStopLayers.forEach(stopLayer => {
@@ -5313,7 +5273,6 @@ function adjustProximityDistance(newDistance) {
     });
     
     updateLinesDisplay();
-    debugBusStops();
 }
 
 function showPopup() {
