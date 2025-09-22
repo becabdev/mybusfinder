@@ -2541,7 +2541,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
 
-    if (localStorage.getItem('premiereUtilisation') !== 'true') {
+    if (localStorage.getItem('premiereuutilisation') !== 'true') {
         if (localStorage.getItem('transparency') !== 'true') {
             localStorage.setItem('transparency', true);
             localStorage.setItem('filterlinesonselect', true);
@@ -5108,7 +5108,7 @@ let ligneselectionnee = false;
 function saveAndFilterSingleLine(lineId) {
     if (localStorage.getItem('filterlinesonselect') === 'true') {
         if (localStorage.getItem('firsttimeusefilter') != true) {
-            localStorage.setItem('firsttimeusefilter', 'true');
+            localStorage.setItem('firsttimeusefilter', true);
             toastBottomRight.info('Nouveau : le mode repérage de ligne est désormais activé par défaut. Pour le désactiver, rdv dans les paramètres.');
         }
         if (ligneselectionnee === false) {
