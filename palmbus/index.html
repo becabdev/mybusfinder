@@ -4927,6 +4927,12 @@ async function loadGeoJsonLines() {
     allBusLines = [];
     busStopLayers = [];
 
+    // S'assurer que le pane pour les arrêts existe et est au dessus
+    if (!map.getPane('busStopsPane')) {
+        map.createPane('busStopsPane');
+        map.getPane('busStopsPane').style.zIndex = 650; // Au dessus des overlays (600) et des tooltips (650)
+    }
+
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
             return feature.geometry.type === 'LineString';
@@ -4939,7 +4945,8 @@ async function loadGeoJsonLines() {
                 lineJoin: 'round',
                 lineCap: 'round',
                 className: 'bus-line', 
-                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
+                dashArray: feature.properties.route_type === '3' ? '5, 5' : null,
+                pane: 'overlayPane' // Les lignes restent dans le pane normal
             };
         },
         onEachFeature: function(feature, layer) {
@@ -4965,21 +4972,26 @@ async function loadGeoJsonLines() {
                 color: '#000000',
                 weight: 0.5,
                 opacity: 0.7,
-                fillOpacity: 0.6
+                fillOpacity: 0.6,
+                pane: 'busStopsPane' // Utiliser le pane dédié aux arrêts
             });
         }
-    }).addTo(map);
+    });
+    
+    // Fusionner les arrêts en doublon avant de les ajouter à la carte
+    const mergedStops = mergeNearbyStops(busStops, 8); // 8 mètres pour fusion
+    mergedStops.addTo(map);
     
     // Créer les associations arrêts-lignes par proximité géographique
     console.log('Calcul des associations arrêts-lignes...');
     
-    busStops.eachLayer(function(stopLayer) {
+    mergedStops.eachLayer(function(stopLayer) {
         if (stopLayer.feature && stopLayer.feature.properties) {
             const stopLatLng = stopLayer.getLatLng();
             const routeIds = [];
             
             // Distance maximum en mètres pour considérer qu'un arrêt appartient à une ligne
-            const maxDistance = 50; // 50 mètres
+            const maxDistance = 25; // 25 mètres
             
             allBusLines.forEach(lineInfo => {
                 const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
@@ -5006,7 +5018,107 @@ async function loadGeoJsonLines() {
     console.log('Associations créées:', busStopsByLine);
 }
 
-// Fonction pour calculer la distance d'un point à une ligne
+// Fonction pour fusionner les arrêts proches
+function mergeNearbyStops(stopsLayer, mergeDistance) {
+    const stops = [];
+    const merged = [];
+    
+    // Collecter tous les arrêts avec leurs positions
+    stopsLayer.eachLayer(function(layer) {
+        stops.push({
+            layer: layer,
+            latlng: layer.getLatLng(),
+            feature: layer.feature,
+            merged: false
+        });
+    });
+    
+    console.log(`Fusion des arrêts proches (${stops.length} arrêts initiaux)...`);
+    
+    // Processus de fusion
+    for (let i = 0; i < stops.length; i++) {
+        if (stops[i].merged) continue;
+        
+        const currentStop = stops[i];
+        const nearbyStops = [currentStop];
+        
+        // Chercher les arrêts proches
+        for (let j = i + 1; j < stops.length; j++) {
+            if (stops[j].merged) continue;
+            
+            const distance = currentStop.latlng.distanceTo(stops[j].latlng);
+            if (distance <= mergeDistance) {
+                nearbyStops.push(stops[j]);
+                stops[j].merged = true;
+            }
+        }
+        
+        // Créer un arrêt fusionné si plusieurs arrêts proches
+        if (nearbyStops.length > 1) {
+            const mergedStop = createMergedStop(nearbyStops);
+            merged.push(mergedStop);
+        } else {
+            merged.push(currentStop.layer);
+        }
+        
+        currentStop.merged = true;
+    }
+    
+    console.log(`${stops.length - merged.length} arrêts fusionnés. ${merged.length} arrêts finaux.`);
+    
+    // Créer un nouveau layer group avec les arrêts fusionnés
+    return L.layerGroup(merged);
+}
+
+// Fonction pour créer un arrêt fusionné à partir de plusieurs arrêts proches
+function createMergedStop(nearbyStops) {
+    // Calculer la position moyenne
+    let totalLat = 0, totalLng = 0;
+    const names = [];
+    const ids = [];
+    
+    nearbyStops.forEach(stop => {
+        totalLat += stop.latlng.lat;
+        totalLng += stop.latlng.lng;
+        
+        if (stop.feature.properties.name) {
+            names.push(stop.feature.properties.name);
+        }
+        if (stop.feature.properties.id) {
+            ids.push(stop.feature.properties.id);
+        }
+    });
+    
+    const avgLat = totalLat / nearbyStops.length;
+    const avgLng = totalLng / nearbyStops.length;
+    
+    // Créer le nouvel arrêt fusionné
+    const mergedMarker = L.circleMarker([avgLat, avgLng], {
+        radius: 3,
+        fillColor: '#ffffff',
+        color: '#000000',
+        weight: 0.5,
+        opacity: 0.7,
+        fillOpacity: 0.6,
+        pane: 'overlayPane'
+    });
+    
+    // Créer les propriétés fusionnées
+    const uniqueNames = [...new Set(names)];
+    const uniqueIds = [...new Set(ids)];
+    
+    mergedMarker.feature = {
+        properties: {
+            name: uniqueNames.length > 1 ? uniqueNames.join(' / ') : uniqueNames[0] || 'Arrêt fusionné',
+            id: uniqueIds.join('_'),
+            description: `Arrêt fusionné (${nearbyStops.length} arrêts)`,
+            merged_count: nearbyStops.length,
+            original_ids: uniqueIds
+        }
+    };
+    
+    return mergedMarker;
+}
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
     
