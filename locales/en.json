@@ -275,6 +275,8 @@
     "gnv": "CNG",
     "electric": "Electric",
     "whatsnew": "🎉 What's new in this version",
+    "findline": "Line tracking",
+    "findlinetext": "By selecting a vehicle, only its route will be displayed. Useful for tracking a specific line and its exact route!",
 
     "lines": "lines in service",
     "vehicles": "vehicles",
