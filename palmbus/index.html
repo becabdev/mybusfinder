@@ -4913,35 +4913,13 @@ function animateMarker(marker, newPosition) {
     marker.animationFrame = requestAnimationFrame(animate);
 }
 
-let busStopLayers = [];
-let selectedLines = [];
-let busStopsByLine = {}; // Pour associer les arrêts aux lignes
-let allBusLines = []; // Stocker toutes les lignes pour les calculs de proximité
-
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    // Réinitialiser
     busStopsByLine = {};
     allBusLines = [];
     busStopLayers = [];
-
-    // S'assurer que les panes sont bien organisés par ordre de z-index
-    if (!map.getPane('busLinesPane')) {
-        map.createPane('busLinesPane');
-        map.getPane('busLinesPane').style.zIndex = 400; // Lignes de bus en arrière-plan
-    }
-    
-    if (!map.getPane('busStopsPane')) {
-        map.createPane('busStopsPane');
-        map.getPane('busStopsPane').style.zIndex = 450; // Arrêts au dessus des lignes
-    }
-    
-    if (!map.getPane('busMarkersPane')) {
-        map.createPane('busMarkersPane');
-        map.getPane('busMarkersPane').style.zIndex = 500; // Marqueurs au dessus des arrêts mais sous les marqueurs Leaflet (600+)
-    }
 
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
@@ -4955,8 +4933,7 @@ async function loadGeoJsonLines() {
                 lineJoin: 'round',
                 lineCap: 'round',
                 className: 'bus-line', 
-                dashArray: feature.properties.route_type === '3' ? '5, 5' : null,
-                pane: 'busLinesPane' // Utiliser le pane dédié aux lignes
+                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
             };
         },
         onEachFeature: function(feature, layer) {
@@ -4982,26 +4959,18 @@ async function loadGeoJsonLines() {
                 color: '#000000',
                 weight: 0.5,
                 opacity: 0.7,
-                fillOpacity: 0.6,
-                pane: 'busStopsPane' // Utiliser le pane dédié aux arrêts
+                fillOpacity: 0.6
             });
         }
-    });
+    }).addTo(map);
     
-    // Fusionner les arrêts en doublon avant de les ajouter à la carte
-    const mergedStops = mergeNearbyStops(busStops, 25); // 25 mètres pour fusion
-    mergedStops.addTo(map);
     
-    // Créer les associations arrêts-lignes par proximité géographique
-    console.log('Calcul des associations arrêts-lignes...');
-    
-    mergedStops.eachLayer(function(stopLayer) {
+    busStops.eachLayer(function(stopLayer) {
         if (stopLayer.feature && stopLayer.feature.properties) {
             const stopLatLng = stopLayer.getLatLng();
             const routeIds = [];
             
-            // Distance maximum en mètres pour considérer qu'un arrêt appartient à une ligne
-            const maxDistance = 25; // 25 mètres
+            const maxDistance = 30; 
             
             allBusLines.forEach(lineInfo => {
                 const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
@@ -5010,10 +4979,7 @@ async function loadGeoJsonLines() {
                 }
             });
             
-            // Associer l'arrêt à ses lignes
             stopLayer.routeIds = routeIds;
-            
-            // Créer l'index inverse (ligne -> arrêts)
             routeIds.forEach(routeId => {
                 if (!busStopsByLine[routeId]) {
                     busStopsByLine[routeId] = [];
@@ -5025,110 +4991,8 @@ async function loadGeoJsonLines() {
         }
     });
     
-    console.log('Associations créées:', busStopsByLine);
 }
 
-// Fonction pour fusionner les arrêts proches
-function mergeNearbyStops(stopsLayer, mergeDistance) {
-    const stops = [];
-    const merged = [];
-    
-    // Collecter tous les arrêts avec leurs positions
-    stopsLayer.eachLayer(function(layer) {
-        stops.push({
-            layer: layer,
-            latlng: layer.getLatLng(),
-            feature: layer.feature,
-            merged: false
-        });
-    });
-    
-    console.log(`Fusion des arrêts proches (${stops.length} arrêts initiaux, distance: ${mergeDistance}m)...`);
-    
-    // Processus de fusion
-    for (let i = 0; i < stops.length; i++) {
-        if (stops[i].merged) continue;
-        
-        const currentStop = stops[i];
-        const nearbyStops = [currentStop];
-        
-        // Chercher les arrêts proches
-        for (let j = i + 1; j < stops.length; j++) {
-            if (stops[j].merged) continue;
-            
-            const distance = currentStop.latlng.distanceTo(stops[j].latlng);
-            if (distance <= mergeDistance) {
-                nearbyStops.push(stops[j]);
-                stops[j].merged = true;
-            }
-        }
-        
-        // Créer un arrêt fusionné si plusieurs arrêts proches
-        if (nearbyStops.length > 1) {
-            const mergedStop = createMergedStop(nearbyStops);
-            merged.push(mergedStop);
-        } else {
-            merged.push(currentStop.layer);
-        }
-        
-        currentStop.merged = true;
-    }
-    
-    console.log(`${stops.length - merged.length} arrêts fusionnés. ${merged.length} arrêts finaux.`);
-    
-    // Créer un nouveau layer group avec les arrêts fusionnés
-    return L.layerGroup(merged);
-}
-
-// Fonction pour créer un arrêt fusionné à partir de plusieurs arrêts proches
-function createMergedStop(nearbyStops) {
-    // Calculer la position moyenne
-    let totalLat = 0, totalLng = 0;
-    const names = [];
-    const ids = [];
-    
-    nearbyStops.forEach(stop => {
-        totalLat += stop.latlng.lat;
-        totalLng += stop.latlng.lng;
-        
-        if (stop.feature.properties.name) {
-            names.push(stop.feature.properties.name);
-        }
-        if (stop.feature.properties.id) {
-            ids.push(stop.feature.properties.id);
-        }
-    });
-    
-    const avgLat = totalLat / nearbyStops.length;
-    const avgLng = totalLng / nearbyStops.length;
-    
-    // Créer le nouvel arrêt fusionné
-    const mergedMarker = L.circleMarker([avgLat, avgLng], {
-        radius: 3,
-        fillColor: '#ffffff',
-        color: '#000000',
-        weight: 0.5,
-        opacity: 0.7,
-        fillOpacity: 0.6,
-        pane: 'overlayPane'
-    });
-    
-    // Créer les propriétés fusionnées
-    const uniqueNames = [...new Set(names)];
-    const uniqueIds = [...new Set(ids)];
-    
-    mergedMarker.feature = {
-        properties: {
-            name: uniqueNames.length > 1 ? uniqueNames.join(' / ') : uniqueNames[0] || 'Arrêt fusionné',
-            id: uniqueIds.join('_'),
-            description: `Arrêt fusionné (${nearbyStops.length} arrêts)`,
-            merged_count: nearbyStops.length,
-            original_ids: uniqueIds
-        }
-    };
-    
-    return mergedMarker;
-}
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
     
@@ -5147,7 +5011,6 @@ function calculateDistanceToLine(point, lineGeometry) {
     return minDistance;
 }
 
-// Fonction pour calculer la distance d'un point à un segment de ligne
 function distanceToSegment(point, segmentStart, segmentEnd) {
     const A = point.lat - segmentStart.lat;
     const B = point.lng - segmentStart.lng;
@@ -5158,7 +5021,6 @@ function distanceToSegment(point, segmentStart, segmentEnd) {
     const lenSq = C * C + D * D;
     
     if (lenSq === 0) {
-        // Le segment est en fait un point
         return point.distanceTo(segmentStart);
     }
     
@@ -5180,8 +5042,7 @@ function distanceToSegment(point, segmentStart, segmentEnd) {
     const dx = point.lat - xx;
     const dy = point.lng - yy;
     
-    // Convertir en mètres approximativement
-    const earthRadius = 6371000; // Rayon de la Terre en mètres
+    const earthRadius = 6371000; 
     const dLat = dx * Math.PI / 180;
     const dLng = dy * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -5247,7 +5108,6 @@ function zoomToMultipleLines(lineIds) {
 }
 
 function updateLinesDisplay() {
-    // Filtrage des lignes
     geoJsonLines.forEach(layer => {
         const routeId = layer.feature.properties.route_id;
 
@@ -5262,15 +5122,12 @@ function updateLinesDisplay() {
         }
     });
 
-    // Filtrage des arrêts de bus basé sur les associations calculées
     busStopLayers.forEach(layer => {
         let shouldShow = false;
         
         if (selectedLines.length === 0) {
-            // Si aucune ligne sélectionnée, montrer tous les arrêts
             shouldShow = true;
         } else {
-            // Vérifier si l'arrêt appartient à au moins une des lignes sélectionnées
             if (layer.routeIds && layer.routeIds.length > 0) {
                 shouldShow = layer.routeIds.some(routeId => selectedLines.includes(routeId));
             }
@@ -5287,23 +5144,11 @@ function updateLinesDisplay() {
         }
     });
 
-    // Filtrage des marqueurs avec pane forcé
     if (typeof markers !== 'undefined') {
         Object.entries(markers).forEach(([id, marker]) => {
-            // Forcer le pane du marqueur pour qu'il soit toujours au bon endroit
-            if (marker.options) {
-                marker.options.pane = 'busMarkersPane';
-            }
-            
             if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
                 if (!map.hasLayer(marker)) {
                     map.addLayer(marker);
-                }
-                // Re-forcer le pane après ajout au cas où
-                if (marker._pane !== map.getPane('busMarkersPane')) {
-                    marker.remove();
-                    marker.options.pane = 'busMarkersPane';
-                    marker.addTo(map);
                 }
             } else {
                 if (map.hasLayer(marker)) {
@@ -5335,20 +5180,8 @@ function resetMapView() {
 
     if (typeof markers !== 'undefined') {
         Object.values(markers).forEach(marker => {
-            // Forcer le bon pane même lors du reset
-            if (marker.options) {
-                marker.options.pane = 'busMarkersPane';
-            }
-            
             if (!map.hasLayer(marker)) {
                 map.addLayer(marker);
-            }
-            
-            // Re-forcer le pane après ajout
-            if (marker._pane !== map.getPane('busMarkersPane')) {
-                marker.remove();
-                marker.options.pane = 'busMarkersPane';
-                marker.addTo(map);
             }
         });
     }
@@ -5404,49 +5237,8 @@ function restoreFilterState() {
     savedFilterState = null;
 }
 
-// Fonction utilitaire pour forcer tous les marqueurs existants dans le bon pane
-function fixMarkersPanes() {
-    if (typeof markers !== 'undefined') {
-        Object.values(markers).forEach(marker => {
-            if (map.hasLayer(marker)) {
-                // Retirer et remettre avec le bon pane
-                marker.remove();
-                marker.options.pane = 'busMarkersPane';
-                marker.addTo(map);
-            } else {
-                // Juste définir le pane pour la prochaine fois
-                marker.options.pane = 'busMarkersPane';
-            }
-        });
-    }
-    console.log('Panes des marqueurs corrigés');
-}
-function debugBusStops() {
-    console.log('=== DEBUG ARRÊTS DE BUS ===');
-    console.log('Nombre total d\'arrêts:', busStopLayers.length);
-    console.log('Lignes disponibles:', Object.keys(busStopsByLine));
-    
-    // Statistiques par ligne
-    Object.entries(busStopsByLine).forEach(([lineId, stops]) => {
-        console.log(`Ligne ${lineId}: ${stops.length} arrêts`);
-    });
-    
-    // Examiner quelques arrêts avec leurs lignes
-    console.log('=== ARRÊTS AVEC LIGNES (5 premiers avec des lignes) ===');
-    const stopsWithRoutes = busStopLayers.filter(stop => stop.routeIds && stop.routeIds.length > 0);
-    for (let i = 0; i < Math.min(5, stopsWithRoutes.length); i++) {
-        const stop = stopsWithRoutes[i];
-        console.log(`Arrêt "${stop.feature.properties.name}": lignes [${stop.routeIds.join(', ')}]`);
-    }
-    
-    console.log(`Arrêts sans lignes: ${busStopLayers.length - stopsWithRoutes.length}`);
-}
 
-// Fonction pour ajuster la distance de proximité si nécessaire
 function adjustProximityDistance(newDistance) {
-    console.log(`Recalcul avec distance de ${newDistance}m...`);
-    
-    // Réinitialiser les associations
     busStopsByLine = {};
     
     busStopLayers.forEach(stopLayer => {
