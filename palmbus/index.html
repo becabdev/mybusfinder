@@ -3039,17 +3039,7 @@ async function getSetvar() {
 }
 
 async function checkBoutiqueAvailability(boutiqueUrl) {
-    try {
-        const boutiqueResponse = await fetch(boutiqueUrl, { 
-            method: 'HEAD',
-            signal: AbortSignal.timeout(5000) 
-        });
-        window.boutiqueAvailable = boutiqueResponse.ok;
-        return boutiqueResponse.ok;
-    } catch (error) {
-        window.boutiqueAvailable = false;
-        return false;
-    }
+    window.boutiqueAvailable = true;
 }
 
 let settingsCache = null;
