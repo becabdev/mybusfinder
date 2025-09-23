@@ -5186,10 +5186,6 @@ function setupZoomOptimization() {
     let moveTimeout;
     map.on('move', function() {
         clearTimeout(moveTimeout);
-        moveTimeout = setTimeout(function() {
-            // Nettoyage des couches hors de la vue
-            cleanupOffscreenLayers();
-        }, 500);
     });
 }
 
@@ -5204,20 +5200,6 @@ function refreshLayersForZoom() {
     
     // Recharger avec la nouvelle configuration
     loadGeoJsonLines();
-}
-
-function cleanupOffscreenLayers() {
-    const bounds = map.getBounds();
-    
-    // Optimisation : retirer les couches trop loin de la vue actuelle
-    geoJsonLines.forEach(layer => {
-        if (layer.getBounds && !bounds.overlaps(layer.getBounds())) {
-            // Optionnel : masquer les couches hors de vue
-            layer.setOpacity(0.1);
-        } else {
-            layer.setOpacity(0.7);
-        }
-    });
 }
 
 // Configuration CSS pour améliorer les performances de rendu
