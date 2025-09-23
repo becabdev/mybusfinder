@@ -5072,6 +5072,7 @@ function initializeLayerGroups() {
             iconCreateFunction: function(cluster) {
                 // Créer un cluster invisible mais cliquable
                 return L.divIcon({
+                    html: '', // Pas de texte
                     className: 'marker-cluster-invisible',
                     iconSize: L.point(40, 40)
                 });
