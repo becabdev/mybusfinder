@@ -9605,9 +9605,11 @@ async function main() {
         
         await loadGeoJsonLines();
         
-        fetchTripUpdates().catch(console.error),
-        fetchVehiclePositions(),
-        hideLoadingScreen()
+        await Promise.all([
+            fetchTripUpdates().catch(console.error),
+            fetchVehiclePositions(),
+            hideLoadingScreen()
+        ]);
         
         requestAnimationFrame(scheduleFetchUpdates);
         
