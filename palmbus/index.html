@@ -9605,8 +9605,8 @@ async function main() {
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),
-            fetchVehiclePositions(),
-            hideLoadingScreen()
+            hideLoadingScreen(),
+            fetchVehiclePositions()
         ]);
         
         requestAnimationFrame(scheduleFetchUpdates);
