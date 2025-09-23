@@ -3173,10 +3173,7 @@ async function initMap() {
     
     const mapInstance = L.map('map', {
         zoomControl: false,
-        preferCanvas: true, 
-        zoomAnimation: false,
-        fadeAnimation: false,
-        markerZoomAnimation: false
+        preferCanvas: true
     }).setView(defaultCoords, defaultZoom);
     
     L.popup({
