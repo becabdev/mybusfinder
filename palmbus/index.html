@@ -6308,9 +6308,6 @@ function shareVehicleId(id) {
 
 
 async function fetchVehiclePositions() {
-        if (!gtfsInitialized) {
-            return;
-        }
 
         if (!window.timeAnimationStyleAdded) {
         const timeAnimationStyle = `
