@@ -2004,6 +2004,8 @@
  <script src="../build.js"></script>
 
      <script>
+        window.gtfsInitialized = false;
+
         // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
         // simply add class "ripple-container" to element you want the effect on it
         class RippleEffect {
@@ -6000,7 +6002,6 @@ function safeVibrate(pattern, force = false) {
 
 
 
-let gtfsInitialized = false;
 
 const langSwitcher = createLanguageSwitcher();
 
@@ -9869,7 +9870,7 @@ async function main() {
         initWorker();
         
         const gtfsData = await initializeGTFS();
-        gtfsInitialized = true;
+        window.gtfsInitialized = true;
         
         await loadGeoJsonLines();
         
