@@ -4941,6 +4941,7 @@ let gtfsInitialized = false;
 
 // Variables globales pour la gestion optimisée
 let busStopsLayerGroup;
+let currentZoomLevel; // Sera initialisée dans loadGeoJsonLines
 const MIN_ZOOM_FOR_STOPS = 14; // Afficher les arrêts seulement à partir du zoom 14
 let busStopsData = []; // Stocker les données des arrêts
 let visibleBusStops = new Set(); // Tracking des arrêts visibles
@@ -4948,7 +4949,9 @@ let visibleBusStops = new Set(); // Tracking des arrêts visibles
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
-    let currentZoomLevel = map.getZoom();
+
+    // Initialiser le niveau de zoom actuel
+    currentZoomLevel = map.getZoom();
 
     // 1. Charger les lignes de bus (moins problématique)
     const busLines = L.geoJSON(geoJsonData, {
@@ -5112,6 +5115,7 @@ function cleanupMap() {
         busStopsData = [];
     }
 }
+
 
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
