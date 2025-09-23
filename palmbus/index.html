@@ -1895,6 +1895,17 @@
     z-index: 999999999999999999999;
 }
 
+.marker-cluster-invisible {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 2px solid #333 !important;
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    text-align: center !important;
+    line-height: 36px !important;
+    font-size: 0 !important; 
+}
+
 </style>
 
 </head>
@@ -5064,7 +5075,15 @@ function initializeLayerGroups() {
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true,
             chunkedLoading: true,
-            chunkInterval: 50 // Charge par petits lots
+            chunkInterval: 50, // Charge par petits lots
+            iconCreateFunction: function(cluster) {
+                // Créer un cluster invisible mais cliquable
+                return L.divIcon({
+                    html: '', // Pas de texte
+                    className: 'marker-cluster-invisible',
+                    iconSize: L.point(40, 40)
+                });
+            }
         }).addTo(map);
     } else {
         busStopClusterGroup = L.layerGroup().addTo(map);
