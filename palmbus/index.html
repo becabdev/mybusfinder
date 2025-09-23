@@ -4964,30 +4964,10 @@ async function loadGeoJsonLines() {
     }).addTo(map);
 
     
-    busStops.eachLayer(function(stopLayer) {
-        if (stopLayer.feature && stopLayer.feature.properties) {
-            const stopLatLng = stopLayer.getLatLng();
-            const routeIds = [];
-            
-            const maxDistance = 50; 
-            
-            allBusLines.forEach(lineInfo => {
-                const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
-                if (distance <= maxDistance) {
-                    routeIds.push(lineInfo.routeId);
-                }
-            });
-            
-            stopLayer.routeIds = routeIds;
-            
-            routeIds.forEach(routeId => {
-                if (!busStopsByLine[routeId]) {
-                    busStopsByLine[routeId] = [];
-                }
-                busStopsByLine[routeId].push(stopLayer);
-            });
-            
-            busStopLayers.push(stopLayer);
+    busStops.eachLayer(function(layer) {
+        if (layer.feature && layer.feature.properties) {
+            layer.busLine = layer.feature.properties.route_id || null;
+            busStopLayers.push(layer);
         }
     });
     
