@@ -4934,6 +4934,9 @@ let selectedLines = [];
 let busStopsByLine = {}; 
 let allBusLines = []; 
 
+let gtfsInitialized = false;
+
+
 
 
 // Variables globales pour la gestion optimisée
@@ -5869,7 +5872,6 @@ function safeVibrate(pattern, force = false) {
 
 
 
-let gtfsInitialized = false;
 
 const langSwitcher = createLanguageSwitcher();
 
