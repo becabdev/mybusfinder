@@ -3736,7 +3736,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Updating to MBF ' + window.VERSION_NAME + '...';
+            loadingtext.textContent = '💫 ' + window.VERSION_NAME;
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3745,17 +3745,15 @@ function hideLoadingScreen() {
 
         } else {
 
+        const logoscr = document.getElementById('logoscr');
+        logoscr.classList.add('logoscrappp');
+        loadingScreen.classList.add('logoscrapppp');
+
+
         setTimeout(() => {
-            const logoscr = document.getElementById('logoscr');
-            logoscr.classList.add('logoscrappp');
-            loadingScreen.classList.add('logoscrapppp');
-
-
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                loadingScreen.style.pointerEvents = 'none';
-            }, 300);
-        }, 900);
+            loadingScreen.style.display = 'none';
+            loadingScreen.style.pointerEvents = 'none';
+        }, 300);
     }
     }, 100);
 }
