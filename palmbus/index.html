@@ -4931,23 +4931,18 @@ let allBusLines = [];
 
 let gtfsInitialized = false;
 
-
-
-
 let busStopsLayerGroup;
-let currentZoomLevel; // Sera initialisée dans loadGeoJsonLines
-const MIN_ZOOM_FOR_STOPS = 14; // Afficher les arrêts seulement à partir du zoom 14
-let busStopsData = []; // Stocker les données des arrêts
-let visibleBusStops = new Set(); // Tracking des arrêts visibles
+let currentZoomLevel; 
+const MIN_ZOOM_FOR_STOPS = 14; 
+let busStopsData = []; 
+let visibleBusStops = new Set(); 
 
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    // Initialiser le niveau de zoom actuel
     currentZoomLevel = map.getZoom();
 
-    // 1. Charger les lignes de bus (moins problématique)
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
             return feature.geometry.type === 'LineString';
@@ -4970,17 +4965,14 @@ async function loadGeoJsonLines() {
         }
     }).addTo(map);
 
-    // 2. Stocker les données des arrêts sans les afficher immédiatement
     busStopsData = geoJsonData.features.filter(feature => 
         feature.geometry && feature.geometry.type === 'Point'
     );
 
-    // 3. Créer un groupe de couches pour les arrêts
     busStopsLayerGroup = L.layerGroup();
 
-    // 4. Calculer les routeIds pour chaque arrêt (si proximityDistance existe)
     if (typeof adjustProximityDistance !== 'undefined' && typeof allBusLines !== 'undefined') {
-        const proximityDistance = 50; // Distance par défaut, ajuste selon tes besoins
+        const proximityDistance = 50; 
         busStopsData.forEach((feature, index) => {
             const stopLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
             const routeIds = [];
@@ -4992,15 +4984,12 @@ async function loadGeoJsonLines() {
                 }
             });
             
-            // Stocker les routeIds dans les données
             feature.routeIds = routeIds;
         });
     }
 
-    // 5. Afficher les arrêts selon le zoom initial
     updateBusStopsVisibility();
 
-    // 5. Écouter les changements de zoom et de déplacement
     map.on('zoomend', handleZoomChange);
     map.on('moveend', handleMapMove);
 }
@@ -5011,31 +5000,26 @@ function handleZoomChange() {
 }
 
 function handleMapMove() {
-    // Throttle les mises à jour lors du déplacement
+    // throttler les mises à jour lors du déplacement
     if (currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
         throttledUpdateVisibleStops();
     }
 }
 
-// Throttling pour éviter trop d'appels lors du déplacement
 const throttledUpdateVisibleStops = throttle(updateVisibleBusStops, 200);
 
 function updateBusStopsVisibility() {
     if (currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
-        // Ajouter la couche des arrêts si elle n'y est pas
         if (!map.hasLayer(busStopsLayerGroup)) {
             map.addLayer(busStopsLayerGroup);
         }
         updateVisibleBusStops();
     } else {
-        // Masquer tous les arrêts si zoom insuffisant
         if (map.hasLayer(busStopsLayerGroup)) {
             map.removeLayer(busStopsLayerGroup);
         }
-        // Nettoyer complètement
         busStopsLayerGroup.clearLayers();
         visibleBusStops.clear();
-        // Nettoyer aussi busStopLayers
         busStopLayers.length = 0;
     }
 }
@@ -5045,7 +5029,6 @@ function updateVisibleBusStops() {
     const newVisibleStops = new Set();
     const markersToRemove = [];
     
-    // Trouver les arrêts visibles dans la zone actuelle
     busStopsData.forEach((feature, index) => {
         const latlng = L.latLng(
             feature.geometry.coordinates[1], 
@@ -5055,30 +5038,25 @@ function updateVisibleBusStops() {
         if (bounds.contains(latlng)) {
             newVisibleStops.add(index);
             
-            // Ajouter seulement les nouveaux arrêts
             if (!visibleBusStops.has(index)) {
                 const marker = createBusStopMarker(feature, latlng, index);
                 
-                // Ajouter aux données de tracking AVANT d'appliquer le filtrage
                 if (feature.properties) {
                     marker.busLine = feature.properties.route_id || null;
                     busStopLayers.push(marker);
                 }
                 
-                // Appliquer le filtrage (qui décidera si l'ajouter à busStopsLayerGroup)
                 applyFilterToMarker(marker);
             }
         }
     });
     
-    // Identifier les markers à supprimer de la zone visible
     busStopLayers.forEach((marker, i) => {
         if (marker.stopIndex !== undefined && !newVisibleStops.has(marker.stopIndex)) {
             markersToRemove.push({marker, index: i});
         }
     });
     
-    // Supprimer les markers qui ne sont plus visibles (en ordre inverse pour éviter les problèmes d'index)
     markersToRemove.reverse().forEach(({marker, index}) => {
         if (busStopsLayerGroup.hasLayer(marker)) {
             busStopsLayerGroup.removeLayer(marker);
@@ -5089,7 +5067,6 @@ function updateVisibleBusStops() {
     visibleBusStops = newVisibleStops;
 }
 
-// Fonction pour appliquer le filtrage à un marker individuel
 function applyFilterToMarker(marker) {
     let shouldShow = false;
     
@@ -5101,19 +5078,16 @@ function applyFilterToMarker(marker) {
         }
     }
     
-    // Utiliser la même logique que ton système original
     if (shouldShow) {
         marker.setStyle({
             opacity: 0.7, 
             fillOpacity: 0.6,
             radius: 3
         });
-        // S'assurer que le marker est bien dans busStopsLayerGroup
         if (!busStopsLayerGroup.hasLayer(marker)) {
             busStopsLayerGroup.addLayer(marker);
         }
     } else {
-        // Supprimer complètement du groupe plutôt que de cacher
         if (busStopsLayerGroup.hasLayer(marker)) {
             busStopsLayerGroup.removeLayer(marker);
         }
@@ -5130,11 +5104,9 @@ function createBusStopMarker(feature, latlng, index) {
         fillOpacity: 0.6
     });
     
-    // Stocker l'index pour le tracking
     marker.stopIndex = index;
     marker.feature = feature;
     
-    // Transférer les routeIds depuis les données
     if (feature.routeIds) {
         marker.routeIds = feature.routeIds;
     }
@@ -5142,10 +5114,8 @@ function createBusStopMarker(feature, latlng, index) {
     return marker;
 }
 
-// Fonction pour mettre à jour l'affichage des arrêts selon le filtrage
 function updateBusStopsFiltering() {
     if (busStopsLayerGroup && currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
-        // Parcourir tous les arrêts dans busStopLayers (pas busStopsLayerGroup)
         busStopLayers.forEach(marker => {
             applyFilterToMarker(marker);
         });
@@ -5166,7 +5136,6 @@ function throttle(func, limit) {
 }
 
 
-// Fonction de nettoyage lors du changement de page
 function cleanupMap() {
     if (map) {
         map.off('zoomend', handleZoomChange);
