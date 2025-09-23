@@ -5055,20 +5055,8 @@ function initializeLayerGroups() {
     // Groupe pour les lignes avec gestion optimisée
     busLinesGroup = L.layerGroup().addTo(map);
     
-    // Clustering pour les arrêts (nécessite Leaflet.markercluster)
-    if (typeof L.markerClusterGroup !== 'undefined') {
-        busStopClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            disableClusteringAtZoom: 15,
-            spiderfyOnMaxZoom: false,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            chunkedLoading: true,
-            chunkInterval: 50 // Charge par petits lots
-        }).addTo(map);
-    } else {
-        busStopClusterGroup = L.layerGroup().addTo(map);
-    }
+    // Groupe simple pour les arrêts (sans clustering)
+    busStopClusterGroup = L.layerGroup().addTo(map);
 }
 
 function loadBusLinesOptimized(lines) {
@@ -5116,11 +5104,6 @@ function loadBusLinesOptimized(lines) {
 }
 
 function loadBusStopsOptimized(stops) {
-    // Ne pas afficher les arrêts si le zoom est trop faible
-    if (currentZoom < LOD_CONFIG.HIDE_STOPS_BELOW) {
-        return;
-    }
-    
     // Traitement par lots
     const batchSize = 20;
     let index = 0;
@@ -5158,34 +5141,32 @@ function loadBusStopsOptimized(stops) {
 }
 
 function setupZoomOptimization() {
-    map.on('zoomstart', function() {
-        // Masquer temporairement les couches pendant le zoom
-        if (busStopClusterGroup) {
-            busStopClusterGroup.setOpacity ? busStopClusterGroup.setOpacity(0.3) : null;
-        }
-    });
-    
     map.on('zoomend', function() {
         const newZoom = map.getZoom();
+        currentZoom = newZoom;
         
+        // Masquer/afficher les arrêts selon le zoom
+        if (newZoom < LOD_CONFIG.HIDE_STOPS_BELOW) {
+            map.removeLayer(busStopClusterGroup);
+        } else {
+            if (!map.hasLayer(busStopClusterGroup)) {
+                map.addLayer(busStopClusterGroup);
+            }
+        }
+        
+        // Rechargement si changement de zoom significatif
         if (Math.abs(newZoom - currentZoom) >= 2) {
-            // Rechargement optimisé si changement de zoom significatif
-            currentZoom = newZoom;
             refreshLayersForZoom();
         }
-        
-        // Restaurer l'opacité
-        if (busStopClusterGroup) {
-            busStopClusterGroup.setOpacity ? busStopClusterGroup.setOpacity(1) : null;
-        }
-        
-        currentZoom = newZoom;
     });
     
     // Optimisation pour les mouvements de carte
     let moveTimeout;
     map.on('move', function() {
         clearTimeout(moveTimeout);
+        moveTimeout = setTimeout(function() {
+            cleanupOffscreenLayers();
+        }, 500);
     });
 }
 
