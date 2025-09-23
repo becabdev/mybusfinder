@@ -3112,6 +3112,10 @@ async function changeColorBkg(selectedTheme = null) {
 }
 
 
+(async () => {
+    await changeColorBkg();
+})();
+
 setTimeout(() => {
     const logoscr = document.getElementById('logoscr');
     logoscr.classList.add('logoscrapp');
@@ -3736,7 +3740,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Updating to MBF ' + window.VERSION_NAME + '...';
+            loadingtext.textContent = '💫 ' + window.VERSION_NAME;
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3745,17 +3749,15 @@ function hideLoadingScreen() {
 
         } else {
 
+        const logoscr = document.getElementById('logoscr');
+        logoscr.classList.add('logoscrappp');
+        loadingScreen.classList.add('logoscrapppp');
+
+
         setTimeout(() => {
-            const logoscr = document.getElementById('logoscr');
-            logoscr.classList.add('logoscrappp');
-            loadingScreen.classList.add('logoscrapppp');
-
-
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-                loadingScreen.style.pointerEvents = 'none';
-            }, 300);
-        }, 900);
+            loadingScreen.style.display = 'none';
+            loadingScreen.style.pointerEvents = 'none';
+        }, 300);
     }
     }, 100);
 }
@@ -4964,30 +4966,10 @@ async function loadGeoJsonLines() {
     }).addTo(map);
 
     
-    busStops.eachLayer(function(stopLayer) {
-        if (stopLayer.feature && stopLayer.feature.properties) {
-            const stopLatLng = stopLayer.getLatLng();
-            const routeIds = [];
-            
-            const maxDistance = 50; 
-            
-            allBusLines.forEach(lineInfo => {
-                const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
-                if (distance <= maxDistance) {
-                    routeIds.push(lineInfo.routeId);
-                }
-            });
-            
-            stopLayer.routeIds = routeIds;
-            
-            routeIds.forEach(routeId => {
-                if (!busStopsByLine[routeId]) {
-                    busStopsByLine[routeId] = [];
-                }
-                busStopsByLine[routeId].push(stopLayer);
-            });
-            
-            busStopLayers.push(stopLayer);
+    busStops.eachLayer(function(layer) {
+        if (layer.feature && layer.feature.properties) {
+            layer.busLine = layer.feature.properties.route_id || null;
+            busStopLayers.push(layer);
         }
     });
     
@@ -9627,8 +9609,8 @@ async function main() {
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),
-            fetchVehiclePositions(),
-            hideLoadingScreen()
+            hideLoadingScreen(),
+            fetchVehiclePositions()
         ]);
         
         requestAnimationFrame(scheduleFetchUpdates);
@@ -9642,8 +9624,6 @@ async function main() {
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', main);
-} else {
-    main();
-}    
+} 
 </script>
 </html>
