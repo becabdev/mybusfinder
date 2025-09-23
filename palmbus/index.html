@@ -4921,7 +4921,7 @@ let gtfsInitialized = false;
 // Variables globales pour le clustering et la gestion des couches
 let busStopClusterGroup;
 let busLinesGroup;
-let currentZoom = map.getZoom();
+let currentZoom = 10; // Valeur par défaut
 
 // Configuration des niveaux de détail selon le zoom
 const LOD_CONFIG = {
@@ -4932,6 +4932,8 @@ const LOD_CONFIG = {
 
 async function loadGeoJsonLines() {
     try {
+        // Initialiser currentZoom avec la valeur actuelle de la map
+        currentZoom = map.getZoom();
         const response = await fetch('proxy-cors/proxy_geojson.php');
         const geoJsonData = await response.json();
         
