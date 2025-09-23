@@ -1895,92 +1895,17 @@
     z-index: 999999999999999999999;
 }
 
-.custom-cluster-icon {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.simple-cluster {
+    background: #3388ff;
     border-radius: 50%;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    border: 3px solid white;
+    color: white;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.custom-cluster-icon.small {
-    transform: scale(0.8);
-}
-
-.custom-cluster-icon.medium {
-    transform: scale(1);
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
-}
-
-.custom-cluster-icon.large {
-    transform: scale(1.2);
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.5);
-}
-
-.cluster-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.cluster-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
-    position: relative;
-}
-
-.cluster-number {
-    color: white;
-    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     font-size: 12px;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    line-height: 1;
-    margin-bottom: 1px;
-}
-
-.cluster-label {
-    color: white;
-    font-size: 8px;
-    font-weight: 500;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    text-transform: lowercase;
-    opacity: 0.9;
-    line-height: 1;
-}
-
-.cluster-pulse {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.3);
-    transform: translate(-50%, -50%);
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        transform: translate(-50%, -50%) scale(0.8);
-        opacity: 1;
-    }
-    100% {
-        transform: translate(-50%, -50%) scale(1.2);
-        opacity: 0;
-    }
+    font-weight: bold;
 }
 
 </style>
@@ -5143,38 +5068,23 @@ function initializeLayerGroups() {
     // Groupe pour les lignes avec gestion optimisée
     busLinesGroup = L.layerGroup().addTo(map);
     
-    // Clustering pour les arrêts (nécessite Leaflet.markercluster)
+    // Clustering simplifié SANS animations coûteuses
     if (typeof L.markerClusterGroup !== 'undefined') {
         busStopClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            disableClusteringAtZoom: 15,
+            maxClusterRadius: 30,
+            disableClusteringAtZoom: 16, // Clustering désactivé plus tôt
             spiderfyOnMaxZoom: false,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
+            zoomToBoundsOnClick: false, // Évite les bugs de positionnement
             chunkedLoading: true,
-            chunkInterval: 50,
+            chunkInterval: 100, // Lots plus gros = moins de traitements
+            removeOutsideVisibleBounds: true, // IMPORTANT : retire les marqueurs hors vue
             iconCreateFunction: function(cluster) {
                 const count = cluster.getChildCount();
-                let size = 'small';
-                
-                if (count > 100) {
-                    size = 'large';
-                } else if (count > 20) {
-                    size = 'medium';
-                }
-                
                 return L.divIcon({
-                    html: `
-                        <div class="cluster-inner">
-                            <div class="cluster-content">
-                                <div class="cluster-number">${count}</div>
-                                <div class="cluster-label">arrêts</div>
-                            </div>
-                            <div class="cluster-pulse"></div>
-                        </div>
-                    `,
-                    className: `custom-cluster-icon ${size}`,
-                    iconSize: [40, 40]
+                    html: `<span>${count}</span>`,
+                    className: 'simple-cluster',
+                    iconSize: [25, 25]
                 });
             }
         }).addTo(map);
@@ -5229,28 +5139,39 @@ function loadBusLinesOptimized(lines) {
 
 function loadBusStopsOptimized(stops) {
     // Ne pas afficher les arrêts si le zoom est trop faible
-    if (currentZoom < LOD_CONFIG.HIDE_STOPS_BELOW) {
+    if (currentZoom < 13) { // Augmenté de 12 à 13
         return;
     }
     
-    // Traitement par lots
-    const batchSize = 20;
+    // LIMITATION : ne prendre que les arrêts dans la vue actuelle
+    const bounds = map.getBounds();
+    const visibleStops = stops.filter(feature => {
+        const lat = feature.geometry.coordinates[1];
+        const lng = feature.geometry.coordinates[0];
+        return bounds.contains([lat, lng]);
+    });
+    
+    // Limiter à maximum 200 arrêts visibles
+    const limitedStops = visibleStops.slice(0, 200);
+    
+    // Traitement par gros lots
+    const batchSize = 50;
     let index = 0;
     
     function processBatch() {
-        const batch = stops.slice(index, index + batchSize);
+        const batch = limitedStops.slice(index, index + batchSize);
         
         batch.forEach(feature => {
             const marker = L.circleMarker([
                 feature.geometry.coordinates[1],
                 feature.geometry.coordinates[0]
             ], {
-                radius: currentZoom < 14 ? 2 : 3,
+                radius: 3,
                 fillColor: '#ffffff',
                 color: '#000000',
-                weight: 0.5,
-                opacity: 0.7,
-                fillOpacity: 0.6
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
             });
             
             marker.feature = feature;
@@ -5261,8 +5182,8 @@ function loadBusStopsOptimized(stops) {
         
         index += batchSize;
         
-        if (index < stops.length) {
-            requestAnimationFrame(processBatch);
+        if (index < limitedStops.length) {
+            setTimeout(processBatch, 10); // Délai plus long
         }
     }
     
