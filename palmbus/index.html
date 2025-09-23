@@ -1895,10 +1895,6 @@
     z-index: 999999999999999999999;
 }
 
-.marker-cluster-invisible {
-display: none;
-}
-
 </style>
 
 </head>
@@ -5068,15 +5064,7 @@ function initializeLayerGroups() {
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true,
             chunkedLoading: true,
-            chunkInterval: 50, // Charge par petits lots
-            iconCreateFunction: function(cluster) {
-                // Créer un cluster invisible mais cliquable
-                return L.divIcon({
-                    html: '', // Pas de texte
-                    className: 'marker-cluster-invisible',
-                    iconSize: L.point(40, 40)
-                });
-            }
+            chunkInterval: 50 // Charge par petits lots
         }).addTo(map);
     } else {
         busStopClusterGroup = L.layerGroup().addTo(map);
