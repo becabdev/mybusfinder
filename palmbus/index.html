@@ -16,8 +16,6 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
     <style>
     html {
         height: 100%;
@@ -1893,6 +1891,27 @@
 
 .leaflet-marker-icon.leaflet-interactive {
     z-index: 999999999999999999999;
+}
+
+.leaflet-container {
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+}
+
+.bus-line {
+    vector-effect: non-scaling-stroke;
+    shape-rendering: optimizeSpeed;
+}
+
+.leaflet-marker-icon, .leaflet-marker-shadow {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+}
+
+@media (max-width: 768px) {
+    .bus-line {
+        stroke-width: 4; 
+    }
 }
 
 </style>
@@ -4916,293 +4935,180 @@ let busStopsByLine = {};
 let allBusLines = []; 
 
 
-let gtfsInitialized = false;
 
-// Variables globales pour le clustering et la gestion des couches
-let busStopClusterGroup;
-let busLinesGroup;
-let currentZoom = 10; // Valeur par défaut
-
-// Configuration des niveaux de détail selon le zoom
-const LOD_CONFIG = {
-    HIDE_STOPS_BELOW: 12,
-    SIMPLIFY_LINES_BELOW: 10,
-    MAX_VISIBLE_LINES: 50
-};
+// Variables globales pour la gestion optimisée
+let busStopsLayerGroup;
+let currentZoomLevel = map.getZoom();
+const MIN_ZOOM_FOR_STOPS = 14; // Afficher les arrêts seulement à partir du zoom 14
+let busStopsData = []; // Stocker les données des arrêts
+let visibleBusStops = new Set(); // Tracking des arrêts visibles
 
 async function loadGeoJsonLines() {
-    try {
-        // Initialiser currentZoom avec la valeur actuelle de la map
-        currentZoom = map.getZoom();
-        const response = await fetch('proxy-cors/proxy_geojson.php');
-        const geoJsonData = await response.json();
-        
-        // Séparer et optimiser les données
-        const { lines, stops } = preprocessGeoJsonData(geoJsonData);
-        
-        // Créer les groupes de couches avec clustering
-        initializeLayerGroups();
-        
-        // Charger les lignes de manière optimisée
-        loadBusLinesOptimized(lines);
-        
-        // Charger les arrêts avec clustering
-        loadBusStopsOptimized(stops);
-        
-        // Gérer les événements de zoom pour l'optimisation
-        setupZoomOptimization();
-        
-    } catch (error) {
-        console.error('Erreur lors du chargement du GeoJSON:', error);
+    const response = await fetch('proxy-cors/proxy_geojson.php');
+    const geoJsonData = await response.json();
+
+    // 1. Charger les lignes de bus (moins problématique)
+    const busLines = L.geoJSON(geoJsonData, {
+        filter: function(feature) {
+            return feature.geometry.type === 'LineString';
+        },
+        style: function(feature) {
+            return {
+                color: lineColors[feature.properties.route_id] || '#3388ff',
+                weight: 6,
+                opacity: 0.7,  
+                lineJoin: 'round',
+                lineCap: 'round',
+                className: 'bus-line', 
+                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
+            };
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties && feature.properties.route_id) {
+                geoJsonLines.push(layer);
+            }
+        }
+    }).addTo(map);
+
+    // 2. Stocker les données des arrêts sans les afficher immédiatement
+    busStopsData = geoJsonData.features.filter(feature => 
+        feature.geometry && feature.geometry.type === 'Point'
+    );
+
+    // 3. Créer un groupe de couches pour les arrêts
+    busStopsLayerGroup = L.layerGroup();
+
+    // 4. Afficher les arrêts selon le zoom initial
+    updateBusStopsVisibility();
+
+    // 5. Écouter les changements de zoom et de déplacement
+    map.on('zoomend', handleZoomChange);
+    map.on('moveend', handleMapMove);
+}
+
+function handleZoomChange() {
+    currentZoomLevel = map.getZoom();
+    updateBusStopsVisibility();
+}
+
+function handleMapMove() {
+    // Throttle les mises à jour lors du déplacement
+    if (currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
+        throttledUpdateVisibleStops();
     }
 }
 
-function preprocessGeoJsonData(geoJsonData) {
-    const lines = [];
-    const stops = [];
+// Throttling pour éviter trop d'appels lors du déplacement
+const throttledUpdateVisibleStops = throttle(updateVisibleBusStops, 200);
+
+function updateBusStopsVisibility() {
+    if (currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
+        // Ajouter la couche des arrêts si elle n'y est pas
+        if (!map.hasLayer(busStopsLayerGroup)) {
+            map.addLayer(busStopsLayerGroup);
+        }
+        updateVisibleBusStops();
+    } else {
+        // Masquer tous les arrêts si zoom insuffisant
+        if (map.hasLayer(busStopsLayerGroup)) {
+            map.removeLayer(busStopsLayerGroup);
+            busStopsLayerGroup.clearLayers();
+            visibleBusStops.clear();
+        }
+    }
+}
+
+function updateVisibleBusStops() {
+    const bounds = map.getBounds();
+    const newVisibleStops = new Set();
     
-    geoJsonData.features.forEach(feature => {
-        if (feature.geometry) {
-            if (feature.geometry.type === 'LineString') {
-                // Simplifier les géométries complexes
-                const simplified = simplifyLineString(feature, currentZoom);
-                lines.push(simplified);
-            } else if (feature.geometry.type === 'Point') {
-                stops.push(feature);
+    // Trouver les arrêts visibles dans la zone actuelle
+    busStopsData.forEach((feature, index) => {
+        const latlng = L.latLng(
+            feature.geometry.coordinates[1], 
+            feature.geometry.coordinates[0]
+        );
+        
+        if (bounds.contains(latlng)) {
+            newVisibleStops.add(index);
+            
+            // Ajouter seulement les nouveaux arrêts
+            if (!visibleBusStops.has(index)) {
+                const marker = createBusStopMarker(feature, latlng);
+                busStopsLayerGroup.addLayer(marker);
+                
+                // Ajouter aux données de tracking
+                if (feature.properties) {
+                    marker.busLine = feature.properties.route_id || null;
+                    busStopLayers.push(marker);
+                }
             }
         }
     });
     
-    return { lines, stops };
-}
-
-function simplifyLineString(feature, zoom) {
-    // Simplifier selon le niveau de zoom
-    if (zoom < LOD_CONFIG.SIMPLIFY_LINES_BELOW) {
-        const tolerance = 0.001; // Ajustez selon vos besoins
-        feature.geometry.coordinates = douglasPeucker(
-            feature.geometry.coordinates, 
-            tolerance
-        );
-    }
-    return feature;
-}
-
-// Algorithme de Douglas-Peucker simplifié pour réduire les points
-function douglasPeucker(points, tolerance) {
-    if (points.length <= 2) return points;
-    
-    let maxDistance = 0;
-    let maxIndex = 0;
-    
-    for (let i = 1; i < points.length - 1; i++) {
-        const distance = perpendicularDistance(
-            points[i], 
-            points[0], 
-            points[points.length - 1]
-        );
-        
-        if (distance > maxDistance) {
-            maxDistance = distance;
-            maxIndex = i;
-        }
-    }
-    
-    if (maxDistance > tolerance) {
-        const left = douglasPeucker(points.slice(0, maxIndex + 1), tolerance);
-        const right = douglasPeucker(points.slice(maxIndex), tolerance);
-        return left.slice(0, -1).concat(right);
-    }
-    
-    return [points[0], points[points.length - 1]];
-}
-
-function perpendicularDistance(point, lineStart, lineEnd) {
-    const [x, y] = point;
-    const [x1, y1] = lineStart;
-    const [x2, y2] = lineEnd;
-    
-    const A = x - x1;
-    const B = y - y1;
-    const C = x2 - x1;
-    const D = y2 - y1;
-    
-    const dot = A * C + B * D;
-    const lenSq = C * C + D * D;
-    
-    if (lenSq === 0) return Math.sqrt(A * A + B * B);
-    
-    const param = dot / lenSq;
-    let xx, yy;
-    
-    if (param < 0) {
-        xx = x1;
-        yy = y1;
-    } else if (param > 1) {
-        xx = x2;
-        yy = y2;
-    } else {
-        xx = x1 + param * C;
-        yy = y1 + param * D;
-    }
-    
-    const dx = x - xx;
-    const dy = y - yy;
-    return Math.sqrt(dx * dx + dy * dy);
-}
-
-function initializeLayerGroups() {
-    // Groupe pour les lignes avec gestion optimisée
-    busLinesGroup = L.layerGroup().addTo(map);
-    
-    // Groupe simple pour les arrêts (sans clustering)
-    busStopClusterGroup = L.layerGroup().addTo(map);
-}
-
-function loadBusLinesOptimized(lines) {
-    // Limiter le nombre de lignes visibles selon le zoom
-    const visibleLines = currentZoom < LOD_CONFIG.SIMPLIFY_LINES_BELOW 
-        ? lines.slice(0, LOD_CONFIG.MAX_VISIBLE_LINES) 
-        : lines;
-    
-    // Traitement par lots pour éviter de bloquer l'UI
-    const batchSize = 10;
-    let index = 0;
-    
-    function processBatch() {
-        const batch = visibleLines.slice(index, index + batchSize);
-        
-        batch.forEach(feature => {
-            const layer = L.geoJSON(feature, {
-                style: {
-                    color: lineColors[feature.properties.route_id] || '#3388ff',
-                    weight: currentZoom < 12 ? 4 : 6,
-                    opacity: currentZoom < 12 ? 0.5 : 0.7,
-                    lineJoin: 'round',
-                    lineCap: 'round',
-                    className: 'bus-line',
-                    dashArray: feature.properties.route_type === '3' ? '5, 5' : null,
-                    // Optimisations de rendu
-                    smoothFactor: currentZoom < 12 ? 3 : 1,
-                    noClip: false
+    // Supprimer les arrêts qui ne sont plus visibles
+    visibleBusStops.forEach(stopIndex => {
+        if (!newVisibleStops.has(stopIndex)) {
+            // Trouver et supprimer le marker correspondant
+            busStopsLayerGroup.eachLayer(layer => {
+                if (layer.stopIndex === stopIndex) {
+                    busStopsLayerGroup.removeLayer(layer);
+                    // Supprimer aussi de busStopLayers
+                    const layerIndex = busStopLayers.indexOf(layer);
+                    if (layerIndex > -1) {
+                        busStopLayers.splice(layerIndex, 1);
+                    }
                 }
             });
-            
-            busLinesGroup.addLayer(layer);
-            geoJsonLines.push(layer);
-        });
-        
-        index += batchSize;
-        
-        if (index < visibleLines.length) {
-            // Traitement asynchrone pour ne pas bloquer l'UI
-            requestAnimationFrame(processBatch);
-        }
-    }
-    
-    processBatch();
-}
-
-function loadBusStopsOptimized(stops) {
-    // Traitement par lots
-    const batchSize = 20;
-    let index = 0;
-    
-    function processBatch() {
-        const batch = stops.slice(index, index + batchSize);
-        
-        batch.forEach(feature => {
-            const marker = L.circleMarker([
-                feature.geometry.coordinates[1],
-                feature.geometry.coordinates[0]
-            ], {
-                radius: currentZoom < 14 ? 2 : 3,
-                fillColor: '#ffffff',
-                color: '#000000',
-                weight: 0.5,
-                opacity: 0.7,
-                fillOpacity: 0.6
-            });
-            
-            marker.feature = feature;
-            marker.busLine = feature.properties.route_id || null;
-            busStopLayers.push(marker);
-            busStopClusterGroup.addLayer(marker);
-        });
-        
-        index += batchSize;
-        
-        if (index < stops.length) {
-            requestAnimationFrame(processBatch);
-        }
-    }
-    
-    processBatch();
-}
-
-function setupZoomOptimization() {
-    map.on('zoomend', function() {
-        const newZoom = map.getZoom();
-        currentZoom = newZoom;
-        
-        // Masquer/afficher les arrêts selon le zoom
-        if (newZoom < LOD_CONFIG.HIDE_STOPS_BELOW) {
-            map.removeLayer(busStopClusterGroup);
-        } else {
-            if (!map.hasLayer(busStopClusterGroup)) {
-                map.addLayer(busStopClusterGroup);
-            }
-        }
-        
-        // Rechargement si changement de zoom significatif
-        if (Math.abs(newZoom - currentZoom) >= 2) {
-            refreshLayersForZoom();
         }
     });
     
-    // Optimisation pour les mouvements de carte
-    let moveTimeout;
-    map.on('move', function() {
-        clearTimeout(moveTimeout);
+    visibleBusStops = newVisibleStops;
+}
+
+function createBusStopMarker(feature, latlng) {
+    const marker = L.circleMarker(latlng, {
+        radius: 3,
+        fillColor: '#ffffff',
+        color: '#000000',
+        weight: 0.5,
+        opacity: 0.7,
+        fillOpacity: 0.6
     });
+    
+    // Stocker l'index pour le tracking
+    marker.stopIndex = busStopsData.indexOf(feature);
+    marker.feature = feature;
+    
+    return marker;
 }
 
-function refreshLayersForZoom() {
-    // Vider les groupes existants
-    busLinesGroup.clearLayers();
-    busStopClusterGroup.clearLayers();
-    
-    // Vider les arrays de référence
-    geoJsonLines.length = 0;
-    busStopLayers.length = 0;
-    
-    // Recharger avec la nouvelle configuration
-    loadGeoJsonLines();
+// Fonction throttle pour limiter la fréquence des appels
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    }
 }
 
-// Configuration CSS pour améliorer les performances de rendu
-const style = document.createElement('style');
-style.textContent = `
-    .leaflet-container {
-        /* Activer l'accélération matérielle */
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
-        will-change: transform;
+// Fonction de nettoyage lors du changement de page
+function cleanupMap() {
+    if (map) {
+        map.off('zoomend', handleZoomChange);
+        map.off('moveend', handleMapMove);
+        if (busStopsLayerGroup) {
+            busStopsLayerGroup.clearLayers();
+        }
+        visibleBusStops.clear();
+        busStopsData = [];
     }
-    
-    .bus-line {
-        /* Optimisations de rendu pour les lignes */
-        vector-effect: non-scaling-stroke;
-        shape-rendering: optimizeSpeed;
-    }
-    
-    .leaflet-zoom-anim {
-        /* Transition plus fluide */
-        -webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
-        transition: transform 0.25s cubic-bezier(0,0,0.25,1);
-    }
-`;
-document.head.appendChild(style);
+}
 
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
@@ -5963,6 +5869,7 @@ function safeVibrate(pattern, force = false) {
 
 
 
+let gtfsInitialized = false;
 
 const langSwitcher = createLanguageSwitcher();
 
