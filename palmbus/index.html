@@ -5057,15 +5057,22 @@ function initializeLayerGroups() {
     
     // Clustering pour les arrêts (nécessite Leaflet.markercluster)
     if (typeof L.markerClusterGroup !== 'undefined') {
-        busStopClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            disableClusteringAtZoom: 15,
-            spiderfyOnMaxZoom: false,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            chunkedLoading: true,
-            chunkInterval: 50 // Charge par petits lots
-        }).addTo(map);
+    busStopClusterGroup = L.markerClusterGroup({
+        maxClusterRadius: 40,
+        disableClusteringAtZoom: 15,
+        spiderfyOnMaxZoom: false,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        chunkedLoading: true,
+        chunkInterval: 50,
+        iconCreateFunction: function(cluster) {
+            return L.divIcon({
+                html: '', // Pas de texte
+                className: 'marker-cluster',
+                iconSize: [30, 30]
+            });
+        }
+    }).addTo(map);
     } else {
         busStopClusterGroup = L.layerGroup().addTo(map);
     }
