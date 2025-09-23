@@ -4913,13 +4913,11 @@ let selectedLines = [];
 let busStopsByLine = {}; 
 let allBusLines = []; 
 
+
+
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
-
-    busStopsByLine = {};
-    allBusLines = [];
-    busStopLayers = [];
 
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
@@ -4937,13 +4935,9 @@ async function loadGeoJsonLines() {
             };
         },
         onEachFeature: function(feature, layer) {
+            
             if (feature.properties && feature.properties.route_id) {
                 geoJsonLines.push(layer);
-                allBusLines.push({
-                    layer: layer,
-                    routeId: feature.properties.route_id,
-                    geometry: feature.geometry
-                });
             }
         }
     }).addTo(map);
@@ -4959,12 +4953,10 @@ async function loadGeoJsonLines() {
                 color: '#000000',
                 weight: 0.5,
                 opacity: 0.7,
-                fillOpacity: 0.6,
-                zIndex: 99999999999999999999 // juste pour être sûr mais c'est peut-être abusé jsais
+                fillOpacity: 0.6
             });
         }
     }).addTo(map);
-
     
     busStops.eachLayer(function(layer) {
         if (layer.feature && layer.feature.properties) {
