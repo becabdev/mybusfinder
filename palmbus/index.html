@@ -5164,9 +5164,6 @@ function setupZoomOptimization() {
     let moveTimeout;
     map.on('move', function() {
         clearTimeout(moveTimeout);
-        moveTimeout = setTimeout(function() {
-            cleanupOffscreenLayers();
-        }, 500);
     });
 }
 
