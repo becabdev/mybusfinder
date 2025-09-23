@@ -5018,15 +5018,19 @@ function updateBusStopsVisibility() {
         // Masquer tous les arrêts si zoom insuffisant
         if (map.hasLayer(busStopsLayerGroup)) {
             map.removeLayer(busStopsLayerGroup);
-            busStopsLayerGroup.clearLayers();
-            visibleBusStops.clear();
         }
+        // Nettoyer complètement
+        busStopsLayerGroup.clearLayers();
+        visibleBusStops.clear();
+        // Nettoyer aussi busStopLayers
+        busStopLayers.length = 0;
     }
 }
 
 function updateVisibleBusStops() {
     const bounds = map.getBounds();
     const newVisibleStops = new Set();
+    const markersToRemove = [];
     
     // Trouver les arrêts visibles dans la zone actuelle
     busStopsData.forEach((feature, index) => {
@@ -5040,7 +5044,7 @@ function updateVisibleBusStops() {
             
             // Ajouter seulement les nouveaux arrêts
             if (!visibleBusStops.has(index)) {
-                const marker = createBusStopMarker(feature, latlng);
+                const marker = createBusStopMarker(feature, latlng, index);
                 busStopsLayerGroup.addLayer(marker);
                 
                 // Ajouter aux données de tracking
@@ -5052,27 +5056,28 @@ function updateVisibleBusStops() {
         }
     });
     
-    // Supprimer les arrêts qui ne sont plus visibles
-    visibleBusStops.forEach(stopIndex => {
-        if (!newVisibleStops.has(stopIndex)) {
-            // Trouver et supprimer le marker correspondant
-            busStopsLayerGroup.eachLayer(layer => {
-                if (layer.stopIndex === stopIndex) {
-                    busStopsLayerGroup.removeLayer(layer);
-                    // Supprimer aussi de busStopLayers
-                    const layerIndex = busStopLayers.indexOf(layer);
-                    if (layerIndex > -1) {
-                        busStopLayers.splice(layerIndex, 1);
-                    }
-                }
-            });
+    // Identifier les markers à supprimer
+    busStopsLayerGroup.eachLayer(layer => {
+        if (layer.stopIndex !== undefined && !newVisibleStops.has(layer.stopIndex)) {
+            markersToRemove.push(layer);
+        }
+    });
+    
+    // Supprimer les markers qui ne sont plus visibles
+    markersToRemove.forEach(marker => {
+        busStopsLayerGroup.removeLayer(marker);
+        
+        // Supprimer aussi de busStopLayers
+        const layerIndex = busStopLayers.indexOf(marker);
+        if (layerIndex > -1) {
+            busStopLayers.splice(layerIndex, 1);
         }
     });
     
     visibleBusStops = newVisibleStops;
 }
 
-function createBusStopMarker(feature, latlng) {
+function createBusStopMarker(feature, latlng, index) {
     const marker = L.circleMarker(latlng, {
         radius: 3,
         fillColor: '#ffffff',
@@ -5083,7 +5088,7 @@ function createBusStopMarker(feature, latlng) {
     });
     
     // Stocker l'index pour le tracking
-    marker.stopIndex = busStopsData.indexOf(feature);
+    marker.stopIndex = index;
     marker.feature = feature;
     
     return marker;
@@ -5115,7 +5120,6 @@ function cleanupMap() {
         busStopsData = [];
     }
 }
-
 
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
