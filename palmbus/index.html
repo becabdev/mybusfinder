@@ -5063,36 +5063,32 @@ function updateVisibleBusStops() {
             // Ajouter seulement les nouveaux arrêts
             if (!visibleBusStops.has(index)) {
                 const marker = createBusStopMarker(feature, latlng, index);
-                busStopsLayerGroup.addLayer(marker);
                 
-                // Ajouter aux données de tracking
+                // Ajouter aux données de tracking AVANT d'appliquer le filtrage
                 if (feature.properties) {
                     marker.busLine = feature.properties.route_id || null;
                     busStopLayers.push(marker);
                 }
                 
-                // Appliquer immédiatement le filtrage si nécessaire
+                // Appliquer le filtrage (qui décidera si l'ajouter à busStopsLayerGroup)
                 applyFilterToMarker(marker);
             }
         }
     });
     
-    // Identifier les markers à supprimer
-    busStopsLayerGroup.eachLayer(layer => {
-        if (layer.stopIndex !== undefined && !newVisibleStops.has(layer.stopIndex)) {
-            markersToRemove.push(layer);
+    // Identifier les markers à supprimer de la zone visible
+    busStopLayers.forEach((marker, i) => {
+        if (marker.stopIndex !== undefined && !newVisibleStops.has(marker.stopIndex)) {
+            markersToRemove.push({marker, index: i});
         }
     });
     
-    // Supprimer les markers qui ne sont plus visibles
-    markersToRemove.forEach(marker => {
-        busStopsLayerGroup.removeLayer(marker);
-        
-        // Supprimer aussi de busStopLayers
-        const layerIndex = busStopLayers.indexOf(marker);
-        if (layerIndex > -1) {
-            busStopLayers.splice(layerIndex, 1);
+    // Supprimer les markers qui ne sont plus visibles (en ordre inverse pour éviter les problèmes d'index)
+    markersToRemove.reverse().forEach(({marker, index}) => {
+        if (busStopsLayerGroup.hasLayer(marker)) {
+            busStopsLayerGroup.removeLayer(marker);
         }
+        busStopLayers.splice(index, 1);
     });
     
     visibleBusStops = newVisibleStops;
@@ -5110,11 +5106,22 @@ function applyFilterToMarker(marker) {
         }
     }
     
-    // Gérer la visibilité via opacity plutôt que add/removeLayer
+    // Utiliser la même logique que ton système original
     if (shouldShow) {
-        marker.setStyle({opacity: 0.7, fillOpacity: 0.6});
+        marker.setStyle({
+            opacity: 0.7, 
+            fillOpacity: 0.6,
+            radius: 3
+        });
+        // S'assurer que le marker est bien dans busStopsLayerGroup
+        if (!busStopsLayerGroup.hasLayer(marker)) {
+            busStopsLayerGroup.addLayer(marker);
+        }
     } else {
-        marker.setStyle({opacity: 0, fillOpacity: 0});
+        // Supprimer complètement du groupe plutôt que de cacher
+        if (busStopsLayerGroup.hasLayer(marker)) {
+            busStopsLayerGroup.removeLayer(marker);
+        }
     }
 }
 
@@ -5143,13 +5150,13 @@ function createBusStopMarker(feature, latlng, index) {
 // Fonction pour mettre à jour l'affichage des arrêts selon le filtrage
 function updateBusStopsFiltering() {
     if (busStopsLayerGroup && currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
-        busStopsLayerGroup.eachLayer(layer => {
-            applyFilterToMarker(layer);
+        // Parcourir tous les arrêts dans busStopLayers (pas busStopsLayerGroup)
+        busStopLayers.forEach(marker => {
+            applyFilterToMarker(marker);
         });
     }
 }
 
-// Fonction throttle pour limiter la fréquence des appels
 function throttle(func, limit) {
     let inThrottle;
     return function() {
@@ -5162,6 +5169,21 @@ function throttle(func, limit) {
         }
     }
 }
+
+
+// Fonction de nettoyage lors du changement de page
+function cleanupMap() {
+    if (map) {
+        map.off('zoomend', handleZoomChange);
+        map.off('moveend', handleMapMove);
+        if (busStopsLayerGroup) {
+            busStopsLayerGroup.clearLayers();
+        }
+        visibleBusStops.clear();
+        busStopsData = [];
+    }
+}
+
 
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
@@ -5278,7 +5300,6 @@ function zoomToMultipleLines(lineIds) {
 }
 
 function updateLinesDisplay() {
-    // Gérer les lignes comme avant
     geoJsonLines.forEach(layer => {
         const routeId = layer.feature.properties.route_id;
 
@@ -5293,10 +5314,8 @@ function updateLinesDisplay() {
         }
     });
 
-    // Gérer les arrêts avec le nouveau système
     updateBusStopsFiltering();
 
-    // Gérer les autres markers comme avant
     if (typeof markers !== 'undefined') {
         Object.entries(markers).forEach(([id, marker]) => {
             if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
@@ -5314,6 +5333,7 @@ function updateLinesDisplay() {
         });
     }
 }
+
 
 function resetMapView() {
     selectedLines = [];
