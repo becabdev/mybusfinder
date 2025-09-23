@@ -1895,19 +1895,6 @@
     z-index: 999999999999999999999;
 }
 
-.simple-cluster {
-    background: #3388ff;
-    border-radius: 50%;
-    color: white;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    font-size: 12px;
-    font-weight: bold;
-}
-
 </style>
 
 </head>
@@ -5068,25 +5055,16 @@ function initializeLayerGroups() {
     // Groupe pour les lignes avec gestion optimisée
     busLinesGroup = L.layerGroup().addTo(map);
     
-    // Clustering simplifié SANS animations coûteuses
+    // Clustering pour les arrêts (nécessite Leaflet.markercluster)
     if (typeof L.markerClusterGroup !== 'undefined') {
         busStopClusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 30,
-            disableClusteringAtZoom: 16, // Clustering désactivé plus tôt
+            maxClusterRadius: 40,
+            disableClusteringAtZoom: 15,
             spiderfyOnMaxZoom: false,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: false, // Évite les bugs de positionnement
+            zoomToBoundsOnClick: true,
             chunkedLoading: true,
-            chunkInterval: 100, // Lots plus gros = moins de traitements
-            removeOutsideVisibleBounds: true, // IMPORTANT : retire les marqueurs hors vue
-            iconCreateFunction: function(cluster) {
-                const count = cluster.getChildCount();
-                return L.divIcon({
-                    html: `<span>${count}</span>`,
-                    className: 'simple-cluster',
-                    iconSize: [25, 25]
-                });
-            }
+            chunkInterval: 50 // Charge par petits lots
         }).addTo(map);
     } else {
         busStopClusterGroup = L.layerGroup().addTo(map);
@@ -5139,39 +5117,28 @@ function loadBusLinesOptimized(lines) {
 
 function loadBusStopsOptimized(stops) {
     // Ne pas afficher les arrêts si le zoom est trop faible
-    if (currentZoom < 13) { // Augmenté de 12 à 13
+    if (currentZoom < LOD_CONFIG.HIDE_STOPS_BELOW) {
         return;
     }
     
-    // LIMITATION : ne prendre que les arrêts dans la vue actuelle
-    const bounds = map.getBounds();
-    const visibleStops = stops.filter(feature => {
-        const lat = feature.geometry.coordinates[1];
-        const lng = feature.geometry.coordinates[0];
-        return bounds.contains([lat, lng]);
-    });
-    
-    // Limiter à maximum 200 arrêts visibles
-    const limitedStops = visibleStops.slice(0, 200);
-    
-    // Traitement par gros lots
-    const batchSize = 50;
+    // Traitement par lots
+    const batchSize = 20;
     let index = 0;
     
     function processBatch() {
-        const batch = limitedStops.slice(index, index + batchSize);
+        const batch = stops.slice(index, index + batchSize);
         
         batch.forEach(feature => {
             const marker = L.circleMarker([
                 feature.geometry.coordinates[1],
                 feature.geometry.coordinates[0]
             ], {
-                radius: 3,
+                radius: currentZoom < 14 ? 2 : 3,
                 fillColor: '#ffffff',
                 color: '#000000',
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
+                weight: 0.5,
+                opacity: 0.7,
+                fillOpacity: 0.6
             });
             
             marker.feature = feature;
@@ -5182,8 +5149,8 @@ function loadBusStopsOptimized(stops) {
         
         index += batchSize;
         
-        if (index < limitedStops.length) {
-            setTimeout(processBatch, 10); // Délai plus long
+        if (index < stops.length) {
+            requestAnimationFrame(processBatch);
         }
     }
     
