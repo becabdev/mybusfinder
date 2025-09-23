@@ -1893,6 +1893,22 @@
     z-index: 999999999999999999999;
 }
 
+.leaflet-container {
+    transform: translate3d(0, 0, 0);
+    -webkit-transform: translate3d(0, 0, 0);
+}
+
+.bus-line {
+    vector-effect: non-scaling-stroke;
+    shape-rendering: optimizeSpeed;
+}
+
+.leaflet-marker-icon, .leaflet-marker-shadow {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+}
+
+
 </style>
 
 </head>
@@ -3151,7 +3167,7 @@ async function initMap() {
     }
     
     const mapInstance = L.map('map', {
-        zoomControl: false 
+        zoomControl: false
     }).setView(defaultCoords, defaultZoom);
     
     L.popup({
@@ -4913,13 +4929,19 @@ let selectedLines = [];
 let busStopsByLine = {}; 
 let allBusLines = []; 
 
+let gtfsInitialized = false;
+
+let busStopsLayerGroup;
+let currentZoomLevel; 
+const MIN_ZOOM_FOR_STOPS = 14; 
+let busStopsData = []; 
+let visibleBusStops = new Set(); 
+
 async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    busStopsByLine = {};
-    allBusLines = [];
-    busStopLayers = [];
+    currentZoomLevel = map.getZoom();
 
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
@@ -4939,41 +4961,193 @@ async function loadGeoJsonLines() {
         onEachFeature: function(feature, layer) {
             if (feature.properties && feature.properties.route_id) {
                 geoJsonLines.push(layer);
-                allBusLines.push({
-                    layer: layer,
-                    routeId: feature.properties.route_id,
-                    geometry: feature.geometry
-                });
             }
         }
     }).addTo(map);
 
-    const busStops = L.geoJSON(geoJsonData, {
-        filter: function(feature) {
-            return feature.geometry && feature.geometry.type === 'Point';
-        },
-        pointToLayer: function(feature, latlng) {
-            return L.circleMarker(latlng, {
-                radius: 3,
-                fillColor: '#ffffff',
-                color: '#000000',
-                weight: 0.5,
-                opacity: 0.7,
-                fillOpacity: 0.6,
-                zIndex: 99999999999999999999 // juste pour être sûr mais c'est peut-être abusé jsais
-            });
-        }
-    }).addTo(map);
+    busStopsData = geoJsonData.features.filter(feature => 
+        feature.geometry && feature.geometry.type === 'Point'
+    );
 
+    busStopsLayerGroup = L.layerGroup();
+
+    if (typeof adjustProximityDistance !== 'undefined' && typeof allBusLines !== 'undefined') {
+        const proximityDistance = 50; 
+        busStopsData.forEach((feature, index) => {
+            const stopLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+            const routeIds = [];
+            
+            allBusLines.forEach(lineInfo => {
+                const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
+                if (distance <= proximityDistance) {
+                    routeIds.push(lineInfo.routeId);
+                }
+            });
+            
+            feature.routeIds = routeIds;
+        });
+    }
+
+    updateBusStopsVisibility();
+
+    map.on('zoomend', handleZoomChange);
+    map.on('moveend', handleMapMove);
+}
+
+function handleZoomChange() {
+    currentZoomLevel = map.getZoom();
+    updateBusStopsVisibility();
+}
+
+function handleMapMove() {
+    // throttler les mises à jour lors du déplacement
+    if (currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
+        throttledUpdateVisibleStops();
+    }
+}
+
+const throttledUpdateVisibleStops = throttle(updateVisibleBusStops, 200);
+
+function updateBusStopsVisibility() {
+    if (currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
+        if (!map.hasLayer(busStopsLayerGroup)) {
+            map.addLayer(busStopsLayerGroup);
+        }
+        updateVisibleBusStops();
+    } else {
+        if (map.hasLayer(busStopsLayerGroup)) {
+            map.removeLayer(busStopsLayerGroup);
+        }
+        busStopsLayerGroup.clearLayers();
+        visibleBusStops.clear();
+        busStopLayers.length = 0;
+    }
+}
+
+function updateVisibleBusStops() {
+    const bounds = map.getBounds();
+    const newVisibleStops = new Set();
+    const markersToRemove = [];
     
-    busStops.eachLayer(function(layer) {
-        if (layer.feature && layer.feature.properties) {
-            layer.busLine = layer.feature.properties.route_id || null;
-            busStopLayers.push(layer);
+    busStopsData.forEach((feature, index) => {
+        const latlng = L.latLng(
+            feature.geometry.coordinates[1], 
+            feature.geometry.coordinates[0]
+        );
+        
+        if (bounds.contains(latlng)) {
+            newVisibleStops.add(index);
+            
+            if (!visibleBusStops.has(index)) {
+                const marker = createBusStopMarker(feature, latlng, index);
+                
+                if (feature.properties) {
+                    marker.busLine = feature.properties.route_id || null;
+                    busStopLayers.push(marker);
+                }
+                
+                applyFilterToMarker(marker);
+            }
         }
     });
     
+    busStopLayers.forEach((marker, i) => {
+        if (marker.stopIndex !== undefined && !newVisibleStops.has(marker.stopIndex)) {
+            markersToRemove.push({marker, index: i});
+        }
+    });
+    
+    markersToRemove.reverse().forEach(({marker, index}) => {
+        if (busStopsLayerGroup.hasLayer(marker)) {
+            busStopsLayerGroup.removeLayer(marker);
+        }
+        busStopLayers.splice(index, 1);
+    });
+    
+    visibleBusStops = newVisibleStops;
 }
+
+function applyFilterToMarker(marker) {
+    let shouldShow = false;
+    
+    if (selectedLines.length === 0) {
+        shouldShow = true;
+    } else {
+        if (marker.routeIds && marker.routeIds.length > 0) {
+            shouldShow = marker.routeIds.some(routeId => selectedLines.includes(routeId));
+        }
+    }
+    
+    if (shouldShow) {
+        marker.setStyle({
+            opacity: 0.7, 
+            fillOpacity: 0.6,
+            radius: 3
+        });
+        if (!busStopsLayerGroup.hasLayer(marker)) {
+            busStopsLayerGroup.addLayer(marker);
+        }
+    } else {
+        if (busStopsLayerGroup.hasLayer(marker)) {
+            busStopsLayerGroup.removeLayer(marker);
+        }
+    }
+}
+
+function createBusStopMarker(feature, latlng, index) {
+    const marker = L.circleMarker(latlng, {
+        radius: 3,
+        fillColor: '#ffffff',
+        color: '#000000',
+        weight: 0.5,
+        opacity: 0.7,
+        fillOpacity: 0.6
+    });
+    
+    marker.stopIndex = index;
+    marker.feature = feature;
+    
+    if (feature.routeIds) {
+        marker.routeIds = feature.routeIds;
+    }
+    
+    return marker;
+}
+
+function updateBusStopsFiltering() {
+    if (busStopsLayerGroup && currentZoomLevel >= MIN_ZOOM_FOR_STOPS) {
+        busStopLayers.forEach(marker => {
+            applyFilterToMarker(marker);
+        });
+    }
+}
+
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    }
+}
+
+
+function cleanupMap() {
+    if (map) {
+        map.off('zoomend', handleZoomChange);
+        map.off('moveend', handleMapMove);
+        if (busStopsLayerGroup) {
+            busStopsLayerGroup.clearLayers();
+        }
+        visibleBusStops.clear();
+        busStopsData = [];
+    }
+}
+
 
 function calculateDistanceToLine(point, lineGeometry) {
     let minDistance = Infinity;
@@ -5104,27 +5278,7 @@ function updateLinesDisplay() {
         }
     });
 
-    busStopLayers.forEach(layer => {
-        let shouldShow = false;
-        
-        if (selectedLines.length === 0) {
-            shouldShow = true;
-        } else {
-            if (layer.routeIds && layer.routeIds.length > 0) {
-                shouldShow = layer.routeIds.some(routeId => selectedLines.includes(routeId));
-            }
-        }
-        
-        if (shouldShow) {
-            if (!map.hasLayer(layer)) {
-                map.addLayer(layer);
-            }
-        } else {
-            if (map.hasLayer(layer)) {
-                map.removeLayer(layer);
-            }
-        }
-    });
+    updateBusStopsFiltering();
 
     if (typeof markers !== 'undefined') {
         Object.entries(markers).forEach(([id, marker]) => {
@@ -5143,6 +5297,7 @@ function updateLinesDisplay() {
         });
     }
 }
+
 
 function resetMapView() {
     selectedLines = [];
@@ -5246,6 +5401,7 @@ function adjustProximityDistance(newDistance) {
     });
     
     updateLinesDisplay();
+    updateBusStopsFiltering();
 }
 
 function showPopup() {
@@ -5734,7 +5890,6 @@ function safeVibrate(pattern, force = false) {
 
 
 
-let gtfsInitialized = false;
 
 const langSwitcher = createLanguageSwitcher();
 
