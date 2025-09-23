@@ -9870,7 +9870,7 @@ async function main() {
         initWorker();
         
         const gtfsData = await initializeGTFS();
-        window.gtfsInitialized = true;
+        gtfsInitialized = true;
         
         await loadGeoJsonLines();
         
