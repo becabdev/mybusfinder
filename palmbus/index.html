@@ -1895,6 +1895,94 @@
     z-index: 999999999999999999999;
 }
 
+.custom-cluster-icon {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    border: 3px solid white;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.custom-cluster-icon.small {
+    transform: scale(0.8);
+}
+
+.custom-cluster-icon.medium {
+    transform: scale(1);
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+}
+
+.custom-cluster-icon.large {
+    transform: scale(1.2);
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    box-shadow: 0 6px 20px rgba(79, 172, 254, 0.5);
+}
+
+.cluster-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cluster-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    position: relative;
+}
+
+.cluster-number {
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    line-height: 1;
+    margin-bottom: 1px;
+}
+
+.cluster-label {
+    color: white;
+    font-size: 8px;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-transform: lowercase;
+    opacity: 0.9;
+    line-height: 1;
+}
+
+.cluster-pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(0.8);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0;
+    }
+}
+
 </style>
 
 </head>
@@ -5064,7 +5152,31 @@ function initializeLayerGroups() {
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true,
             chunkedLoading: true,
-            chunkInterval: 50 // Charge par petits lots
+            chunkInterval: 50,
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                let size = 'small';
+                
+                if (count > 100) {
+                    size = 'large';
+                } else if (count > 20) {
+                    size = 'medium';
+                }
+                
+                return L.divIcon({
+                    html: `
+                        <div class="cluster-inner">
+                            <div class="cluster-content">
+                                <div class="cluster-number">${count}</div>
+                                <div class="cluster-label">arrêts</div>
+                            </div>
+                            <div class="cluster-pulse"></div>
+                        </div>
+                    `,
+                    className: `custom-cluster-icon ${size}`,
+                    iconSize: [40, 40]
+                });
+            }
         }).addTo(map);
     } else {
         busStopClusterGroup = L.layerGroup().addTo(map);
