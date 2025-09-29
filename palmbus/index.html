@@ -2018,9 +2018,11 @@
  <script src="../build.js"></script>
 
      <script>
-        const accueil = document.getElementById('accueil');
-        accueil.classList.add('hide');
-        accueil.classList.remove("affiche")
+        document.addEventListener('DOMContentLoaded', () => {
+            const accueil = document.getElementById('accueil');
+            accueil.classList.add('hide');
+            accueil.classList.remove("affiche")
+        });
         // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
         // simply add class "ripple-container" to element you want the effect on it
         class RippleEffect {
