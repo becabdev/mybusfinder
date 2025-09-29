@@ -3782,7 +3782,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'MàJ vers >' + window.VERSION_NAME;
+            loadingtext.textContent = 'MàJ vers ' + window.VERSION_NAME;
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3799,10 +3799,12 @@ function hideLoadingScreen() {
         menubottom1.style.display = 'flex';
         window.isMenuShowed = false;
     
-        setTimeout(() => {
-            menubottom1.classList.remove('slide-upb');
-            menubottom1.classList.add('slide-downb');
-        }, 10);
+        if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+            setTimeout(() => {
+                menubottom1.classList.remove('slide-upb');
+                menubottom1.classList.add('slide-downb');
+            }, 10);
+        }
 
         setTimeout(() => {
             loadingScreen.style.display = 'none';
