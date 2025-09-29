@@ -1908,6 +1908,9 @@
     transform: translate3d(0, 0, 0);
 }
 
+.animate-zoom-ripple.active {
+    transform: scale('1.05');
+}
 
 </style>
 
@@ -7922,6 +7925,7 @@ function updateMenu() {
     
     const topBar = document.createElement('div');
     topBar.classList.add('menu-top-bar');
+    topBar.classList.add('animate-zoom-ripple')
     topBar.classList.add('ripple-container');
     topBar.style.cssText = `
         position: sticky;
