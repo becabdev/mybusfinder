@@ -8352,8 +8352,15 @@ sortedLines.forEach(line => {
 
     lineSection.onmouseout = () => {
         lineSection.style.transform = 'scale(1,1)';
-        lineSection.style.opacity = '0.9';
+        lineSection.style.opacity = '1';
         lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
+    };
+
+    lineSection.onclick = () => {
+        lineSection.style.transform = 'scale(0.9,0.9)';
+        setTimeout(() => {
+            lineSection.style.transform = 'scale(1,1)';
+        }, 100);
     };
 
     
@@ -8400,7 +8407,6 @@ sortedLines.forEach(line => {
             destinationTitle.style.fontWeight = 'normal';
             destinationTitle.style.marginBottom = '4px';
             destinationTitle.style.color = textColor;
-            destinationTitle.style.textAlign = 'right';
             destinationSection.appendChild(destinationTitle);
 
        
