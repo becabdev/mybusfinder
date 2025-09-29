@@ -7909,7 +7909,6 @@ function updateMenu() {
         margin: 10px 15px 0px;
         border-radius: 33px;
     `;
-    menu.appendChild(topBar);
     
     const backButton = document.createElement('div');
     backButton.innerHTML = `
@@ -7988,17 +7987,6 @@ function updateMenu() {
 
     let lastScrollTop = 0;
     
-    menu.addEventListener('scroll', function() {
-        const scrollTop = menu.scrollTop;
-        
-        if (scrollTop > lastScrollTop && scrollTop > 50) {
-            topBar.style.transform = 'translateY(-100%)';
-        } else {
-            topBar.style.transform = 'translateY(0)';
-        }
-        
-        lastScrollTop = scrollTop;
-    });
 
 let isStandardView = localStorage.getItem('isStandardView') === 'true';
 
@@ -8356,15 +8344,6 @@ sortedLines.forEach(line => {
         lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
     };
 
-    lineSection.onclick = () => {
-        lineSection.style.transform = 'scale(0.9,0.9)';
-        setTimeout(() => {
-            lineSection.style.transform = 'scale(1,1)';
-        }, 100);
-    };
-
-    
-
     const favoriteButton = document.createElement('button');
     favoriteButton.style.position = 'absolute';
     favoriteButton.style.right = '5px';
@@ -8661,6 +8640,8 @@ sortedLines.forEach(line => {
         });
 
     menu.appendChild(lineSection);
+    menu.appendChild(topBar);
+
 });
 }
 
