@@ -276,6 +276,8 @@
   "whatsnew": "🎉 Novità di questa versione",
   "findline": "Tracciamento linea",
   "findlinetext": "Selezionando un veicolo, verrà visualizzato solo il suo itinerario. Utile per tracciare una linea specifica e il suo percorso esatto!",
+  "nepasafficheraccueil": "Non mostrare più la schermata di benvenuto all'avvio",
+  "nepasafficheraccueiltext": "Mostra direttamente la vista My Bus Finder invece del menu principale.",
 
   "lines": "linee in servizio",
   "vehicles": "veicoli",
