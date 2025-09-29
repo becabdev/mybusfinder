@@ -7893,9 +7893,9 @@ function updateMenu() {
     topBar.classList.add('menu-top-bar');
     topBar.style.cssText = `
         position: sticky;
-        top: 0;
+        top: 10px;
         left: 0;
-        background-color: #1a1a1ab0;
+        background-color: #00000075;
         color: white;
         padding: 9px 33px 9px 9px;
         display: flex;
@@ -7903,8 +7903,8 @@ function updateMenu() {
         z-index: 1001;
         transition: transform 0.3s ease;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(8px); 
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(17px); 
+        -webkit-backdrop-filter: blur(17px);
         width: fit-content;
         margin: 10px 10px 0px;
         border-radius: 33px;
@@ -8377,8 +8377,8 @@ sortedLines.forEach(line => {
 
     const lineTitle = document.createElement('div');
     lineTitle.textContent = `${t("line")} ${lineNameText}`;
-    lineTitle.style.fontSize = '20px';
-    lineTitle.style.fontWeight = 'normal';
+    lineTitle.style.fontSize = '23px';
+    lineTitle.style.fontWeight = '500';
     lineTitle.style.color = textColor;
     lineTitle.style.paddingRight = '30px';
     lineTitle.style.paddingLeft = '10px';
@@ -8396,10 +8396,11 @@ sortedLines.forEach(line => {
 
             const destinationTitle = document.createElement('div');
             destinationTitle.textContent = `➜ ${destination}`;
-            destinationTitle.style.fontSize = '16px';
+            destinationTitle.style.fontSize = '19px';
             destinationTitle.style.fontWeight = 'normal';
             destinationTitle.style.marginBottom = '4px';
             destinationTitle.style.color = textColor;
+            destinationTitle.style.textAlign = 'right';
             destinationSection.appendChild(destinationTitle);
 
        
