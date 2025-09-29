@@ -279,6 +279,8 @@
   "findlinetext": "بتحديد مركبة، سيُعرض فقط مسارها. مفيد لتتبع خط معين ومساره الدقيق!",
   "lines": "خطوط في الخدمة",
   "vehicles": "مركبات",
+  "nepasafficheraccueil": "عدم عرض شاشة الترحيب عند بدء التشغيل",
+  "nepasafficheraccueiltext": "عرض مباشرةً عرض My Bus Finder بدلاً من القائمة الرئيسية.",
   "langversion": "1.0.7.4"
 
 }
