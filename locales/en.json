@@ -277,6 +277,8 @@
     "whatsnew": "🎉 What's new in this version",
     "findline": "Line tracking",
     "findlinetext": "By selecting a vehicle, only its route will be displayed. Useful for tracking a specific line and its exact route!",
+    "nepasafficheraccueil": "Do not show the welcome screen at startup",
+    "nepasafficheraccueiltext": "Show the My Bus Finder view directly instead of the main menu.",
 
     "lines": "lines in service",
     "vehicles": "vehicles",
