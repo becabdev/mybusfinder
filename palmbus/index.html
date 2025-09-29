@@ -3773,17 +3773,17 @@ function hideLoadingScreen() {
         logoscr.classList.add('logoscrappp');
         loadingScreen.classList.add('logoscrapppp');
         loadingScreen.style.pointerEvents = 'none';
+        const menubottom1 = document.getElementById('menubtm');
+        menubottom1.style.display = 'flex';
+        window.isMenuShowed = false;
+    
+        setTimeout(() => {
+            menubottom1.classList.remove('slide-upb');
+            menubottom1.classList.add('slide-downb');
+        }, 10);
 
         setTimeout(() => {
             loadingScreen.style.display = 'none';
-            const menubottom1 = document.getElementById('menubtm');
-            menubottom1.style.display = 'flex';
-            window.isMenuShowed = false;
-        
-            setTimeout(() => {
-                menubottom1.classList.remove('slide-upb');
-                menubottom1.classList.add('slide-downb');
-            }, 10);
         }, 300);
     }
     }, 100);
