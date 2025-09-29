@@ -7940,13 +7940,6 @@ function updateMenu() {
         margin: 10px 15px 0px;
         border-radius: 33px;
     `;
-    topBar.addEventListener('touchstart', (e) => {
-        topBar.style.scale = '1.05';
-    }, { passive: true });
-
-    topBar.addEventListener('touchend', (e) => {
-        topBar.style.scale = '1';
-    }, { passive: true });
     menu.appendChild(topBar);
     
     const backButton = document.createElement('div');
