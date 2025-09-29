@@ -848,7 +848,6 @@
     }
     .menubottom ul li a:active {
         transform: scaleX(70%) scaleY(70%);
-        background-color: rgba(255, 255, 255, 0);
     }
     @keyframes barFadeIn {
         0% {
@@ -1908,6 +1907,13 @@
     transform: translate3d(0, 0, 0);
 }
 
+.animate-zoom-ripple {
+    transition: transform 0.2s ease;
+}
+
+.animate-zoom-ripple:active {
+    transform: scale(1.05) translateX(2%);
+}
 
 </style>
 
@@ -2018,6 +2024,20 @@
  <script src="../build.js"></script>
 
      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+                const accueil = document.getElementById('accueil');
+                accueil.classList.add('hide');
+                accueil.classList.remove("affiche");
+                window.isMenuShowed = false;
+                setTimeout(() => {
+                    accueil.style.display = 'none';
+                }, 500);
+            } else {
+                afficherMenu();
+            }
+        });
+
         // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
         // simply add class "ripple-container" to element you want the effect on it
         class RippleEffect {
@@ -2562,7 +2582,6 @@
     if (localStorage.getItem('premiereuutilisation') !== 'true') {
         if (localStorage.getItem('transparency') !== 'true') {
             localStorage.setItem('transparency', true);
-            localStorage.setItem('filterlinesonselect', true);
             localStorage.setItem('premiereUtilisation', true);
         }
     }
@@ -2614,6 +2633,8 @@
             const customizationtext = t("customizationtext");
             const findline = t("findline");
             const findlinetext = t("findlinetext");
+            const nepasafficheraccueil = t("nepasafficheraccueil");
+            const nepasafficheraccueiltext = t("nepasafficheraccueiltext");
 
                    
 
@@ -2677,6 +2698,21 @@
                 value: localStorage.getItem('locateonstart') === 'true',
                 onChange: function (value) {
                 localStorage.setItem('locateonstart', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
+                }
+            });
+
+            FluentSettingsMenu.addToggle("general", "locate", {
+                icon: "🏠",
+                label: nepasafficheraccueil,
+                description: nepasafficheraccueiltext,
+                value: localStorage.getItem('nepasafficheraccueil') === 'true',
+                onChange: function (value) {
+                localStorage.setItem('nepasafficheraccueil', value);
                 if (value) {
                     soundsUX('MBF_SettingOn');
                 } else {
@@ -3756,7 +3792,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = '💫 ' + window.VERSION_NAME;
+            loadingtext.textContent = 'MàJ vers ' + window.VERSION_NAME;
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3768,11 +3804,20 @@ function hideLoadingScreen() {
         const logoscr = document.getElementById('logoscr');
         logoscr.classList.add('logoscrappp');
         loadingScreen.classList.add('logoscrapppp');
-
+        loadingScreen.style.pointerEvents = 'none';
+        const menubottom1 = document.getElementById('menubtm');
+        menubottom1.style.display = 'flex';
+        window.isMenuShowed = false;
+    
+        if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+            setTimeout(() => {
+                menubottom1.classList.remove('slide-upb');
+                menubottom1.classList.add('slide-downb');
+            }, 10);
+        }
 
         setTimeout(() => {
             loadingScreen.style.display = 'none';
-            loadingScreen.style.pointerEvents = 'none';
         }, 300);
     }
     }, 100);
@@ -5333,10 +5378,6 @@ let ligneselectionnee = false;
  */
 function saveAndFilterSingleLine(lineId) {
     if (localStorage.getItem('filterlinesonselect') === 'true') {
-        if (localStorage.getItem('firsttimeusefilter') === null) {
-            localStorage.setItem('firsttimeusefilter', true);
-            toastBottomRight.info('Nouveau : le mode repérage de ligne est désormais activé par défaut. Pour le désactiver, rdv dans les Paramètres > Personnalisation > Repérage de ligne.');
-        }
         if (ligneselectionnee === false) {
             savedFilterState = {
                 selectedLines: [...selectedLines], 
@@ -7891,20 +7932,25 @@ function updateMenu() {
     
     const topBar = document.createElement('div');
     topBar.classList.add('menu-top-bar');
+    topBar.classList.add('animate-zoom-ripple')
+    topBar.classList.add('ripple-container');
     topBar.style.cssText = `
         position: sticky;
-        top: 0;
+        top: 10px;
         left: 0;
-        background-color: #1a1a1ab0;
+        background-color: #00000075;
         color: white;
-        padding: 9px;
+        padding: 9px 33px 9px 9px;
         display: flex;
         align-items: center;
         z-index: 1001;
         transition: transform 0.3s ease;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(8px); 
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(17px); 
+        -webkit-backdrop-filter: blur(17px);
+        width: fit-content;
+        margin: 10px 15px 0px;
+        border-radius: 33px;
     `;
     menu.appendChild(topBar);
     
@@ -7921,7 +7967,7 @@ function updateMenu() {
         cursor: pointer;
         padding: 8px;
         margin-right: 15px;
-        border-radius: 8px;
+        border-radius: 33px;
         transition: background 0.2s ease;
     `;
     backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
@@ -8349,12 +8395,11 @@ sortedLines.forEach(line => {
 
     lineSection.onmouseout = () => {
         lineSection.style.transform = 'scale(1,1)';
-        lineSection.style.opacity = '0.9';
+        lineSection.style.opacity = '1';
         lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
     };
 
-    
-
+   
     const favoriteButton = document.createElement('button');
     favoriteButton.style.position = 'absolute';
     favoriteButton.style.right = '5px';
@@ -8374,8 +8419,8 @@ sortedLines.forEach(line => {
 
     const lineTitle = document.createElement('div');
     lineTitle.textContent = `${t("line")} ${lineNameText}`;
-    lineTitle.style.fontSize = '20px';
-    lineTitle.style.fontWeight = 'normal';
+    lineTitle.style.fontSize = '23px';
+    lineTitle.style.fontWeight = '500';
     lineTitle.style.color = textColor;
     lineTitle.style.paddingRight = '30px';
     lineTitle.style.paddingLeft = '10px';
@@ -8393,7 +8438,7 @@ sortedLines.forEach(line => {
 
             const destinationTitle = document.createElement('div');
             destinationTitle.textContent = `➜ ${destination}`;
-            destinationTitle.style.fontSize = '16px';
+            destinationTitle.style.fontSize = '19px';
             destinationTitle.style.fontWeight = 'normal';
             destinationTitle.style.marginBottom = '4px';
             destinationTitle.style.color = textColor;
@@ -9665,7 +9710,6 @@ function afficherMenu() {
     
 }
 
-afficherMenu()
 
 
 let lastTripUpdateTimestamp = 0;
