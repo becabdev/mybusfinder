@@ -7921,7 +7921,8 @@ function updateMenu() {
     menu.innerHTML = '';
     
     const topBar = document.createElement('div');
-    topBar.classList.add('menu-top-bar ripple-container');
+    topBar.classList.add('menu-top-bar');
+    topBar.classList.add('ripple-container');
     topBar.style.cssText = `
         position: sticky;
         top: 10px;
