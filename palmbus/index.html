@@ -2019,11 +2019,13 @@
 
      <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const accueil = document.getElementById('accueil');
-            accueil.classList.add('hide');
-            accueil.classList.remove("affiche")
-            window.isMenuShowed = false;
-            accueil.style.display = 'none';
+            if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+                const accueil = document.getElementById('accueil');
+                accueil.classList.add('hide');
+                accueil.classList.remove("affiche")
+                window.isMenuShowed = false;
+                accueil.style.display = 'none';
+            }
         });
 
         // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
@@ -2621,6 +2623,8 @@
             const customizationtext = t("customizationtext");
             const findline = t("findline");
             const findlinetext = t("findlinetext");
+            const nepasafficheraccueil = t("nepasafficheraccueil");
+            const nepasafficheraccueiltext = t("nepasafficheraccueiltext");
 
                    
 
@@ -2684,6 +2688,21 @@
                 value: localStorage.getItem('locateonstart') === 'true',
                 onChange: function (value) {
                 localStorage.setItem('locateonstart', value);
+                if (value) {
+                    soundsUX('MBF_SettingOn');
+                } else {
+                    soundsUX('MBF_SettingOff');
+                }
+                }
+            });
+
+            FluentSettingsMenu.addToggle("general", "locate", {
+                icon: "🏠",
+                label: nepasafficheraccueil,
+                description: nepasafficheraccueiltext,
+                value: localStorage.getItem('nepasafficheraccueil') === 'true',
+                onChange: function (value) {
+                localStorage.setItem('nepasafficheraccueil', value);
                 if (value) {
                     soundsUX('MBF_SettingOn');
                 } else {
