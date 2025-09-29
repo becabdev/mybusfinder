@@ -1908,7 +1908,11 @@
     transform: translate3d(0, 0, 0);
 }
 
-.animate-zoom-ripple.active {
+.animate-zoom-ripple {
+    transition: transform 0.2s ease;
+}
+
+.animate-zoom-ripple:active {
     transform: scale(1.05);
 }
 
@@ -2028,6 +2032,7 @@
                 accueil.classList.remove("affiche")
                 window.isMenuShowed = false;
                 accueil.style.display = 'none';
+                accueil.style.pointerEvents = 'none';
             }
         });
 
