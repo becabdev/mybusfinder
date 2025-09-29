@@ -278,6 +278,8 @@
 
     "lines": "lignes en service",
     "vehicles": "véhicules",
+    "nepasafficheraccueil": "Ne plus afficher l'écran d'accueil au démarrage",
+    "nepasafficheraccueiltext": "Afficher directement la vue My Bus Finder à la place du menu principal.",
 
     "langversion": "1.0.7.4"
   }
