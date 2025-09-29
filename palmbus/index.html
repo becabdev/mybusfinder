@@ -2031,6 +2031,9 @@
                 accueil.classList.add('hide');
                 accueil.classList.remove("affiche");
                 window.isMenuShowed = false;
+                setTimeout(() => {
+                    accueil.style.display = 'none';
+                }, 500);
             } else {
                 afficherMenu();
             }
