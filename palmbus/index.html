@@ -3760,7 +3760,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = '💫 ' + window.VERSION_NAME;
+            loadingtext.textContent = 'MàJ vers >' + window.VERSION_NAME;
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -3772,11 +3772,18 @@ function hideLoadingScreen() {
         const logoscr = document.getElementById('logoscr');
         logoscr.classList.add('logoscrappp');
         loadingScreen.classList.add('logoscrapppp');
-
+        loadingScreen.style.pointerEvents = 'none';
 
         setTimeout(() => {
             loadingScreen.style.display = 'none';
-            loadingScreen.style.pointerEvents = 'none';
+            const menubottom1 = document.getElementById('menubtm');
+            menubottom1.style.display = 'flex';
+            window.isMenuShowed = false;
+        
+            setTimeout(() => {
+                menubottom1.classList.remove('slide-upb');
+                menubottom1.classList.add('slide-downb');
+            }, 10);
         }, 300);
     }
     }, 100);
