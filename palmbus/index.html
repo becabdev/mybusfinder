@@ -2018,6 +2018,9 @@
  <script src="../build.js"></script>
 
      <script>
+        const accueil = document.getElementById('accueil');
+        accueil.classList.add('hide');
+        accueil.classList.remove("affiche")
         // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
         // simply add class "ripple-container" to element you want the effect on it
         class RippleEffect {
@@ -2562,7 +2565,6 @@
     if (localStorage.getItem('premiereuutilisation') !== 'true') {
         if (localStorage.getItem('transparency') !== 'true') {
             localStorage.setItem('transparency', true);
-            localStorage.setItem('filterlinesonselect', true);
             localStorage.setItem('premiereUtilisation', true);
         }
     }
@@ -5333,10 +5335,6 @@ let ligneselectionnee = false;
  */
 function saveAndFilterSingleLine(lineId) {
     if (localStorage.getItem('filterlinesonselect') === 'true') {
-        if (localStorage.getItem('firsttimeusefilter') === null) {
-            localStorage.setItem('firsttimeusefilter', true);
-            toastBottomRight.info('Nouveau : le mode repérage de ligne est désormais activé par défaut. Pour le désactiver, rdv dans les Paramètres > Personnalisation > Repérage de ligne.');
-        }
         if (ligneselectionnee === false) {
             savedFilterState = {
                 selectedLines: [...selectedLines], 
