@@ -7219,7 +7219,7 @@ async function fetchVehiclePositions() {
 
                 const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                 updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                if (markers[id].isPopupOpen() && contentUpdated) {
+                if (markers[id].isPopupOpen()) {
                     const popup = markers[id]._popup;
                     if (popup && popup._contentNode) {
                         const popupElement = popup._contentNode.parentElement;
@@ -8661,12 +8661,12 @@ sortedLines.forEach(line => {
                         menubottom1.classList.remove('slide-upb');
                         menubottom1.classList.add('slide-downb');
                     }, 10);
-                    event.stopPropagation();
+                    e.stopPropagation();
 
                 };
 
                 busItem.onclick = (event) => {
-                    event.stopPropagation();
+                    e.stopPropagation();
                     safeVibrate([50, 300, 50, 30, 50], true);
                     soundsUX('MBF_Menu_VehicleSelect');
                     map.setView(bus.vehicle.getLatLng(), 15);
@@ -9456,7 +9456,7 @@ function addSubmenu(sectionId, id, options) {
         
         itemElement.addEventListener('click', (event) => {
             event.preventDefault();
-            event.stopPropagation();
+            e.stopPropagation();
             
             if (item.onclick && typeof item.onclick === 'function') {
             item.onclick(event);
