@@ -6424,22 +6424,22 @@ async function fetchVehiclePositions() {
 
                 // nouvelle ver
                 if (filteredStops.length === 0) {
-                    stopsHeaderTextModern = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-2px;">${t("unavailabletrip")}</small>`;
+                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-2px;">${t("unavailabletrip")}</small>`;
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderTextModern = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${t("unknownline")}</small>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${t("unknownline")}</small>`;
                     } else {
                         if (filteredStops.length === 1) {
-                            stopsHeaderTextModern = minutes === 0
+                            stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
                                 : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("min")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderTextModern = `<small style="display:block; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> <div style="display:block; margin-top:-3px;">${minutes} ${t("minutes")}</div>`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> <div style="display:block; margin-top:-3px;">${minutes} ${t("minutes")}</div>`;
                         } else {
-                            stopsHeaderTextModern = `${t("nextstops")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${status}</small>`;
+                            stopsHeaderText = `${t("nextstops")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${status}</small>`;
                         }
                     }
                 }
@@ -6842,7 +6842,7 @@ async function fetchVehiclePositions() {
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header">${stopsHeaderTextModern}</p>
+                                <p class="stops-header">${stopsHeaderText}</p>
                                 <ul>
                                     <div id="nextStopsContent" class="next-stops-content">
                                         ${nextStopsHTML}
@@ -7035,11 +7035,11 @@ async function fetchVehiclePositions() {
                         }
                     }
                 }
-                function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, stopsHeaderTextModern, backgroundColor, textColor, id) {
+                function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup) return false;
                     
-                    const newContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, stopsHeaderTextModern, backgroundColor, textColor, id);
+                    const newContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                     
                     // màj si le contenu a changé
                     if (popup.getContent() !== newContent) {
@@ -7257,8 +7257,8 @@ async function fetchVehiclePositions() {
                 
                 updateLinesDisplay();
 
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, stopsHeaderTextModern, backgroundColor, textColor, id);
-                updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, stopsHeaderTextModern, backgroundColor, textColor, id);
+                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                 if (markers[id].isPopupOpen() && contentUpdated) {
                     const popup = markers[id]._popup;
                     if (popup && popup._contentNode) {
@@ -7312,7 +7312,7 @@ async function fetchVehiclePositions() {
                         marker.addTo(map);
                     }
                     
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, stopsHeaderTextModern, backgroundColor, textColor, id);
+                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                     marker.bindPopup(popupContent);
                     markers[id]._lastNextStopsHTML = nextStopsHTML;
 
