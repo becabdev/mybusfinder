@@ -6372,7 +6372,7 @@ async function fetchVehiclePositions() {
                 const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
-                const lastStopNameun = stopNameMap[lastStopId] || 'Destination inconnue';
+                const lastStopNameun = stopNameMap[lastStopId] || 'Haut le pied à destination de undefined';
                 let lastStopName = lastStopNameun.replace("0:", "");
                 
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
