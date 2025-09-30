@@ -6584,7 +6584,7 @@ async function fetchVehiclePositions() {
                     
 
                 const backgroundColor = lineColors[line] || '#000000';
-                const textColor = getCachedTextColor(backgroundColor);
+                const textColor = getTextColorForBackground(backgroundColor);
 
 
                 let arrivalTime = 'Inconnu';
@@ -6701,15 +6701,6 @@ async function fetchVehiclePositions() {
                 const contentCache = new Map();
                 const colorCache = new Map();
                 const textColorCache = new Map();
-
-                function getCachedTextColor(backgroundColor) {
-                    if (textColorCache.has(backgroundColor)) {
-                        return textColorCache.get(backgroundColor);
-                    }
-                    const textColor = getCachedTextColor(backgroundColor);
-                    textColorCache.set(backgroundColor, textColor);
-                    return textColor;
-                }
 
                 const tooltipPool = [];
                 let maxPoolSize = 50;
@@ -6857,7 +6848,7 @@ async function fetchVehiclePositions() {
                             }
                             
                             const color = lineColors[marker.line] || '#000000';
-                            const textColor = getCachedTextColor(color);
+                            const textColor = getOptimalTextColor(color);
                             
                             const minimalContent = `
                                 <div class="minimal-popup minimal-popup-appear" style="
@@ -7175,7 +7166,7 @@ async function fetchVehiclePositions() {
                             
                             menubtm.style.backgroundColor = `${color}9c`;
 
-                            const textColor = getCachedTextColor(color);
+                            const textColor = getOptimalTextColor(color);
                             
                             const styleId = `popup-style-${Math.random().toString(36).substr(2, 9)}`;
                             const styleSheet = document.createElement('style');
