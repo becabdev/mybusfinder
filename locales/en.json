@@ -280,6 +280,12 @@
     "nepasafficheraccueil": "Do not show the welcome screen at startup",
     "nepasafficheraccueiltext": "Show the My Bus Finder view directly instead of the main menu.",
 
+    "notinservicemaj": "❌ Out of service",
+    "dooropen": "🚪 Doors open | 🚍 In service",
+    "enservice": "🚍 In service",
+    "pleasewait": "Please wait...",
+    "unavailabletrip": "Real-time trip information unavailable",
+
     "lines": "lines in service",
     "vehicles": "vehicles",
     "langversion": "1.0.7.4"
