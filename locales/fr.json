@@ -277,11 +277,11 @@
     "findlinetext": "En sélectionnant un véhicule, seul son itinéraire s'affichera. Pratique pour repérer une ligne spécifique et son itinéraire précis !",
 
     "notinservicemaj": "❌ Haut-le-Pied - Hors service commercial",
-    "dooropen": "Portes ouvertes | En service",
-    "enservice": "En service",
+    "dooropen": "🚪 Portes ouvertes | 🚍 En service",
+    "enservice": "🚍 En service",
     "pleasewait": "Prières patientez...",
     "unavailabletrip": "Informations en temps-réel du trajet indisponibles",
-    
+
 
     "lines": "lignes en service",
     "vehicles": "véhicules",
