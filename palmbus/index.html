@@ -6320,7 +6320,7 @@ async function fetchVehiclePositions() {
                     2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || 'Inconnu';
-                const model = getVehicleModel(parkNumber);
+                const model = getVehicleModel(id);
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
                 let stopId = stopIdun.replace("0:", "");
