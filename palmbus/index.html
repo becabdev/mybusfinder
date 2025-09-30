@@ -8500,80 +8500,75 @@ sortedLines.forEach(line => {
                 let nextStopInfo = '';
                 let terminusInfo = '';
                 
-                const nextStops = bus.nextStops || [];
-                
-                let currentStopIndex = -1;
+                // Récupérer les données depuis le marker directement
                 const tripId = marker.vehicleData?.trip?.tripId;
                 const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
-                const now = Math.floor(Date.now() / 1000);
+                const currentStatus = marker.vehicleData?.currentStatus;
                 
+                // Récupérer nextStops depuis tripUpdates (comme dans fetchVehiclePositions)
+                const nextStops = tripUpdates[tripId]?.nextStops || [];
+                
+                // Calculer filteredStops exactement comme dans fetchVehiclePositions
+                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
+                const now = Math.floor(Date.now() / 1000);
+
                 let filteredStops = [];
-                if (nextStops.length > 0) {
-                    currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
-                    
-                    if (currentStopIndex !== -1) {
-                        filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
-                            return stop.delay === null || stop.delay >= -60;
-                        });
-                    } else {
-                        filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
-                    }
+                if (currentStopIndex !== -1) {
+                    filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
+                        return stop.delay === null || stop.delay >= -60;
+                    });
+                } else {
+                    filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
                 }
                 
+                // Calculer le texte d'en-tête
                 let busStopsHeaderText = '';
+                const statusMap = {
+                    0: t("notinservice"),
+                    1: t("dooropen"),
+                    2: t("enservice")
+                };
+                const status = statusMap[currentStatus] || 'Inconnu';
+                
                 if (filteredStops.length === 0) {
                     busStopsHeaderText = t("notinservicemaj");
                     nextStopInfo = t("unavailabletrip");
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
-                    const status = marker.vehicleData?.currentStatus;
-                    const statusMap = {
-                        0: t("notinservice"),
-                        1: t("dooropen"),
-                        2: t("enservice")
-                    };
-                    const statusText = statusMap[status] || 'Inconnu';
 
                     if (line === 'Inconnu') {
                         busStopsHeaderText = t("notinservicemaj");
                         nextStopInfo = t("unknownline");
                     } else {
+                        // Récupérer le nom du prochain arrêt
+                        const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
+                        
                         if (filteredStops.length === 1) {
                             if (minutes === 0) {
                                 busStopsHeaderText = t("imminentdeparture");
-                                nextStopInfo = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
                             } else {
                                 busStopsHeaderText = `${t("departurein")} ${minutes} ${t("min")}`;
-                                nextStopInfo = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
                             }
+                            nextStopInfo = firstStopName;
                         } else if (minutes > 3) {
                             busStopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
-                            nextStopInfo = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
+                            nextStopInfo = firstStopName;
                         } else {
                             busStopsHeaderText = t("nextstops");
-                            nextStopInfo = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
+                            nextStopInfo = firstStopName;
                         }
                     }
                 }
                 
-                if (nextStops.length > 0 && !nextStopInfo) {
-                    const firstStop = nextStops[0];
-                    const stopName = stopNameMap[firstStop.stopId] || firstStop.stopId;
-                    nextStopInfo = stopName;
-                }
-                
-                if (nextStops.length > 1) {
-                    const lastStop = nextStops[nextStops.length - 1];
+                // Calculer terminusInfo
+                if (filteredStops.length > 1) {
+                    const lastStop = filteredStops[filteredStops.length - 1];
                     const timeLeft = lastStop.delay;
                     const timeLeftText = timeLeft !== null 
                         ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
                         : '';
                     terminusInfo = `${t("arrivalat")} ${destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
-                }
-                
-                if (!nextStopInfo) {
-                    nextStopInfo = t("imminentdeparture") + '.';
                 }
                 
                 if (!terminusInfo) {
@@ -8583,12 +8578,12 @@ sortedLines.forEach(line => {
                 const mainText = document.createElement('div');
 
                 const vehicleLabel = bus.vehicleData?.vehicle?.label || 
-                                   bus.vehicleData?.vehicle?.id || 
-                                   "Véhicule inconnu";
+                                bus.vehicleData?.vehicle?.id || 
+                                "Véhicule inconnu";
 
                 const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
                 const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
-                
+                                
                 mainText.style.display = 'flex';
                 mainText.style.alignItems = 'center';
                 mainText.style.gap = '10px';
