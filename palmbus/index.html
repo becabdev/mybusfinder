@@ -6318,6 +6318,7 @@ async function fetchVehiclePositions() {
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
+                activeVehicleIds.add(id);
 
                 const statusMap = {
                     0: '❌ Hors service commercial',
