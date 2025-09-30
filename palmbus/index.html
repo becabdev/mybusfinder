@@ -6351,7 +6351,7 @@ async function fetchVehiclePositions() {
                 activeVehicleIds.add(id);
 
                 const statusMap = {
-                    0: t("notinservice"), // ❌ Hors service commercial
+                    0: t("notinservicemaj"), // ❌ Hors service commercial
                     1: t("dooropen"), // En service - Portes ouvertes
                     2: t("enservice") // En service
                 };
@@ -6395,22 +6395,22 @@ async function fetchVehiclePositions() {
                 
 
                 if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-2px;">${t("unavailabletrip")}</small>`;
+                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  ${t("pleasewait")}<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-4px;">${t("unavailabletrip")}</small>`;
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${t("unknownline")}</small>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-4px;">${t("unknownline")}</small>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
                                 : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0._rem; margin-bottom:-4px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `${t("nextstops")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${status}</small>`;
+                            stopsHeaderText = `${t("nextstops")} <small style="display:block; font-size: 0.9rem; margin-top:-4px;">${status}</small>`;
                         }
                     }
                 }
