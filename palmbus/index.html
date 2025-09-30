@@ -6394,35 +6394,6 @@ async function fetchVehiclePositions() {
                 }, 8000);
                 
 
-
-                // ancienne ver
-                if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.`
-                } else {
-                    const firstStopDelay = filteredStops[0].delay || 0;
-                    const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
-
-                    if (line === 'Inconnu') {
-                        stopsHeaderText = t("notinservicemaj");
-                    } else {
-                        if (filteredStops.length === 1) {
-                            stopsHeaderText = minutes === 0
-                                ? t("imminentdeparture")
-                                : `${t("departurein")} ${minutes} ${t("min")}`;
-                        } else if (minutes > 3) {
-                            stopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
-                        } else {
-                            stopsHeaderText = t("nextstops");
-                        }
-                    }
-                }
-
-
-
-
-
-
-                // nouvelle ver
                 if (filteredStops.length === 0) {
                     stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-2px;">${t("unavailabletrip")}</small>`;
                 } else {
@@ -6445,11 +6416,6 @@ async function fetchVehiclePositions() {
                 }
 
 
-
-
-
-                
-                
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map(stop => {
@@ -8530,6 +8496,55 @@ sortedLines.forEach(line => {
                 const busItem = document.createElement('div');
                 busItem.classList.add('ripple-container');
                 const marker = bus.vehicle;
+                
+                const vehicleData = bus.vehicleData;
+                const tripId = vehicleData?.trip?.tripId;
+                const stopId = vehicleData?.stopId?.replace("0:", "") || '';
+                
+                let currentStopIndex = nextStops.findIndex(stop => 
+                    stop.stopId.replace("0:", "") === stopId
+                );
+                
+                let filteredStops = [];
+                if (currentStopIndex !== -1) {
+                    filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
+                        return stop.delay === null || stop.delay >= -60;
+                    });
+                } else {
+                    filteredStops = nextStops.filter(stop => 
+                        stop.delay === null || stop.delay > 0
+                    );
+                }
+                
+                let localStopsHeaderText = '';
+                const vehicleStatus = vehicleData?.currentStatus;
+                const statusMap = {
+                    0: t("notinservice"),
+                    1: t("dooropen"),
+                    2: t("enservice")
+                };
+                const status = statusMap[vehicleStatus] || 'Inconnu';
+                
+                if (filteredStops.length === 0) {
+                    localStopsHeaderText = `Chargement en cours. ${t("unavailabletrip")}`;
+                } else {
+                    const firstStopDelay = filteredStops[0].delay || 0;
+                    const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
+                    
+                    if (line === 'Inconnu') {
+                        localStopsHeaderText = `${t("notinservicemaj")} - ${t("unknownline")}`;
+                    } else {
+                        if (filteredStops.length === 1) {
+                            localStopsHeaderText = minutes === 0
+                                ? t("imminentdeparture")
+                                : `${t("departurein")} ${minutes} ${t("min")}`;
+                        } else if (minutes > 3) {
+                            localStopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
+                        } else {
+                            localStopsHeaderText = `${t("nextstops")} - ${status}`;
+                        }
+                    }
+                }
                 
                 let nextStopInfo = '';
                 let terminusInfo = '';
