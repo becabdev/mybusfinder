@@ -1944,6 +1944,16 @@
     transform: scale(1.05) translateX(2%);
 }
 
+
+.popup-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3); /* voile noir 30% */
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 </style>
 
 </head>
