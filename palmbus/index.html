@@ -1947,7 +1947,7 @@
 .departurein {
     display: block; 
     font-style: italic; 
-    font-size: 0.7rem; 
+    font-size: 0.8rem; 
     margin-bottom:-2px;
 }
 
@@ -6409,22 +6409,22 @@ async function fetchVehiclePositions() {
                 
 
                 if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<div class="statusline">${t("unavailabletrip")}</div>`;
+                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<small class="statusline">${t("unavailabletrip")}</small>`;
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <div class="statusline">${t("unknownline")}</div>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <small class="statusline">${t("unknownline")}</small>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
-                                : `<div class="departurein">${t("departurein")}</div> ${minutes} ${t("min")}`;
+                                : `<small class="departurein">${t("departurein")}</small> ${minutes} ${t("min")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<div class="departurein"">${t("departurein")}</div> <div class="statusline">${minutes} ${t("minutes")}</div>`;
+                            stopsHeaderText = `<small class="departurein"">${t("departurein")}</small> <div class="statusline">${minutes} ${t("minutes")}</div>`;
                         } else {
-                            stopsHeaderText = `${t("nextstops")} <div class="statusline">${status}</div>`;
+                            stopsHeaderText = `${t("nextstops")} <small class="statusline">${status}</small>`;
                         }
                     }
                 }
