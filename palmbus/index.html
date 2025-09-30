@@ -1944,6 +1944,20 @@
     transform: scale(1.05) translateX(2%);
 }
 
+.departurein {
+    display: block; 
+    font-style: italic; 
+    font-size: 0.7rem; 
+    margin-bottom:-2px;
+}
+
+.statusline {
+    display:block; 
+    font-style: italic; 
+    font-size: 0.8rem; 
+    margin-top: -2px;
+}
+
 </style>
 
 </head>
@@ -6395,22 +6409,22 @@ async function fetchVehiclePositions() {
                 
 
                 if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-2px;">${t("unavailabletrip")}</small>`;
+                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<div class="statusline">${t("unavailabletrip")}</div>`;
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${t("unknownline")}</small>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <div class="statusline">${t("unknownline")}</div>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
-                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("min")}`;
+                                : `<div class="departurein">${t("departurein")}</div> ${minutes} ${t("min")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> <div style="display:block; margin-top:-3px;">${minutes} ${t("minutes")}</div>`;
+                            stopsHeaderText = `<div class="departurein"">${t("departurein")}</div> <div class="statusline">${minutes} ${t("minutes")}</div>`;
                         } else {
-                            stopsHeaderText = `${t("nextstops")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${status}</small>`;
+                            stopsHeaderText = `${t("nextstops")} <div class="statusline">${status}</div>`;
                         }
                     }
                 }
@@ -8500,15 +8514,12 @@ sortedLines.forEach(line => {
                 let nextStopInfo = '';
                 let terminusInfo = '';
                 
-                // Récupérer les données depuis le marker directement
                 const tripId = marker.vehicleData?.trip?.tripId;
                 const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
                 const currentStatus = marker.vehicleData?.currentStatus;
                 
-                // Récupérer nextStops depuis tripUpdates (comme dans fetchVehiclePositions)
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
                 
-                // Calculer filteredStops exactement comme dans fetchVehiclePositions
                 let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
                 const now = Math.floor(Date.now() / 1000);
 
@@ -8521,7 +8532,6 @@ sortedLines.forEach(line => {
                     filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
                 }
                 
-                // Calculer le texte d'en-tête
                 let busStopsHeaderText = '';
                 const statusMap = {
                     0: t("notinservice"),
@@ -8541,7 +8551,6 @@ sortedLines.forEach(line => {
                         busStopsHeaderText = t("notinservicemaj");
                         nextStopInfo = t("unknownline");
                     } else {
-                        // Récupérer le nom du prochain arrêt
                         const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
                         
                         if (filteredStops.length === 1) {
@@ -8561,7 +8570,6 @@ sortedLines.forEach(line => {
                     }
                 }
                 
-                // Calculer terminusInfo
                 if (filteredStops.length > 1) {
                     const lastStop = filteredStops[filteredStops.length - 1];
                     const timeLeft = lastStop.delay;
