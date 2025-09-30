@@ -6321,9 +6321,9 @@ async function fetchVehiclePositions() {
                 activeVehicleIds.add(id);
 
                 const statusMap = {
-                    0: '❌ Hors service commercial',
-                    1: ' En service - Portes ouvertes',
-                    2: ' En service'
+                    0: '0', // ❌ Hors service commercial
+                    1: '1', // En service - Portes ouvertes
+                    2: '2' // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || 'Inconnu';
 
@@ -6334,11 +6334,6 @@ async function fetchVehiclePositions() {
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
-                }
-
-                if (!isInViewport(latitude, longitude)) {
-                    activeVehicleIds.add(id); 
-                    return;
                 }
 
                 const speed = vehicle.position.speed ? (vehicle.position.speed).toFixed(0) + ' km/h' : 'Arrêté';
@@ -6368,7 +6363,7 @@ async function fetchVehiclePositions() {
                 }, 8000);
 
                 if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.`
+                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.<br> <small style="opacity: 0.7;">Informations du trajet en temps réel indisponible</small>`;
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
@@ -6380,7 +6375,7 @@ async function fetchVehiclePositions() {
                     } else if (minutes > 3) {
                         stopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
                     } else {
-                        stopsHeaderText = t("nextstops");
+                        stopsHeaderText = `${t("nextstops")} <br> <small style="opacity: 0.7;">Informations du trajet en temps réel indisponible</small>`;
                     }
                 }
                 
