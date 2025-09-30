@@ -5826,8 +5826,6 @@ function getVehicleBrandHtml(parkNumber) {
                      onerror="this.onerror=null; this.src='${defaultImagePath}';" 
                      alt="${model.name}" 
                      class="vehicle-thumbnail"  />
-
-                <span style="margin-top: 6px; margin-left: 20px; font-size: 12px; ">${t("determinantun")} ${model.name}</span>
             </div>
         `;
     }
@@ -6322,6 +6320,7 @@ async function fetchVehiclePositions() {
                     2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || 'Inconnu';
+                const model = getVehicleModel(parkNumber);
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
                 let stopId = stopIdun.replace("0:", "");
