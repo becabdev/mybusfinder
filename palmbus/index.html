@@ -6392,9 +6392,7 @@ async function fetchVehiclePositions() {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
-                    if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservice")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${t("unknownline")}</small>`;
-                    } else {
+
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
@@ -6404,7 +6402,7 @@ async function fetchVehiclePositions() {
                         } else {
                             stopsHeaderText = `${t("nextstops")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-2px;">${status}</small>`;
                         }
-                    }
+                    
                 }
                 
                 let stopsListHTML = '';
