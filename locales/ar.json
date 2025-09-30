@@ -281,6 +281,11 @@
   "vehicles": "مركبات",
   "nepasafficheraccueil": "عدم عرض شاشة الترحيب عند بدء التشغيل",
   "nepasafficheraccueiltext": "عرض مباشرةً عرض My Bus Finder بدلاً من القائمة الرئيسية.",
-  "langversion": "1.0.7.4"
+  "langversion": "1.0.7.4",
+  "notinservicemaj": "❌ خارج الخدمة التجارية",
+  "dooropen": "الأبواب مفتوحة | في الخدمة",
+  "enservice": "في الخدمة",
+  "pleasewait": "الرجاء الانتظار...",
+  "unavailabletrip": "معلومات الرحلة في الوقت الفعلي غير متوفرة"
 
 }

@@ -1792,6 +1792,35 @@
     top: 1px;
 }
 
+.model-badge {
+    padding: 6px 10px;
+    background: #00000077;
+    font-weight: normal;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 20px;
+}
+
+.model-badge svg {
+    display: inline-block;
+    vertical-align: top;
+    position: relative;
+}
+
+.parc-model {
+    display: inline-block;
+    line-height: 20px;
+    vertical-align: middle;
+    position: relative;
+    top: 1px;
+}
+
+
 .parc-number-hidden {
     display: none;
 }
@@ -1913,6 +1942,16 @@
 
 .animate-zoom-ripple:active {
     transform: scale(1.05) translateX(2%);
+}
+
+.popup-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.1); /* voile noir 30% */
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: -1;
 }
 
 </style>
@@ -4500,7 +4539,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
                 menubtm.style.backgroundColor = `${color}9c`;
 
-                    function getOptimalTextColor(bgColor, options = {}) {
+                function getOptimalTextColor(bgColor, options = {}) {
                     const {
                         contrastRatio = 4.5,
                         darkColor = '#1a1a1a',
@@ -4525,6 +4564,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             return darkColor;
                         }
                     } else {
+                        // Parse hex colors
                         if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
                             bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
                                 (_, r, g, b) => '#' + r + r + g + g + b + b);
@@ -4549,16 +4589,19 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         }
                     }
 
+                    // Clamp values
                     r = Math.max(0, Math.min(255, r));
                     g = Math.max(0, Math.min(255, g));
                     b = Math.max(0, Math.min(255, b));
 
+                    // Calculate luminance of background
                     const srgb = [r, g, b].map(c => {
                         const val = c / 255;
                         return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
                     });
                     const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 
+                    // Helper function to calculate luminance from hex
                     const getLuminance = (color) => {
                         const hex = color.replace('#', '');
                         const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -4570,6 +4613,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
                     };
 
+                    // Calculate contrast ratios
                     const darkLuminance = getLuminance(darkColor);
                     const lightLuminance = getLuminance(lightColor);
 
@@ -4581,21 +4625,47 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         ? (luminance + 0.05) / (lightLuminance + 0.05)
                         : (lightLuminance + 0.05) / (luminance + 0.05);
 
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } else if (contrastWithDark >= contrastRatio) {
-                        return darkColor;
-                    } else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } else {
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
 
-                        if (luminance < 0.18) {
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
                             return lightColor; 
                         }
+                        
+                        // Sinon prendre le meilleur contraste disponible
                         return contrastWithDark > contrastWithLight ? darkColor : lightColor;
                     }
-                    
-                    }
+                }
 
                     const textColor = getOptimalTextColor(color);
 
@@ -4617,7 +4687,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             } else {
                 const currentColor = window.getComputedStyle(menubtm).backgroundColor;
                 
-                    function getOptimalTextColor(bgColor, options = {}) {
+                function getOptimalTextColor(bgColor, options = {}) {
                     const {
                         contrastRatio = 4.5,
                         darkColor = '#1a1a1a',
@@ -4642,6 +4712,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             return darkColor;
                         }
                     } else {
+                        // Parse hex colors
                         if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
                             bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
                                 (_, r, g, b) => '#' + r + r + g + g + b + b);
@@ -4666,16 +4737,19 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         }
                     }
 
+                    // Clamp values
                     r = Math.max(0, Math.min(255, r));
                     g = Math.max(0, Math.min(255, g));
                     b = Math.max(0, Math.min(255, b));
 
+                    // Calculate luminance of background
                     const srgb = [r, g, b].map(c => {
                         const val = c / 255;
                         return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
                     });
                     const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 
+                    // Helper function to calculate luminance from hex
                     const getLuminance = (color) => {
                         const hex = color.replace('#', '');
                         const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -4687,6 +4761,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
                     };
 
+                    // Calculate contrast ratios
                     const darkLuminance = getLuminance(darkColor);
                     const lightLuminance = getLuminance(lightColor);
 
@@ -4698,20 +4773,48 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         ? (luminance + 0.05) / (lightLuminance + 0.05)
                         : (lightLuminance + 0.05) / (luminance + 0.05);
 
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } else if (contrastWithDark >= contrastRatio) {
-                        return darkColor;
-                    } else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } else {
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
 
-                        if (luminance < 0.18) {
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
                             return lightColor; 
                         }
+                        
+                        // Sinon prendre le meilleur contraste disponible
                         return contrastWithDark > contrastWithLight ? darkColor : lightColor;
                     }
-                    }
+                }
+
 
                     const textColor = getOptimalTextColor(color);
 
@@ -4771,102 +4874,134 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         styleSheet.id = styleId;
                         styleSheet.classList.add('menu-color-style');
                         
-                    function getOptimalTextColor(bgColor, options = {}) {
-                    const {
-                        contrastRatio = 4.5,
-                        darkColor = '#1a1a1a',
-                        lightColor = '#f8f9fa',
-                        useGradient = false 
-                    } = options;
+                        function getOptimalTextColor(bgColor, options = {}) {
+                            const {
+                                contrastRatio = 4.5,
+                                darkColor = '#1a1a1a',
+                                lightColor = '#f8f9fa',
+                                useGradient = false 
+                            } = options;
 
-                    let r, g, b, a = 1;
+                            let r, g, b, a = 1;
 
-                    if (!bgColor) return darkColor;
+                            if (!bgColor) return darkColor;
 
-                    bgColor = bgColor.trim();
+                            bgColor = bgColor.trim();
 
-                    if (bgColor.startsWith('rgb')) {
-                        const values = bgColor.match(/\d+(\.\d+)?/g);
-                        if (values) {
-                            r = parseInt(values[0]);
-                            g = parseInt(values[1]);
-                            b = parseInt(values[2]);
-                            a = values[3] ? parseFloat(values[3]) : 1;
-                        } else {
-                            return darkColor;
+                            if (bgColor.startsWith('rgb')) {
+                                const values = bgColor.match(/\d+(\.\d+)?/g);
+                                if (values) {
+                                    r = parseInt(values[0]);
+                                    g = parseInt(values[1]);
+                                    b = parseInt(values[2]);
+                                    a = values[3] ? parseFloat(values[3]) : 1;
+                                } else {
+                                    return darkColor;
+                                }
+                            } else {
+                                // Parse hex colors
+                                if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                                    bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                        (_, r, g, b) => '#' + r + r + g + g + b + b);
+                                }
+
+                                if (bgColor.length === 7) {
+                                    r = parseInt(bgColor.slice(1, 3), 16);
+                                    g = parseInt(bgColor.slice(3, 5), 16);
+                                    b = parseInt(bgColor.slice(5, 7), 16);
+                                } else if (bgColor.length === 9) {
+                                    r = parseInt(bgColor.slice(1, 3), 16);
+                                    g = parseInt(bgColor.slice(3, 5), 16);
+                                    b = parseInt(bgColor.slice(5, 7), 16);
+                                    a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                                } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                                    r = parseInt(bgColor.slice(1, 3), 16);
+                                    g = parseInt(bgColor.slice(3, 5), 16);
+                                    b = parseInt(bgColor.slice(5, 7), 16);
+                                    a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                                } else {
+                                    return darkColor;
+                                }
+                            }
+
+                            // Clamp values
+                            r = Math.max(0, Math.min(255, r));
+                            g = Math.max(0, Math.min(255, g));
+                            b = Math.max(0, Math.min(255, b));
+
+                            // Calculate luminance of background
+                            const srgb = [r, g, b].map(c => {
+                                const val = c / 255;
+                                return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                            });
+                            const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                            // Helper function to calculate luminance from hex
+                            const getLuminance = (color) => {
+                                const hex = color.replace('#', '');
+                                const r = parseInt(hex.substr(0, 2), 16) / 255;
+                                const g = parseInt(hex.substr(2, 2), 16) / 255;
+                                const b = parseInt(hex.substr(4, 2), 16) / 255;
+                                const srgb = [r, g, b].map(c => 
+                                    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                                );
+                                return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                            };
+
+                            // Calculate contrast ratios
+                            const darkLuminance = getLuminance(darkColor);
+                            const lightLuminance = getLuminance(lightColor);
+
+                            const contrastWithDark = luminance > darkLuminance 
+                                ? (luminance + 0.05) / (darkLuminance + 0.05)
+                                : (darkLuminance + 0.05) / (luminance + 0.05);
+                            
+                            const contrastWithLight = luminance > lightLuminance 
+                                ? (luminance + 0.05) / (lightLuminance + 0.05)
+                                : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                            // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                            // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                            const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+                            // Si les deux couleurs passent le test de contraste
+                            if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                                // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                                if (isMediumDark) {
+                                    return lightColor;
+                                }
+                                // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                                return luminance > 0.18 ? darkColor : lightColor;
+                            } 
+                            // Si seule la couleur foncée passe
+                            else if (contrastWithDark >= contrastRatio) {
+                                // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                                if (isMediumDark) {
+                                    return lightColor;
+                                }
+                                return darkColor;
+                            } 
+                            // Si seule la couleur claire passe
+                            else if (contrastWithLight >= contrastRatio) {
+                                return lightColor;
+                            } 
+                            // Aucune ne passe vraiment le test
+                            else {
+                                // Pour les couleurs moyennes-foncées, forcer le clair
+                                if (isMediumDark) {
+                                    return lightColor;
+                                }
+                                
+                                // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                                if (luminance < 0.15) {
+                                    return lightColor; 
+                                }
+                                
+                                // Sinon prendre le meilleur contraste disponible
+                                return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                            }
                         }
-                    } else {
-                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
-                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                                (_, r, g, b) => '#' + r + r + g + g + b + b);
-                        }
 
-                        if (bgColor.length === 7) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                        } else if (bgColor.length === 9) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else {
-                            return darkColor;
-                        }
-                    }
-
-                    r = Math.max(0, Math.min(255, r));
-                    g = Math.max(0, Math.min(255, g));
-                    b = Math.max(0, Math.min(255, b));
-
-                    const srgb = [r, g, b].map(c => {
-                        const val = c / 255;
-                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-                    });
-                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-                    const getLuminance = (color) => {
-                        const hex = color.replace('#', '');
-                        const r = parseInt(hex.substr(0, 2), 16) / 255;
-                        const g = parseInt(hex.substr(2, 2), 16) / 255;
-                        const b = parseInt(hex.substr(4, 2), 16) / 255;
-                        const srgb = [r, g, b].map(c => 
-                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-                        );
-                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-                    };
-
-                    const darkLuminance = getLuminance(darkColor);
-                    const lightLuminance = getLuminance(lightColor);
-
-                    const contrastWithDark = luminance > darkLuminance 
-                        ? (luminance + 0.05) / (darkLuminance + 0.05)
-                        : (darkLuminance + 0.05) / (luminance + 0.05);
-                    
-                    const contrastWithLight = luminance > lightLuminance 
-                        ? (luminance + 0.05) / (lightLuminance + 0.05)
-                        : (lightLuminance + 0.05) / (luminance + 0.05);
-
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } else if (contrastWithDark >= contrastRatio) {
-                        return darkColor;
-                    } else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } else {
-
-                        if (luminance < 0.18) {
-                            return lightColor; 
-                        }
-                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
-                    }
-
-                }
 
                     const textColor = getOptimalTextColor(color);
 
@@ -5705,18 +5840,15 @@ function saveCacheData(data) {
     }
 }
 
-// Version optimisée de getVehicleModel avec cache local
 const vehicleModelLookupCache = new Map();
 
 function getVehicleModel(parkNumber) {
     const parkId = String(parkNumber);
     
-    // Vérifier le cache de lookup d'abord
     if (vehicleModelLookupCache.has(parkId)) {
         return vehicleModelLookupCache.get(parkId);
     }
     
-    // Recherche dans les modèles
     for (const [modelKey, model] of Object.entries(vehicleModels)) {
         if (model.vehicles.has(parkId)) {
             vehicleModelLookupCache.set(parkId, model);
@@ -5728,7 +5860,6 @@ function getVehicleModel(parkNumber) {
     return null;
 }
 
-// Fonction pour vider le cache si nécessaire
 function clearVehicleCache() {
     sessionStorage.removeItem(CACHE_KEY);
     vehicleModelLookupCache.clear();
@@ -5776,6 +5907,13 @@ function getVehicleOptionsBadges(parkNumber) {
             position: relative;
             top: 1px;
         `;
+
+        if (model != null) {
+            badges += `<span style="${badgeStyle}">
+                <svg class="${svgStyle}" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M10.5026 5.01692L9.96661 3.65785C9.62068 2.78072 8.37933 2.78072 8.03339 3.65784L6.96137 6.37599C6.85576 6.64378 6.64378 6.85575 6.37599 6.96137L3.65785 8.03339C2.78072 8.37932 2.78072 9.62067 3.65784 9.96661L6.37599 11.0386C6.64378 11.1442 6.85575 11.3562 6.96137 11.624L8.03339 14.3422C8.37932 15.2193 9.62067 15.2193 9.96661 14.3422L11.0386 11.624C11.1442 11.3562 11.3562 11.1442 11.624 11.0386L14.3422 9.96661C15.2193 9.62068 15.2193 8.37933 14.3422 8.03339L12.9831 7.49738" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path> <path d="M16.4885 13.3481C16.6715 12.884 17.3285 12.884 17.5115 13.3481L18.3121 15.3781C18.368 15.5198 18.4802 15.632 18.6219 15.6879L20.6519 16.4885C21.116 16.6715 21.116 17.3285 20.6519 17.5115L18.6219 18.3121C18.4802 18.368 18.368 18.4802 18.3121 18.6219L17.5115 20.6519C17.3285 21.116 16.6715 21.116 16.4885 20.6519L15.6879 18.6219C15.632 18.4802 15.5198 18.368 15.3781 18.3121L13.3481 17.5115C12.884 17.3285 12.884 16.6715 13.3481 16.4885L15.3781 15.6879C15.5198 15.632 15.632 15.5198 15.6879 15.3781L16.4885 13.3481Z" stroke="#ffffff" stroke-width="1.5"></path> </g></svg>
+                <span style="${textStyle}">${model.name}</span>
+            </span> `;
+        }
 
         if (params.isElectric) {
             badges += `<span style="${badgeStyle}">
@@ -5830,8 +5968,6 @@ function getVehicleBrandHtml(parkNumber) {
                      onerror="this.onerror=null; this.src='${defaultImagePath}';" 
                      alt="${model.name}" 
                      class="vehicle-thumbnail"  />
-
-                <span style="margin-top: 6px; margin-left: 20px; font-size: 12px; ">${t("determinantun")} ${model.name}</span>
             </div>
         `;
     }
@@ -6235,6 +6371,13 @@ function shareVehicleId(id) {
   } 
 }
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
 
 async function fetchVehiclePositions() {
         if (!gtfsInitialized) {
@@ -6296,7 +6439,10 @@ async function fetchVehiclePositions() {
         tempElement.style.whiteSpace = 'nowrap';
         document.body.appendChild(tempElement);
         
-
+        function isInViewport(lat, lng) {
+            const bounds = map.getBounds();
+            return bounds.contains(L.latLng(lat, lng));
+        }
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
@@ -6311,11 +6457,12 @@ async function fetchVehiclePositions() {
                 activeVehicleIds.add(id);
 
                 const statusMap = {
-                    0: '❌ Hors service commercial',
-                    1: ' En service - Portes ouvertes',
-                    2: ' En service'
+                    0: t("notinservicemaj"), // ❌ Hors service commercial
+                    1: t("dooropen"), // En service - Portes ouvertes
+                    2: t("enservice") // En service
                 };
-                const status = statusMap[vehicle.currentStatus] || 'Inconnu';
+                const status = statusMap[vehicle.currentStatus] || t("enservice");
+                
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
                 let stopId = stopIdun.replace("0:", "");
@@ -6331,7 +6478,7 @@ async function fetchVehiclePositions() {
                 const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
-                const lastStopNameun = stopNameMap[lastStopId] || 'Destination inconnue';
+                const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied à destination de undefined';
                 let lastStopName = lastStopNameun.replace("0:", "");
                 
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
@@ -6351,24 +6498,30 @@ async function fetchVehiclePositions() {
                 setTimeout(() => {
                     stopSpinner();
                 }, 8000);
+                
 
                 if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  Chargement en cours.`
+                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  ${t("pleasewait")}<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-4px;">${t("unavailabletrip")}</small>`;
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
-                    if (filteredStops.length === 1) {
-                        stopsHeaderText = minutes === 0
-                            ? t("imminentdeparture")
-                            : `${t("departurein")} ${minutes} ${t("min")}`;
-                    } else if (minutes > 3) {
-                        stopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
+                    if (line === 'Inconnu') {
+                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-4px;">${t("unknownline")}</small>`;
                     } else {
-                        stopsHeaderText = t("nextstops");
+                        if (filteredStops.length === 1) {
+                            stopsHeaderText = minutes === 0
+                                ? t("imminentdeparture")
+                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                        } else if (minutes > 3) {
+                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                        } else {
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${status}</small> ${t("nextstops")}`;
+                        }
                     }
                 }
-                
+
+
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map(stop => {
@@ -6494,6 +6647,7 @@ async function fetchVehiclePositions() {
                             return darkColor;
                         }
                     } else {
+                        // Parse hex colors
                         if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
                             bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
                                 (_, r, g, b) => '#' + r + r + g + g + b + b);
@@ -6518,16 +6672,19 @@ async function fetchVehiclePositions() {
                         }
                     }
 
+                    // Clamp values
                     r = Math.max(0, Math.min(255, r));
                     g = Math.max(0, Math.min(255, g));
                     b = Math.max(0, Math.min(255, b));
 
+                    // Calculate luminance of background
                     const srgb = [r, g, b].map(c => {
                         const val = c / 255;
                         return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
                     });
                     const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 
+                    // Helper function to calculate luminance from hex
                     const getLuminance = (color) => {
                         const hex = color.replace('#', '');
                         const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -6539,6 +6696,7 @@ async function fetchVehiclePositions() {
                         return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
                     };
 
+                    // Calculate contrast ratios
                     const darkLuminance = getLuminance(darkColor);
                     const lightLuminance = getLuminance(lightColor);
 
@@ -6550,20 +6708,46 @@ async function fetchVehiclePositions() {
                         ? (luminance + 0.05) / (lightLuminance + 0.05)
                         : (lightLuminance + 0.05) / (luminance + 0.05);
 
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } else if (contrastWithDark >= contrastRatio) {
-                        return darkColor;
-                    } else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } else {
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
 
-                        if (luminance < 0.18) {
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
                             return lightColor; 
                         }
+                        
+                        // Sinon prendre le meilleur contraste disponible
                         return contrastWithDark > contrastWithLight ? darkColor : lightColor;
                     }
-
                 }
                     
                     
@@ -6685,6 +6869,7 @@ async function fetchVehiclePositions() {
 
                 const contentCache = new Map();
                 const colorCache = new Map();
+                const textColorCache = new Map();
 
                 const tooltipPool = [];
                 let maxPoolSize = 50;
@@ -6701,12 +6886,14 @@ async function fetchVehiclePositions() {
 
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
-                    const cacheKey = `${id}-${vehicle.vehicle.label}-${line}-${lastStopName}-${stopsHeaderText}-${nextStopsHash}`;
+                    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
                     
                     if (contentCache.has(cacheKey)) {
                         return contentCache.get(cacheKey);
                     }
                     
+
+                    // nouvelle version
                     const popupContent = `
                         <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
@@ -6726,7 +6913,7 @@ async function fetchVehiclePositions() {
 
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
-                                    <p class="line-title">${t("line")} ${lineName[line] || t("unknownline")}</p>
+                                    <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
                                     <strong class="vehicle-direction">➜ ${lastStopName}</strong>
                                     <div>
                                         <div class="vehicle-options-container">
@@ -6769,9 +6956,9 @@ async function fetchVehiclePositions() {
                     `;
                     
                     // limite la taille cache
-                    if (contentCache.size > 100) {
-                        const firstKey = contentCache.keys().next().value;
-                        contentCache.delete(firstKey);
+                    if (contentCache.size > 50) {
+                        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
+                        keysToDelete.forEach(key => contentCache.delete(key));
                     }
                     
                     contentCache.set(cacheKey, popupContent);
@@ -6966,37 +7153,40 @@ async function fetchVehiclePositions() {
                 }
 
                 function updateMinimalPopups() {
-                    const currentZoom = map.getZoom();
-                    const showMinimal = currentZoom >= 17 && currentZoom < 20; 
+                    if (this.rafId) cancelAnimationFrame(this.rafId);
                     
-                    if (!showMinimal) {
-                        Object.keys(markers).forEach(markerId => {
+                    this.rafId = requestAnimationFrame(() => {
+                        const currentZoom = map.getZoom();
+                        const showMinimal = currentZoom >= 17 && currentZoom < 20;
+                        
+                        if (!showMinimal) {
+                            Object.keys(markers).forEach(markerId => {
+                                const marker = markers[markerId];
+                                if (marker) createOrUpdateMinimalTooltip(markerId, false);
+                            });
+                            return;
+                        }
+                        
+                        const bounds = map.getBounds();
+                        const markerIds = Object.keys(markers);
+                        
+                        for (let i = 0; i < markerIds.length; i++) {
+                            const markerId = markerIds[i];
                             const marker = markers[markerId];
-                            if (marker) {
+                            if (!marker) continue;
+                            
+                            const markerLatLng = marker.getLatLng();
+                            const isInBounds = bounds.contains(markerLatLng);
+                            const shouldShow = showMinimal && !marker.isPopupOpen() && isInBounds;
+                            
+                            if (shouldShow) {
+                                createOrUpdateMinimalTooltip(markerId, true);
+                                if (marker.minimalPopup) {
+                                    marker.minimalPopup.setLatLng(markerLatLng);
+                                }
+                            } else {
                                 createOrUpdateMinimalTooltip(markerId, false);
                             }
-                        });
-                        return;
-                    }
-                    
-                    const bounds = map.getBounds();
-                    
-                    Object.keys(markers).forEach(markerId => {
-                        const marker = markers[markerId];
-                        if (!marker) return;
-                        
-                        const markerLatLng = marker.getLatLng(); 
-                        const isInBounds = bounds.contains(markerLatLng);
-                        
-                        const shouldShow = showMinimal && !marker.isPopupOpen() && isInBounds;
-                        
-                        if (shouldShow) {
-                            createOrUpdateMinimalTooltip(markerId, true);
-                            if (marker.minimalPopup) {
-                                marker.minimalPopup.setLatLng(markerLatLng);
-                            }
-                        } else {
-                            createOrUpdateMinimalTooltip(markerId, false);
                         }
                     });
                 }
@@ -7026,6 +7216,7 @@ async function fetchVehiclePositions() {
                             return darkColor;
                         }
                     } else {
+                        // Parse hex colors
                         if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
                             bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
                                 (_, r, g, b) => '#' + r + r + g + g + b + b);
@@ -7050,16 +7241,19 @@ async function fetchVehiclePositions() {
                         }
                     }
 
+                    // Clamp values
                     r = Math.max(0, Math.min(255, r));
                     g = Math.max(0, Math.min(255, g));
                     b = Math.max(0, Math.min(255, b));
 
+                    // Calculate luminance of background
                     const srgb = [r, g, b].map(c => {
                         const val = c / 255;
                         return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
                     });
                     const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 
+                    // Helper function to calculate luminance from hex
                     const getLuminance = (color) => {
                         const hex = color.replace('#', '');
                         const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -7071,6 +7265,7 @@ async function fetchVehiclePositions() {
                         return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
                     };
 
+                    // Calculate contrast ratios
                     const darkLuminance = getLuminance(darkColor);
                     const lightLuminance = getLuminance(lightColor);
 
@@ -7082,20 +7277,48 @@ async function fetchVehiclePositions() {
                         ? (luminance + 0.05) / (lightLuminance + 0.05)
                         : (lightLuminance + 0.05) / (luminance + 0.05);
 
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } else if (contrastWithDark >= contrastRatio) {
-                        return darkColor;
-                    } else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } else {
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
 
-                        if (luminance < 0.18) {
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
                             return lightColor; 
                         }
+                        
+                        // Sinon prendre le meilleur contraste disponible
                         return contrastWithDark > contrastWithLight ? darkColor : lightColor;
                     }
                 }
+
 
             if (markers[id]) {
 
@@ -7110,11 +7333,9 @@ async function fetchVehiclePositions() {
             }
             
             const hasChanges = (
-            markers[id].line !== line ||
-            markers[id].destination !== lastStopName ||
-            !markers[id].vehicleData ||
-            markers[id].vehicleData.vehicle.label !== vehicle.vehicle.label ||
-            markers[id]._lastNextStopsHTML !== nextStopsHTML
+                markers[id].line !== line ||
+                markers[id].destination !== lastStopName ||
+                markers[id]._lastNextStopsHTML !== nextStopsHTML
         
         );
             
@@ -7273,34 +7494,43 @@ async function fetchVehiclePositions() {
                     }
 
 
-                map.on('zoomend', updateMinimalPopups);
-                map.on('moveend', updateMinimalPopups);
+                    map.on('zoomend', debounce(updateMinimalPopups, 100));
+                    map.on('moveend', debounce(updateMinimalPopups, 150));
 
                 }
         });
 
 
 
+const markersToRemove = [];
 Object.keys(markers).forEach(id => {
     if (!activeVehicleIds.has(id)) {
-        if (markers[id].minimalPopup) {
-            returnToPool(markers[id].minimalPopup);
-            markers[id].minimalPopup = null;
-        }
-        delete window.minimalTooltipStates[id];
-        map.removeLayer(markers[id]); 
-        delete markers[id]; 
+        markersToRemove.push(id);
     }
 });
 
+markersToRemove.forEach(id => {
+    if (markers[id].minimalPopup) {
+        returnToPool(markers[id].minimalPopup);
+        markers[id].minimalPopup = null;
+    }
+    delete window.minimalTooltipStates[id];
+    map.removeLayer(markers[id]);
+    delete markers[id];
+});
+
 setInterval(() => {
-    if (contentCache.size > 30) { 
-        contentCache.clear();
+    if (contentCache.size > 30) {
+        const keysToDelete = Array.from(contentCache.keys()).slice(0, 15);
+        keysToDelete.forEach(key => contentCache.delete(key));
     }
     if (colorCache.size > 20) {
         colorCache.clear();
     }
-}, 180000); 
+    if (textColorCache.size > 20) {
+        textColorCache.clear();
+    }
+}, 180000);
 
         
 let isMenuVisible = true;
@@ -8228,44 +8458,28 @@ function getNextStopInfo(vehicleId) {
 }
 
 
-    const busesByLineAndDestination = {};
+const busesByLineAndDestination = {};
 
     Object.keys(markers).forEach(id => {
-    const vehicle = markers[id];
-    const line = vehicle.line;
-    
-    let destination = "Inconnue";
-    const popupContent = vehicle.getPopup().getContent();
-    
-    const patterns = [
-        /<strong[^>]*>➜\s*(.*?)<\/strong>/,
-        />➜\s*(.*?)</,
-        /Ligne \d+<\/p>\s*<strong[^>]*>➜\s*(.*?)<\/strong>/
-    ];
-
-    for (const pattern of patterns) {
-        const match = popupContent.match(pattern);
-        if (match && match[1]) {
-            destination = match[1].trim();
-            if (destination.toLowerCase() !== 'Destination inconnue') {
-                break;
-            }
+        const marker = markers[id];
+        const line = marker.line;
+        const destination = marker.destination || "Inconnue";
+        
+        if (!busesByLineAndDestination[line]) {
+            busesByLineAndDestination[line] = {};
         }
-    }
 
-    if (!busesByLineAndDestination[line]) {
-        busesByLineAndDestination[line] = {};
-    }
+        if (!busesByLineAndDestination[line][destination]) {
+            busesByLineAndDestination[line][destination] = [];
+        }
 
-    if (!busesByLineAndDestination[line][destination]) {
-        busesByLineAndDestination[line][destination] = [];
-    }
-
-    busesByLineAndDestination[line][destination].push({
-        parkNumber: vehicle.id,
-        vehicle
+        busesByLineAndDestination[line][destination].push({
+            parkNumber: marker.id,
+            vehicle: marker,
+            vehicleData: marker.vehicleData,
+            nextStops: marker.rawData?.nextStops || []
+        });
     });
-});
 
 updateMenuStatistics();
 
@@ -8356,6 +8570,7 @@ function getTextColor(backgroundColor) {
     }
 }
 
+const fragment = document.createDocumentFragment();
 
 sortedLines.forEach(line => {
     const lineNameText = lineName[line] || t("unknown_line");
@@ -8451,72 +8666,88 @@ sortedLines.forEach(line => {
                 const busItem = document.createElement('div');
                 busItem.classList.add('ripple-container');
                 const marker = bus.vehicle;
-                const popupContent = marker.getPopup().getContent();
                 
                 let nextStopInfo = '';
                 let terminusInfo = '';
                 
-                const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
-                const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
+                const tripId = marker.vehicleData?.trip?.tripId;
+                const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+                const currentStatus = marker.vehicleData?.currentStatus;
                 
-                if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
-                    const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-                    const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
-                    
-                    if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
-                        const stopName = firstStopNameMatch[1].trim();
-                        const timeInfo = firstTimeMatch[1].trim();
-                        if (stopName && timeInfo) {
-                            nextStopInfo = `${stopName}`;
-                        }
-                    }
-                    
-                    if (stopNameContainers.length > 1 && timeDisplays.length > 1) {
-                        const lastIndex = stopNameContainers.length - 1;
-                        const lastStopNameMatch = stopNameContainers[lastIndex].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-                        const lastTimeMatch = timeDisplays[lastIndex].match(/data-time-left="([^"]*)"/);
+                const nextStops = tripUpdates[tripId]?.nextStops || [];
+                
+                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
+                const now = Math.floor(Date.now() / 1000);
+
+                let filteredStops = [];
+                if (currentStopIndex !== -1) {
+                    filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
+                        return stop.delay === null || stop.delay >= -60;
+                    });
+                } else {
+                    filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
+                }
+                
+                let busStopsHeaderText = '';
+                const statusMap = {
+                    0: t("notinservice"),
+                    1: t("dooropen"),
+                    2: t("enservice")
+                };
+                const status = statusMap[currentStatus] || 'Inconnu';
+                
+                if (filteredStops.length === 0) {
+                    busStopsHeaderText = t("notinservicemaj");
+                    nextStopInfo = t("unavailabletrip");
+                } else {
+                    const firstStopDelay = filteredStops[0].delay || 0;
+                    const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
+
+                    if (line === 'Inconnu') {
+                        busStopsHeaderText = t("notinservicemaj");
+                        nextStopInfo = t("unknownline");
+                    } else {
+                        const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
                         
-                        if (lastStopNameMatch && lastStopNameMatch[1] && lastTimeMatch && lastTimeMatch[1]) {
-                            const terminusName = lastStopNameMatch[1].trim();
-                            const terminusTime = lastTimeMatch[1].trim();
-                            if (terminusName && terminusTime) {
-                                terminusInfo = `${t("arrivalat")} ${destination} ${terminusTime !== t("imminent") ? t("in") + ' ' + terminusTime : t("imminent")}.`;
+                        if (filteredStops.length === 1) {
+                            if (minutes === 0) {
+                                busStopsHeaderText = t("imminentdeparture");
+                            } else {
+                                busStopsHeaderText = `${t("departurein")} ${minutes} ${t("min")}`;
                             }
+                            nextStopInfo = firstStopName;
+                        } else if (minutes > 3) {
+                            busStopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
+                            nextStopInfo = firstStopName;
+                        } else {
+                            busStopsHeaderText = t("nextstops");
+                            nextStopInfo = firstStopName;
                         }
                     }
                 }
                 
-                if (!nextStopInfo || !terminusInfo) {
-                    const stopsHeaderMatch = popupContent.match(/<p style="margin: 0; font-size: 18px; text-align: right;">(.*?)<\/p>/);
-                    if (stopsHeaderMatch && stopsHeaderMatch[1]) {
-                        const headerText = stopsHeaderMatch[1].trim();
-                        if (headerText.includes('imminent')) {
-                            nextStopInfo = t("imminentdeparture") + '.';
-                        } else if (headerText.includes('min')) {
-                            const minMatch = headerText.match(/dans (\d+) min/);
-                            if (minMatch && minMatch[1]) {
-                                nextStopInfo = `${t("departurein")} ${minMatch[1]} ${t("min")}.`;
-                            }
-                        }
-                    }
-                    
-                    if (!terminusInfo) {
-                        terminusInfo = `${t("indirectionof")} ${destination}.`;
-                    }
+                if (filteredStops.length > 1) {
+                    const lastStop = filteredStops[filteredStops.length - 1];
+                    const timeLeft = lastStop.delay;
+                    const timeLeftText = timeLeft !== null 
+                        ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                        : '';
+                    terminusInfo = `${t("arrivalat")} ${destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
+                }
+                
+                if (!terminusInfo) {
+                    terminusInfo = `${t("indirectionof")} ${destination}.`;
                 }
 
                 const mainText = document.createElement('div');
 
-                const labelMatch = popupContent.match(/<span class="parc-number-hidden">([^<]+)<\/span>/);
-                const labelMatchFallback = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-
-                const vehicleLabel = labelMatch ? labelMatch[1].trim() : 
-                                    (labelMatchFallback ? labelMatchFallback[1].trim() : "Véhicule inconnu");
+                const vehicleLabel = bus.vehicleData?.vehicle?.label || 
+                                bus.vehicleData?.vehicle?.id || 
+                                "Véhicule inconnu";
 
                 const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
                 const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
-                
-                // création de disp flexbox pour aligner parc et les info
+                                
                 mainText.style.display = 'flex';
                 mainText.style.alignItems = 'center';
                 mainText.style.gap = '10px';
@@ -8524,7 +8755,6 @@ sortedLines.forEach(line => {
                 mainText.style.fontWeight = '500';
                 mainText.style.color = textColor;
 
-                // création boîte pour parc
                 const busIdBox = document.createElement('div');
                 busIdBox.textContent = displayLabel;
                 busIdBox.style.padding = '2px 8px';
@@ -8695,8 +8925,9 @@ sortedLines.forEach(line => {
             lineSection.appendChild(destinationSection);
         });
 
-    menu.appendChild(lineSection);
+    fragment.appendChild(lineSection);
 });
+menu.appendChild(fragment);
 }
 
 const menubottom1 = document.getElementById('menubtm');
