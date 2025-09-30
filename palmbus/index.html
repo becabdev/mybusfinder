@@ -6355,7 +6355,7 @@ async function fetchVehiclePositions() {
                     1: t("dooropen"), // En service - Portes ouvertes
                     2: t("enservice") // En service
                 };
-                const status = statusMap[vehicle.currentStatus] || 'Inconnu';
+                const status = statusMap[vehicle.currentStatus] || t("enservice");
                 
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
@@ -6410,7 +6410,7 @@ async function fetchVehiclePositions() {
                         } else if (minutes > 3) {
                             stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `${t("nextstops")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${status}</small>`;
+                            stopsHeaderText = `${t("nextstops")} <small style="display:block; font-size: 0.8rem; font-style: italic; margin-top:-4px;">${status}</small>`;
                         }
                     }
                 }
