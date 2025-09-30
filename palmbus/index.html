@@ -6235,6 +6235,13 @@ function shareVehicleId(id) {
   } 
 }
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+}
 
 async function fetchVehiclePositions() {
         if (!gtfsInitialized) {
@@ -6296,7 +6303,10 @@ async function fetchVehiclePositions() {
         tempElement.style.whiteSpace = 'nowrap';
         document.body.appendChild(tempElement);
         
-
+        function isInViewport(lat, lng) {
+            const bounds = map.getBounds();
+            return bounds.contains(L.latLng(lat, lng));
+        }
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
@@ -6308,7 +6318,6 @@ async function fetchVehiclePositions() {
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
-                activeVehicleIds.add(id);
 
                 const statusMap = {
                     0: '❌ Hors service commercial',
@@ -6324,6 +6333,11 @@ async function fetchVehiclePositions() {
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
+                }
+
+                if (!isInViewport(latitude, longitude)) {
+                    activeVehicleIds.add(id); 
+                    return;
                 }
 
                 const speed = vehicle.position.speed ? (vehicle.position.speed).toFixed(0) + ' km/h' : 'Arrêté';
@@ -6569,7 +6583,7 @@ async function fetchVehiclePositions() {
                     
 
                 const backgroundColor = lineColors[line] || '#000000';
-                const textColor = getTextColorForBackground(backgroundColor);
+                const textColor = getCachedTextColor(backgroundColor);
 
 
                 let arrivalTime = 'Inconnu';
@@ -6685,6 +6699,16 @@ async function fetchVehiclePositions() {
 
                 const contentCache = new Map();
                 const colorCache = new Map();
+                const textColorCache = new Map();
+
+                function getCachedTextColor(backgroundColor) {
+                    if (textColorCache.has(backgroundColor)) {
+                        return textColorCache.get(backgroundColor);
+                    }
+                    const textColor = getCachedTextColor(backgroundColor);
+                    textColorCache.set(backgroundColor, textColor);
+                    return textColor;
+                }
 
                 const tooltipPool = [];
                 let maxPoolSize = 50;
@@ -6701,7 +6725,7 @@ async function fetchVehiclePositions() {
 
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
-                    const cacheKey = `${id}-${vehicle.vehicle.label}-${line}-${lastStopName}-${stopsHeaderText}-${nextStopsHash}`;
+                    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
                     
                     if (contentCache.has(cacheKey)) {
                         return contentCache.get(cacheKey);
@@ -6769,9 +6793,9 @@ async function fetchVehiclePositions() {
                     `;
                     
                     // limite la taille cache
-                    if (contentCache.size > 100) {
-                        const firstKey = contentCache.keys().next().value;
-                        contentCache.delete(firstKey);
+                    if (contentCache.size > 50) {
+                        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
+                        keysToDelete.forEach(key => contentCache.delete(key));
                     }
                     
                     contentCache.set(cacheKey, popupContent);
@@ -6832,7 +6856,7 @@ async function fetchVehiclePositions() {
                             }
                             
                             const color = lineColors[marker.line] || '#000000';
-                            const textColor = getOptimalTextColor(color);
+                            const textColor = getCachedTextColor(color);
                             
                             const minimalContent = `
                                 <div class="minimal-popup minimal-popup-appear" style="
@@ -6966,37 +6990,40 @@ async function fetchVehiclePositions() {
                 }
 
                 function updateMinimalPopups() {
-                    const currentZoom = map.getZoom();
-                    const showMinimal = currentZoom >= 17 && currentZoom < 20; 
+                    if (this.rafId) cancelAnimationFrame(this.rafId);
                     
-                    if (!showMinimal) {
-                        Object.keys(markers).forEach(markerId => {
+                    this.rafId = requestAnimationFrame(() => {
+                        const currentZoom = map.getZoom();
+                        const showMinimal = currentZoom >= 17 && currentZoom < 20;
+                        
+                        if (!showMinimal) {
+                            Object.keys(markers).forEach(markerId => {
+                                const marker = markers[markerId];
+                                if (marker) createOrUpdateMinimalTooltip(markerId, false);
+                            });
+                            return;
+                        }
+                        
+                        const bounds = map.getBounds();
+                        const markerIds = Object.keys(markers);
+                        
+                        for (let i = 0; i < markerIds.length; i++) {
+                            const markerId = markerIds[i];
                             const marker = markers[markerId];
-                            if (marker) {
+                            if (!marker) continue;
+                            
+                            const markerLatLng = marker.getLatLng();
+                            const isInBounds = bounds.contains(markerLatLng);
+                            const shouldShow = showMinimal && !marker.isPopupOpen() && isInBounds;
+                            
+                            if (shouldShow) {
+                                createOrUpdateMinimalTooltip(markerId, true);
+                                if (marker.minimalPopup) {
+                                    marker.minimalPopup.setLatLng(markerLatLng);
+                                }
+                            } else {
                                 createOrUpdateMinimalTooltip(markerId, false);
                             }
-                        });
-                        return;
-                    }
-                    
-                    const bounds = map.getBounds();
-                    
-                    Object.keys(markers).forEach(markerId => {
-                        const marker = markers[markerId];
-                        if (!marker) return;
-                        
-                        const markerLatLng = marker.getLatLng(); 
-                        const isInBounds = bounds.contains(markerLatLng);
-                        
-                        const shouldShow = showMinimal && !marker.isPopupOpen() && isInBounds;
-                        
-                        if (shouldShow) {
-                            createOrUpdateMinimalTooltip(markerId, true);
-                            if (marker.minimalPopup) {
-                                marker.minimalPopup.setLatLng(markerLatLng);
-                            }
-                        } else {
-                            createOrUpdateMinimalTooltip(markerId, false);
                         }
                     });
                 }
@@ -7110,11 +7137,9 @@ async function fetchVehiclePositions() {
             }
             
             const hasChanges = (
-            markers[id].line !== line ||
-            markers[id].destination !== lastStopName ||
-            !markers[id].vehicleData ||
-            markers[id].vehicleData.vehicle.label !== vehicle.vehicle.label ||
-            markers[id]._lastNextStopsHTML !== nextStopsHTML
+                markers[id].line !== line ||
+                markers[id].destination !== lastStopName ||
+                markers[id]._lastNextStopsHTML !== nextStopsHTML
         
         );
             
@@ -7149,7 +7174,7 @@ async function fetchVehiclePositions() {
                             
                             menubtm.style.backgroundColor = `${color}9c`;
 
-                            const textColor = getOptimalTextColor(color);
+                            const textColor = getCachedTextColor(color);
                             
                             const styleId = `popup-style-${Math.random().toString(36).substr(2, 9)}`;
                             const styleSheet = document.createElement('style');
@@ -7273,34 +7298,43 @@ async function fetchVehiclePositions() {
                     }
 
 
-                map.on('zoomend', updateMinimalPopups);
-                map.on('moveend', updateMinimalPopups);
+                    map.on('zoomend', debounce(updateMinimalPopups, 100));
+                    map.on('moveend', debounce(updateMinimalPopups, 150));
 
                 }
         });
 
 
 
+const markersToRemove = [];
 Object.keys(markers).forEach(id => {
     if (!activeVehicleIds.has(id)) {
-        if (markers[id].minimalPopup) {
-            returnToPool(markers[id].minimalPopup);
-            markers[id].minimalPopup = null;
-        }
-        delete window.minimalTooltipStates[id];
-        map.removeLayer(markers[id]); 
-        delete markers[id]; 
+        markersToRemove.push(id);
     }
 });
 
+markersToRemove.forEach(id => {
+    if (markers[id].minimalPopup) {
+        returnToPool(markers[id].minimalPopup);
+        markers[id].minimalPopup = null;
+    }
+    delete window.minimalTooltipStates[id];
+    map.removeLayer(markers[id]);
+    delete markers[id];
+});
+
 setInterval(() => {
-    if (contentCache.size > 30) { 
-        contentCache.clear();
+    if (contentCache.size > 30) {
+        const keysToDelete = Array.from(contentCache.keys()).slice(0, 15);
+        keysToDelete.forEach(key => contentCache.delete(key));
     }
     if (colorCache.size > 20) {
         colorCache.clear();
     }
-}, 180000); 
+    if (textColorCache.size > 20) {
+        textColorCache.clear();
+    }
+}, 180000);
 
         
 let isMenuVisible = true;
@@ -8228,44 +8262,28 @@ function getNextStopInfo(vehicleId) {
 }
 
 
-    const busesByLineAndDestination = {};
+const busesByLineAndDestination = {};
 
     Object.keys(markers).forEach(id => {
-    const vehicle = markers[id];
-    const line = vehicle.line;
-    
-    let destination = "Inconnue";
-    const popupContent = vehicle.getPopup().getContent();
-    
-    const patterns = [
-        /<strong[^>]*>➜\s*(.*?)<\/strong>/,
-        />➜\s*(.*?)</,
-        /Ligne \d+<\/p>\s*<strong[^>]*>➜\s*(.*?)<\/strong>/
-    ];
-
-    for (const pattern of patterns) {
-        const match = popupContent.match(pattern);
-        if (match && match[1]) {
-            destination = match[1].trim();
-            if (destination.toLowerCase() !== 'Destination inconnue') {
-                break;
-            }
+        const marker = markers[id];
+        const line = marker.line;
+        const destination = marker.destination || "Inconnue";
+        
+        if (!busesByLineAndDestination[line]) {
+            busesByLineAndDestination[line] = {};
         }
-    }
 
-    if (!busesByLineAndDestination[line]) {
-        busesByLineAndDestination[line] = {};
-    }
+        if (!busesByLineAndDestination[line][destination]) {
+            busesByLineAndDestination[line][destination] = [];
+        }
 
-    if (!busesByLineAndDestination[line][destination]) {
-        busesByLineAndDestination[line][destination] = [];
-    }
-
-    busesByLineAndDestination[line][destination].push({
-        parkNumber: vehicle.id,
-        vehicle
+        busesByLineAndDestination[line][destination].push({
+            parkNumber: marker.id,
+            vehicle: marker,
+            vehicleData: marker.vehicleData,
+            nextStops: marker.rawData?.nextStops || []
+        });
     });
-});
 
 updateMenuStatistics();
 
@@ -8356,6 +8374,7 @@ function getTextColor(backgroundColor) {
     }
 }
 
+const fragment = document.createDocumentFragment();
 
 sortedLines.forEach(line => {
     const lineNameText = lineName[line] || t("unknown_line");
@@ -8451,72 +8470,44 @@ sortedLines.forEach(line => {
                 const busItem = document.createElement('div');
                 busItem.classList.add('ripple-container');
                 const marker = bus.vehicle;
-                const popupContent = marker.getPopup().getContent();
                 
                 let nextStopInfo = '';
                 let terminusInfo = '';
                 
-                const stopNameContainers = popupContent.match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/g);
-                const timeDisplays = popupContent.match(/<div class="time-display"[^>]*data-time-left="([^"]*)"[^>]*data-departure-time="([^"]*)"[^>]*>([\s\S]*?)<\/div>/g);
+                const nextStops = bus.nextStops || [];
                 
-                if (stopNameContainers && stopNameContainers.length > 0 && timeDisplays && timeDisplays.length > 0) {
-                    const firstStopNameMatch = stopNameContainers[0].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-                    const firstTimeMatch = timeDisplays[0].match(/data-time-left="([^"]*)"/);
+                if (nextStops.length > 0) {
+                    const firstStop = nextStops[0];
+                    const stopName = stopNameMap[firstStop.stopId] || firstStop.stopId;
+                    nextStopInfo = stopName;
                     
-                    if (firstStopNameMatch && firstStopNameMatch[1] && firstTimeMatch && firstTimeMatch[1]) {
-                        const stopName = firstStopNameMatch[1].trim();
-                        const timeInfo = firstTimeMatch[1].trim();
-                        if (stopName && timeInfo) {
-                            nextStopInfo = `${stopName}`;
-                        }
-                    }
-                    
-                    if (stopNameContainers.length > 1 && timeDisplays.length > 1) {
-                        const lastIndex = stopNameContainers.length - 1;
-                        const lastStopNameMatch = stopNameContainers[lastIndex].match(/<div class="stop-name"[^>]*>([\s\S]*?)<\/div>/);
-                        const lastTimeMatch = timeDisplays[lastIndex].match(/data-time-left="([^"]*)"/);
-                        
-                        if (lastStopNameMatch && lastStopNameMatch[1] && lastTimeMatch && lastTimeMatch[1]) {
-                            const terminusName = lastStopNameMatch[1].trim();
-                            const terminusTime = lastTimeMatch[1].trim();
-                            if (terminusName && terminusTime) {
-                                terminusInfo = `${t("arrivalat")} ${destination} ${terminusTime !== t("imminent") ? t("in") + ' ' + terminusTime : t("imminent")}.`;
-                            }
-                        }
+                    if (nextStops.length > 1) {
+                        const lastStop = nextStops[nextStops.length - 1];
+                        const timeLeft = lastStop.delay;
+                        const timeLeftText = timeLeft !== null 
+                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                            : '';
+                        terminusInfo = `${t("arrivalat")} ${destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
                     }
                 }
                 
-                if (!nextStopInfo || !terminusInfo) {
-                    const stopsHeaderMatch = popupContent.match(/<p style="margin: 0; font-size: 18px; text-align: right;">(.*?)<\/p>/);
-                    if (stopsHeaderMatch && stopsHeaderMatch[1]) {
-                        const headerText = stopsHeaderMatch[1].trim();
-                        if (headerText.includes('imminent')) {
-                            nextStopInfo = t("imminentdeparture") + '.';
-                        } else if (headerText.includes('min')) {
-                            const minMatch = headerText.match(/dans (\d+) min/);
-                            if (minMatch && minMatch[1]) {
-                                nextStopInfo = `${t("departurein")} ${minMatch[1]} ${t("min")}.`;
-                            }
-                        }
-                    }
-                    
-                    if (!terminusInfo) {
-                        terminusInfo = `${t("indirectionof")} ${destination}.`;
-                    }
+                if (!nextStopInfo) {
+                    nextStopInfo = t("imminentdeparture") + '.';
+                }
+                
+                if (!terminusInfo) {
+                    terminusInfo = `${t("indirectionof")} ${destination}.`;
                 }
 
                 const mainText = document.createElement('div');
 
-                const labelMatch = popupContent.match(/<span class="parc-number-hidden">([^<]+)<\/span>/);
-                const labelMatchFallback = popupContent.match(/<span style="display: none[^>]*>([^<]+)<\/span>/);
-
-                const vehicleLabel = labelMatch ? labelMatch[1].trim() : 
-                                    (labelMatchFallback ? labelMatchFallback[1].trim() : "Véhicule inconnu");
+                const vehicleLabel = bus.vehicleData?.vehicle?.label || 
+                                   bus.vehicleData?.vehicle?.id || 
+                                   "Véhicule inconnu";
 
                 const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
                 const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
                 
-                // création de disp flexbox pour aligner parc et les info
                 mainText.style.display = 'flex';
                 mainText.style.alignItems = 'center';
                 mainText.style.gap = '10px';
@@ -8524,7 +8515,6 @@ sortedLines.forEach(line => {
                 mainText.style.fontWeight = '500';
                 mainText.style.color = textColor;
 
-                // création boîte pour parc
                 const busIdBox = document.createElement('div');
                 busIdBox.textContent = displayLabel;
                 busIdBox.style.padding = '2px 8px';
@@ -8695,8 +8685,9 @@ sortedLines.forEach(line => {
             lineSection.appendChild(destinationSection);
         });
 
-    menu.appendChild(lineSection);
+    fragment.appendChild(lineSection);
 });
+menu.appendChild(fragment);
 }
 
 const menubottom1 = document.getElementById('menubtm');
