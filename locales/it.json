@@ -279,6 +279,12 @@
   "nepasafficheraccueil": "Non mostrare più la schermata di benvenuto all'avvio",
   "nepasafficheraccueiltext": "Mostra direttamente la vista My Bus Finder invece del menu principale.",
 
+  "notinservicemaj": "❌ Fuori servizio commerciale",
+  "dooropen": "🚪 Porte aperte | 🚍 In servizio",
+  "enservice": "🚍 In servizio",
+  "pleasewait": "Attendere prego...",
+  "unavailabletrip": "Informazioni in tempo reale sul viaggio non disponibili",
+
   "lines": "linee in servizio",
   "vehicles": "veicoli",
 
