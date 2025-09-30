@@ -6746,6 +6746,9 @@ async function fetchVehiclePositions() {
                         return contentCache.get(cacheKey);
                     }
                     
+                    const model = getVehicleModel(vehicle.vehicle.label || vehicle.vehicle.id);
+
+                    // nouvelle version
                     const popupContent = `
                         <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
@@ -7219,7 +7222,7 @@ async function fetchVehiclePositions() {
 
                 const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                 updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                if (markers[id].isPopupOpen()) {
+                if (markers[id].isPopupOpen() && contentUpdated) {
                     const popup = markers[id]._popup;
                     if (popup && popup._contentNode) {
                         const popupElement = popup._contentNode.parentElement;
@@ -8661,12 +8664,12 @@ sortedLines.forEach(line => {
                         menubottom1.classList.remove('slide-upb');
                         menubottom1.classList.add('slide-downb');
                     }, 10);
-                    e.stopPropagation();
+                    event.stopPropagation();
 
                 };
 
                 busItem.onclick = (event) => {
-                    e.stopPropagation();
+                    event.stopPropagation();
                     safeVibrate([50, 300, 50, 30, 50], true);
                     soundsUX('MBF_Menu_VehicleSelect');
                     map.setView(bus.vehicle.getLatLng(), 15);
@@ -9456,7 +9459,7 @@ function addSubmenu(sectionId, id, options) {
         
         itemElement.addEventListener('click', (event) => {
             event.preventDefault();
-            e.stopPropagation();
+            event.stopPropagation();
             
             if (item.onclick && typeof item.onclick === 'function') {
             item.onclick(event);
