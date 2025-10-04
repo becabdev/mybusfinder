@@ -3194,7 +3194,6 @@ async function changeColorBkg(selectedTheme = null) {
     window.colorbkg = baseColor;
     window.colorbkg9c = colorWithAlpha;
 
-    const mapPane = map.getPanes().tilePane;
     if (localStorage.getItem('darkmap') === 'true') {
         mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
     } else {
@@ -6708,22 +6707,15 @@ async function fetchVehiclePositions() {
                         ? (luminance + 0.05) / (lightLuminance + 0.05)
                         : (lightLuminance + 0.05) / (luminance + 0.05);
 
-                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
-                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
                     const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
 
-                    // Si les deux couleurs passent le test de contraste
                     if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
                         if (isMediumDark) {
                             return lightColor;
                         }
-                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
                         return luminance > 0.18 ? darkColor : lightColor;
                     } 
-                    // Si seule la couleur foncée passe
                     else if (contrastWithDark >= contrastRatio) {
-                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
                         if (isMediumDark) {
                             return lightColor;
                         }
