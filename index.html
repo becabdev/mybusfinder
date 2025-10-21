@@ -147,11 +147,9 @@
 
         @keyframes slideDown {
             from {
-                transform: translateY(-100%);
                 opacity: 0;
             }
             to {
-                transform: translateY(0);
                 opacity: 1;
             }
         }
@@ -262,11 +260,9 @@
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(30px);
             }
             to {
                 opacity: 1;
-                transform: translateY(0);
             }
         }
 
@@ -314,7 +310,6 @@
         }
 
         .cta-primary:hover {
-            transform: translateY(-3px);
             box-shadow: 0 10px 30px rgba(0, 120, 212, 0.4);
         }
 
@@ -327,7 +322,6 @@
         .cta-secondary:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(0, 212, 255, 0.5);
-            transform: translateY(-3px);
         }
 
         /* Map Section */
@@ -417,7 +411,6 @@
         }
 
         .popup-button:hover {
-            transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 120, 212, 0.4);
         }
 
@@ -732,19 +725,16 @@
     </style>
 </head>
 <body>
-    <!-- Intro Overlay -->
     <div class="intro-overlay">
         <img src="/src/logownoborder.png" alt="My Bus Finder" class="intro-logo">
     </div>
 
-    <!-- Animated Background -->
     <div class="animated-bg">
         <div class="bg-circle"></div>
         <div class="bg-circle"></div>
         <div class="bg-circle"></div>
     </div>
 
-    <!-- Header -->
     <header class="header" id="header">
         <img src="/src/logownoborder.png" alt="My Bus Finder" class="logo">
         <nav class="nav-menu" id="navMenu">
@@ -760,7 +750,6 @@
         </div>
     </header>
 
-    <!-- Hero Section -->
     <section class="hero">
         <h1>Votre mobilité urbaine, simplifiée</h1>
         <p>Suivez vos transports en temps réel sur une carte interactive. Simple, rapide, et entièrement gratuit.</p>
@@ -770,65 +759,62 @@
         </div>
     </section>
 
-    <!-- Map Section -->
     <section class="map-section" id="map">
         <div class="map-container">
             <div id="map"></div>
         </div>
     </section>
 
-    <!-- Features Section -->
-        <section class="project-section">
-            <div class="project-container acrylic">
-                <h2 class="section-title fade-in">Le projet My Bus Finder</h2>
-                
-            <div class="project-content">
-                <div class="project-text fade-in">
-                    <div class="feature-grid">
-                        <div class="feature-item">
-                            <div class="feature-icon">🔍</div>
-                            <h3>Localisez. En un clin d'œil.</h3>
-                            <p>Suivez votre bus en direct. Sur la carte. Sans stress. Juste là, où vous en avez besoin.</p>
-                        </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">⏱️</div>
-                            <h3>À l’heure. Pour de vrai.</h3>
-                            <p>Des horaires qui s’adaptent à la réalité. Moins d’attente. Plus de certitudes.</p>
-                        </div>
-
-                        <div class="feature-item">
-                            <div class="feature-icon">🖌️</div>
-                            <h3>Votre style. Votre app.</h3>
-                            <p>Changez les couleurs. L’affichage. Le thème. Faites-en une application qui vous ressemble.</p>
-                        </div>
-
-                        <div class="feature-item">
-                            <div class="feature-icon">📖</div>
-                            <h3>Ouvert. Et fier de l’être.</h3>
-                            <p>My Bus Finder est open source. Parce que les meilleures idées naissent ensemble.</p>
-                        </div>
-                        
-                        <div class="feature-item">
-                            <div class="feature-icon">📱</div>
-                            <h3>Partout. Pour tous.</h3>
-                            <p>Un design pensé pour tous vos écrans. Du smartphone au bureau, tout est fluide. Évident.</p>
-                        </div>
+    <section class="project-section" id="features">
+        <div class="project-container acrylic">
+            <h2 class="section-title fade-in">Le projet My Bus Finder</h2>
+            
+        <div class="project-content">
+            <div class="project-text fade-in">
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon">🔍</div>
+                        <h3>Localisez. En un clin d'œil.</h3>
+                        <p>Suivez votre bus en direct. Sur la carte. Sans stress. Juste là, où vous en avez besoin.</p>
                     </div>
                     
-                    <div class="project-description fade-in">
-                        <h3>Pourquoi ce projet existe ?</h3>
-                        <p>Parce qu’on mérite mieux que des horaires figés et des plans incompréhensibles.</p>
-                        
-                        <p>My Bus Finder rend la mobilité urbaine simple. Intuitive. Humaine. Pour tous les voyageurs, d’ici et d’ailleurs.</p>
+                    <div class="feature-item">
+                        <div class="feature-icon">⏱️</div>
+                        <h3>À l’heure. Pour de vrai.</h3>
+                        <p>Des horaires qui s’adaptent à la réalité. Moins d’attente. Plus de certitudes.</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">🖌️</div>
+                        <h3>Votre style. Votre app.</h3>
+                        <p>Changez les couleurs. L’affichage. Le thème. Faites-en une application qui vous ressemble.</p>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">📖</div>
+                        <h3>Ouvert. Et fier de l’être.</h3>
+                        <p>My Bus Finder est open source. Parce que les meilleures idées naissent ensemble.</p>
+                    </div>
+                    
+                    <div class="feature-item">
+                        <div class="feature-icon">📱</div>
+                        <h3>Partout. Pour tous.</h3>
+                        <p>Un design pensé pour tous vos écrans. Du smartphone au bureau, tout est fluide. Évident.</p>
                     </div>
                 </div>
+                
+                <div class="project-description fade-in">
+                    <h3>Pourquoi ce projet existe ?</h3>
+                    <p>Parce qu’on mérite mieux que des horaires figés et des plans incompréhensibles.</p>
+                    
+                    <p>My Bus Finder rend la mobilité urbaine simple. Intuitive. Humaine. Pour tous les voyageurs, d’ici et d’ailleurs.</p>
+                </div>
             </div>
+        </div>
 
-            </div>
-        </section>
+        </div>
+    </section>
 
-    <!-- Stats Section -->
     <section class="stats-section" id="about">
         <h2 class="section-title">My Bus Finder en chiffres</h2>
         <div class="stats-grid">
@@ -847,7 +833,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <p>&copy; 2025 My Bus Finder - Projet Open Source</p>
         <div class="footer-links">
@@ -860,7 +845,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
-        // Menu Toggle
         const menuToggle = document.getElementById('menuToggle');
         const navMenu = document.getElementById('navMenu');
         
@@ -869,7 +853,6 @@
             navMenu.classList.toggle('active');
         });
 
-        // Close menu when clicking on a link
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', () => {
                 menuToggle.classList.remove('active');
@@ -877,7 +860,6 @@
             });
         });
 
-        // Header scroll effect
         const header = document.getElementById('header');
         window.addEventListener('scroll', () => {
             if (window.scrollY > 50) {
@@ -887,7 +869,6 @@
             }
         });
 
-        // Initialize Map
         const map = L.map('map', {
             center: [45.5, 4.5],
             zoom: 6,
@@ -895,14 +876,12 @@
             scrollWheelZoom: true
         });
 
-        // Add tile layer with dark theme
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             maxZoom: 20
         }).addTo(map);
 
-        // Network locations
         const networks = [
             {
                 name: 'Palm Bus',
@@ -1026,7 +1005,6 @@
             }
         ];
 
-        // Custom icon
         const createCustomIcon = (status) => {
             const color = status === 'active' ? '#00d4ff' : '#f59e0b';
             return L.divIcon({
@@ -1046,7 +1024,6 @@
             });
         };
 
-        // Add markers
         networks.forEach(network => {
             const marker = L.marker(network.coords, {
                 icon: createCustomIcon(network.status)
@@ -1071,13 +1048,11 @@
                 className: 'custom-popup'
             });
 
-            // Animation on hover
             marker.on('mouseover', function() {
                 this.openPopup();
             });
         });
 
-        // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -1091,7 +1066,6 @@
             });
         });
 
-        // Animate stats on scroll
         const observerOptions = {
             threshold: 0.5,
             rootMargin: '0px'
@@ -1134,7 +1108,6 @@
             }, 16);
         }
 
-        // Parallax effect for background circles
         window.addEventListener('scroll', () => {
             const scrolled = window.pageYOffset;
             const circles = document.querySelectorAll('.bg-circle');
@@ -1144,7 +1117,6 @@
             });
         });
 
-        // Add particles effect
         function createParticles() {
             const particles = document.createElement('div');
             particles.style.cssText = `
@@ -1176,7 +1148,6 @@
             document.body.appendChild(particles);
         }
 
-        // Add particle animation CSS
         const style = document.createElement('style');
         style.textContent = `
             @keyframes particleFloat {
@@ -1197,16 +1168,12 @@
             }
         `;
         document.head.appendChild(style);
-
-        // Initialize particles
         createParticles();
 
-        // Add floating animation to feature icons
         document.querySelectorAll('.feature-icon').forEach((icon, index) => {
             icon.style.animationDelay = `${index * 0.2}s`;
         });
 
-        // Intersection Observer for feature cards
         const cardObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
@@ -1220,7 +1187,6 @@
             cardObserver.observe(card);
         });
 
-        // Add click effect on CTA buttons
         document.querySelectorAll('.cta-button').forEach(button => {
             button.addEventListener('click', function(e) {
                 const ripple = document.createElement('span');
