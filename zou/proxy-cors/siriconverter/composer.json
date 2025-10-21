@@ -1,8 +1,0 @@
-{
-  "require": {
-    "google/protobuf": "^3.0"
-  },
-  "autoload": {
-    "classmap": ["src/"]
-  }
-}
