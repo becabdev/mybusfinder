@@ -3193,13 +3193,6 @@ async function changeColorBkg(selectedTheme = null) {
 
     window.colorbkg = baseColor;
     window.colorbkg9c = colorWithAlpha;
-
-    const mapPane = map.getPanes().tilePane;
-    if (localStorage.getItem('darkmap') === 'true') {
-        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-    } else {
-        mapPane.style.filter = 'none';
-    }
 }
 
 
@@ -3285,7 +3278,7 @@ async function initMap() {
     const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
     
     const tileLayer = L.tileLayer(tileLayerUrl, {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
     }).addTo(mapInstance);
 
@@ -3295,7 +3288,7 @@ async function initMap() {
     mapPane.style.filter = 'none';
     
     L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
         format: 'image/jpeg',
         style: 'normal'
@@ -6338,7 +6331,7 @@ function applyMapView() {
 
     if (!isStandardView) {
     const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
     }).addTo(map);
     
@@ -6349,7 +6342,7 @@ function applyMapView() {
 
     
     L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
         format: 'image/jpeg',
         style: 'normal'
@@ -6478,7 +6471,7 @@ async function fetchVehiclePositions() {
                 const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
-                const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied à destination de undefined';
+                const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied';
                 let lastStopName = lastStopNameun.replace("0:", "");
                 
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
@@ -6708,22 +6701,15 @@ async function fetchVehiclePositions() {
                         ? (luminance + 0.05) / (lightLuminance + 0.05)
                         : (lightLuminance + 0.05) / (luminance + 0.05);
 
-                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
-                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
                     const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
 
-                    // Si les deux couleurs passent le test de contraste
                     if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
                         if (isMediumDark) {
                             return lightColor;
                         }
-                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
                         return luminance > 0.18 ? darkColor : lightColor;
                     } 
-                    // Si seule la couleur foncée passe
                     else if (contrastWithDark >= contrastRatio) {
-                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
                         if (isMediumDark) {
                             return lightColor;
                         }
@@ -8333,7 +8319,7 @@ function applyMapView() {
 
     if (!isStandardView) {
     const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
     }).addTo(map);
     
@@ -8350,7 +8336,7 @@ function applyMapView() {
     mapPane.style.filter = 'none';
     
     L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
         format: 'image/jpeg',
         style: 'normal'
