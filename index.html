@@ -442,85 +442,114 @@
             border: 1px solid rgba(245, 158, 11, 0.4);
         }
 
-        /* Features Section */
-        .features-section {
-            padding: 80px 40px;
-            background: rgba(255, 255, 255, 0.02);
-            position: relative;
-            z-index: 1;
+        .project-section {
+            margin-top: 80px;
+            margin-bottom: 60px;
         }
 
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .feature-card {
-            padding: 40px 30px;
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            transition: all 0.4s ease;
+        .project-container {
+            padding: 60px 40px;
+            margin-top: 40px;
             position: relative;
             overflow: hidden;
-            animation: fadeInUp 1s ease both;
         }
 
-        .feature-card:nth-child(1) { animation-delay: 0.1s; }
-        .feature-card:nth-child(2) { animation-delay: 0.2s; }
-        .feature-card:nth-child(3) { animation-delay: 0.3s; }
-        .feature-card:nth-child(4) { animation-delay: 0.4s; }
-        .feature-card:nth-child(5) { animation-delay: 0.5s; }
+        .project-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(116, 96, 232, 0.1) 0%, transparent 50%);
+            animation: rotate 20s linear infinite;
+        }
 
-        .feature-card::before {
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .feature-item {
+            text-align: center;
+            padding: 30px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-item::before {
             content: '';
             position: absolute;
             top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.7s ease;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.6), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
         }
 
-        .feature-card:hover::before {
-            left: 100%;
+        .feature-item:hover::before {
+            transform: translateX(100%);
         }
 
-        .feature-card:hover {
-            transform: translateY(-10px);
+        .feature-item:hover {
             background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(0, 120, 212, 0.4);
-            box-shadow: 0 20px 40px rgba(0, 120, 212, 0.2);
+            border-color: rgba(0, 120, 212, 0.3);
         }
 
         .feature-icon {
             font-size: 3rem;
             margin-bottom: 20px;
-            display: inline-block;
-            filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.4));
-            animation: bounce 2s infinite;
+            filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.3));
         }
 
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        .feature-card h3 {
-            font-size: 1.4rem;
+        .feature-item h3 {
+            font-size: 1.3rem;
             margin-bottom: 15px;
             color: #ffffff;
             font-weight: 500;
         }
 
-        .feature-card p {
+        .feature-item p {
             color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .project-description {
+            max-width: 800px;
+            margin: 0 auto 50px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .project-description h3 {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            color: #ffffff;
+            font-weight: 400;
+        }
+
+        .project-description p {
+            color: rgba(255, 255, 255, 0.85);
             line-height: 1.7;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
         }
 
         /* Stats Section */
@@ -749,36 +778,55 @@
     </section>
 
     <!-- Features Section -->
-    <section class="features-section" id="features">
-        <h2 class="section-title">Pourquoi My Bus Finder ?</h2>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">🚍</div>
-                <h3>Suivi en temps réel</h3>
-                <p>Visualisez la position exacte de votre bus sur une carte interactive et ne ratez plus jamais votre transport.</p>
+        <section class="project-section">
+            <div class="project-container acrylic">
+                <h2 class="section-title fade-in">Le projet My Bus Finder</h2>
+                
+            <div class="project-content">
+                <div class="project-text fade-in">
+                    <div class="feature-grid">
+                        <div class="feature-item">
+                            <div class="feature-icon">🔍</div>
+                            <h3>Localisez. En un clin d'œil.</h3>
+                            <p>Suivez votre bus en direct. Sur la carte. Sans stress. Juste là, où vous en avez besoin.</p>
+                        </div>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">⏱️</div>
+                            <h3>À l’heure. Pour de vrai.</h3>
+                            <p>Des horaires qui s’adaptent à la réalité. Moins d’attente. Plus de certitudes.</p>
+                        </div>
+
+                        <div class="feature-item">
+                            <div class="feature-icon">🖌️</div>
+                            <h3>Votre style. Votre app.</h3>
+                            <p>Changez les couleurs. L’affichage. Le thème. Faites-en une application qui vous ressemble.</p>
+                        </div>
+
+                        <div class="feature-item">
+                            <div class="feature-icon">📖</div>
+                            <h3>Ouvert. Et fier de l’être.</h3>
+                            <p>My Bus Finder est open source. Parce que les meilleures idées naissent ensemble.</p>
+                        </div>
+                        
+                        <div class="feature-item">
+                            <div class="feature-icon">📱</div>
+                            <h3>Partout. Pour tous.</h3>
+                            <p>Un design pensé pour tous vos écrans. Du smartphone au bureau, tout est fluide. Évident.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="project-description fade-in">
+                        <h3>Pourquoi ce projet existe ?</h3>
+                        <p>Parce qu’on mérite mieux que des horaires figés et des plans incompréhensibles.</p>
+                        
+                        <p>My Bus Finder rend la mobilité urbaine simple. Intuitive. Humaine. Pour tous les voyageurs, d’ici et d’ailleurs.</p>
+                    </div>
+                </div>
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">⏱️</div>
-                <h3>Horaires dynamiques</h3>
-                <p>Des horaires qui s'adaptent à la circulation en temps réel pour une précision maximale.</p>
+
             </div>
-            <div class="feature-card">
-                <div class="feature-icon">🎨</div>
-                <h3>Interface personnalisable</h3>
-                <p>Choisissez votre thème, ajustez l'affichage et créez une expérience qui vous ressemble.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🔓</div>
-                <h3>Open Source</h3>
-                <p>Un projet ouvert et transparent. Contribuez, améliorez, partagez.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">📱</div>
-                <h3>Responsive Design</h3>
-                <p>Une expérience fluide sur tous vos appareils, du smartphone à l'ordinateur.</p>
-            </div>
-        </div>
-    </section>
+        </section>
 
     <!-- Stats Section -->
     <section class="stats-section" id="about">
