@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$url = 'https://www.datasud.fr/fr/dataset/datasets/3745/resource/5016/download/';
+$url = 'https://www.data.gouv.fr/fr/datasets/r/30782be6-90aa-40bb-940a-cb881a95ad26';
 
 if ($_SERVER['REQUEST_METHOD'] === 'HEAD') {
     $headers = get_headers($url, 1);
