@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$url = 'https://api.mrn.cityway.fr/dataflow/offre-tc/download?provider=ASTUCE&dataFormat=gtfs&dataProfil=ASTUCE';
+$url = 'https://api.saint-etienne-metropole.fr/stas/api/horraires_tc/GTFS.aspx';
 
 if ($_SERVER['REQUEST_METHOD'] === 'HEAD') {
     $headers = get_headers($url, 1);
