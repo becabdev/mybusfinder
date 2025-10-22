@@ -2,7 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$url = 'https://data.montpellier3m.fr/TAM_MMM_GTFSRT/VehiclePosition.pb';
+$url = 'https://accm.plateforme-2cloud.com/api/gtfsrt/2.0/vehiclepositions/ACCM-RSUD-4552-8552-5459/bin';
 $data = file_get_contents($url);
 echo $data;
 ?>
