@@ -3,9 +3,7 @@ header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
 $urls = [
-    'https://api.mrn.cityway.fr/dataflow/vehicle-tc-tr/download?provider=TCAR&dataFormat=gtfs-rt',
-    'https://api.mrn.cityway.fr/dataflow/vehicule-tc-tr/download?provider=TNI&dataFormat=gtfs-rt',
-
+    'https://gtfs.bus-tracker.fr/gtfs-rt/tcar/vehicle-positions',
 ];
 
 $mergedData = [];
