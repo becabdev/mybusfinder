@@ -2,7 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$url = 'https://proxy.transport.data.gouv.fr/resource/palmbus-cannes-gtfs-rt-service-alert';
+$url = 'https://transport.data.gouv.fr/resources/82273';
 $data = file_get_contents($url);
 echo $data;
 ?>
