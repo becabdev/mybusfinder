@@ -1,0 +1,4110 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.X.X/dist/protobuf.min.js"></script>
+    <title>MyBusSchedule</title>
+    <style>
+@import url('https://fonts.googleapis.com/css?family=League+Spartan:400,700');
+
+@font-face {
+    font-family: 'SegoeUIBoot';
+    src: url('src/fonts/SegoeUIBoot.woff2') format('woff2'),
+        url('src/fonts/SegoeUIBoot.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+:root {
+    height: 100%;
+    --primary-purple: #6B46C1;
+    --dark-purple: #4C1D95;
+    --light-purple: #8B5CF6;
+    --accent-purple: #A855F7;
+    --glass-surface: rgba(139, 92, 246, 0.08);
+    --glass-surface-hover: rgba(139, 92, 246, 0.15);
+    --glass-surface-pressed: rgba(139, 92, 246, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border-strong: rgba(255, 255, 255, 0.2);
+    --text-primary: rgba(255, 255, 255, 0.95);
+    --text-secondary: rgba(255, 255, 255, 0.7);
+    --text-muted: rgba(255, 255, 255, 0.5);
+    --glow-color: rgba(139, 92, 246, 0.4);
+    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-glass-hover: 0 12px 48px rgba(0, 0, 0, 0.2);
+    --shadow-glass-strong: 0 16px 64px rgba(0, 0, 0, 0.3);
+    --radius: 16px;
+    --radius-large: 24px;
+    --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+    height: 100vh;
+    font-family: 'League Spartan', sans-serif;
+    margin: 0;
+    padding: 0;
+    color: var(--text-primary);
+    background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483);
+    animation: gradient-shift 15s ease infinite;
+    background-size: 400% 400%;
+    overflow-x: hidden;
+    position: relative;
+}
+
+
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes aurora {
+    0% {
+        transform: rotate(0deg) scale(1);
+        filter: hue-rotate(0deg) brightness(1);
+    }
+    100% {
+        transform: rotate(360deg) scale(1.1);
+        filter: hue-rotate(90deg) brightness(1.2);
+    }
+}
+
+@keyframes float-dots {
+    0% { transform: translateY(0px) rotate(0deg); }
+    100% { transform: translateY(-100vh) rotate(360deg); }
+}
+
+h1, h2, h3, h4 {
+    margin: 0.5em 0;
+    color: var(--text-primary);
+    font-weight: 700;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transition: var(--transition);
+}
+
+.container {
+    margin: 0 auto;
+    padding: 24px;
+    transition: var(--transition);
+    position: relative;
+}
+
+.bus-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.bus-item {
+    padding: 20px 24px;
+    cursor: pointer;
+    display: block;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition);
+    border-radius: var(--radius-large);
+    margin-bottom: 12px;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-glass);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.favorites-section {
+    margin-bottom: 40px;
+    position: relative;
+}
+
+.favorites-section::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(45deg, 
+        rgba(139, 92, 246, 0.05), 
+        rgba(168, 85, 247, 0.03), 
+        rgba(139, 92, 246, 0.05)
+    );
+    border-radius: var(--radius-large);
+    z-index: -1;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.favorites-section:hover::before {
+    opacity: 1;
+}
+
+.favorites-section h3, 
+.lines-section h3 {
+    margin: 24px 0 20px 0;
+    color: var(--text-primary);
+    font-size: 1.4em;
+    font-weight: 700;
+    padding: 0 12px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.favorites-section h3::after,
+.lines-section h3::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 12px;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-purple), transparent);
+    border-radius: 2px;
+}
+
+.favorite-item {
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-large);
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-glass);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    transition: var(--transition);
+    min-height: 70px;
+    position: relative;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.favorite-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1;
+}
+
+.favorite-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 2px;
+    background: linear-gradient(135deg, 
+        rgba(139, 92, 246, 0.3),
+        rgba(168, 85, 247, 0.2),
+        rgba(139, 92, 246, 0.3)
+    );
+    border-radius: inherit;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: subtract;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.favorite-item:hover::before {
+    left: 100%;
+}
+
+.favorite-item:hover::after {
+    opacity: 1;
+}
+
+.favorite-item:hover {
+    background: var(--glass-surface-hover);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 35px var(--glow-color);
+    transform: translateY(-4px) scale(1.02);
+}
+
+.favorite-item:active {
+    transform: translateY(-2px) scale(0.98);
+    transition: var(--transition-fast);
+}
+
+.favorite-info {
+    flex: 1;
+    margin-right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+}
+
+.favorite-main-info {
+    font-size: 1.2em;
+    font-weight: 700;
+    white-space: normal;
+    line-height: 1.4;
+    margin-right: 50px;
+    color: var(--text-primary);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.favorite-button {
+    background: none;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    color: var(--text-secondary);
+    border-radius: 50%;
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    z-index: 3;
+}
+
+.favorite-button:hover {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple);
+    transform: scale(1.2) rotate(15deg);
+    box-shadow: 0 0 15px var(--glow-color);
+}
+
+.favorite-realtime {
+    font-size: 1em;
+    white-space: normal;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.next-arrivals {
+    color: #86efac;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(134, 239, 172, 0.3);
+}
+
+.no-realtime-data {
+    font-size: 0.95em;
+    color: var(--text-muted);
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.favorites-section + .lines-section {
+    border-top: 1px solid var(--glass-border);
+    padding-top: 32px;
+    margin-top: 24px;
+}
+
+.favorite-star {
+    position: absolute;
+    right: 20px;
+    top: 0%;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 50%;
+    transition: var(--transition);
+    color: var(--text-secondary);
+    z-index: 3;
+}
+
+.favorite-star:hover {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple);
+    transform: scale(1.1) rotate(-15deg);
+    box-shadow: 0 0 15px var(--glow-color);
+}
+
+.stops-timeline-menu {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border-strong);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-glass-strong);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    width: 90%;
+    max-width: 450px;
+    z-index: 1000;
+    max-height: 85vh;
+    flex-direction: column;
+    opacity: 0;
+    filter: blur(12px);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s ease-out,
+                filter 0.4s ease-out;
+    overflow: hidden;
+}
+
+.stops-timeline-menu.visible {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    filter: blur(0);
+}
+
+.stops-timeline-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--glass-border);
+    position: relative;
+    flex-shrink: 0;
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.stops-timeline-header h3 {
+    margin: 0;
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.stops-timeline-close {
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.stops-timeline-close:hover {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--accent-purple);
+    transform: translateY(-50%) scale(1.1) rotate(90deg);
+}
+
+.stops-timeline-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    position: relative;
+}
+
+.stops-timeline-content {
+    padding: 28px;
+    overflow-y: auto;
+    max-height: calc(85vh - 100px);
+    display: flex;
+    flex-direction: column;
+}
+
+.stops-timeline-line {
+    position: relative;
+    padding-left: 60px;
+    margin-bottom: 40px;
+}
+
+.timeline-vertical-line {
+    position: absolute;
+    left: 24px;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    background: linear-gradient(to bottom, 
+        var(--accent-purple), 
+        rgba(139, 92, 246, 0.4)
+    );
+    border-radius: 3px;
+    box-shadow: 0 0 10px var(--glow-color);
+}
+
+.timeline-progress {
+    position: absolute;
+    left: 24px;
+    top: 0;
+    width: 5px;
+    border-radius: 3px;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, 0.6),
+        rgba(255, 255, 255, 0.2)
+    );
+    transform-origin: top;
+    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+.bus-position-indicator {
+    position: absolute;
+    left: 16px;
+    margin-top: 24px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
+    border: 3px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 
+        0 4px 12px rgba(0, 0, 0, 0.3),
+        0 0 20px var(--glow-color);
+    z-index: 2;
+}
+
+.bus-position-indicator.visible {
+    transform: translateY(-50%) scale(1);
+}
+
+.bus-position-indicator.moving {
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0% { 
+        transform: translateY(-50%) scale(1); 
+        box-shadow: 
+            0 4px 12px rgba(0, 0, 0, 0.3),
+            0 0 20px var(--glow-color);
+    }
+    50% { 
+        transform: translateY(-50%) scale(1.3); 
+        box-shadow: 
+            0 6px 18px rgba(0, 0, 0, 0.4),
+            0 0 35px var(--glow-color);
+    }
+    100% { 
+        transform: translateY(-50%) scale(1); 
+        box-shadow: 
+            0 4px 12px rgba(0, 0, 0, 0.3),
+            0 0 20px var(--glow-color);
+    }
+}
+
+.stop-item-timeline {
+    padding: 16px 0;
+    position: relative;
+    transition: var(--transition);
+}
+
+.stop-name {
+    font-weight: 700;
+    margin-bottom: 6px;
+    margin-left: 12px;
+    color: var(--text-primary);
+    font-size: 1.1em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.stop-time {
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    font-weight: 600;
+    margin-left: 12px;
+}
+
+.current-stop {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin: 0 -12px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 0 20px var(--glow-color);
+}
+
+.show-in-map-btn {
+    margin: 24px;
+    padding: 16px 24px;
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    width: calc(100% - 48px);
+    position: sticky;
+    bottom: 0;
+    transition: var(--transition);
+    box-shadow: var(--shadow-glass);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.show-in-map-btn:hover {
+    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 25px var(--glow-color);
+    transform: translateY(-2px) scale(1.02);
+}
+
+.show-in-map-btn:active {
+    transform: translateY(0) scale(0.98);
+    transition: var(--transition-fast);
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px) saturate(120%);
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
+    z-index: 999;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.4s ease-out;
+}
+
+.overlay.visible {
+    opacity: 1;
+}
+
+.destination-select-wrapper {
+    margin: 20px;
+    position: relative;
+}
+
+.destination-select-wrapper::after {
+    content: "▼";
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    pointer-events: none;
+    font-size: 0.9em;
+    transition: var(--transition);
+}
+
+.destination-select-wrapper:hover::after {
+    color: var(--text-primary);
+    transform: translateY(-50%) scale(1.2);
+}
+
+#destination-select {
+    width: 100%;
+    padding: 16px 50px 16px 20px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    font-family: 'League Spartan', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--glass-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    appearance: none;
+    transition: var(--transition);
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+#destination-select:hover {
+    border-color: var(--glass-border-strong);
+    background: var(--glass-surface-hover);
+    box-shadow: var(--shadow-glass-hover);
+    transform: translateY(-1px);
+}
+
+#destination-select:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 0 3px rgba(139, 92, 246, 0.3);
+}
+
+.alerts-button {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, var(--dark-purple), var(--primary-purple));
+    color: white;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    border-radius: var(--radius-large);
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--shadow-glass);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    animation: slide-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.alerts-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.alerts-button:hover::before {
+    left: 100%;
+}
+
+.alerts-button:hover {
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 30px var(--glow-color);
+    transform: translateY(-3px) scale(1.01);
+}
+
+.alerts-button:active {
+    transform: translateY(-1px) scale(0.98);
+    transition: var(--transition-fast);
+}
+
+.alerts-icon {
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    transition: var(--transition);
+}
+
+.alerts-content {
+    flex-grow: 1;
+    position: relative;
+    z-index: 2;
+}
+
+.alerts-title {
+    font-weight: 700;
+    font-size: 1.2em;
+    margin-bottom: 6px;
+    transition: var(--transition);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.alerts-description {
+    font-size: 0.95em;
+    opacity: 0.9;
+    transition: var(--transition);
+    font-weight: 600;
+}
+
+.update-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(15px) saturate(120%);
+    -webkit-backdrop-filter: blur(15px) saturate(120%);
+    overflow-y: hidden;
+}
+
+.popup-content {
+    background: var(--glass-surface);
+    width: 100%;
+    height: 100%;
+    box-shadow: var(--shadow-glass-strong);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    position: relative;
+    border: 1px solid var(--glass-border-strong);
+    animation: zoom-in-blur 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes zoom-in-blur {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+        filter: blur(15px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0);
+    }
+}
+
+.popup-content h2 {
+    font-size: 28px;
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.popup-content {
+    font-family: 'League Spartan', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.close-btn {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+    color: white;
+    border: none;
+    padding: 16px 24px;
+    border-radius: 30px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    transition: var(--transition);
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.close-btn:hover {
+    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 25px var(--glow-color);
+    transform: translateY(-3px) scale(1.05);
+}
+
+.close-btn:active {
+    transform: translateY(-1px) scale(0.95);
+    transition: var(--transition-fast);
+}
+
+.initial-fade-in {
+    animation: slide-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 0;
+    transform: translateY(40px);
+}
+
+.hidden {
+    display: none !important;
+}
+
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
+    box-shadow: 0 0 10px var(--glow-color);
+}
+
+.bus-item:nth-child(5) { animation-delay: 0.5s; }
+.bus-item:nth-child(6) { animation-delay: 0.6s; }
+.bus-item:nth-child(7) { animation-delay: 0.7s; }
+.bus-item:nth-child(8) { animation-delay: 0.8s; }
+
+@keyframes float-particles {
+    0% { 
+        transform: translateY(100vh) translateX(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% { 
+        transform: translateY(-100vh) translateX(50px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .bus-item, .destination-item, .stop-item, .favorite-item {
+        padding: 16px 20px;
+    }
+    
+    .btn {
+        padding: 12px 20px;
+        font-size: 13px;
+    }
+    
+.stops-timeline-menu {
+    width: 95%;
+    max-width: none;
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0;
+}
+}
+
+.bus-item:nth-child(1) { animation-delay: 0.1s; }
+.bus-item:nth-child(2) { animation-delay: 0.2s; }
+.bus-item:nth-child(3) { animation-delay: 0.3s; }
+.bus-item:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes slide-in-up {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bus-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bus-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 2px;
+    background: linear-gradient(135deg, 
+        rgba(139, 92, 246, 0.3),
+        rgba(168, 85, 247, 0.2),
+        rgba(139, 92, 246, 0.3)
+    );
+    border-radius: inherit;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: subtract;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+.bus-item:hover {
+    background: var(--glass-surface-hover);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 30px var(--glow-color);
+    border-color: var(--glass-border-strong);
+    transform: translateY(-4px) scale(1.02);
+}
+
+.bus-item:hover::before {
+    left: 100%;
+}
+
+.bus-item:hover::after {
+    opacity: 1;
+}
+
+.bus-item:active {
+    background: var(--glass-surface-pressed);
+    transform: translateY(-2px) scale(0.98);
+    transition: var(--transition-fast);
+}
+
+.bus-item div {
+    position: relative;
+    z-index: 2;
+}
+
+.line-number {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--text-primary);
+    transition: var(--transition);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.line-details {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.bus-item:hover .color-box {
+    transform: scale(1.2) rotate(180deg);
+    box-shadow: 0 0 20px var(--glow-color);
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding: 0 8px;
+    gap: 20px;
+}
+
+.btn {
+    padding: 14px 24px;
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    position: relative;
+    overflow: hidden;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn:hover {
+    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 25px var(--glow-color);
+    transform: translateY(-2px) scale(1.05);
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:active {
+    transform: translateY(0) scale(0.95);
+    transition: var(--transition-fast);
+}
+
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-back svg {
+    transition: var(--transition);
+}
+
+.btn-back:hover svg {
+    transform: translateX(-4px) rotate(-15deg);
+}
+
+select {
+    padding: 14px 20px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    font-family: 'League Spartan', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--glass-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+select:hover {
+    border-color: var(--glass-border-strong);
+    background: var(--glass-surface-hover);
+    box-shadow: var(--shadow-glass-hover);
+    transform: translateY(-1px);
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 0 3px rgba(139, 92, 246, 0.3);
+}
+
+#loading-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 150px;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--glass-border);
+    border-top: 4px solid var(--accent-purple);
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+    filter: drop-shadow(0 0 10px var(--glow-color));
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+#error-message {
+    text-align: center;
+    color: #ff6b6b;
+    padding: 20px 24px;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    border-radius: var(--radius-large);
+    margin: 24px 0;
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    animation: error-pulse 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes error-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); filter: brightness(1.2); }
+}
+
+.page-transition {
+    transition: var(--transition);
+    opacity: 0;
+    filter: blur(12px) brightness(0.8);
+    transform: translateY(30px) scale(0.95);
+}
+
+.page-transition.slide-in {
+    opacity: 1;
+    filter: blur(0) brightness(1);
+    transform: translateY(0) scale(1);
+}
+
+.schedule-row {
+    display: flex;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--glass-border);
+    transition: var(--transition);
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.schedule-row::before {
+    content: '';
+    position: absolute;
+    left: -100%;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
+    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.schedule-row:hover {
+    background: rgba(139, 92, 246, 0.08);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    transform: translateX(8px);
+}
+
+.schedule-row:hover::before {
+    left: 100%;
+}
+
+.schedule-row:last-child {
+    border-bottom: none;
+}
+
+.schedule-row span {
+    font-weight: 700;
+    width: 70px;
+    color: var(--text-primary);
+    transition: var(--transition);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.schedule-row:hover span {
+    color: var(--accent-purple);
+    transform: scale(1.1) rotate(2deg);
+}
+
+.schedule-row span1 {
+    flex: 1;
+    color: var(--text-secondary);
+}
+
+#schedule-container {
+    overflow-y: auto;
+    padding: 24px;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    transition: var(--transition);
+}
+
+#schedule-container:hover {
+    box-shadow: var(--shadow-glass-hover);
+    background: var(--glass-surface-hover);
+}
+
+.textpop {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px 28px;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-glass);
+    margin: 20px 0;
+    position: relative;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.textpop::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(139, 92, 246, 0.1), transparent);
+    animation: rotate 6s linear infinite;
+    opacity: 0;
+    transition: var(--transition);
+}
+
+@keyframes rotate {
+    100% { transform: rotate(360deg); }
+}
+
+.textpop:hover::before {
+    opacity: 1;
+}
+
+.textpop:hover {
+    background: var(--glass-surface-hover);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 40px var(--glow-color);
+    transform: translateY(-4px) scale(1.01);
+}
+
+.textpop h1 {
+    font-size: 1.5em;
+    color: var(--text-primary);
+    margin: 0;
+    font-weight: 700;
+    position: relative;
+    z-index: 2;
+}
+
+.textpop h4 {
+    font-size: 1em;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin: 0;
+    order: -1;
+    position: relative;
+    z-index: 2;
+}
+
+.view {
+    display: none;
+    transition: var(--transition);
+}
+
+.view.active {
+    display: block;
+    animation: fade-in-scale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fade-in-scale {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+        filter: blur(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+        filter: blur(0);
+    }
+}
+
+.destination-item, .stop-item {
+    padding: 24px 28px;
+    margin: 16px 0;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-glass);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.destination-item::before, .stop-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.destination-item:hover::before, .stop-item:hover::before {
+    left: 100%;
+}
+
+.destination-item:hover, .stop-item:hover {
+    background: var(--glass-surface-hover);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 30px var(--glow-color);
+    transform: translateY(-4px) scale(1.02);
+    border-color: var(--glass-border-strong);
+}
+
+.destination-item:active, .stop-item:active {
+    background: var(--glass-surface-pressed);
+    transform: translateY(-2px) scale(0.98);
+    transition: var(--transition-fast);
+}
+
+.date-input {
+    width: -webkit-fill-available;
+    padding: 14px 20px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    font-family: 'League Spartan', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--glass-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.date-input:hover {
+    border-color: var(--glass-border-strong);
+    background: var(--glass-surface-hover);
+    box-shadow: var(--shadow-glass-hover);
+    transform: translateY(-1px);
+}
+
+.date-input:focus {
+    outline: none;
+    border-color: var(--accent-purple);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 0 3px rgba(139, 92, 246, 0.3);
+}
+
+.date-header {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 24px;
+    text-align: center;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.2em;
+    transition: var(--transition);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.schedule-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 32px;
+    padding: 6px;
+    position: relative;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: var(--shadow-glass);
+}
+
+.tab-button, .tab-button-gauche {
+    padding: 14px 24px;
+    background: transparent;
+    border: none;
+    border-radius: calc(var(--radius) - 4px);
+    cursor: pointer;
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text-secondary);
+    flex: 1;
+    position: relative;
+    z-index: 2;
+    transition: var(--transition);
+    user-select: none;
+}
+
+.tab-button.active, .tab-button-gauche.active {
+    color: white;
+    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
+    box-shadow: 
+        var(--shadow-glass),
+        0 0 20px var(--glow-color);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.tab-button:hover:not(.active), .tab-button-gauche:hover:not(.active) {
+    background: var(--glass-surface);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+
+.tab-button.pressed {
+    transform: scale(0.95);
+}
+
+.tab-button-gauche.pressed {
+    transform: scale(0.95);
+}
+
+.tab-content {
+    display: none;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: var(--transition);
+}
+
+.tab-content.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.realtime-list {
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-large);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: var(--shadow-glass);
+}
+
+.realtime-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    background: var(--glass-surface);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-glass);
+    transition: var(--transition);
+    cursor: default;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    position: relative;
+    overflow: hidden;
+}
+
+.realtime-item::before {
+    content: '';
+    position: absolute;
+    left: -100%;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
+    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.realtime-item:hover::before {
+    left: 100%;
+}
+
+.realtime-item:hover {
+    background: var(--glass-surface-hover);
+    box-shadow: 
+        var(--shadow-glass-hover),
+        0 0 25px var(--glow-color);
+    transform: translateY(-2px) scale(1.01);
+}
+
+.realtime-item:last-child {
+    margin-bottom: 0;
+}
+
+.arrival-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+}
+
+.arrival-time {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.delay-indicator {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: 700;
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    transition: var(--transition);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.delay-late {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+.delay-early {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+}
+
+.delay-ontime {
+    background: rgba(139, 92, 246, 0.15);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 15px var(--glow-color);
+}
+
+.theoretical-time {
+    font-size: 0.95em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.vehicle-id {
+    font-size: 0.85em;
+    color: var(--text-muted);
+    margin-left: 12px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    display: inline-block;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.update-time {
+    text-align: center;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+    font-size: 0.95em;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+    </style>
+</head>
+<body>
+
+    <div id="update-popup" class="update-popup">
+        <div class="popup-content">
+            <button id="close-popup" class="close-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <iframe id="webview-frame" src="" frameborder="0"></iframe>
+        </div>
+    </div>
+               
+    <div class="container">
+        <div id="loading-view" class="view active">
+            <div id="loading-indicator">
+            </div>
+        </div>
+        
+        <div id="error-view" class="view">
+            <div id="error-message" data-i18n="errorfetchingdata">
+                Erreur lors du chargement des données
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" data-i18n="retry" onclick="loadData()">Réessayer</button>
+            </div>
+        </div>
+        
+        <div id="lines-view" class="view page-transition">
+            <h2 data-i18n="selectalinee">Sélectionnez une ligne</h2>
+            <div id="lines-container" class="bus-list"></div>
+        </div>
+        
+        <div id="destinations-view" class="view page-transition">
+            <div class="controls">
+                <button class="btn btn-back" data-i18n="back" onclick="showLines()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Retour
+                </button>
+            </div>
+            <div class="textpop">
+                <h4 data-i18n="selectdestination">Sélectionnez une destination</h4>
+                <h1 id="route-title"></h1>
+            </div>
+            <div id="destinations-container"></div>
+        </div>
+        
+        <div id="stops-view" class="view page-transition">
+            <div class="controls">
+                <button class="btn btn-back" data-i18n="back" onclick="goBack()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Retour
+                </button>
+            </div>
+            <div class="textpop">
+                <h4 data-i18n="selectstopanddestination">Sélectionnez un arrêt et une destination</h4>
+                <h1 id="destination-title"></h1>
+            </div>
+            <div class="destination-select-wrapper">
+                <select id="destination-select" class="custom-select">
+                    <option data-i18n="selectdestination" value="">Sélectionnez une destination</option>
+                </select>
+            </div>
+            <div id="stops-container"></div>
+        </div>
+        
+        <div id="schedule-view" class="view page-transition">
+            <div id="controls" class="controls">
+                <button class="btn btn-back" data-i18n="back" onclick="goBack()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Retour
+                </button>
+            </div>
+            <div class="textpop">
+                <h4 id="route-info"></h4>
+                <h1 id="stop-title"></h1>
+                <input type="date" id="date-select" class="date-input">
+
+            </div>
+            
+            <div class="schedule-tabs">
+                <div class="tab-indicator"></div>
+                <button class="tab-button-gauche active" data-tab="theoretical" data-i18n="timetable">Planche horaire</button>
+                <button class="tab-button" data-tab="realtime" data-i18n="nextarrivals">Prochains passages prévus</button>
+            </div>
+        
+            <div id="theoretical-view" class="tab-content active">
+
+                <div id="schedule-container"></div>
+            </div>
+        
+            <div id="realtime-view" class="tab-content">
+
+                <div id="realtime-container" class="realtime-list"></div>
+            </div>
+        </div>
+        <div id="home-view" class="view page-transition">
+            <div class="favorites-header">
+                <h2 data-i18n="favoritestops">Mes arrêts favoris</h2>
+            </div>
+            <div id="favorites-container" class="favorites-container"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" data-i18n="addstop" onclick="showLines()">Ajouter un arrêt</button>
+            </div>
+        </div>
+    </div>
+    <div class="overlay" id="overlay"></div>
+    <div class="stops-timeline-menu" id="stops-timeline-menu">
+        <div class="stops-timeline-header">
+            <h3 data-i18n="stopsdesservis"></h3>
+            <button class="stops-timeline-close" onclick="closeStopsTimeline()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+            <div class="stops-timeline-content" id="stops-timeline-content"></div>
+        <div class="stops-timeline-footer">
+            <button class="show-in-map-btn" data-i18n="displayonmap" onclick="showInMap()">Afficher dans la carte</button>
+        </div>
+    </div>
+
+    <script src="src/js/favorites.js"></script>
+    <script src="src/js/toastjs.js"></script>       
+
+    <script>
+        const i18n = {
+        translations: {},
+        currentLang: 'fr',
+        
+        getLanguageFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const lang = urlParams.get('lang');
+            return lang || localStorage.getItem('preferredLanguage') || 'fr';
+        },
+        
+        async loadTranslations() {
+            this.currentLang = this.getLanguageFromUrl();
+            localStorage.setItem('preferredLanguage', this.currentLang);
+            
+            try {
+            const response = await fetch(`../locales/${this.currentLang}.json`);
+            this.translations = await response.json();
+            document.dispatchEvent(new CustomEvent('translationsLoaded'));
+            return this.translations;
+            } catch (error) {
+            console.error("Erreur lors du chargement des traductions:", error);
+            return {};
+            }
+        },
+        
+        t(key, params = {}) {
+            let text = this.translations[key] || key;
+            
+            Object.keys(params).forEach(param => {
+            text = text.replace(`{${param}}`, params[param]);
+            });
+            
+            return text;
+        },
+        
+        applyTranslations() {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            if (this.translations[key]) {
+                element.innerHTML = this.translations[key];
+            }
+            });
+        }
+        };
+
+        window.t = (key, params) => i18n.t(key, params);
+
+        document.addEventListener('DOMContentLoaded', async () => {
+        await i18n.loadTranslations();
+        i18n.applyTranslations();
+        });
+
+        window.i18n = i18n;
+    </script>
+
+
+    <script>
+        let routes = {};
+        let trips = {};
+        let stopTimes = {};
+        let stops = {};
+        let calendar = {};
+        let calendarDates = {};
+
+        
+        let navigationHistory = [];
+        let currentRouteId = null;
+        let currentStopId = null;
+        let currentDestinationId = null;
+
+        function controlParentSpinner(show, message) {
+            try {
+                window.parent.postMessage({
+                    action: show ? 'showSpinner' : 'hideSpinner',
+                    message: message || (show ? '' : '')
+                }, '*'); 
+            } catch (e) {
+                console.error("Impossible d'envoyer un message à la page parente", e);
+            }
+        }
+
+        controlParentSpinner(true, '');
+
+        async function getSetvar() {
+            try {
+                const response1 = await fetch('setvar/settings/networkname.txt');
+                const setvar1 = await response1.text();
+                const nomdureseau = setvar1.trim();  
+
+                return {nomdureseau};
+
+            } catch (error) {
+                console.error('Erreur chargement setvar ! ', error);
+            }
+        }
+
+        
+    document.addEventListener('DOMContentLoaded', function() {
+    loadData();
+    const tabs = document.querySelectorAll('.tab-button');
+    const tabsl = document.querySelectorAll('.tab-button-gauche');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.dataset.tab;
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${targetTab}-view`).classList.add('active');
+            
+            if (targetTab === 'realtime') {
+                isShowingRealtime = true;
+                startRealtimeUpdates();
+            } else {
+                isShowingRealtime = false;
+                stopRealtimeUpdates();
+            }
+        });
+    });
+});
+
+
+function startRealtimeUpdates() {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+    }
+    
+    fetchRealtimeData();
+    
+    updateInterval = setInterval(fetchRealtimeData, 30000);
+}
+
+function stopRealtimeUpdates() {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+    }
+}
+
+        
+        function loadData() {
+            showView('loading-view');
+            
+
+                loadGtfsData().then(() => {
+                    controlParentSpinner(false);
+                    showLines();
+                }).catch(error => {
+                    console.error('Erreur lors du chargement des données:', error);
+                    showView('error-view');
+                });
+        }
+
+let realtimeData = null;
+let updateInterval = null;
+
+async function fetchRealtimeData() {
+    try {
+        const response = await fetch('proxy-cors/proxy_tripupdate.php');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const buffer = await response.arrayBuffer();
+        
+        const root = await protobuf.load('gtfs-realtime.proto');
+        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+        const message = FeedMessage.decode(new Uint8Array(buffer));
+        
+        updateLastUpdateTime(message.header.timestamp);
+        
+        const processedData = processRealtimeData(message);
+        displayRealtimeSchedule(processedData);
+        
+    } catch (error) {
+        displayRealtimeError();
+    }
+}
+
+function displayRealtimeError() {
+    const container = document.getElementById('realtime-container');
+    container.innerHTML = `
+        <div class="error-message">
+            Impossible de récupérer les horaires en temps réel.
+            <button class="retry-button" onclick="fetchRealtimeData()">Réessayer</button>
+        </div>
+    `;
+}
+
+function updateLastUpdateTime(timestamp) {
+    const lastUpdate = new Date(timestamp * 1000);
+    const timeString = lastUpdate.toLocaleTimeString();
+
+}
+
+function processRealtimeData(message) {
+    if (!currentRouteId || !currentStopId) {
+        return [];
+    }
+
+    const currentTime = new Date();
+    const selectedDate = document.getElementById('date-select').value;
+    const arrivals = [];
+
+    message.entity.forEach(entity => {
+        if (entity.tripUpdate && matchesCurrentRoute(entity.tripUpdate.trip)) {
+            const vehicleId = entity.tripUpdate.vehicle ? 
+                            entity.tripUpdate.vehicle.id || 
+                            entity.tripUpdate.vehicle.label || 
+                            'inconnu' : 'inconnu';
+
+            entity.tripUpdate.stopTimeUpdate.forEach(update => {
+                if (update.stopId === currentStopId) {
+                    const arrivalTime = new Date(update.arrival?.time * 1000 || update.time * 1000);
+                    
+                    if (arrivalTime > currentTime && 
+                        arrivalTime < new Date(currentTime.getTime() + 24 * 60 * 60 * 1000)) {
+                        
+                        const theoreticalTime = getTheoreticalTime(
+                            entity.tripUpdate.trip.tripId, 
+                            currentStopId, 
+                            selectedDate
+                        );
+                        
+                        const delay = theoreticalTime ? 
+                            Math.round((arrivalTime - theoreticalTime) / 60000) : 0;
+
+                        arrivals.push({
+                            time: arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                            delay: delay,
+                            tripId: entity.tripUpdate.trip.tripId,
+                            vehicleId: vehicleId, 
+                            theoretical: theoreticalTime ? 
+                                theoreticalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
+                                null
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    return arrivals.sort((a, b) => {
+        const timeA = parseTime(a.time);
+        const timeB = parseTime(b.time);
+        return timeA - timeB;
+    });
+}
+
+function getRouteIdFromTripId(tripId) {
+    for (const [routeId, routeTrips] of Object.entries(trips)) {
+        if (routeTrips.some(trip => trip.trip_id === tripId)) {
+            return routeId;
+        }
+    }
+    return null;
+}
+
+function matchesCurrentRoute(trip) {
+    const routeTrips = trips[currentRouteId] || [];
+    return routeTrips.some(rt => rt.trip_id === trip.tripId);
+}
+
+function getTheoreticalTime(tripId, stopId) {
+    const tripStopTimes = stopTimes[tripId];
+    if (!tripStopTimes) return null;
+
+    const stopTime = tripStopTimes.find(st => st.stop_id === stopId);
+    if (!stopTime) return null;
+
+    const [hours, minutes] = stopTime.arrival_time.split('h').map(Number);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+}
+
+function getScheduledTime(tripId, stopId) {
+    if (!stopTimes[tripId]) return null;
+    
+    const stopTime = stopTimes[tripId].find(st => st.stop_id === stopId);
+    if (!stopTime) return null;
+    
+    const [hours, minutes] = stopTime.arrival_time.split('h').map(n => parseInt(n, 10));
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+}
+
+function displayRealtimeSchedule(arrivals) {
+    const container = document.getElementById('realtime-container');
+    container.innerHTML = '';
+
+    if (!arrivals || arrivals.length === 0) {
+        container.innerHTML = `
+            <div class="no-data-message">
+                ${t("nodeparture")}
+            </div>
+        `;
+        return;
+    }
+
+    arrivals.forEach(arrival => {
+        const item = document.createElement('div');
+        item.className = 'realtime-item';
+        
+        let delayClass = 'delay-ontime';
+        let delayText = `${t("ontime")}`;
+        let delayTextTheo = arrival.theoretical ? 
+            `${t("delayed")} ${arrival.theoretical}` : '';
+
+        if (arrival.delay > 5) {
+            delayClass = 'delay-late';
+            delayText = `${arrival.delay} ${t("delayed2")}`;
+        } else if (arrival.delay < -2) {
+            delayClass = 'delay-early';
+            delayText = `${Math.abs(arrival.delay)} ${t("avance")}`;
+        }
+
+        item.innerHTML = `
+            <div class="arrival-info">
+                <div class="arrival-time">
+                    ${arrival.time}
+                    <span class="vehicle-id">${t("bus")} ${arrival.vehicleId}</span>
+                </div>
+                <div class="theoretical-time">${delayTextTheo}</div>
+                <div class="delay-indicator ${delayClass}">${delayText}</div>
+            </div>
+        `;
+
+        item.addEventListener('click', () => {
+            showStopsTimeline(arrival.vehicleId, arrival.tripId);
+        });
+        
+        container.appendChild(item);
+    });
+}
+
+function sendVehicleIdToParent(vehicleId, tripId) {
+    console.log('Tentative d\'envoi du vehicleId:', vehicleId);
+    
+    if (window.parent !== window) {
+        const message = {
+            type: 'vehicleSelected',
+            vehicleId: vehicleId,
+            tripId: tripId,
+            stopId: currentStopId,
+            routeId: currentRouteId,
+            timestamp: new Date().getTime()
+        };
+        
+        window.parent.postMessage(message, '*');
+        console.log('Message envoyé à la page parente:', message);
+    }
+}
+
+function getRealtimeArrival(tripId, stopId) {
+    if (!realtimeData || !realtimeData[tripId]) {
+        return null;
+    }
+    
+    const stopUpdate = realtimeData[tripId].stopTimeUpdates
+        .find(update => update.stopId === stopId);
+    
+    if (!stopUpdate || !stopUpdate.arrival) {
+        return null;
+    }
+    
+    return new Date(stopUpdate.arrival);
+}
+
+let DB_NAME;
+let STORE_NAME;
+const DB_VERSION = 4;
+
+async function initConstants() {
+    try {
+        const { nomdureseau } = await getSetvar();
+        DB_NAME = `MyBusFinder${nomdureseau}`;
+        STORE_NAME = `gtfsStore${nomdureseau}`;
+        return { DB_NAME, STORE_NAME };
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation des constantes', error);
+        DB_NAME = 'MyBusFinderDefault';
+        STORE_NAME = 'gtfsStoreDefault';
+        return { DB_NAME, STORE_NAME };
+    }
+}
+
+async function initDB() {
+    if (!DB_NAME || !STORE_NAME) {
+        await initConstants();
+    }
+    
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME);
+            }
+        };
+    });
+}
+
+async function calculateSHA256(data) {
+    let buffer;
+    if (data instanceof ArrayBuffer) {
+        buffer = data;
+    } else if (typeof data === 'string') {
+        const encoder = new TextEncoder();
+        buffer = encoder.encode(data).buffer;
+    } else if (data instanceof Blob) {
+        buffer = await data.arrayBuffer();
+    } else {
+        const jsonString = JSON.stringify(data);
+        const encoder = new TextEncoder();
+        buffer = encoder.encode(jsonString).buffer;
+    }
+
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return hashHex;
+}
+
+async function getFileHash() {
+    try {
+        const response = await fetch('proxy-cors/proxy_gtfs.php', {
+            method: 'GET',
+            headers: {
+                'X-Content-Only-Header': 'true'  
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Échec de la vérif ${response.status}`);
+        }
+        
+        const buffer = await response.arrayBuffer();
+        const partialData = buffer.slice(0, Math.min(buffer.byteLength, 1024 * 50)); // 50KB max
+        
+        const fileHash = await calculateSHA256(partialData);
+        
+        return { fileHash, needsFullDownload: true };
+    } catch (error) {
+        console.error('Erreur lors de la vérif du hash:', error);
+        return { needsFullDownload: true };
+    }
+}
+
+async function checkGTFSUpdate() {
+    try {
+        const db = await initDB();
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        const storedMetadata = await new Promise((resolve, reject) => {
+            const request = store.get('gtfsMetadata');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        
+        if (!storedMetadata || !storedMetadata.fileHash) {
+            return { needsUpdate: true };
+        }
+        
+        const { fileHash, needsFullDownload } = await getFileHash();
+        
+        if (fileHash !== storedMetadata.fileHash) {
+            return { needsUpdate: true, fileHash };
+        }
+        
+        return { needsUpdate: false, metadata: storedMetadata };
+    } catch (error) {
+        console.error('Erreur vérif de maj GTFS', error);
+        return { needsUpdate: true };
+    }
+}
+
+async function saveToCache(data, metadata) {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+
+            store.put(data, 'gtfsData');
+            
+            if (!metadata) {
+                metadata = {};
+            }
+            metadata.lastUpdate = new Date().toISOString();
+            store.put(metadata, 'gtfsMetadata');
+
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        });
+    } catch (error) {
+        console.error('Erreur sauvegarde cache', error);
+        throw error;
+    }
+}
+
+async function getFromCache() {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.get('gtfsData');
+
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        console.error('Erreur lors de récup cache', error);
+        return null;
+    }
+}
+
+async function extractGTFSFiles() {
+    try {
+        toastBottomRight.info(t("updatingdynamicdata"));
+        
+        const response = await fetch('proxy-cors/proxy_gtfs.php');
+        if (!response.ok) {
+            throw new Error(`Échec du téléchargement: ${response.status} ${response.statusText}`);
+            toastBottomRight.warning(t("errordynamicdata"));
+
+        }
+        
+        const zipData = await response.arrayBuffer();
+        
+        const fileHash = await calculateSHA256(zipData.slice(0, Math.min(zipData.byteLength, 1024 * 50))); // j'utilise les 50 premiers KB
+        
+        const zip = await JSZip.loadAsync(zipData);
+        
+        const extractedFiles = {};
+        
+        const filePromises = [];
+        zip.forEach((relativePath, zipEntry) => {
+            if (!zipEntry.dir) {
+                const promise = zipEntry.async("string").then(content => {
+                    extractedFiles[relativePath] = content;
+                });
+                filePromises.push(promise);
+            }
+        });
+        
+        await Promise.all(filePromises);
+        
+        const metadata = {
+            fileHash,
+            lastUpdate: new Date().toISOString()
+        };
+        
+        return { extractedFiles, metadata };
+    } catch (error) {
+        console.error('Erreur extract', error);
+        throw error;
+    }
+}
+
+function startWindowsSpinnerAnimation(elementId, interval = 30) {
+    const frames = [
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','','','','','','','','',
+    '','','','','','','','','',''
+  ];
+
+
+  const el = document.getElementById(elementId);
+  if (!el) {
+    return () => {};
+  }
+
+  let i = 0;
+  const timer = setInterval(() => {
+    el.textContent = frames[i];
+    i = (i + 1) % frames.length;
+  }, interval);
+  return () => clearInterval(timer);
+}
+
+
+async function loadGtfsData() {
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'loading-overlay';
+    loadingOverlay.style.cssText = `
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background-color: rgba(255, 255, 255, 0.7); 
+        display: flex; 
+        justify-content: center; 
+        align-items: center; 
+        z-index: 9999;
+    `;
+    
+    const loadingContainer = document.createElement('div');
+    loadingContainer.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    `;
+    
+    const spinnerElement = document.createElement('span');
+    spinnerElement.id = 'gtfs-loading-spinner';
+    spinnerElement.style.cssText = `
+        font-family: 'SegoeUIBoot'; 
+        font-size: 2rem; 
+        margin-bottom: 10px;
+    `;
+    
+    const loadingText = document.createElement('div');
+    loadingText.id = 'gtfs-loading-text';
+    loadingText.textContent = 'Chargement des données GTFS...';
+    loadingText.style.cssText = `
+        font-family: 'League Spartan', sans-serif;
+        font-size: 16px;
+        color: #333;
+    `;
+    
+    loadingContainer.appendChild(spinnerElement);
+    loadingContainer.appendChild(loadingText);
+    loadingOverlay.appendChild(loadingContainer);
+    document.body.appendChild(loadingOverlay);
+    
+    const stopSpinner = startWindowsSpinnerAnimation('gtfs-loading-spinner', 30);
+    
+    try {
+        let extractedFiles;
+        
+        const updateLoadingText = (text) => {
+            const textElement = document.getElementById('gtfs-loading-text');
+            if (textElement) textElement.textContent = text;
+        };
+        
+        updateLoadingText('Vérification des mises à jour GTFS...');
+        const { needsUpdate, fileHash, metadata } = await checkGTFSUpdate();
+        
+        if (needsUpdate) {
+            updateLoadingText('Extraction des fichiers GTFS...');
+            const result = await extractGTFSFiles();
+            extractedFiles = result.extractedFiles;
+            
+            updateLoadingText('Sauvegarde des données dans le cache...');
+            await saveToCache(extractedFiles, result.metadata);
+            
+        } else {
+            updateLoadingText('Récupération des données depuis le cache...');
+            extractedFiles = await getFromCache();
+            if (!extractedFiles) {
+                updateLoadingText('Extraction des fichiers GTFS...');
+                const result = await extractGTFSFiles();
+                extractedFiles = result.extractedFiles;
+                updateLoadingText('Sauvegarde des données dans le cache...');
+                await saveToCache(extractedFiles, result.metadata);
+                toastBottomRight.success(t("downloadsuccess"));
+            } 
+        }
+        
+        routes = {};
+        trips = {};
+        stopTimes = {};
+        stops = {};
+        calendar = {};
+        calendarDates = {};
+        
+        const loadPromises = [];
+        
+        updateLoadingText('Chargement des routes...');
+        if (extractedFiles['routes.txt']) loadPromises.push(loadRoutes(extractedFiles['routes.txt']));
+        
+        updateLoadingText('Chargement des trajets...');
+        if (extractedFiles['trips.txt']) loadPromises.push(loadTrips(extractedFiles['trips.txt']));
+        
+        updateLoadingText('Chargement des horaires...');
+        if (extractedFiles['stop_times.txt']) loadPromises.push((async () => {
+            stopTimes = await loadStopTimes(extractedFiles['stop_times.txt']);
+        })());
+        
+        updateLoadingText('Chargement des arrêts...');
+        if (extractedFiles['stops.txt']) loadPromises.push(loadStops(extractedFiles['stops.txt']));
+        
+        updateLoadingText('Chargement du calendrier...');
+        if (extractedFiles['calendar.txt']) loadPromises.push(loadCalendar(extractedFiles['calendar.txt']));
+        
+        updateLoadingText('Chargement des dates calendrier...');
+        if (extractedFiles['calendar_dates.txt']) loadPromises.push(loadCalendarDates(extractedFiles['calendar_dates.txt']));
+        
+        updateLoadingText('Finalisation du chargement...');
+        await Promise.all(loadPromises);
+        
+        stopSpinner();
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.remove();
+        
+        return true;
+    } catch (error) {
+        console.error('Erreur lors du chargement des données GTFS', error);
+        
+        const textElement = document.getElementById('gtfs-loading-text');
+        if (textElement) {
+            textElement.textContent = "Erreur lors du chargement des données";
+            textElement.style.color = "red";
+        }
+        
+        stopSpinner();
+        setTimeout(() => {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.remove();
+        }, 3000);
+        
+        toastBottomRight.error("errorfetchingdata");
+        throw error;
+    }
+}
+
+async function clearGTFSCache() {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.clear();
+
+            request.onsuccess = () => {
+                console.log('Cache GTFS effacé avec succès');
+                resolve();
+            };
+            request.onerror = () => reject(request.error);
+        });
+    } catch (error) {
+        console.error('Erreur lors de l\'effacement du cache:', error);
+        throw error;
+    }
+}
+
+
+
+
+
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+
+
+
+
+async function loadRoutes(fileContent) {
+    try {
+        if (!fileContent) {
+            console.warn('Aucun contenu de fichier routes fourni');
+            return;
+        }
+        
+        const lines = fileContent.split(/\r\n|\n/);
+        
+        const headers = parseCSVLine(lines[0]);
+        const routeIdIndex = headers.indexOf('route_id');
+        const shortNameIndex = headers.indexOf('route_short_name');
+        const longNameIndex = headers.indexOf('route_long_name');
+        const routeTypeIndex = headers.indexOf('route_type');
+        const routeColorIndex = headers.indexOf('route_color');
+        const routeTextColorIndex = headers.indexOf('route_text_color');
+        const agencyIdIndex = headers.indexOf('agency_id');
+        
+        if (routeIdIndex === -1) {
+            console.error('Format de fichier routes.txt invalide , colonne route_id manquante');
+            return;
+        }
+        
+        lines.slice(1).forEach(line => {
+            if (!line.trim()) return;
+            
+            const values = parseCSVLine(line);
+            if (values.length <= routeIdIndex) {
+                console.warn('Ligne ignorée dans routes.txt, données incompletes', line);
+                return;
+            }
+            
+            const routeId = values[routeIdIndex];
+            if (routeId) {
+                routes[routeId] = {
+                    short_name: shortNameIndex !== -1 && values[shortNameIndex] ? values[shortNameIndex] : '',
+                    long_name: longNameIndex !== -1 && values[longNameIndex] ? values[longNameIndex] : '',
+                    route_type: routeTypeIndex !== -1 ? parseInt(values[routeTypeIndex] || '0', 10) : 0,
+                    route_color: routeColorIndex !== -1 && values[routeColorIndex] ? `#${values[routeColorIndex]}` : '#FFFFFF',
+                    route_text_color: routeTextColorIndex !== -1 && values[routeTextColorIndex] ? `#${values[routeTextColorIndex]}` : '#000000',
+                    agency_id: agencyIdIndex !== -1 ? values[agencyIdIndex] : null
+                };
+            }
+        });
+        
+        console.log(`Routes chargées ${Object.keys(routes).length} itinéraires`);
+    } catch (error) {
+        console.error('Erreur lors du chargement des itinéraires', error);
+    }
+}
+
+
+async function loadTrips(fileContent) {
+    try {
+        if (!fileContent) {
+            console.warn('Aucun contenu de fichier trips fourni');
+            return;
+        }
+        
+        const lines = fileContent.split(/\r\n|\n/);
+        
+        const headers = parseCSVLine(lines[0]);
+        const tripRouteIdIndex = headers.indexOf('route_id');
+        const tripIdIndex = headers.indexOf('trip_id');
+        const tripServiceIdIndex = headers.indexOf('service_id');
+        const tripHeadsignIndex = headers.indexOf('trip_headsign');
+        const directionIdIndex = headers.indexOf('direction_id');
+        const shapeIdIndex = headers.indexOf('shape_id');
+        
+        if (tripRouteIdIndex === -1 || tripIdIndex === -1) {
+            console.error('Format de fichier trips.txt invalide, colonnes requises manquantes');
+            return;
+        }
+        
+        lines.slice(1).forEach(line => {
+            if (!line.trim()) return;
+            
+            const values = parseCSVLine(line);
+            if (values.length <= Math.max(tripRouteIdIndex, tripIdIndex)) {
+                console.warn('Ligne ignorée dans trips.txt, données incomplètes', line);
+                return;
+            }
+            
+            const routeId = values[tripRouteIdIndex];
+            const tripId = values[tripIdIndex];
+            
+            if (routeId && tripId) {
+                if (!trips[routeId]) {
+                    trips[routeId] = [];
+                }
+                
+                trips[routeId].push({
+                    trip_id: tripId,
+                    service_id: tripServiceIdIndex !== -1 ? values[tripServiceIdIndex] : null,
+                    trip_headsign: tripHeadsignIndex !== -1 ? values[tripHeadsignIndex] : null,
+                    direction_id: directionIdIndex !== -1 ? parseInt(values[directionIdIndex] || '0', 10) : null,
+                    shape_id: shapeIdIndex !== -1 ? values[shapeIdIndex] : null
+                });
+            }
+        });
+        
+        console.log(`Trips charger ${Object.keys(trips).length} routes avec trajets`);
+    } catch (error) {
+        console.error('Erreur lors du chargement des trajets', error);
+    }
+}
+
+
+
+function parseCSVLine(csvLine) {
+    const result = [];
+    let currentValue = '';
+    let insideQuotes = false;
+
+    for (let i = 0; i < csvLine.length; i++) {
+        const char = csvLine[i];
+        
+        if (char === '"') {
+            insideQuotes = !insideQuotes;
+        } else if (char === ',' && !insideQuotes) {
+            result.push(currentValue);
+            currentValue = '';
+        } else {
+            currentValue += char;
+        }
+    }
+    
+    result.push(currentValue);
+    
+    return result.map(value => {
+        if (value.startsWith('"') && value.endsWith('"')) {
+            return value.slice(1, -1);
+        }
+        return value;
+    });
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+
+
+async function loadCalendarDates(fileContent) {
+    try {
+        if (!fileContent) {
+            console.warn('Aucun contenu de fichier calendar_dates fourni');
+            return;
+        }
+        
+        const lines = fileContent.split(/\r\n|\n/);
+        
+        const headers = parseCSVLine(lines[0]);
+        const serviceIdIndex = headers.indexOf('service_id');
+        const dateIndex = headers.indexOf('date');
+        const exceptionTypeIndex = headers.indexOf('exception_type');
+        
+        if (serviceIdIndex === -1 || dateIndex === -1 || exceptionTypeIndex === -1) {
+            console.error('Format de fichier calendar_dates.txt invalide colonnes manquantes');
+            return;
+        }
+        
+        lines.slice(1).forEach(line => {
+            if (!line.trim()) return;
+            
+            const values = parseCSVLine(line);
+            if (values.length <= Math.max(serviceIdIndex, dateIndex, exceptionTypeIndex)) {
+                console.warn('Ligne ignorée dans calendar_dates.txt - données incomplètes:', line);
+                return;
+            }
+            
+            const serviceId = values[serviceIdIndex];
+            const date = values[dateIndex]; 
+            const exceptionType = parseInt(values[exceptionTypeIndex], 10);
+            
+            if (serviceId && date && !isNaN(exceptionType)) {
+                if (!calendarDates[date]) {
+                    calendarDates[date] = { added: [], removed: [] };
+                }
+                
+                if (exceptionType === 1) {  
+                    calendarDates[date].added.push(serviceId);
+                } else if (exceptionType === 2) {  
+                    calendarDates[date].removed.push(serviceId);
+                }
+            }
+        });
+        
+        console.log(`Calendar dates chargé ${Object.keys(calendarDates).length} dates avec exceptions`);
+    } catch (error) {
+        console.error('Erreur lors du chargement des exceptions de calendrier', error);
+    }
+}
+
+function isServiceActive(serviceId, dateObj) {
+    const formattedDate = formatDate(dateObj);
+    
+    if (calendarDates[formattedDate]) {
+        if (calendarDates[formattedDate].added.includes(serviceId)) {
+            return true;
+        }
+        if (calendarDates[formattedDate].removed.includes(serviceId)) {
+            return false; 
+        }
+    }
+    
+    if (!calendar[serviceId]) {
+        console.warn(`Service id ${serviceId} non trouvé dans le calendrier`);
+        return false;
+    }
+    
+    const day = dateObj.getDay(); 
+    const dateNumber = parseInt(formattedDate, 10);
+    
+    const calendarEntry = calendar[serviceId];
+    const startDate = parseInt(calendarEntry.start_date, 10);
+    const endDate = parseInt(calendarEntry.end_date, 10);
+    
+    if (dateNumber < startDate || dateNumber > endDate) {
+        return false;
+    }
+    
+    const weekdayFields = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    return calendarEntry[weekdayFields[day]] === true;
+}
+
+
+
+async function loadStopTimes(fileContent) {
+    const localStopTimes = {}; 
+    
+    try {
+        if (!fileContent) {
+            console.warn('Aucun contenu de fichier stop_times fourni');
+            return localStopTimes;
+        }
+        
+        console.time('Chargement stop_times');
+        console.log('Début du chargement des stop_times (fichier volumineux ~20Mo)...');
+        
+        // Optimisation 1: Détection plus rapide du caractère de fin de ligne
+        const newlineChar = fileContent.includes('\r\n') ? '\r\n' : '\n';
+        
+        // Optimisation 2: Parsing des headers plus efficace
+        const headerEndPos = fileContent.indexOf(newlineChar);
+        const headerLine = fileContent.substring(0, headerEndPos);
+        const headers = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        const indices = {
+            tripId: headers.indexOf('trip_id'),
+            stopId: headers.indexOf('stop_id'),
+            arrivalTime: headers.indexOf('arrival_time'),
+            departureTime: headers.indexOf('departure_time'),
+            stopSequence: headers.indexOf('stop_sequence'),
+            pickupType: headers.indexOf('pickup_type'),
+            dropOffType: headers.indexOf('drop_off_type')
+        };
+        
+        if (indices.tripId === -1 || indices.stopId === -1 || indices.arrivalTime === -1) {
+            console.error('Format de fichier stop_times.txt invalide, colonnes requises manquantes');
+            return localStopTimes;
+        }
+        
+        // Optimisation 3: Chunks plus grands et moins de flushes
+        const CHUNK_SIZE = 500000; // Augmenté de 100k à 500k
+        const FLUSH_THRESHOLD = 500000; // Augmenté de 100k à 500k
+        
+        let entryCount = 0;
+        let warningCount = 0;
+        const MAX_WARNINGS = 5;
+        let lastProgressReport = Date.now();
+        const PROGRESS_INTERVAL = 5000; // Réduit la fréquence des rapports
+        
+        let tempTrips = {};
+        let tripCount = 0;
+        
+        // Optimisation 4: Split en une seule fois puis traitement par chunks
+        const lines = fileContent.substring(headerEndPos + newlineChar.length).split(newlineChar);
+        const totalLines = lines.length;
+        
+        for (let i = 0; i < totalLines; i += CHUNK_SIZE) {
+            const chunk = lines.slice(i, i + CHUNK_SIZE);
+            
+            for (let j = 0; j < chunk.length; j++) {
+                const line = chunk[j];
+                if (!line.trim()) continue;
+                
+                let values;
+                try {
+                    // Optimisation 5: Parsing CSV plus rapide pour les cas simples
+                    if (line.indexOf('"') === -1 && line.indexOf(',') !== -1) {
+                        values = line.split(',');
+                    } else {
+                        values = parseCSVLine(line);
+                    }
+                    
+                    if (values.length <= Math.max(indices.tripId, indices.stopId, indices.arrivalTime)) {
+                        if (warningCount < MAX_WARNINGS) {
+                            warningCount++;
+                            console.warn(`Ligne ignorée - données incomplètes (${warningCount}/${MAX_WARNINGS} avertissements max)`);
+                        }
+                        continue;
+                    }
+                    
+                    const tripId = values[indices.tripId];
+                    if (!tripId) continue;
+                    
+                    // Optimisation 6: Création d'objets plus efficace
+                    if (!tempTrips[tripId]) {
+                        tempTrips[tripId] = [];
+                        tripCount++;
+                    }
+                    
+                    // Optimisation 7: Construction d'objet optimisée
+                    const stopEntry = {
+                        stop_id: values[indices.stopId],
+                        stop_sequence: indices.stopSequence !== -1 && values[indices.stopSequence] ? 
+                            parseInt(values[indices.stopSequence], 10) : 0
+                    };
+                    
+                    const arrivalTime = values[indices.arrivalTime];
+                    if (arrivalTime) {
+                        stopEntry.arrival_time = formatTimeString(arrivalTime);
+                    }
+                    
+                    const departureTime = indices.departureTime !== -1 ? values[indices.departureTime] : null;
+                    if (departureTime && departureTime !== arrivalTime) {
+                        stopEntry.departure_time = formatTimeString(departureTime);
+                    } else {
+                        stopEntry.departure_time = stopEntry.arrival_time;
+                    }
+                    
+                    const pickupType = indices.pickupType !== -1 ? values[indices.pickupType] : null;
+                    if (pickupType && pickupType !== '0') {
+                        stopEntry.pickup_type = parseInt(pickupType, 10);
+                    }
+                    
+                    const dropOffType = indices.dropOffType !== -1 ? values[indices.dropOffType] : null;
+                    if (dropOffType && dropOffType !== '0') {
+                        stopEntry.drop_off_type = parseInt(dropOffType, 10);
+                    }
+                    
+                    tempTrips[tripId].push(stopEntry);
+                    entryCount++;
+                    
+                } catch (error) {
+                    if (warningCount < MAX_WARNINGS) {
+                        warningCount++;
+                        console.warn(`Erreur lors du traitement de la ligne: ${error.message} (${warningCount}/${MAX_WARNINGS} avertissements max)`);
+                    }
+                }
+            }
+            
+            // Optimisation 8: Rapports de progression moins fréquents
+            const now = Date.now();
+            if (now - lastProgressReport > PROGRESS_INTERVAL) {
+                const percentComplete = Math.floor(((i + CHUNK_SIZE) / totalLines) * 100);
+                console.log(`Chargement en cours : ${Math.min(percentComplete, 100)}% (${entryCount} arrêts, ${tripCount} trajets)`);
+                lastProgressReport = now;
+                
+                // Optimisation 9: Yield moins fréquent
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+            
+            // Optimisation 10: Flush moins fréquent
+            if (entryCount > FLUSH_THRESHOLD) {
+                await flushTempTrips(tempTrips, localStopTimes);
+                
+                tempTrips = {};
+                tripCount = 0;
+                
+                // Optimisation 11: GC forcé moins fréquent
+                if (i % (CHUNK_SIZE * 4) === 0) {
+                    await forceGarbageCollection();
+                }
+            }
+        }
+        
+        // Flush final
+        if (Object.keys(tempTrips).length > 0) {
+            await flushTempTrips(tempTrips, localStopTimes);
+            tempTrips = null;
+        }
+        
+        console.timeEnd('Chargement stop_times');
+        console.log(`Stop times chargés: ${Object.keys(localStopTimes).length} trajets, ${entryCount} arrêts au total`);
+        
+        // Nettoyage final
+        fileContent = null;
+        await forceGarbageCollection();
+        
+        return localStopTimes;
+
+    } catch (error) {
+        console.error('Erreur lors du chargement des horaires', error.message, error.stack);
+        return localStopTimes;
+    }
+}
+
+// Fonction helper optimisée pour le parsing CSV simple
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++; // Skip next quote
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    result.push(current);
+    return result;
+}
+
+async function flushTempTrips(tempTrips, destination) {
+    const tripIds = Object.keys(tempTrips);
+    const totalTrips = tripIds.length;
+    
+    console.log(`Traitement de ${totalTrips} trajets temporaires...`);
+    
+    const BATCH_SIZE = 1000;
+    
+    for (let i = 0; i < totalTrips; i += BATCH_SIZE) {
+        const batchIds = tripIds.slice(i, i + BATCH_SIZE);
+        
+        for (const tripId of batchIds) {
+            tempTrips[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
+            destination[tripId] = tempTrips[tripId];
+            
+            delete tempTrips[tripId];
+        }
+        
+        if (i % (BATCH_SIZE * 5) === 0 && i > 0) {
+            console.log(`Flush progression: ${Math.round((i/totalTrips)*100)}%`);
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+    
+    console.log('Flush terminé');
+}
+
+async function minimalGC() {
+    await new Promise(resolve => setTimeout(resolve, 1));
+    
+    if (typeof global !== 'undefined' && global.gc) {
+        // node.js avec --expose-gc
+        global.gc();
+    }
+}
+
+async function forceGarbageCollection() {
+    if (typeof global !== 'undefined' && global.gc) {
+        // node.js --expose-gc flag
+        global.gc();
+        return true;
+    } else if (typeof window !== 'undefined') {
+        console.log('Tentative de libération mémoire dans environnement navigateur...');
+        
+        const smallBuffer = new ArrayBuffer(1024 * 1024); 
+        
+        setTimeout(() => {
+        }, 0);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 5));
+    
+    return false;
+}
+
+async function processBatch(batch, tempStopTimes) {
+    try {
+        const batchSize = batch.length;
+        const CHUNK_SIZE = 1000; 
+        
+        for (let i = 0; i < batchSize; i += CHUNK_SIZE) {
+            const end = Math.min(i + CHUNK_SIZE, batchSize);
+            
+            for (let j = i; j < end; j++) {
+                const item = batch[j];
+                
+                if (!item || !item.tripId) continue;
+                
+                if (!tempStopTimes[item.tripId]) {
+                    tempStopTimes[item.tripId] = [];
+                }
+                
+                const stopEntry = {
+                    stop_id: item.stopId,
+                    stop_sequence: item.stopSequence || 0
+                };
+                
+                if (item.arrivalTime) {
+                    stopEntry.arrival_time = formatTimeString(item.arrivalTime);
+                }
+                
+                if (item.departureTime && item.departureTime !== item.arrivalTime) {
+                    stopEntry.departure_time = formatTimeString(item.departureTime);
+                } else {
+                    stopEntry.departure_time = stopEntry.arrival_time;
+                }
+                
+                if (item.pickupType && item.pickupType !== '0') {
+                    stopEntry.pickup_type = parseInt(item.pickupType, 10);
+                }
+                
+                if (item.dropOffType && item.dropOffType !== '0') {
+                    stopEntry.drop_off_type = parseInt(item.dropOffType, 10);
+                }
+                
+                tempStopTimes[item.tripId].push(stopEntry);
+                
+                batch[j] = null;
+            }
+            
+            if (end < batchSize) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+        
+        batch.length = 0;
+        
+    } catch (error) {
+        console.error('Erreur durant le traitement du batch', error);
+    }
+    
+    return null;
+}
+
+async function flushTempStopTimes(tempStopTimes, stopTimes, flushCallback) {
+    let count = 0;
+    const totalItems = tempStopTimes.size;
+    
+    for (const [tripId, stops] of tempStopTimes) {
+        stops.sort((a, b) => a.stop_sequence - b.stop_sequence);
+        
+        if (typeof flushCallback === 'function') {
+            flushCallback(tripId, stops);
+        } else {
+            stopTimes[tripId] = stops;
+        }
+        
+        count++;
+        
+        if (count % 10000 === 0) {
+            console.log(`Flush progression ${Math.round((count/totalItems)*100)}%`);
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+}
+
+
+function formatTimeString(timeStr) {
+    const colonPos = timeStr.indexOf(':');
+    if (colonPos !== -1) {
+        const hour = timeStr.substring(0, colonPos);
+        const minute = timeStr.substring(colonPos + 1, colonPos + 3);
+        return `${hour}h${minute}`;
+    }
+    return timeStr;
+}
+
+async function loadStops(fileContent) {
+    try {
+        if (!fileContent) {
+            console.warn('Aucun contenu de fichier stops fourni');
+            return;
+        }
+        
+        const lines = fileContent.split(/\r\n|\n/);
+        
+        const headers = parseCSVLine(lines[0]);
+        const stopsIdIndex = headers.indexOf('stop_id');
+        const stopsNameIndex = headers.indexOf('stop_name');
+        const stopsLatIndex = headers.indexOf('stop_lat');
+        const stopsLonIndex = headers.indexOf('stop_lon');
+        const stopsCodeIndex = headers.indexOf('stop_code');
+        const parentStationIndex = headers.indexOf('parent_station');
+        const locationType = headers.indexOf('location_type');
+        
+        if (stopsIdIndex === -1 || stopsNameIndex === -1) {
+            console.error('Format de fichier stops.txt invalide colonnes requises manquantes..');
+            return;
+        }
+        
+        lines.slice(1).forEach(line => {
+            if (!line.trim()) return;
+            
+            const values = parseCSVLine(line);
+            if (values.length <= Math.max(stopsIdIndex, stopsNameIndex)) {
+                console.warn('Ligne ignorée dans stops.txt, données incomplètes:', line);
+                return;
+            }
+            
+            const stopId = values[stopsIdIndex];
+            if (stopId) {
+
+                stops[stopId] = values[stopsNameIndex];
+                
+            }
+        });
+        
+        console.log(`Stops chargés ${Object.keys(stops).length} arrets`);
+    } catch (error) {
+        console.error('Erreur lors du chargement des arrêts', error);
+    }
+}
+
+
+async function loadCalendar(fileContent) {
+    try {
+        if (!fileContent) {
+            console.warn('Aucun contenu de fichier calendar fourni');
+            return;
+        }
+        
+        const lines = fileContent.split(/\r\n|\n/);
+        
+        const headers = parseCSVLine(lines[0]);
+        const serviceIdIndex = headers.indexOf('service_id');
+        const startDateIndex = headers.indexOf('start_date');
+        const endDateIndex = headers.indexOf('end_date');
+        const mondayIndex = headers.indexOf('monday');
+        const tuesdayIndex = headers.indexOf('tuesday');
+        const wednesdayIndex = headers.indexOf('wednesday');
+        const thursdayIndex = headers.indexOf('thursday');
+        const fridayIndex = headers.indexOf('friday');
+        const saturdayIndex = headers.indexOf('saturday');
+        const sundayIndex = headers.indexOf('sunday');
+        
+        if (serviceIdIndex === -1 || startDateIndex === -1 || endDateIndex === -1 ||
+            mondayIndex === -1 || tuesdayIndex === -1 || wednesdayIndex === -1 ||
+            thursdayIndex === -1 || fridayIndex === -1 || saturdayIndex === -1 || 
+            sundayIndex === -1) {
+            console.error('Format de fichier calendar.txt invalide colonnes requises manquantes');
+            return;
+        }
+        
+        lines.slice(1).forEach(line => {
+            if (!line.trim()) return;
+            
+            const values = parseCSVLine(line);
+            if (values.length <= Math.max(serviceIdIndex, startDateIndex, endDateIndex, 
+                                        mondayIndex, tuesdayIndex, wednesdayIndex, 
+                                        thursdayIndex, fridayIndex, saturdayIndex, sundayIndex)) {
+                console.warn('Ligne ignorée dans calendar.txt, données incomplètes:', line);
+                return;
+            }
+            
+            const serviceId = values[serviceIdIndex];
+            if (serviceId) {
+                calendar[serviceId] = {
+                    monday: parseInt(values[mondayIndex], 10) === 1,
+                    tuesday: parseInt(values[tuesdayIndex], 10) === 1,
+                    wednesday: parseInt(values[wednesdayIndex], 10) === 1,
+                    thursday: parseInt(values[thursdayIndex], 10) === 1,
+                    friday: parseInt(values[fridayIndex], 10) === 1,
+                    saturday: parseInt(values[saturdayIndex], 10) === 1,
+                    sunday: parseInt(values[sundayIndex], 10) === 1,
+                    weekdays: [
+                        parseInt(values[mondayIndex], 10),
+                        parseInt(values[tuesdayIndex], 10),
+                        parseInt(values[wednesdayIndex], 10),
+                        parseInt(values[thursdayIndex], 10),
+                        parseInt(values[fridayIndex], 10)
+                    ].includes(1),
+                    start_date: values[startDateIndex],
+                    end_date: values[endDateIndex]
+                };
+            }
+        });
+        
+        console.log(`Calendar chargé ${Object.keys(calendar).length} services`);
+    } catch (error) {
+        console.error('Erreur lors du chargement du calendrier', error);
+    }
+}
+
+
+function getActiveServicesForDate(date) {
+    const activeServices = [];
+    
+    for (const serviceId in calendar) {
+        if (calendar.hasOwnProperty(serviceId) && isServiceActive(serviceId, date)) {
+            activeServices.push(serviceId);
+        }
+    }
+    
+    return activeServices;
+}
+
+
+function getActiveTripsForRoute(routeId, date) {
+    const activeServices = getActiveServicesForDate(date);
+    const activeTrips = [];
+    
+    if (!trips[routeId]) {
+        return activeTrips;
+    }
+    
+    trips[routeId].forEach(trip => {
+        if (activeServices.includes(trip.service_id)) {
+            activeTrips.push(trip);
+        }
+    });
+    
+    return activeTrips;
+}
+
+async function loadAllGTFSData(files) {
+    console.log('Chargement des données GTFS...');
+    
+    if (files.calendar) await loadCalendar(files.calendar);
+    if (files.calendar_dates) await loadCalendarDates(files.calendar_dates);
+    if (files.routes) await loadRoutes(files.routes);
+    if (files.stops) await loadStops(files.stops);
+    if (files.trips) await loadTrips(files.trips);
+    if (files.stop_times) await loadStopTimes(files.stop_times);
+    
+    console.log('Chargement des données GTFS terminé');
+}
+
+function getGTFSData() {
+    return {
+        routes,
+        trips,
+        stopTimes,
+        stops,
+        calendar,
+        calendarDates
+    };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        loadCalendarDates,
+        loadRoutes,
+        loadTrips,
+        loadStopTimes,
+        loadStops,
+        loadCalendar,
+        loadAllGTFSData,
+        isServiceActive,
+        getActiveServicesForDate,
+        getActiveTripsForRoute,
+        getGTFSData,
+        formatDate,
+        parseCSVLine,
+        formatTimeString,
+        minimalGC,
+        flushTempTrips
+    };
+}
+
+let updatePositionInterval;
+let currentVehicleId;
+let currentTripId;
+
+function showStopsTimeline(vehicleId, tripId) {
+    currentVehicleId = vehicleId;
+    currentTripId = tripId;
+    
+    const overlay = document.getElementById('overlay');
+    const menu = document.getElementById('stops-timeline-menu');
+    
+    if (!overlay || !menu) return;
+    
+    overlay.style.display = 'block';
+    menu.style.display = 'flex'; 
+    
+    menu.offsetHeight;
+    
+    overlay.classList.add('visible');
+    menu.classList.add('visible');
+    
+    updateStopsTimeline();
+    
+    if (updatePositionInterval) {
+        clearInterval(updatePositionInterval);
+    }
+    updatePositionInterval = setInterval(updateStopsTimeline, 10000);
+}
+
+function updateStopsTimeline() {
+    const content = document.getElementById('stops-timeline-content');
+    const tripStopsData = stopTimes[currentTripId];
+    if (!tripStopsData) return;
+    
+    content.innerHTML = '';
+    const timelineDiv = document.createElement('div');
+    timelineDiv.className = 'stops-timeline-line';
+    
+    const verticalLine = document.createElement('div');
+    verticalLine.className = 'timeline-vertical-line';
+    verticalLine.style.background = routes[currentRouteId].route_color;
+    timelineDiv.appendChild(verticalLine);
+    
+    const currentPosition = calculateBusPosition(tripStopsData);
+    
+    const busIndicator = document.createElement('div');
+    busIndicator.className = 'bus-position-indicator visible moving';
+    busIndicator.style.top = `${(currentPosition / (tripStopsData.length - 1)) * 100}%`;
+    busIndicator.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${routes[currentRouteId].route_color}">
+            <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M20 13H16M4 13H12" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M15.5 16H17" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M7 16H8.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4.5 5H8.25M19.5 5H12" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> 
+        </svg>
+    `;
+    timelineDiv.appendChild(busIndicator);
+    
+    let currentStopElement = null;
+    
+    tripStopsData.forEach((stopTime, index) => {
+        const stopDiv = document.createElement('div');
+        stopDiv.className = 'stop-item-timeline';
+        
+        const time = stopTime.arrival_time;
+        
+        stopDiv.innerHTML = `
+            <div class="stop-name">${stops[stopTime.stop_id].replace(/"/g, '')}</div>
+            <div class="stop-time">${time}</div>
+        `;
+        
+        timelineDiv.appendChild(stopDiv);
+        
+        if (index === Math.floor(currentPosition)) {
+            currentStopElement = stopDiv;
+            stopDiv.classList.add('current-stop');
+        }
+        
+        setTimeout(() => {
+            stopDiv.classList.add('visible');
+        }, index * 50);
+    });
+    
+    content.appendChild(timelineDiv);
+
+    setTimeout(() => {
+        const wrapper = document.querySelector('.stops-timeline-wrapper');
+        if (currentStopElement && wrapper) {
+            const parentRect = wrapper.getBoundingClientRect();
+            const elementRect = currentStopElement.getBoundingClientRect();
+            const scrollTop = elementRect.top - parentRect.top - (parentRect.height / 2) + wrapper.scrollTop;
+            
+            wrapper.scrollTo({
+                top: scrollTop,
+                behavior: 'smooth'
+            });
+        }
+    }, 100);
+}
+function formatTime(time) {
+    return time; 
+}
+
+function closeStopsTimeline() {
+    const overlay = document.getElementById('overlay');
+    const menu = document.getElementById('stops-timeline-menu');
+    
+    if (!overlay || !menu) return;
+    
+    overlay.classList.remove('visible');
+    menu.classList.remove('visible');
+    
+    if (updatePositionInterval) {
+        clearInterval(updatePositionInterval);
+        updatePositionInterval = null;
+    }
+    
+    setTimeout(() => {
+        overlay.style.display = 'none';
+        menu.style.display = 'none';
+    }, 500);
+}
+
+
+function getRealtimeUpdatesForTrip(tripId) {
+    const updates = {};
+    try {
+        if (!window.realtimeData || !window.realtimeData.entity) {
+            return updates;
+        }
+        
+        window.realtimeData.entity.forEach(entity => {
+            if (entity.tripUpdate && entity.tripUpdate.trip.tripId === tripId) {
+                entity.tripUpdate.stopTimeUpdate.forEach(update => {
+                    if (update.arrival && update.arrival.time) {
+                        const time = new Date(update.arrival.time * 1000);
+                        updates[update.stopId] = `${time.getHours()}h${String(time.getMinutes()).padStart(2, '0')}`;
+                    }
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des mises à jour en temps réel:', error);
+    }
+    return updates;
+}
+
+function calculateBusPosition(tripStopsData) {
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+    for (let i = 0; i < tripStopsData.length; i++) {
+        const stopTime = tripStopsData[i];
+        const [hours, minutes] = stopTime.arrival_time.split('h').map(Number);
+        const stopTimeInMinutes = hours * 60 + minutes;
+        
+        if (stopTimeInMinutes > currentTime) {
+            return Math.max(0, i - 1);
+        }
+    }
+    
+    return tripStopsData.length - 1;
+}
+
+function getTimeInSeconds(timeStr) {
+    const [hours, minutes] = timeStr.split('h').map(Number);
+    return hours * 3600 + minutes * 60;
+}
+
+window.addEventListener('beforeunload', () => {
+    if (updatePositionInterval) {
+        clearInterval(updatePositionInterval);
+    }
+});
+
+
+ function showInMap() {
+    const event = {
+        type: 'vehicleSelected',
+        vehicleId: currentVehicleId,
+        tripId: currentTripId,
+        stopId: currentStopId,
+        routeId: currentRouteId,
+        timestamp: new Date().getTime()
+    };
+    
+    if (window.parent !== window) {
+        window.parent.postMessage(event, '*');
+        
+        setTimeout(() => {
+            closeStopsTimeline();
+        }, 100);
+    } else if (window.opener) {
+        window.opener.postMessage(event, '*');
+        
+        setTimeout(() => {
+            window.close();
+            
+            setTimeout(() => {
+                alert("Impossible de fermer automatiquement l'onglet. Les données ont bien été envoyées.");
+            }, 300);
+        }, 100);
+    } else {
+        console.log("Données générées mais pas d'endroit où les envoyer", event);
+        
+        try {
+            window.close();
+            
+            setTimeout(() => {
+                alert("Impossible de fermer automatiquement l'onglet. Veuillez le fermer manuellement.");
+                closeStopsTimeline(); 
+            }, 300);
+        } catch (error) {
+            console.error("Erreur lors de la fermeture:", error);
+            closeStopsTimeline(); 
+        }
+    }
+}
+
+
+function tryCloseTab() {
+    try {
+        const closed = window.close();
+        
+        setTimeout(() => {
+            if (!closed) {
+                alert("Votre navigateur empêche la fermeture automatique. Veuillez fermer cet onglet manuellement (Ctrl+W ou Cmd+W).");
+            }
+        }, 200);
+        
+        return closed;
+    } catch (error) {
+        console.error("Erreur lors de la fermeture de l'onglet:", error);
+        return false;
+    }
+}
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            const view = document.getElementById(viewId);
+            view.classList.add('active');
+            
+            if (view.classList.contains('page-transition')) {
+                setTimeout(() => {
+                    view.classList.add('slide-in');
+                }, 50);
+            }
+        }
+        
+
+    
+    function showLines() {
+    navigationHistory = [];
+    currentRouteId = null;
+    currentDestinationId = null;
+    currentStopId = null;
+
+    
+    const container = document.getElementById('lines-container');
+    container.innerHTML = '';
+    
+    const favorites = getFavorites();
+    if (favorites.length > 0) {
+        const favoritesSection = document.createElement('div');
+        favoritesSection.className = 'favorites-section';
+        favoritesSection.innerHTML = `<h3>${t("favoritestops")}</h3>`;
+        
+        favorites.forEach(favorite => {
+            if (!routes[favorite.routeId]) {
+                console.warn(`Route ${favorite.routeId} not found for favorite ${favorite.id}`);
+                return; 
+            }
+            
+            const favoriteItem = document.createElement('div');
+            favoriteItem.className = 'bus-item favorite-item';
+            favoriteItem.setAttribute('data-favorite-id', favorite.id);
+            favoriteItem.style.backgroundColor = routes[favorite.routeId].route_color;
+            favoriteItem.style.color = routes[favorite.routeId].route_text_color;
+            
+            favoriteItem.innerHTML = `
+                <div class="favorite-info">
+                    <div class="favorite-main-info">
+                        ${t("line")} ${favorite.routeName} → ${favorite.destinationName}
+                    </div>            
+                    <div class="favorite-main-info" style="font-style: italic; font-size: 0.8em">
+                        ${t("atthestop")} ${favorite.stopName}
+                    </div>
+                    <div class="realtime-info"></div>
+                </div>
+                <button class="favorite-button" onclick="event.stopPropagation(); removeFromFavorites('${favorite.id}'); showLines();">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            `;
+            
+            favoriteItem.onclick = () => showSchedule(favorite.routeId, favorite.stopId, favorite.destinationId);
+            favoritesSection.appendChild(favoriteItem);
+        });
+
+        container.appendChild(favoritesSection);
+        updateFavoritesRealtimeData();
+        startFavoritesUpdate();
+    }
+    
+    const linesSection = document.createElement('div');
+    linesSection.className = 'lines-section';
+    if (favorites.length > 0) {
+        linesSection.innerHTML = `<h3>${t("alllines")}</h3>`;
+    }
+    
+    Object.entries(routes).forEach(([routeId, route]) => {
+        const lineItem = document.createElement('div');
+        lineItem.className = 'bus-item';
+        lineItem.innerHTML = `
+            <div class="line-details">
+                <span class="line-number">${t("line")} ${route.short_name}</span>
+            </div>
+            <div style="text-align: right;">${route.long_name.replace(/"/g, '')}</div>
+        `;
+        lineItem.style.backgroundColor = `${route.route_color}`;
+        lineItem.style.color = `${route.route_text_color}`;
+        lineItem.onclick = () => showStops(routeId);
+        linesSection.appendChild(lineItem);
+    });
+    
+    container.appendChild(linesSection);
+    
+    showView('lines-view');
+    
+    void document.getElementById('lines-view').offsetWidth;
+    
+    requestAnimationFrame(() => {
+        document.getElementById('lines-view').classList.add('slide-in');
+    });
+}
+
+function processRealtimeDataForStop(message, routeId, stopId) {
+    const currentTime = new Date();
+    const arrivals = [];
+
+    message.entity.forEach(entity => {
+        if (entity.tripUpdate && matchesRoute(entity.tripUpdate.trip, routeId)) {
+            entity.tripUpdate.stopTimeUpdate.forEach(update => {
+                if (update.stopId === stopId) {
+                    const arrivalTime = new Date(update.arrival?.time * 1000 || update.time * 1000);
+                    
+                    if (arrivalTime > currentTime && 
+                        arrivalTime < new Date(currentTime.getTime() + 24 * 60 * 60 * 1000)) {
+                        
+                        arrivals.push({
+                            time: arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                            vehicleId: entity.tripUpdate.vehicle?.id || 'inconnu'
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    return arrivals.sort((a, b) => parseTime(a.time) - parseTime(b.time)).slice(0, 2);
+}
+
+function displayRealtimeDataInFavorite(arrivals, container) {
+    if (arrivals.length === 0) {
+        container.innerHTML = `<div class="favorite-realtime">${t("noscheduledarrival")}</div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="favorite-realtime">
+            ${t("nextarrivals")} : <span>${arrivals.map(a => {
+                const [hours, minutes] = a.time.split(':');
+                return `${hours}h${minutes}`;
+            }).join(' | ')}</span>
+        </div>
+    `;
+}
+        function showDestinations(routeId) {
+            currentRouteId = routeId;
+            navigationHistory.push({ view: 'lines-view' });
+            
+            const container = document.getElementById('destinations-container');
+            container.innerHTML = '';
+            
+            document.getElementById('route-title').textContent = `${t("line")} ${routes[routeId].short_name}`;
+            
+            const destinations = new Set();
+            
+            trips[routeId].forEach(({ trip_id }) => {
+                const tripStops = stopTimes[trip_id];
+                if (tripStops && tripStops.length > 0) {
+                    const lastStop = tripStops[tripStops.length - 1].stop_id;
+                    destinations.add(lastStop);
+                }
+            });
+            
+            Array.from(destinations).forEach(destinationId => {
+                const destinationItem = document.createElement('div');
+                destinationItem.className = 'destination-item';
+                destinationItem.textContent = stops[destinationId].replace(/"/g, '');
+                destinationItem.onclick = () => showStops(routeId, destinationId);
+                destinationItem.style.backgroundColor = `${routes[routeId].route_color}`;
+                destinationItem.style.color = `${routes[routeId].route_text_color}`;
+                container.appendChild(destinationItem);
+            });
+            
+            document.querySelectorAll('.page-transition').forEach(el => el.classList.remove('slide-in'));
+            showView('destinations-view');
+        }
+        
+        function showStops(routeId) {
+    currentRouteId = routeId;
+    navigationHistory.push({ view: 'lines-view' });
+    
+    const container = document.getElementById('stops-container');
+    container.innerHTML = '';
+    
+    document.getElementById('destination-title').textContent = 
+        `${t("line")} ${routes[routeId].short_name}`;
+    
+    const destinationSelect = document.getElementById('destination-select');
+    destinationSelect.innerHTML = `<option value="">${t("selectdestination")}</option>`;
+    
+    const destinations = new Set();
+    trips[routeId].forEach(({ trip_id }) => {
+        const tripStops = stopTimes[trip_id];
+        if (tripStops && tripStops.length > 0) {
+            const lastStop = tripStops[tripStops.length - 1].stop_id;
+            destinations.add(lastStop);
+        }
+    });
+    
+    Array.from(destinations).forEach(destinationId => {
+        const option = document.createElement('option');
+        option.value = destinationId;
+        option.textContent = stops[destinationId].replace(/"/g, '');
+        destinationSelect.appendChild(option);
+    });
+    
+    destinationSelect.onchange = function() {
+        const destinationId = this.value;
+        updateStopsForDestination(routeId, destinationId);
+    };
+    
+    document.querySelectorAll('.page-transition').forEach(el => el.classList.remove('slide-in'));
+    showView('stops-view');
+}   
+
+function updateStopsForDestination(routeId, destinationId) {
+    const container = document.getElementById('stops-container');
+    container.innerHTML = '';
+    
+    if (!destinationId) return;
+    
+    const stopSet = new Set();
+    
+    trips[routeId].forEach(({ trip_id }) => {
+        const tripStops = stopTimes[trip_id];
+        if (tripStops) {
+            const destIndex = tripStops.findIndex(stop => stop.stop_id === destinationId);
+            if (destIndex !== -1) {
+                for (let i = 0; i < destIndex; i++) {
+                    stopSet.add(tripStops[i].stop_id);
+                }
+            }
+        }
+    });
+    
+    Array.from(stopSet).forEach(stopId => {
+        const stopItem = document.createElement('div');
+        stopItem.className = 'stop-item';
+        stopItem.textContent = stops[stopId].replace(/"/g, '');
+        stopItem.onclick = () => showSchedule(routeId, stopId, destinationId);
+        stopItem.style.backgroundColor = `${routes[routeId].route_color}`;
+        stopItem.style.color = `${routes[routeId].route_text_color}`;
+        container.appendChild(stopItem);
+    });
+}
+
+
+        let isShowingRealtime = false;
+
+function showSchedule(routeId, stopId, destinationId) {
+    currentStopId = stopId;
+    currentRouteId = routeId;
+    isShowingRealtime = false; 
+    navigationHistory.push({ view: 'stops-view', routeId, destinationId });
+    
+    scrollToTop();
+    document.getElementById('route-info').textContent = 
+        `${t("line")} ${routes[routeId].short_name} ➜ ${stops[destinationId].replace(/"/g, '')}`;
+    document.getElementById('stop-title').textContent = 
+        `${t("scheduleforstop")} ${stops[stopId].replace(/"/g, '')}`;
+
+        const favoriteButton = document.createElement('div');
+favoriteButton.className = `favorite-star ${isFavorite(routeId, stopId, destinationId) ? 'active' : ''}`;
+favoriteButton.innerHTML = `
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="${isFavorite(routeId, stopId, destinationId) ? '#FFD700' : 'none'}" stroke="currentColor" stroke-width="1">
+        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+    </svg>
+`;
+favoriteButton.onclick = () => {
+    const id = `${routeId}-${stopId}-${destinationId}`;
+    if (isFavorite(routeId, stopId, destinationId)) {
+        removeFromFavorites(id);
+        favoriteButton.classList.remove('active');
+        favoriteButton.querySelector('svg').setAttribute('fill', 'none');
+    } else {
+        addToFavorites(routeId, stopId, destinationId);
+        favoriteButton.classList.add('active');
+        favoriteButton.querySelector('svg').setAttribute('fill', '#FFD700');
+    }
+};
+document.querySelector('#controls').parentNode.style.position = 'relative';
+document.querySelector('#controls').parentNode.appendChild(favoriteButton);
+    
+    const dateSelect = document.getElementById('date-select');
+    const today = new Date();
+    dateSelect.value = today.toISOString().split('T')[0];
+    
+    document.querySelectorAll('.tab-button').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.tab === 'theoretical') {
+            tab.classList.add('active');
+        }
+    });
+
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        if (content.id === 'theoretical-view') {
+            content.classList.add('active');
+        }
+    });
+    
+    const indicator = document.querySelector('.tab-indicator');
+    indicator.style.transform = 'translateX(0)';
+
+    updateScheduleByDate(routeId, stopId, destinationId, dateSelect.value);
+
+    const theoreticalTab = document.querySelector('.tab-button-gauche[data-tab="theoretical"]');
+    if (theoreticalTab) {
+        theoreticalTab.click();
+    }
+
+    dateSelect.addEventListener('change', () => {
+    updateScheduleByDate(currentRouteId, currentStopId, destinationId, dateSelect.value);
+});
+    
+    setupTabHandlers();
+    
+    document.querySelectorAll('.page-transition').forEach(el => el.classList.remove('slide-in'));
+    showView('schedule-view');
+}
+
+function scrollToTop() {
+  const currentPosition = window.pageYOffset || document.documentElement.scrollTop;
+  if (currentPosition > 0) {
+    window.requestAnimationFrame(scrollToTop);
+    window.scrollTo(0, currentPosition - currentPosition / 8);
+  }
+}
+
+function setupTabHandlers() {
+    const tabsContainer = document.querySelector('.schedule-tabs');
+    const tabs = tabsContainer.querySelectorAll('.tab-button, .tab-button-gauche');
+    const indicator = tabsContainer.querySelector('.tab-indicator');
+    const dateSelect = document.getElementById('date-select');
+
+    let startX = 0;
+    let isDragging = false;
+    let currentTab = 0;
+
+    function updateIndicatorPosition(position, animate = true) {
+        indicator.style.transition = animate ? 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none';
+        indicator.style.transform = `translateX(${position}px)`;
+    }
+
+    function switchTab(index) {
+        const targetTab = tabs[index];
+        if (!targetTab) return;
+
+        tabs.forEach(tab => tab.classList.remove('active'));
+        targetTab.classList.add('active');
+
+        const targetTabName = targetTab.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        const targetContent = document.getElementById(`${targetTabName}-view`);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
+
+        isShowingRealtime = targetTabName === 'realtime';
+        if (isShowingRealtime) {
+            startRealtimeUpdates();
+        } else {
+            stopRealtimeUpdates();
+            if (currentRouteId && currentStopId && currentDestinationId) {
+                updateScheduleByDate(currentRouteId, currentStopId, currentDestinationId, dateSelect.value);
+            }
+        }
+
+        currentTab = index;
+    }
+
+    tabs.forEach((tab, index) => {
+        tab.addEventListener('click', (e) => {
+            if (!isDragging) {
+                const offset = index * (tabsContainer.offsetWidth / 2);
+                updateIndicatorPosition(offset);
+                switchTab(index);
+            }
+        });
+
+        tab.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            isDragging = true;
+            tab.classList.add('pressed');
+        }, { passive: true });
+
+        tab.addEventListener('mousedown', (e) => {
+            startX = e.clientX;
+            isDragging = true;
+            tab.classList.add('pressed');
+        });
+    });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const x = e.touches[0].clientX;
+        const delta = x - startX;
+        const tabWidth = tabsContainer.offsetWidth / 2;
+        const maxMove = tabWidth;
+        const move = Math.max(0, Math.min(maxMove, currentTab * tabWidth + delta));
+        updateIndicatorPosition(move, false);
+    }, { passive: true });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const x = e.clientX;
+        const delta = x - startX;
+        const tabWidth = tabsContainer.offsetWidth / 2;
+        const maxMove = tabWidth;
+        const move = Math.max(0, Math.min(maxMove, currentTab * tabWidth + delta));
+        updateIndicatorPosition(move, false);
+    });
+
+    function endDrag(e) {
+        if (!isDragging) return;
+        isDragging = false;
+
+        tabs.forEach(tab => tab.classList.remove('pressed'));
+
+        const tabWidth = tabsContainer.offsetWidth / 2;
+        const currentPosition = parseFloat(indicator.style.transform.replace('translateX(', '')) || 0;
+        const newIndex = Math.round(currentPosition / tabWidth);
+
+        updateIndicatorPosition(newIndex * tabWidth);
+        switchTab(newIndex);
+    }
+
+    document.addEventListener('touchend', endDrag);
+    document.addEventListener('touchcancel', endDrag);
+    document.addEventListener('mouseup', endDrag);
+
+    window.addEventListener('resize', () => {
+        const offset = currentTab * (tabsContainer.offsetWidth / 2);
+        updateIndicatorPosition(offset, false);
+    });
+
+    if (!dateSelect.hasEventListener) {
+        dateSelect.hasEventListener = true;
+        dateSelect.addEventListener('change', (event) => {
+            if (currentRouteId && currentStopId && currentDestinationId) {
+                updateScheduleByDate(currentRouteId, currentStopId, currentDestinationId, event.target.value);
+            }
+        });
+    }
+}
+
+function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
+    const scheduleContainer = document.getElementById('schedule-container');
+    scheduleContainer.innerHTML = '';
+    
+    const selectedDate = new Date(dateString);
+    const gtfsDate = selectedDate.toISOString().split('T')[0].replace(/-/g, '');
+    const dayOfWeek = selectedDate.getDay();
+    
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = selectedDate.toLocaleDateString('fr-FR', dateOptions);
+    
+    const dateHeader = document.createElement('div');
+    dateHeader.className = 'date-header';
+    dateHeader.innerHTML = `<h3>${t("schedulefordate")} ${formattedDate}</h3>`;
+    scheduleContainer.appendChild(dateHeader);
+    
+    const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
+    
+    if (activeServiceIds.length === 0) {
+        scheduleContainer.innerHTML += `<p>${t("noserviceavailable")}</p>`;
+        return;
+    }
+    
+    const validTrips = trips[routeId].filter(({ trip_id, service_id }) => 
+        activeServiceIds.includes(service_id)
+    );
+    
+    if (validTrips.length === 0) {
+        scheduleContainer.innerHTML += `<p>${t("nobusonline")}</p>`;
+        return;
+    }
+    
+    displaySchedule(validTrips, stopId, destinationId, scheduleContainer);
+}
+
+function parseTime(timeStr) {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+}
+
+function parseTimeString(timeStr) {
+    const [hours, minutes] = timeStr.split('h').map(num => parseInt(num, 10));
+    return { hours, minutes };
+}
+
+function formatMinutes(minutes) {
+    return minutes.toString().padStart(2, '0');
+}
+
+function displaySchedule(validTrips, stopId, destinationId, container) {
+    const schedule = [];
+    validTrips.forEach(trip => {
+        const tripStops = stopTimes[trip.trip_id];
+        let destinationReached = false;
+        
+        if (tripStops) {
+            tripStops.forEach(({ stop_id: currentStopId, arrival_time }) => {
+                if (currentStopId === destinationId) destinationReached = true;
+                if (currentStopId === stopId && !destinationReached) {
+                    schedule.push(arrival_time);
+                }
+            });
+        }
+    });
+    
+    if (schedule.length === 0) {
+        container.innerHTML += `<p>${t("nobusforthisstop")}</p>`;
+        return;
+    }
+    
+    const hours = {};
+    schedule.forEach(time => {
+        let [hour, minute] = time.split('h').map(num => parseInt(num, 10));
+        
+        if (hour >= 24) {
+            hour -= 24;
+        }
+        
+        if (!hours[hour]) hours[hour] = [];
+        hours[hour].push(minute);
+    });
+    
+    const sortedHours = Object.entries(hours).sort(([a], [b]) => parseInt(a) - parseInt(b));
+    
+    sortedHours.forEach(([hour, minutes]) => {
+        const uniqueSortedMinutes = [...new Set(minutes)]
+            .sort((a, b) => a - b)
+            .map(min => min.toString().padStart(2, '0'))
+            .join('&nbsp;&nbsp;&nbsp;');
+        
+        const row = document.createElement('div');
+        row.className = 'schedule-row';
+        row.innerHTML = `
+            <span>${hour}h</span>
+            <span1>${uniqueSortedMinutes}</span1>
+        `;
+        container.appendChild(row);
+    });
+}
+
+
+function getActiveServiceIds(dayOfWeek, gtfsDate) {
+    const activeServiceIds = [];
+    
+    Object.entries(calendar).forEach(([serviceId, service]) => {
+        const isInDateRange = service.start_date && service.end_date && 
+                              gtfsDate >= service.start_date && 
+                              gtfsDate <= service.end_date;
+        
+        if (isInDateRange && 
+            ((dayOfWeek === 0 && service.sunday) ||
+             (dayOfWeek === 6 && service.saturday) ||
+             (dayOfWeek >= 1 && dayOfWeek <= 5 && service.weekdays))) {
+            activeServiceIds.push(serviceId);
+        }
+    });
+    
+    if (calendarDates[gtfsDate]) {
+        calendarDates[gtfsDate].added.forEach(serviceId => {
+            if (!activeServiceIds.includes(serviceId)) {
+                activeServiceIds.push(serviceId);
+            }
+        });
+        
+        calendarDates[gtfsDate].removed.forEach(serviceId => {
+            const index = activeServiceIds.indexOf(serviceId);
+            if (index !== -1) {
+                activeServiceIds.splice(index, 1);
+            }
+        });
+    }
+    
+    return activeServiceIds;
+}
+
+function cleanup() {
+    stopRealtimeUpdates();
+    isShowingRealtime = false;
+}
+
+function goBack() {
+    if (navigationHistory.length === 0) {
+        showLines();
+        return;
+    }
+    
+    const previousState = navigationHistory.pop();
+    
+    if (previousState.view === 'lines-view') {
+        showLines();
+    } else if (previousState.view === 'stops-view' && previousState.routeId) {
+        showStops(previousState.routeId);
+        cleanup();
+    }
+}
+
+    </script>
+</body>
+</html>

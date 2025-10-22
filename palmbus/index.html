@@ -3278,7 +3278,7 @@ async function initMap() {
     const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
     
     const tileLayer = L.tileLayer(tileLayerUrl, {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
     }).addTo(mapInstance);
 
@@ -3288,7 +3288,7 @@ async function initMap() {
     mapPane.style.filter = 'none';
     
     L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
         format: 'image/jpeg',
         style: 'normal'
@@ -6331,7 +6331,7 @@ function applyMapView() {
 
     if (!isStandardView) {
     const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
     }).addTo(map);
     
@@ -6342,7 +6342,7 @@ function applyMapView() {
 
     
     L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
         format: 'image/jpeg',
         style: 'normal'
@@ -8319,7 +8319,7 @@ function applyMapView() {
 
     if (!isStandardView) {
     const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
     }).addTo(map);
     
@@ -8336,7 +8336,7 @@ function applyMapView() {
     mapPane.style.filter = 'none';
     
     L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 12,
+        minZoom: 6,
         maxZoom: 19,
         format: 'image/jpeg',
         style: 'normal'
