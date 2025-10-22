@@ -2,7 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$url = 'https://gtfs.bus-tracker.fr/gtfs-rt/tcar/vehicle-positions';
+$url = 'https://mybusfinder.fr/gtfsrt/stas/vehicle-positions.pb';
 $data = file_get_contents($url);
 echo $data;
 ?>
