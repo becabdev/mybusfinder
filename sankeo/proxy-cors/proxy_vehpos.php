@@ -2,7 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$url = 'https://transport.data.gouv.fr/resources/82273';
+$url = 'https://mybusfinder.fr/gtfsrt/sankeo/vehicle-positions.pb';
 $data = file_get_contents($url);
 echo $data;
 ?>
