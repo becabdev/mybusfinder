@@ -2,7 +2,7 @@
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json");
 
-$url = 'https://transport.data.gouv.fr/resources/conversions/81575/GeoJSON';
+$url = 'https://data.montpellier3m.fr/TAM_MMM_GTFSRT/GTFS.zip';
 $data = file_get_contents($url);
 echo $data;
 ?>
