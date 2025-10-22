@@ -935,17 +935,76 @@
                 description: 'Bus et tramway niçois.'
             },
             {
-                name: 'RTM',
-                city: 'Marseille',
-                coords: [43.2965, 5.3698],
+                name: 'Zou! Région Sud - Express et Proximité',
+                city: 'Provence-Alpes-Côte d\'Azur',
+                coords: [43.9882, 6.0030],
+                links: [
+                    { label: 'Proximité', url: '/zou-proximite' },
+                    { label: 'Express', url: '/zou-express' }
+                ],
+                status: 'active',
+                description: 'Lignes régionales de Provence-Alpes-Côte d\'Azur.'
+            },
+            {
+                name: 'Transdev Sud Rail Intermétropoles - intercités Nice-Marseille',
+                city: 'de Marseille à Nice',
+                coords: [43.3034, 5.3808],
+                url: '/trsi',
+                status: 'active',
+                description: 'En bêta publique - peut contenir des bugs.'
+            },
+            {
+                name: 'Envia',
+                city: 'Arles',
+                coords: [43.6766, 4.6278],
+                url: '/envia',
+                status: 'active',
+                description: 'Bus de l\'agglomération arlésienne.'
+            },
+            {
+                name: 'Beemob',
+                city: 'Béziers',
+                coords: [43.3438, 3.2150],
+                url: '/beemob',
+                status: 'active',
+                description: 'Bus de l\'agglomération biterroise.'
+            },
+            {
+                name: 'Sète Agglopôle Mobilités - SAM',
+                city: 'Sète',
+                coords: [43.4075, 3.6920],
+                url: '/sam',
+                status: 'active',
+                description: 'Bus de l\'agglomération de Sète.'
+            },
+            {
+                name: 'Sankeo',
+                city: 'Perpignan',
+                coords: [42.6887, 2.8948],
+                url: '/sankeo',
+                status: 'active',
+                description: 'Bus de l\'agglomération de Perpignan.'
+            },
+            {
+                name: 'STAS',
+                city: 'Saint-Étienne',
+                coords: [45.4397, 4.3872],
                 url: '#',
                 status: 'dev',
                 description: 'En développement'
             },
             {
-                name: 'Zou! Région Sud',
-                city: 'Région Sud',
-                coords: [43.9352, 6.0679],
+                name: 'TCL',
+                city: 'Lyon',
+                coords: [45.7640, 4.8357],
+                url: '#',
+                status: 'dev',
+                description: 'En développement'
+            },
+            {
+                name: 'RTM',
+                city: 'Marseille',
+                coords: [43.2965, 5.3698],
                 url: '#',
                 status: 'dev',
                 description: 'En développement'
@@ -1028,13 +1087,19 @@
                 ? '<span class="status-badge status-active">Actif</span>'
                 : '<span class="status-badge status-dev">En développement</span>';
 
+            const linksHTML = network.status === 'active' 
+                ? (network.links 
+                    ? network.links.map(link => `<a href="${link.url}" class="popup-button">${link.label} →</a>`).join('')
+                    : `<a href="${network.url}" class="popup-button">Accéder au réseau →</a>`)
+                : '<p style="color: rgba(255,255,255,0.5); font-style: italic;">Bientôt disponible</p>';
+
             const popupContent = `
                 <div class="popup-content">
                     ${statusBadge}
                     <h3>${network.name}</h3>
                     <p><strong>${network.city}</strong></p>
                     <p style="margin-bottom: 10px;">${network.description}</p>
-                    ${network.status === 'active' ? `<a href="${network.url}" class="popup-button">Accéder au réseau →</a>` : '<p style="color: rgba(255,255,255,0.5); font-style: italic;">Bientôt disponible</p>'}
+                    ${linksHTML}
                 </div>
             `;
 
