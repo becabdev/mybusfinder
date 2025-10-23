@@ -3234,7 +3234,8 @@ async function initMap() {
         }
     }
     
-    const savedPosition = JSON.parse(localStorage.getItem("mapPosition") || "null");
+    const storageKey = `mapPosition_${location.pathname}`;
+    const savedPosition = JSON.parse(localStorage.getItem(storageKey) || "null");
 
     const mapInstance = L.map('map', {
         zoomControl: false
@@ -3246,7 +3247,7 @@ async function initMap() {
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
         const zoom = mapInstance.getZoom();
-        localStorage.setItem("mapPosition", JSON.stringify({
+        localStorage.setItem(storageKey, JSON.stringify({
             center: [center.lat, center.lng],
             zoom: zoom
         }));
