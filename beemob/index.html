@@ -3234,9 +3234,24 @@ async function initMap() {
         }
     }
     
+    const savedPosition = JSON.parse(localStorage.getItem("mapPosition") || "null");
+
     const mapInstance = L.map('map', {
         zoomControl: false
-    }).setView(defaultCoords, defaultZoom);
+    }).setView(
+        savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
+        savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
+    );
+
+    mapInstance.on("moveend", () => {
+        const center = mapInstance.getCenter();
+        const zoom = mapInstance.getZoom();
+        localStorage.setItem("mapPosition", JSON.stringify({
+            center: [center.lat, center.lng],
+            zoom: zoom
+        }));
+    });
+
     
     L.popup({
         closeButton: false
