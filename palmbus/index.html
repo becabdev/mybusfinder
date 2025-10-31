@@ -6746,22 +6746,49 @@ async function fetchVehiclePositions() {
                 stopsListHTML = filteredStops.map(stop => {
                     const stopName = stopNameMap[stop.stopId] || stop.stopId;
 
-                    // heures réelles et théoriques
-                    const realtimeStr = formatRealtimeTime(stop) || t("unknownarrival");
+                    // 1️⃣ Heure prévue (GTFS statique)
                     const scheduledStr = getScheduledArrivalTime(tripId, stop.stopId);
-                    const delaySeconds = typeof stop.delay === 'number' ? stop.delay : (
-                        (realtimeStr && scheduledStr)
-                            ? (() => {
-                                const [hr, mr] = realtimeStr.split(':').map(Number);
-                                const [hs, ms] = scheduledStr.split(':').map(Number);
-                                return ((hr*60+mr)-(hs*60+ms))*60;
-                            })()
-                            : 0
-                    );
-                    const delayText = computeDelayText(delaySeconds);
+                    let scheduledEpoch = null;
+                    if (scheduledStr) {
+                        const [h, m] = scheduledStr.split(':').map(Number);
+                        const now = new Date();
+                        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+                        scheduledEpoch = Math.floor(startOfDay.getTime() / 1000) + (h * 3600 + m * 60);
+                    }
+
+                    // 2️⃣ Heure temps réel
+                    let realtimeEpoch = null;
+                    let realtimeStr = null;
+                    if (typeof stop.arrivalTime === 'number') {
+                        realtimeEpoch = stop.arrivalTime;
+                        const date = new Date(realtimeEpoch * 1000);
+                        realtimeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    } else if (typeof stop.arrivalTime === 'string' && stop.arrivalTime.includes(':')) {
+                        realtimeStr = stop.arrivalTime.slice(0,5);
+                        const [h, m] = realtimeStr.split(':').map(Number);
+                        const now = new Date();
+                        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+                        realtimeEpoch = Math.floor(startOfDay.getTime() / 1000) + (h * 3600 + m * 60);
+                    } else {
+                        realtimeStr = t("unknownarrival");
+                    }
+
+                    // 3️⃣ Calcul du retard (en secondes)
+                    let delaySeconds = null;
+                    if (typeof stop.delay === 'number') {
+                        delaySeconds = stop.delay;
+                    } else if (realtimeEpoch && scheduledEpoch) {
+                        delaySeconds = realtimeEpoch - scheduledEpoch;
+                    } else {
+                        delaySeconds = 0;
+                    }
+
+                    // 4️⃣ Format texte
+                    const delayMin = Math.round(delaySeconds / 60);
+                    const delayText = Math.abs(delayMin) < 1 ? '' : `(${delayMin > 0 ? '+' + delayMin : delayMin})`;
 
                     const smallLine = scheduledStr
-                        ? `<div style="font-size:0.7rem;opacity:0.8;margin-top:-2px;">
+                        ? `<div style="font-size:0.7rem;opacity:0.7;margin-top:-2px;">
                             (${t("scheduledarrival")} ${scheduledStr})
                         </div>`
                         : '';
@@ -6790,6 +6817,7 @@ async function fetchVehiclePositions() {
                         </div>
                     </li>`;
                 }).join('');
+
 
                 const nextStopsHTML = `
                     <div style="position: relative; max-height: 120px;">
