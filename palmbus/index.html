@@ -6738,96 +6738,115 @@ async function fetchVehiclePositions() {
 
 
                 let stopsListHTML = '';
-                // === NOUVELLE VERSION : tableau unifié théorie / temps réel / retard ===
-                const theoStops = getRemainingTheoreticalStops(tripId, stopId);
-                const stopUpdates = tripUpdates[tripId]?.stopUpdates || [];
-                const rtByStop = new Map();
-                stopUpdates.forEach(up => {
-                const sid = (up.stopId || '').replace(/^0:/,'');
-                rtByStop.set(sid, {
-                    arrEpoch: up.arrivalTimeEpoch || (typeof up.arrivalTime === 'number' ? up.arrivalTime : null),
-                    depEpoch: up.departureTimeEpoch || (typeof up.departureTime === 'number' ? up.departureTime : null),
-                    arrDelay: typeof up.arrivalDelay === 'number' ? up.arrivalDelay : null,
-                    depDelay: typeof up.departureDelay === 'number' ? up.departureDelay : null,
-                });
-                });
+// === TABLE UNIFIÉE GTFS STATIQUE vs TEMPS RÉEL ===
 
-                const nowTZ = new Date();
-                const nowStr = new Intl.DateTimeFormat('fr-FR', { timeZone: agencyTimezone, hour: '2-digit', minute: '2-digit', second:'2-digit', hour12:false }).format(nowTZ);
-                const [nh, nm, ns] = nowStr.split(':').map(n => parseInt(n,10));
-                const nowSec = nh*3600 + nm*60 + ns;
+// 1️⃣ Récupère les arrêts théoriques restants (GTFS statique)
+const theoStops = getRemainingTheoreticalStops(tripId, stopId);
 
-                const mergedRows = [];
-                let vehicleDelaySec = null;
-                for (const s of theoStops.slice(0, 10)) {
-                const sid = s.stop_id.replace(/^0:/,'');
-                const schedSec = s.arr_s ?? s.dep_s ?? null;
-                let schedStr = '—';
-                if (schedSec != null) {
-                    const hh = Math.floor((schedSec % 86400) / 3600).toString().padStart(2,'0');
-                    const mm = Math.floor((schedSec % 3600) / 60).toString().padStart(2,'0');
-                    schedStr = `${hh}:${mm}`;
-                }
+// 2️⃣ Récupère les updates temps réel pour ce trip
+const stopUpdates = tripUpdates[tripId]?.stopUpdates || [];
+const rtByStop = new Map();
+stopUpdates.forEach(up => {
+  const sid = (up.stopId || '').replace(/^0:/, '');
+  rtByStop.set(sid, {
+    arrEpoch: up.arrivalTimeEpoch || up.arrivalTime || null,
+    depEpoch: up.departureTimeEpoch || up.departureTime || null,
+    arrDelay: up.arrivalDelay ?? null,
+    depDelay: up.departureDelay ?? null
+  });
+});
 
-                const rt = rtByStop.get(sid) || null;
-                let rtEpoch = rt?.arrEpoch ?? rt?.depEpoch ?? null;
-                let delaySec = rt?.arrDelay ?? rt?.depDelay ?? null;
-                if (delaySec == null && rtEpoch != null && schedSec != null) {
-                    const tz = agencyTimezone;
-                    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(new Date()).reduce((o,p)=>(o[p.type]=p.value,o),{});
-                    const base = new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00`);
-                    const schedEpochApprox = base.getTime()/1000 + schedSec;
-                    delaySec = Math.round((rtEpoch - schedEpochApprox));
-                }
-                if (delaySec == null && schedSec != null) {
-                    delaySec = Math.round(nowSec - schedSec);
-                }
+// 3️⃣ Heure locale actuelle (en secondes depuis minuit)
+const tz = agencyTimezone;
+const nowTZ = new Date();
+const nowParts = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+}).formatToParts(nowTZ).reduce((o, p) => (o[p.type] = p.value, o), {});
+const nowSec = (+nowParts.hour * 3600) + (+nowParts.minute * 60) + (+nowParts.second);
 
-                const fmt = formatDelay(delaySec);
-                if (vehicleDelaySec == null && delaySec != null) vehicleDelaySec = delaySec;
+// 4️⃣ Fusion théorie + temps réel
+const unifiedRows = [];
+let globalDelaySec = null;
 
-                const stopName = stopNameMap[s.stop_id] || s.stop_id;
-                const rtStr = (rtEpoch != null)
-                    ? new Date(rtEpoch*1000).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
-                    : (delaySec != null && schedSec != null
-                        ? (() => {
-                            const total = (schedSec + delaySec + 86400*2) % 86400;
-                            const hh = String(Math.floor(total/3600)).padStart(2,'0');
-                            const mm = String(Math.floor((total%3600)/60)).padStart(2,'0');
-                            return `${hh}:${mm}`;
-                        })()
-                        : '—');
+for (const s of theoStops.slice(0, 8)) {
+  const sid = s.stop_id.replace(/^0:/, '');
+  const stopName = stopNameMap[s.stop_id] || s.stop_id;
 
-                mergedRows.push({ stopName, schedStr, rtStr, delayText: fmt.text, delayCls: fmt.cls });
-                }
+  const schedSec = s.arr_s ?? s.dep_s ?? null;
+  let schedStr = '—';
+  if (schedSec != null) {
+    const hh = String(Math.floor((schedSec % 86400) / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((schedSec % 3600) / 60)).padStart(2, '0');
+    schedStr = `${hh}:${mm}`;
+  }
 
-                let vehicleDelayBadge = '';
-                if (vehicleDelaySec != null) {
-                const f = formatDelay(vehicleDelaySec);
-                vehicleDelayBadge = `<span class="delay-badge ${f.delayCls}" title="Retard estimé du service">${f.text}</span>`;
-                }
+  const rt = rtByStop.get(sid);
+  let delaySec = rt?.arrDelay ?? rt?.depDelay ?? null;
+  let rtTimeStr = '—';
 
-                if (mergedRows.length) {
-                const rowsHTML = mergedRows.map(r => `
-                    <tr>
-                    <td>${r.stopName}</td>
-                    <td class="muted">${r.schedStr}</td>
-                    <td>${r.rtStr}</td>
-                    <td><span class="delay-badge ${r.delayCls}">${r.delayText}</span></td>
-                    </tr>`).join('');
+  // Calcule l'heure prévue en temps réel si timestamp disponible
+  if (rt?.arrEpoch || rt?.depEpoch) {
+    const epoch = rt.arrEpoch || rt.depEpoch;
+    const d = new Date(epoch * 1000);
+    rtTimeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (schedSec != null && delaySec != null) {
+    const adj = schedSec + delaySec;
+    const hh = String(Math.floor((adj % 86400) / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((adj % 3600) / 60)).padStart(2, '0');
+    rtTimeStr = `${hh}:${mm}`;
+  }
 
-                nextStopsHTML = `
-                    <div class="delay-head">${t("delays") || "Retards"} ${vehicleDelayBadge}</div>
-                    <table class="delay-table">
-                    <thead>
-                        <tr><th>Arrêt</th><th class="muted">Théorie</th><th>Prévu RT</th><th>Δ</th></tr>
-                    </thead>
-                    <tbody>${rowsHTML}</tbody>
-                    </table>
-                `;
-                } else {
-                nextStopsHTML = `<div class="muted">${t("nodatadelay") || "Aucun horaire disponible"}</div>`;
-                }
+  // Fallback : si aucun RT → estime retard via nowSec
+  if (delaySec == null && schedSec != null) {
+    delaySec = nowSec - schedSec;
+  }
+
+  const fmt = formatDelay(delaySec);
+  if (globalDelaySec == null && delaySec != null) globalDelaySec = delaySec;
+
+  unifiedRows.push({
+    stopName,
+    schedStr,
+    rtTimeStr,
+    delayText: fmt.text,
+    delayCls: fmt.cls
+  });
+}
+
+// 5️⃣ Badge résumé du véhicule
+let globalDelayBadge = '';
+if (globalDelaySec != null) {
+  const f = formatDelay(globalDelaySec);
+  globalDelayBadge = `<span class="delay-badge ${f.delayCls}" title="Retard estimé du service">${f.text}</span>`;
+}
+
+// 6️⃣ Construction HTML de la table
+let tableHTML = '';
+if (unifiedRows.length) {
+  const rowsHTML = unifiedRows.map(r => `
+    <tr>
+      <td>${r.stopName}</td>
+      <td class="muted">${r.schedStr}</td>
+      <td>${r.rtTimeStr}</td>
+      <td><span class="delay-badge ${r.delayCls}">${r.delayText}</span></td>
+    </tr>
+  `).join('');
+
+  tableHTML = `
+    <div class="delay-head">${t("delays") || "Retards"} ${globalDelayBadge}</div>
+    <table class="delay-table">
+      <thead>
+        <tr><th>Arrêt</th><th class="muted">Théorique</th><th>Prévu RT</th><th>Δ</th></tr>
+      </thead>
+      <tbody>${rowsHTML}</tbody>
+    </table>
+  `;
+} else {
+  tableHTML = `<p style="opacity:0.7;font-style:italic;">${t("nodata") || "Aucune donnée disponible pour ce service."}</p>`;
+}
+
+// 7️⃣ Remplace nextStopsHTML par la table unifiée
+nextStopsHTML = tableHTML;
 
                 const nextStopsHTML = `
                     <div style="position: relative; max-height: 120px;">
