@@ -6695,125 +6695,6 @@ async function fetchVehiclePositions() {
 
                 // === AJOUT : calcul retard véhicule & par arrêt (théorie vs RT) ===
 
-                // 1) Arrêts théoriques restants (GTFS statique)
-                const theoStops = getRemainingTheoreticalStops(tripId, stopId);
-
-                // 2) Index RT par stop_id pour le trip (si tu as déjà tripUpdates[tripId].stopUpdates)
-                const rtByStop = new Map();
-                const stopUpdates = tripUpdates[tripId]?.stopUpdates || [];
-                stopUpdates.forEach(up => {
-                const sid = (up.stopId || '').replace(/^0:/,'');
-                // on privilégie les timestamps s'ils existent, sinon les delays
-                rtByStop.set(sid, {
-                    arrEpoch: up.arrivalTimeEpoch || (typeof up.arrivalTime === 'number' ? up.arrivalTime : null),
-                    depEpoch: up.departureTimeEpoch || (typeof up.departureTime === 'number' ? up.departureTime : null),
-                    arrDelay: typeof up.arrivalDelay === 'number' ? up.arrivalDelay : null,
-                    depDelay: typeof up.departureDelay === 'number' ? up.departureDelay : null,
-                });
-                });
-
-                // 3) Heure actuelle (secondes depuis minuit) en TZ agence pour comparer aux arr_s
-                const nowTZ = new Date();
-                const nowStr = new Intl.DateTimeFormat('fr-FR', { timeZone: agencyTimezone, hour: '2-digit', minute: '2-digit', second:'2-digit', hour12:false }).format(nowTZ);
-                const [nh, nm, ns] = nowStr.split(':').map(n => parseInt(n,10));
-                const nowSec = nh*3600 + nm*60 + ns;
-
-                // 4) Construire la table de comparaison
-                const mergedRows = []; // {stopName, schedStr, rtStr, delayText, delayCls}
-                let vehicleDelaySec = null;
-
-                for (const s of theoStops.slice(0, 8)) { // on limite à 8 arrêts pour rester lisible
-                const sid = s.stop_id.replace(/^0:/,'');
-                const schedSec = s.arr_s ?? s.dep_s ?? null; // secondes depuis minuit
-                let schedStr = '—';
-                if (schedSec != null) {
-                    const hh = Math.floor((schedSec % 86400) / 3600).toString().padStart(2,'0');
-                    const mm = Math.floor((schedSec % 3600) / 60).toString().padStart(2,'0');
-                    schedStr = `${hh}:${mm}`;
-                }
-
-                const rt = rtByStop.get(sid) || null;
-                let rtEpoch = rt?.arrEpoch ?? rt?.depEpoch ?? null;
-                // Si pas de timestamp RT, on reconstruit une "heure prédite" simple : schedSec + delay
-                let delaySec = rt?.arrDelay ?? rt?.depDelay ?? null;
-                if (delaySec == null && rtEpoch != null && schedSec != null) {
-                    // fabrique le minuit epoch du jour en TZ agence, puis compare
-                    const tz = agencyTimezone;
-                    const todayParts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(new Date())
-                    .reduce((o,p)=>(o[p.type]=p.value,o),{});
-                    const base = new Date(`${todayParts.year}-${todayParts.month}-${todayParts.day}T00:00:00`);
-                    const schedEpochApprox = base.getTime()/1000 + schedSec;
-                    delaySec = Math.round((rtEpoch - schedEpochApprox));
-                }
-
-                // fallback minimal si vraiment aucun RT pour ce stop : approx en fonction de maintenant (indicatif)
-                if (delaySec == null && schedSec != null) {
-                    delaySec = Math.round(nowSec - schedSec);
-                }
-
-                const fmt = formatDelay(delaySec);
-                if (vehicleDelaySec == null && delaySec != null) {
-                    vehicleDelaySec = delaySec;
-                }
-
-                const stopName = stopNameMap[s.stop_id] || s.stop_id;
-                const rtStr = (rtEpoch != null)
-                    ? new Date(rtEpoch*1000).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
-                    : (delaySec != null && schedSec != null
-                        ? (() => {
-                            const total = (schedSec + delaySec + 86400*2) % 86400;
-                            const hh = String(Math.floor(total/3600)).padStart(2,'0');
-                            const mm = String(Math.floor((total%3600)/60)).padStart(2,'0');
-                            return `${hh}:${mm}`;
-                        })()
-                        : '—');
-
-                mergedRows.push({
-                    stopName,
-                    schedStr,
-                    rtStr,
-                    delayText: fmt.text,
-                    delayCls: fmt.cls
-                });
-                }
-
-                // 5) Badge résumé du retard véhicule (premier arrêt restant)
-                let vehicleDelayBadge = '';
-                if (vehicleDelaySec != null) {
-                const f = formatDelay(vehicleDelaySec);
-                vehicleDelayBadge = `<span class="delay-badge ${f.delayCls}" title="Retard estimé du service en cours">${f.text}</span>`;
-                }
-
-                // 6) HTML du tableau des retards
-                let delaysHTML = '';
-                if (mergedRows.length) {
-                const rowsHTML = mergedRows.map(r => `
-                    <tr>
-                    <td>${r.stopName}</td>
-                    <td class="muted">${r.schedStr}</td>
-                    <td>${r.rtStr}</td>
-                    <td><span class="delay-badge ${r.delayCls}">${r.delayText}</span></td>
-                    </tr>
-                `).join('');
-
-                delaysHTML = `
-                    <div class="delay-head">${t("delays")||"Retards"} ${vehicleDelayBadge}</div>
-                    <table class="delay-table">
-                    <thead>
-                        <tr><th>Arrêt</th><th class="muted">Théorie</th><th>Prévu RT</th><th>Δ</th></tr>
-                    </thead>
-                    <tbody>${rowsHTML}</tbody>
-                    </table>
-                `;
-                }
-
-                // 7) Injecte le bloc "delaysHTML" sous ta liste d'arrêts
-                //    -> on concatène à nextStopsHTML pour ne pas toucher à generatePopupContent()
-                if (delaysHTML) {
-                // petit séparateur visuel
-                const sep = `<div style="height:6px"></div>`;
-                nextStopsHTML = nextStopsHTML + sep + delaysHTML;
-                }
 
 
                 let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId.replace("0:", ""));
@@ -6857,40 +6738,95 @@ async function fetchVehiclePositions() {
 
 
                 let stopsListHTML = '';
-                if (filteredStops.length > 0) {
-                    stopsListHTML = filteredStops.map(stop => {
-                        const timeLeft = stop.delay;
-                        const timeLeftText = timeLeft !== null 
-                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                            : '';
-                        
-                        const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                        
-                        tempElement.textContent = stopName;
-                        
-                        return `
-                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
-                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
-                                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
-                                </div>
-                            </div>
-                            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                                <div class="time-display" 
-                                    data-time-left="${timeLeftText}" 
-                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
-                                    ${timeLeftText}
-                                </div>
-                                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <g class="rss-waves">
-                                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
-                                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
-                                    </g>
-                                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
-                                </svg>
-                            </div>
-                        </li>`;
-                    }).join('');
+                // === NOUVELLE VERSION : tableau unifié théorie / temps réel / retard ===
+                const theoStops = getRemainingTheoreticalStops(tripId, stopId);
+                const stopUpdates = tripUpdates[tripId]?.stopUpdates || [];
+                const rtByStop = new Map();
+                stopUpdates.forEach(up => {
+                const sid = (up.stopId || '').replace(/^0:/,'');
+                rtByStop.set(sid, {
+                    arrEpoch: up.arrivalTimeEpoch || (typeof up.arrivalTime === 'number' ? up.arrivalTime : null),
+                    depEpoch: up.departureTimeEpoch || (typeof up.departureTime === 'number' ? up.departureTime : null),
+                    arrDelay: typeof up.arrivalDelay === 'number' ? up.arrivalDelay : null,
+                    depDelay: typeof up.departureDelay === 'number' ? up.departureDelay : null,
+                });
+                });
+
+                const nowTZ = new Date();
+                const nowStr = new Intl.DateTimeFormat('fr-FR', { timeZone: agencyTimezone, hour: '2-digit', minute: '2-digit', second:'2-digit', hour12:false }).format(nowTZ);
+                const [nh, nm, ns] = nowStr.split(':').map(n => parseInt(n,10));
+                const nowSec = nh*3600 + nm*60 + ns;
+
+                const mergedRows = [];
+                let vehicleDelaySec = null;
+                for (const s of theoStops.slice(0, 10)) {
+                const sid = s.stop_id.replace(/^0:/,'');
+                const schedSec = s.arr_s ?? s.dep_s ?? null;
+                let schedStr = '—';
+                if (schedSec != null) {
+                    const hh = Math.floor((schedSec % 86400) / 3600).toString().padStart(2,'0');
+                    const mm = Math.floor((schedSec % 3600) / 60).toString().padStart(2,'0');
+                    schedStr = `${hh}:${mm}`;
+                }
+
+                const rt = rtByStop.get(sid) || null;
+                let rtEpoch = rt?.arrEpoch ?? rt?.depEpoch ?? null;
+                let delaySec = rt?.arrDelay ?? rt?.depDelay ?? null;
+                if (delaySec == null && rtEpoch != null && schedSec != null) {
+                    const tz = agencyTimezone;
+                    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'}).formatToParts(new Date()).reduce((o,p)=>(o[p.type]=p.value,o),{});
+                    const base = new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00`);
+                    const schedEpochApprox = base.getTime()/1000 + schedSec;
+                    delaySec = Math.round((rtEpoch - schedEpochApprox));
+                }
+                if (delaySec == null && schedSec != null) {
+                    delaySec = Math.round(nowSec - schedSec);
+                }
+
+                const fmt = formatDelay(delaySec);
+                if (vehicleDelaySec == null && delaySec != null) vehicleDelaySec = delaySec;
+
+                const stopName = stopNameMap[s.stop_id] || s.stop_id;
+                const rtStr = (rtEpoch != null)
+                    ? new Date(rtEpoch*1000).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+                    : (delaySec != null && schedSec != null
+                        ? (() => {
+                            const total = (schedSec + delaySec + 86400*2) % 86400;
+                            const hh = String(Math.floor(total/3600)).padStart(2,'0');
+                            const mm = String(Math.floor((total%3600)/60)).padStart(2,'0');
+                            return `${hh}:${mm}`;
+                        })()
+                        : '—');
+
+                mergedRows.push({ stopName, schedStr, rtStr, delayText: fmt.text, delayCls: fmt.cls });
+                }
+
+                let vehicleDelayBadge = '';
+                if (vehicleDelaySec != null) {
+                const f = formatDelay(vehicleDelaySec);
+                vehicleDelayBadge = `<span class="delay-badge ${f.delayCls}" title="Retard estimé du service">${f.text}</span>`;
+                }
+
+                if (mergedRows.length) {
+                const rowsHTML = mergedRows.map(r => `
+                    <tr>
+                    <td>${r.stopName}</td>
+                    <td class="muted">${r.schedStr}</td>
+                    <td>${r.rtStr}</td>
+                    <td><span class="delay-badge ${r.delayCls}">${r.delayText}</span></td>
+                    </tr>`).join('');
+
+                nextStopsHTML = `
+                    <div class="delay-head">${t("delays") || "Retards"} ${vehicleDelayBadge}</div>
+                    <table class="delay-table">
+                    <thead>
+                        <tr><th>Arrêt</th><th class="muted">Théorie</th><th>Prévu RT</th><th>Δ</th></tr>
+                    </thead>
+                    <tbody>${rowsHTML}</tbody>
+                    </table>
+                `;
+                } else {
+                nextStopsHTML = `<div class="muted">${t("nodatadelay") || "Aucun horaire disponible"}</div>`;
                 }
 
                 const nextStopsHTML = `
