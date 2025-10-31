@@ -6561,75 +6561,42 @@ function getScheduledForStop(tripId, stopId) {
   };
 }
 
-// Construit le HTML détaillé des prochains arrêts (théorique vs RT)
-function buildDelaysHTML(tripId, nextStops, lineColor) {
-  const sod = startOfLocalDayEpoch();
-  const color = lineColor || '#000000';
-  const txt = pickTextColor(color);
+function getScheduledArrivalTime(tripId, stopId) {
+    if (!stopTimesByTrip || !stopTimesByTrip[tripId]) return null;
+    const cleanStop = stopId.replace(/^0:/, '');
+    const match = stopTimesByTrip[tripId].find(s => s.stop_id.replace(/^0:/, '') === cleanStop);
+    if (!match) return null;
 
-  if (!Array.isArray(nextStops) || nextStops.length===0) {
-    return `<div style="padding:6px 8px;font-size:12px;color:${txt}">— ${t("unavailabletrip")}</div>`;
-  }
+    const seconds = match.arr ?? match.dep;
+    if (seconds == null) return null;
 
-  const rows = nextStops.map(s => {
-    const sid = (s.stopId || '').replace(/^0:/,'');
-    const stopName = stopNameMap[sid] || stopNameMap[s.stopId] || sid;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return `${String(h % 24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
 
-    // Théorique (GTFS statique)
-    const sched = getScheduledForStop(tripId, s.stopId);
-    const schedArrEpoch = (sched?.arrival_secs!=null) ? (sod + sched.arrival_secs) : null;
-
-    // Temps réel (GTFS-RT TripUpdates)
-    // s.arrivalTime peut être epoch ou HH:MM — ton code mélange les deux cas, on couvre les deux
-    let rtEpoch = null;
-    if (s.arrivalTime && typeof s.arrivalTime === 'number') {
-      rtEpoch = s.arrivalTime;
-    } else if (s.departureTime && typeof s.departureTime === 'number') {
-      rtEpoch = s.departureTime;
-    } else if (typeof s.arrivalTime === 'string' && s.arrivalTime.includes(':')) {
-      const secs = parseClockToSecs(s.arrivalTime);
-      if (secs!=null) rtEpoch = sod + secs;
-    } else if (typeof s.departureTime === 'string' && s.departureTime.includes(':')) {
-      const secs = parseClockToSecs(s.departureTime);
-      if (secs!=null) rtEpoch = sod + secs;
+function formatRealtimeTime(stop) {
+    // Convertit proprement tous les formats possibles en "HH:MM"
+    if (!stop) return null;
+    let time = stop.arrivalTime || stop.departureTime || null;
+    if (typeof time === 'number') {
+        const date = new Date(time * 1000);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-
-    // Retard (si GTFS-RT fournit delay directement, on le préfère)
-    let delaySec = (typeof s.delay === 'number') ? s.delay : null;
-    if (delaySec==null && rtEpoch!=null && schedArrEpoch!=null) {
-      delaySec = rtEpoch - schedArrEpoch;
+    if (typeof time === 'string' && time.includes(':')) {
+        const parts = time.split(':').map(Number);
+        if (parts.length >= 2) {
+            return `${String(parts[0] % 24).padStart(2, '0')}:${String(parts[1]).padStart(2, '0')}`;
+        }
     }
+    return null;
+}
 
-    // Joli rendu
-    const schedClock = (sched?.arrival_secs!=null) ? secsToClock(sched.arrival_secs) : '—';
-    const rtClock = (rtEpoch!=null) ? new Date(rtEpoch*1000).toLocaleTimeString() : (s.delay!=null ? (s.delay<=0? t("imminent") : `${Math.ceil(s.delay/60)} min`) : '—');
-
-    let badgeBg = '#16a34a'; // vert à l'heure/avance
-    if (typeof delaySec === 'number') {
-      if (delaySec > 120) badgeBg = '#dc2626';       // rouge > 2 min
-      else if (delaySec > 0) badgeBg = '#f59e0b';    // orange 0-2 min
-    }
-    const sign = (delaySec||0) > 0 ? '+' : '';
-    const delayTxt = (delaySec==null) ? '—' :
-      Math.abs(delaySec) < 30 ? t("ontime") :
-      `${sign}${Math.round(delaySec/60)}′`;
-
-    return `
-      <li style="list-style:none;padding:6px 0;display:flex;align-items:center;gap:8px;border-bottom:1px dashed ${color}33">
-        <div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stopName}</div>
-        <div title="${t("theoretical")}" style="font-variant-tabular-nums;opacity:.85">${schedClock}</div>
-        <div title="${t("realtime")}" style="font-variant-tabular-nums">→ ${rtClock}</div>
-        <span style="min-width:38px;text-align:center;font-weight:700;border-radius:10px;padding:2px 6px;background:${badgeBg};color:#fff" title="${t("delay")}">
-          ${delayTxt}
-        </span>
-      </li>`;
-  }).join('');
-
-  return `
-    <div style="position:relative;max-height:160px;overflow:auto;border-radius:10px;background:linear-gradient(135deg, ${color}0F, ${color}10)">
-      <ul style="margin:0;padding:6px 10px">${rows}</ul>
-    </div>
-  `;
+function computeDelayText(delaySeconds) {
+    if (typeof delaySeconds !== 'number') return '';
+    const min = Math.round(delaySeconds / 60);
+    if (Math.abs(min) < 1) return ''; // à l'heure
+    return `(${min > 0 ? '+' + min : min})`;
 }
 
 
@@ -6776,8 +6743,62 @@ async function fetchVehiclePositions() {
                 }
 
 
-                const lineColorForPopup = lineColors[line] || '#000000';
-                const nextStopsHTML = buildDelaysHTML(tripId, filteredStops, lineColorForPopup);
+                stopsListHTML = filteredStops.map(stop => {
+                    const stopName = stopNameMap[stop.stopId] || stop.stopId;
+
+                    // heures réelles et théoriques
+                    const realtimeStr = formatRealtimeTime(stop) || t("unknownarrival");
+                    const scheduledStr = getScheduledArrivalTime(tripId, stop.stopId);
+                    const delaySeconds = typeof stop.delay === 'number' ? stop.delay : (
+                        (realtimeStr && scheduledStr)
+                            ? (() => {
+                                const [hr, mr] = realtimeStr.split(':').map(Number);
+                                const [hs, ms] = scheduledStr.split(':').map(Number);
+                                return ((hr*60+mr)-(hs*60+ms))*60;
+                            })()
+                            : 0
+                    );
+                    const delayText = computeDelayText(delaySeconds);
+
+                    const smallLine = scheduledStr
+                        ? `<div style="font-size:0.7rem;opacity:0.8;margin-top:-2px;">
+                            (${t("scheduledarrival")} ${scheduledStr})
+                        </div>`
+                        : '';
+
+                    return `
+                    <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
+                        <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
+                            <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
+                                <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
+                            </div>
+                        </div>
+                        <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
+                            <div class="time-display" 
+                                data-time-left="${realtimeStr}" 
+                                data-departure-time="${realtimeStr}">
+                                ${realtimeStr} ${delayText}
+                                ${smallLine}
+                            </div>
+                            <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <g class="rss-waves">
+                                    <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
+                                    <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
+                                </g>
+                                <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
+                            </svg>
+                        </div>
+                    </li>`;
+                }).join('');
+
+                const nextStopsHTML = `
+                    <div style="position: relative; max-height: 120px;">
+                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
+                        ${stopsListHTML}
+                        </ul>
+                    </div>
+                `;
+
 
 
                 if (!window.toggleTimeDisplay) {
