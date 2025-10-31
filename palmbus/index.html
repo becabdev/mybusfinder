@@ -4253,6 +4253,114 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
+async function loadTrips(tripsFileContent) {
+  try {
+    const lines = tripsFileContent.split(/\r?\n/).filter(l=>l.trim());
+    const headers = lines[0].split(',');
+    const idxTrip = headers.indexOf('trip_id');
+    const idxService = headers.indexOf('service_id');
+    if (idxTrip === -1 || idxService === -1) return;
+
+    for (const line of lines.slice(1)) {
+      const cols = line.split(',');
+      const trip_id = cols[idxTrip]?.replace(/"/g,'');
+      const service_id = cols[idxService]?.replace(/"/g,'');
+      if (trip_id) tripToService[trip_id] = service_id || null;
+    }
+  } catch (e) {
+    console.error('Erreur loadTrips', e);
+  }
+}
+
+async function loadStopTimes(stopTimesFileContent) {
+  try {
+    const lines = stopTimesFileContent.split(/\r?\n/).filter(l=>l.trim());
+    const headers = lines[0].split(',');
+    const iTrip = headers.indexOf('trip_id');
+    const iStop = headers.indexOf('stop_id');
+    const iArr  = headers.indexOf('arrival_time');
+    const iDep  = headers.indexOf('departure_time');
+    const iSeq  = headers.indexOf('stop_sequence');
+    if ([iTrip,iStop,iArr,iDep,iSeq].some(x=>x===-1)) return;
+
+    for (const line of lines.slice(1)) {
+      const c = line.split(',');
+      const trip = c[iTrip]?.replace(/"/g,'');
+      const stop = c[iStop]?.replace(/"/g,'');
+      const arr  = parseClockToSecs(c[iArr]?.replace(/"/g,''));
+      const dep  = parseClockToSecs(c[iDep]?.replace(/"/g,''));
+      const seq  = parseInt((c[iSeq]||'0').replace(/"/g,''),10);
+      if (!trip || !stop) continue;
+      if (!stopTimesByTrip[trip]) stopTimesByTrip[trip] = [];
+      stopTimesByTrip[trip].push({ stop_id: stop, arr, dep, seq });
+    }
+
+    // trie par séquence
+    Object.keys(stopTimesByTrip).forEach(trip=>{
+      stopTimesByTrip[trip].sort((a,b)=> (a.seq||0)-(b.seq||0));
+    });
+  } catch (e) {
+    console.error('Erreur loadStopTimes', e);
+  }
+}
+
+async function loadCalendar(calendarFileContent) {
+  // optionnel mais utile pour marquer les services actifs aujourd’hui
+  try {
+    const lines = calendarFileContent.split(/\r?\n/).filter(l=>l.trim());
+    const h = lines[0].split(',');
+    const is = (name)=>h.indexOf(name);
+    const iService=is('service_id'), iStart=is('start_date'), iEnd=is('end_date');
+    const daysIdx = {mon:is('monday'),tue:is('tuesday'),wed:is('wednesday'),
+                     thu:is('thursday'),fri:is('friday'),sat:is('saturday'),sun:is('sunday')};
+    if (iService===-1 || iStart===-1 || iEnd===-1) return;
+
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = (today.getMonth()+1).toString().padStart(2,'0');
+    const d = today.getDate().toString().padStart(2,'0');
+    const yyyymmdd = `${y}${m}${d}`;
+    const weekday = ['sun','mon','tue','wed','thu','fri','sat'][today.getDay()];
+
+    for (const line of lines.slice(1)) {
+      const c = line.split(',');
+      const sid = c[iService]?.replace(/"/g,'');
+      const start = c[iStart]?.replace(/"/g,'');
+      const end   = c[iEnd]?.replace(/"/g,'');
+      if (!sid) continue;
+      const dayOk = daysIdx[weekday]!==-1 ? c[daysIdx[weekday]]==='1' : true;
+      serviceActiveById[sid] = (yyyymmdd>=start && yyyymmdd<=end && dayOk);
+    }
+  } catch(e){ console.warn('Calendar absent/partiel, on continue', e); }
+}
+
+async function loadCalendarDates(calendarDatesFileContent) {
+  // surcharge exceptions (ajouts/suppressions)
+  try {
+    const lines = calendarDatesFileContent.split(/\r?\n/).filter(l=>l.trim());
+    const h = lines[0].split(',');
+    const iService=h.indexOf('service_id'), iDate=h.indexOf('date'), iExc=h.indexOf('exception_type');
+    if ([iService,iDate,iExc].some(x=>x===-1)) return;
+
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = (today.getMonth()+1).toString().padStart(2,'0');
+    const d = today.getDate().toString().padStart(2,'0');
+    const yyyymmdd = `${y}${m}${d}`;
+
+    for (const line of lines.slice(1)) {
+      const c = line.split(',');
+      const sid = c[iService]?.replace(/"/g,'');
+      const date = c[iDate]?.replace(/"/g,'');
+      const type = parseInt((c[iExc]||'0').replace(/"/g,''),10);
+      if (!sid || date!==yyyymmdd) continue;
+      if (type===1) serviceActiveById[sid] = true;
+      if (type===2) serviceActiveById[sid] = false;
+    }
+  } catch(e){ /* ok si absent */ }
+}
+
+
 async function initializeGTFS() {
     try {
         Object.keys(lineColors).forEach(key => delete lineColors[key]);
@@ -4292,6 +4400,20 @@ async function initializeGTFS() {
         } else {
             console.error('Fichier stops.txt non trouvé');
         }
+
+        if (extractedFiles['trips.txt']) {
+        await loadTrips(extractedFiles['trips.txt']);
+        }
+        if (extractedFiles['stop_times.txt']) {
+        await loadStopTimes(extractedFiles['stop_times.txt']);
+        }
+        if (extractedFiles['calendar.txt']) {
+        await loadCalendar(extractedFiles['calendar.txt']);
+        }
+        if (extractedFiles['calendar_dates.txt']) {
+        await loadCalendarDates(extractedFiles['calendar_dates.txt']);
+        }
+
         
         return {
             lineColors,
@@ -4305,6 +4427,43 @@ async function initializeGTFS() {
         throw error;
     }
 }
+
+// === GTFS SCHEDULE INDEXES (STATIC) ===
+if (typeof window.tripToService === 'undefined') window.tripToService = {};      // trip_id -> service_id
+if (typeof window.stopTimesByTrip === 'undefined') window.stopTimesByTrip = {};  // trip_id -> [{stop_id, arr, dep, seq}]
+if (typeof window.serviceActiveById === 'undefined') window.serviceActiveById = {}; // service_id -> boolean for today
+
+// Helpers temps
+function parseClockToSecs(hhmmss) {
+  // accepte "27:05:00"
+  if (!hhmmss || typeof hhmmss !== 'string') return null;
+  const [h, m, s] = hhmmss.split(':').map(n => parseInt(n,10));
+  if (Number.isNaN(h) || Number.isNaN(m) || Number.isNaN(s)) return null;
+  return h*3600 + m*60 + s;
+}
+function secsToClock(secs) {
+  if (secs == null) return '—';
+  const h = Math.floor(secs/3600);
+  const m = Math.floor((secs%3600)/60);
+  const s = Math.floor(secs%60);
+  const pad = n => n.toString().padStart(2,'0');
+  return `${pad(h%24)}:${pad(m)}:${pad(s)}`;
+}
+function startOfLocalDayEpoch() {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+  return Math.floor(d.getTime()/1000);
+}
+function pickTextColor(bg, light='#f8f9fa', dark='#1a1a1a'){
+  // simplifié (tu as déjà une version avancée plus bas)
+  try{
+    const c = bg.replace('#','');
+    const r=parseInt(c.substr(0,2),16), g=parseInt(c.substr(2,2),16), b=parseInt(c.substr(4,2),16);
+    const luminance = (0.299*r+0.587*g+0.114*b)/255;
+    return luminance>0.55?dark:light;
+  }catch(_){return '#fff'}
+}
+
 
 async function clearGTFSCache() {
     try {
@@ -6388,6 +6547,92 @@ function debounce(func, wait) {
     };
 }
 
+// Récupère l'heure théorique pour un stop d'un trip
+function getScheduledForStop(tripId, stopId) {
+  const arr = stopTimesByTrip[tripId];
+  if (!arr) return null;
+  // stop_id côté RT peut avoir "0:" — on normalise côté statique
+  const cmp = stopId?.replace(/^0:/,'');
+  const st = arr.find(x => x.stop_id.replace(/^0:/,'') === cmp);
+  if (!st) return null;
+  return {
+    arrival_secs: st.arr ?? st.dep ?? null,
+    departure_secs: st.dep ?? st.arr ?? null
+  };
+}
+
+// Construit le HTML détaillé des prochains arrêts (théorique vs RT)
+function buildDelaysHTML(tripId, nextStops, lineColor) {
+  const sod = startOfLocalDayEpoch();
+  const color = lineColor || '#000000';
+  const txt = pickTextColor(color);
+
+  if (!Array.isArray(nextStops) || nextStops.length===0) {
+    return `<div style="padding:6px 8px;font-size:12px;color:${txt}">— ${t("unavailabletrip")}</div>`;
+  }
+
+  const rows = nextStops.map(s => {
+    const sid = (s.stopId || '').replace(/^0:/,'');
+    const stopName = stopNameMap[sid] || stopNameMap[s.stopId] || sid;
+
+    // Théorique (GTFS statique)
+    const sched = getScheduledForStop(tripId, s.stopId);
+    const schedArrEpoch = (sched?.arrival_secs!=null) ? (sod + sched.arrival_secs) : null;
+
+    // Temps réel (GTFS-RT TripUpdates)
+    // s.arrivalTime peut être epoch ou HH:MM — ton code mélange les deux cas, on couvre les deux
+    let rtEpoch = null;
+    if (s.arrivalTime && typeof s.arrivalTime === 'number') {
+      rtEpoch = s.arrivalTime;
+    } else if (s.departureTime && typeof s.departureTime === 'number') {
+      rtEpoch = s.departureTime;
+    } else if (typeof s.arrivalTime === 'string' && s.arrivalTime.includes(':')) {
+      const secs = parseClockToSecs(s.arrivalTime);
+      if (secs!=null) rtEpoch = sod + secs;
+    } else if (typeof s.departureTime === 'string' && s.departureTime.includes(':')) {
+      const secs = parseClockToSecs(s.departureTime);
+      if (secs!=null) rtEpoch = sod + secs;
+    }
+
+    // Retard (si GTFS-RT fournit delay directement, on le préfère)
+    let delaySec = (typeof s.delay === 'number') ? s.delay : null;
+    if (delaySec==null && rtEpoch!=null && schedArrEpoch!=null) {
+      delaySec = rtEpoch - schedArrEpoch;
+    }
+
+    // Joli rendu
+    const schedClock = (sched?.arrival_secs!=null) ? secsToClock(sched.arrival_secs) : '—';
+    const rtClock = (rtEpoch!=null) ? new Date(rtEpoch*1000).toLocaleTimeString() : (s.delay!=null ? (s.delay<=0? t("imminent") : `${Math.ceil(s.delay/60)} min`) : '—');
+
+    let badgeBg = '#16a34a'; // vert à l'heure/avance
+    if (typeof delaySec === 'number') {
+      if (delaySec > 120) badgeBg = '#dc2626';       // rouge > 2 min
+      else if (delaySec > 0) badgeBg = '#f59e0b';    // orange 0-2 min
+    }
+    const sign = (delaySec||0) > 0 ? '+' : '';
+    const delayTxt = (delaySec==null) ? '—' :
+      Math.abs(delaySec) < 30 ? t("ontime") :
+      `${sign}${Math.round(delaySec/60)}′`;
+
+    return `
+      <li style="list-style:none;padding:6px 0;display:flex;align-items:center;gap:8px;border-bottom:1px dashed ${color}33">
+        <div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stopName}</div>
+        <div title="${t("theoretical")}" style="font-variant-tabular-nums;opacity:.85">${schedClock}</div>
+        <div title="${t("realtime")}" style="font-variant-tabular-nums">→ ${rtClock}</div>
+        <span style="min-width:38px;text-align:center;font-weight:700;border-radius:10px;padding:2px 6px;background:${badgeBg};color:#fff" title="${t("delay")}">
+          ${delayTxt}
+        </span>
+      </li>`;
+  }).join('');
+
+  return `
+    <div style="position:relative;max-height:160px;overflow:auto;border-radius:10px;background:linear-gradient(135deg, ${color}0F, ${color}10)">
+      <ul style="margin:0;padding:6px 10px">${rows}</ul>
+    </div>
+  `;
+}
+
+
 async function fetchVehiclePositions() {
         if (!gtfsInitialized) {
             return;
@@ -6531,50 +6776,9 @@ async function fetchVehiclePositions() {
                 }
 
 
-                let stopsListHTML = '';
-                if (filteredStops.length > 0) {
-                    stopsListHTML = filteredStops.map(stop => {
-                        const timeLeft = stop.delay;
-                        const timeLeftText = timeLeft !== null 
-                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                            : '';
-                        
-                        const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                        
-                        tempElement.textContent = stopName;
-                        
-                        return `
-                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
-                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
-                                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
-                                </div>
-                            </div>
-                            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                                <div class="time-display" 
-                                    data-time-left="${timeLeftText}" 
-                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
-                                    ${timeLeftText}
-                                </div>
-                                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <g class="rss-waves">
-                                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
-                                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
-                                    </g>
-                                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
-                                </svg>
-                            </div>
-                        </li>`;
-                    }).join('');
-                }
+                const lineColorForPopup = lineColors[line] || '#000000';
+                const nextStopsHTML = buildDelaysHTML(tripId, filteredStops, lineColorForPopup);
 
-                const nextStopsHTML = `
-                    <div style="position: relative; max-height: 120px;">
-                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
-                            ${stopsListHTML}
-                        </ul>
-                    </div>
-                `;
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
