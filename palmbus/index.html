@@ -4109,194 +4109,6 @@ function parseCSVLine(csvLine) {
     });
 }
 
-// Convertit "HH:MM:SS" (peut dépasser 24h) -> secondes depuis minuit (int)
-function hmsToSec(hms) {
-  if (!hms || !/^\d{1,2}:\d{2}:\d{2}$/.test(hms)) return null;
-  const [h, m, s] = hms.split(':').map(n => parseInt(n, 10));
-  return (h * 3600) + (m * 60) + s;
-}
-
-// Date du jour au format YYYYMMDD en TZ agence (sans lib externe)
-function yyyymmddInTZ(tz = 'Europe/Paris', date = new Date()) {
-  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const parts = fmt.formatToParts(date).reduce((o, p) => (o[p.type] = p.value, o), {});
-  return `${parts.year}${parts.month}${parts.day}`.replace(/-/g, '');
-}
-
-// Renvoie true si un service est actif "aujourd'hui" (calendar + calendar_dates)
-function buildActiveServices(calendarTxt, calendarDatesTxt) {
-  const today = yyyymmddInTZ(agencyTimezone);
-  const base = new Map(); // service_id -> bool actif
-  if (calendarTxt) {
-    const lines = calendarTxt.split(/\r?\n/);
-    const head = lines[0].split(',');
-    const idx = {
-      service_id: head.indexOf('service_id'),
-      mon: head.indexOf('monday'),
-      tue: head.indexOf('tuesday'),
-      wed: head.indexOf('wednesday'),
-      thu: head.indexOf('thursday'),
-      fri: head.indexOf('friday'),
-      sat: head.indexOf('saturday'),
-      sun: head.indexOf('sunday'),
-      start_date: head.indexOf('start_date'),
-      end_date: head.indexOf('end_date'),
-    };
-    const weekday = new Date().toLocaleDateString('en-US', { timeZone: agencyTimezone, weekday: 'short' }).toLowerCase();
-    const wdMap = { mon:'monday', tue:'tuesday', wed:'wednesday', thu:'thursday', fri:'friday', sat:'saturday', sun:'sunday' };
-    const wd = wdMap[weekday.slice(0,3)] || 'monday';
-
-    lines.slice(1).forEach(l => {
-      if (!l.trim()) return;
-      const c = l.split(',');
-      const sid = c[idx.service_id];
-      const start = c[idx.start_date];
-      const end = c[idx.end_date];
-      const dayOn = c[head.indexOf(wd)] === '1';
-      if (sid && start && end && dayOn && start <= today && today <= end) {
-        base.set(sid, true);
-      }
-    });
-  }
-
-  if (calendarDatesTxt) {
-    const lines = calendarDatesTxt.split(/\r?\n/);
-    const head = lines[0]?.split(',') || [];
-    const idService = head.indexOf('service_id');
-    const idDate = head.indexOf('date');
-    const idException = head.indexOf('exception_type'); // 1=ajout, 2=suppression
-    lines.slice(1).forEach(l => {
-      if (!l.trim()) return;
-      const c = l.split(',');
-      if (c[idDate] !== today) return;
-      const sid = c[idService];
-      const exc = c[idException];
-      if (!sid) return;
-      if (exc === '1') base.set(sid, true);
-      else if (exc === '2') base.set(sid, false);
-    });
-  }
-
-  const set = new Set();
-  base.forEach((v, k) => { if (v) set.add(k); });
-  return set;
-}
-
-// Construit les index à partir des fichiers extraits
-async function buildScheduleIndex(extractedFiles) {
-  try {
-    scheduleIndex = {};
-    tripMeta = {};
-    activeServicesToday = new Set();
-
-    // agency_timezone
-    if (extractedFiles['agency.txt']) {
-      const lines = extractedFiles['agency.txt'].split(/\r?\n/);
-      const head = lines[0].split(',');
-      const tzIdx = head.indexOf('agency_timezone');
-      if (tzIdx !== -1) {
-        const first = lines.find((l, i) => i>0 && l.trim());
-        if (first) {
-          const vals = first.split(',');
-          if (vals[tzIdx]) agencyTimezone = vals[tzIdx].replace(/"/g, '');
-        }
-      }
-    }
-
-    // tripMeta
-    if (extractedFiles['trips.txt']) {
-      const lines = extractedFiles['trips.txt'].split(/\r?\n/);
-      const head = lines[0].split(',');
-      const iTrip = head.indexOf('trip_id');
-      const iService = head.indexOf('service_id');
-      const iRoute = head.indexOf('route_id');
-      const iDir = head.indexOf('direction_id');
-      lines.slice(1).forEach(l => {
-        if (!l.trim()) return;
-        const c = l.split(',');
-        const trip_id = c[iTrip]?.replace(/"/g,'');
-        if (!trip_id) return;
-        tripMeta[trip_id] = {
-          service_id: c[iService]?.replace(/"/g,'') || null,
-          route_id: c[iRoute]?.replace(/"/g,'') || null,
-          direction_id: c[iDir]?.replace(/"/g,'') ?? null
-        };
-      });
-    }
-
-    // services actifs aujourd'hui
-    activeServicesToday = buildActiveServices(
-      extractedFiles['calendar.txt'],
-      extractedFiles['calendar_dates.txt']
-    );
-
-    // stop_times -> scheduleIndex
-    if (extractedFiles['stop_times.txt']) {
-      const lines = extractedFiles['stop_times.txt'].split(/\r?\n/);
-      const head = lines[0].split(',');
-      const iTrip = head.indexOf('trip_id');
-      const iArr  = head.indexOf('arrival_time');
-      const iDep  = head.indexOf('departure_time');
-      const iStop = head.indexOf('stop_id');
-      const iSeq  = head.indexOf('stop_sequence');
-
-      lines.slice(1).forEach(l => {
-        if (!l.trim()) return;
-        const c = l.split(',');
-        const trip_id = c[iTrip]?.replace(/"/g,'');
-        if (!trip_id) return;
-        const arr_s = hmsToSec((c[iArr]||'').replace(/"/g,''));
-        const dep_s = hmsToSec((c[iDep]||'').replace(/"/g,''));
-        const stop_id = (c[iStop]||'').replace(/"/g,'');
-        const seq = parseInt((c[iSeq]||'0').replace(/"/g,''), 10);
-        if (!scheduleIndex[trip_id]) scheduleIndex[trip_id] = [];
-        scheduleIndex[trip_id].push({ stop_id, seq, arr_s, dep_s });
-      });
-
-      // trie par séquence
-      Object.keys(scheduleIndex).forEach(tid => {
-        scheduleIndex[tid].sort((a,b)=> (a.seq||0)-(b.seq||0));
-      });
-    }
-  } catch (e) {
-    console.error('Erreur buildScheduleIndex', e);
-  }
-}
-
-// Récupère les arrêts restants d'un trip avec l’horaire théorique (secondes depuis minuit)
-function getRemainingTheoreticalStops(tripId, currentStopId) {
-  const meta = tripMeta[tripId];
-  if (!meta || !activeServicesToday.has(meta.service_id)) return [];
-  const arr = scheduleIndex[tripId] || [];
-  if (!arr.length) return [];
-  const idx = arr.findIndex(s => s.stop_id.replace(/^0:/,'') === (currentStopId||'').replace(/^0:/,''));
-  const startIdx = (idx >= 0 ? idx : 0);
-  return arr.slice(startIdx).map(s => ({
-    stop_id: s.stop_id,
-    seq: s.seq,
-    arr_s: s.arr_s ?? s.dep_s ?? null,
-    dep_s: s.dep_s ?? s.arr_s ?? null
-  }));
-}
-
-// Formattage d’un retard en texte + couleur
-function formatDelay(sec) {
-  if (sec == null) return { text: '—', cls: 'delay-unknown' };
-  if (sec >= 60) return { text: `+${Math.round(sec/60)} min`, cls: 'delay-late' };
-  if (sec > 10) return { text: `+${sec}s`, cls: 'delay-late' };
-  if (sec <= -60) return { text: `-${Math.round(Math.abs(sec)/60)} min`, cls: 'delay-early' };
-  if (sec < -10) return { text: `-${Math.abs(sec)}s`, cls: 'delay-early' };
-  return { text: 'à l’heure', cls: 'delay-ontime' };
-}
-
-
-// === GTFS Statique : index pour horaires théoriques ===
-window.scheduleIndex = {};      // { trip_id: [ {stop_id, seq, arr_s, dep_s} ... ] } (secondes depuis minuit, >86400 ok)
-window.tripMeta = {};           // { trip_id: { service_id, route_id, direction_id } }
-window.activeServicesToday = new Set(); // service_id actifs aujourd'hui
-window.agencyTimezone = 'Europe/Paris'; // fallback si agency.txt absent
-
-
 async function loadLineColors(routesFileContent) {
     try {
         if (!routesFileContent) {
@@ -4481,9 +4293,6 @@ async function initializeGTFS() {
             console.error('Fichier stops.txt non trouvé');
         }
         
-        await buildScheduleIndex(extractedFiles);
-
-
         return {
             lineColors,
             lineName,
@@ -6620,16 +6429,6 @@ async function fetchVehiclePositions() {
             .stop-name-container:hover .stop-name-wrapper[style*="animation"] {
                 animation-play-state: running !important;
             }
-
-            .delay-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.86rem}
-            .delay-table th,.delay-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)}
-            .delay-badge{border-radius:999px;padding:2px 8px;display:inline-block;font-weight:600}
-            .delay-late{color:#b00020;background:rgba(176,0,32,.12)}
-            .delay-early{color:#0055b6;background:rgba(0,85,182,.10)}
-            .delay-ontime{color:#0b7a0b;background:rgba(11,122,11,.10)}
-            .delay-unknown{opacity:.7}
-            .delay-head{font-weight:700;margin:6px 0 2px 0;font-size:.9rem;opacity:.9}
-            .muted{opacity:.75}
         </style>
         `;
         document.head.insertAdjacentHTML('beforeend', timeAnimationStyle);
@@ -6692,11 +6491,6 @@ async function fetchVehiclePositions() {
                 let lastStopName = lastStopNameun.replace("0:", "");
                 
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
-
-                // === AJOUT : calcul retard véhicule & par arrêt (théorie vs RT) ===
-
-
-
                 let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId.replace("0:", ""));
                 const now = Math.floor(Date.now() / 1000);
 
@@ -6738,115 +6532,41 @@ async function fetchVehiclePositions() {
 
 
                 let stopsListHTML = '';
-// === TABLE UNIFIÉE GTFS STATIQUE vs TEMPS RÉEL ===
-
-// 1️⃣ Récupère les arrêts théoriques restants (GTFS statique)
-const theoStops = getRemainingTheoreticalStops(tripId, stopId);
-
-// 2️⃣ Récupère les updates temps réel pour ce trip
-const stopUpdates = tripUpdates[tripId]?.stopUpdates || [];
-const rtByStop = new Map();
-stopUpdates.forEach(up => {
-  const sid = (up.stopId || '').replace(/^0:/, '');
-  rtByStop.set(sid, {
-    arrEpoch: up.arrivalTimeEpoch || up.arrivalTime || null,
-    depEpoch: up.departureTimeEpoch || up.departureTime || null,
-    arrDelay: up.arrivalDelay ?? null,
-    depDelay: up.departureDelay ?? null
-  });
-});
-
-// 3️⃣ Heure locale actuelle (en secondes depuis minuit)
-const tz = agencyTimezone;
-const nowTZ = new Date();
-const nowParts = new Intl.DateTimeFormat('fr-FR', {
-  timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-}).formatToParts(nowTZ).reduce((o, p) => (o[p.type] = p.value, o), {});
-const nowSec = (+nowParts.hour * 3600) + (+nowParts.minute * 60) + (+nowParts.second);
-
-// 4️⃣ Fusion théorie + temps réel
-const unifiedRows = [];
-let globalDelaySec = null;
-
-for (const s of theoStops.slice(0, 8)) {
-  const sid = s.stop_id.replace(/^0:/, '');
-  const stopName = stopNameMap[s.stop_id] || s.stop_id;
-
-  const schedSec = s.arr_s ?? s.dep_s ?? null;
-  let schedStr = '—';
-  if (schedSec != null) {
-    const hh = String(Math.floor((schedSec % 86400) / 3600)).padStart(2, '0');
-    const mm = String(Math.floor((schedSec % 3600) / 60)).padStart(2, '0');
-    schedStr = `${hh}:${mm}`;
-  }
-
-  const rt = rtByStop.get(sid);
-  let delaySec = rt?.arrDelay ?? rt?.depDelay ?? null;
-  let rtTimeStr = '—';
-
-  // Calcule l'heure prévue en temps réel si timestamp disponible
-  if (rt?.arrEpoch || rt?.depEpoch) {
-    const epoch = rt.arrEpoch || rt.depEpoch;
-    const d = new Date(epoch * 1000);
-    rtTimeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  } else if (schedSec != null && delaySec != null) {
-    const adj = schedSec + delaySec;
-    const hh = String(Math.floor((adj % 86400) / 3600)).padStart(2, '0');
-    const mm = String(Math.floor((adj % 3600) / 60)).padStart(2, '0');
-    rtTimeStr = `${hh}:${mm}`;
-  }
-
-  // Fallback : si aucun RT → estime retard via nowSec
-  if (delaySec == null && schedSec != null) {
-    delaySec = nowSec - schedSec;
-  }
-
-  const fmt = formatDelay(delaySec);
-  if (globalDelaySec == null && delaySec != null) globalDelaySec = delaySec;
-
-  unifiedRows.push({
-    stopName,
-    schedStr,
-    rtTimeStr,
-    delayText: fmt.text,
-    delayCls: fmt.cls
-  });
-}
-
-// 5️⃣ Badge résumé du véhicule
-let globalDelayBadge = '';
-if (globalDelaySec != null) {
-  const f = formatDelay(globalDelaySec);
-  globalDelayBadge = `<span class="delay-badge ${f.delayCls}" title="Retard estimé du service">${f.text}</span>`;
-}
-
-// 6️⃣ Construction HTML de la table
-let tableHTML = '';
-if (unifiedRows.length) {
-  const rowsHTML = unifiedRows.map(r => `
-    <tr>
-      <td>${r.stopName}</td>
-      <td class="muted">${r.schedStr}</td>
-      <td>${r.rtTimeStr}</td>
-      <td><span class="delay-badge ${r.delayCls}">${r.delayText}</span></td>
-    </tr>
-  `).join('');
-
-  tableHTML = `
-    <div class="delay-head">${t("delays") || "Retards"} ${globalDelayBadge}</div>
-    <table class="delay-table">
-      <thead>
-        <tr><th>Arrêt</th><th class="muted">Théorique</th><th>Prévu RT</th><th>Δ</th></tr>
-      </thead>
-      <tbody>${rowsHTML}</tbody>
-    </table>
-  `;
-} else {
-  tableHTML = `<p style="opacity:0.7;font-style:italic;">${t("nodata") || "Aucune donnée disponible pour ce service."}</p>`;
-}
-
-// 7️⃣ Remplace nextStopsHTML par la table unifiée
-nextStopsHTML = tableHTML;
+                if (filteredStops.length > 0) {
+                    stopsListHTML = filteredStops.map(stop => {
+                        const timeLeft = stop.delay;
+                        const timeLeftText = timeLeft !== null 
+                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                            : '';
+                        
+                        const stopName = stopNameMap[stop.stopId] || stop.stopId;
+                        
+                        tempElement.textContent = stopName;
+                        
+                        return `
+                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
+                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
+                                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
+                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
+                                </div>
+                            </div>
+                            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
+                                <div class="time-display" 
+                                    data-time-left="${timeLeftText}" 
+                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                                    ${timeLeftText}
+                                </div>
+                                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="rss-waves">
+                                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
+                                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
+                                    </g>
+                                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
+                                </svg>
+                            </div>
+                        </li>`;
+                    }).join('');
+                }
 
                 const nextStopsHTML = `
                     <div style="position: relative; max-height: 120px;">
