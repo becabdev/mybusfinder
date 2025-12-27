@@ -7277,19 +7277,17 @@ async function fetchVehiclePositions() {
                         }
                     }
                 }
-                function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-                    const popup = marker.getPopup();
-                    if (!popup) return false;
-                    
-                    const newContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    
-                    // màj si le contenu a changé
-                    if (popup.getContent() !== newContent) {
-                        popup.setContent(newContent);
-                        return true;
-                    }
-                    return false;
-                }
+                function updatePopupContent(marker, popupData) {
+    const popup = marker.getPopup();
+    if (!popup) return false;
+
+    if (!popup._contentNode) {
+        marker._pendingPopupData = popupData;
+        return false;
+    }
+
+    return updatePopupDom(marker, popupData);
+}
 
                 function updateMinimalPopups() {
                     if (this.rafId) cancelAnimationFrame(this.rafId);
@@ -10195,4 +10193,5 @@ if (document.readyState === 'loading') {
 } 
 </script>
 </html>
+
 
