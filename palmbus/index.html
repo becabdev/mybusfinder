@@ -6975,6 +6975,135 @@ async function fetchVehiclePositions() {
                     return popupContent;
                 }
 
+                function buildStopsKey(nextStopsData) {
+                    if (!nextStopsData || nextStopsData.length === 0) return '';
+                    return nextStopsData
+                        .map(stop => `${stop.stopId}|${stop.timeLeftText}|${stop.departureTime}`)
+                        .join('||');
+                }
+
+                function createStopListItem(stop) {
+                    const listItem = document.createElement('li');
+                    listItem.setAttribute('data-stop-id', stop.stopId);
+                    listItem.style.cssText = 'list-style: none; padding: 0px; display: flex; justify-content: space-between;';
+                    listItem.innerHTML = `
+                        <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
+                            <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
+                                <div class="stop-name" data-role="stop-name" style="position: relative; display: inline-block;">${stop.stopName}</div>
+                            </div>
+                        </div>
+                        <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
+                            <div class="time-display"
+                                data-time-left="${stop.timeLeftText}"
+                                data-departure-time="${stop.departureTime}">
+                                ${stop.timeLeftText}
+                            </div>
+                            <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <g class="rss-waves">
+                                    <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
+                                    <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
+                                </g>
+                                <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
+                            </svg>
+                        </div>
+                    `;
+                    return listItem;
+                }
+
+                function updateStopListItem(listItem, stop) {
+                    listItem.setAttribute('data-stop-id', stop.stopId);
+
+                    const nameElement = listItem.querySelector('[data-role="stop-name"]');
+                    if (nameElement && nameElement.textContent !== stop.stopName) {
+                        nameElement.textContent = stop.stopName;
+                    }
+
+                    const timeDisplay = listItem.querySelector('.time-display');
+                    if (timeDisplay) {
+                        timeDisplay.setAttribute('data-time-left', stop.timeLeftText);
+                        timeDisplay.setAttribute('data-departure-time', stop.departureTime);
+                        const showTimeLeft = window.showTimeLeft !== false;
+                        timeDisplay.textContent = showTimeLeft ? stop.timeLeftText : stop.departureTime;
+                    }
+                }
+
+                function updateStopsList(listElement, nextStopsData) {
+                    if (!listElement) return;
+
+                    const existingItems = Array.from(listElement.querySelectorAll('li[data-stop-id]'));
+                    const existingMap = new Map(existingItems.map(item => [item.getAttribute('data-stop-id'), item]));
+                    const usedItems = new Set();
+
+                    nextStopsData.forEach(stop => {
+                        let listItem = existingMap.get(stop.stopId);
+                        if (!listItem) {
+                            listItem = createStopListItem(stop);
+                        } else {
+                            updateStopListItem(listItem, stop);
+                        }
+
+                        listElement.appendChild(listItem);
+                        usedItems.add(listItem);
+                    });
+
+                    existingItems.forEach(listItem => {
+                        if (!usedItems.has(listItem)) {
+                            listItem.remove();
+                        }
+                    });
+                }
+
+                function updatePopupDom(marker, popupData) {
+                    const popup = marker.getPopup();
+                    if (!popup || !popup._contentNode) return false;
+
+                    const contentNode = popup._contentNode;
+                    const container = contentNode.querySelector('.popup-container');
+                    if (container) {
+                        container.style.boxShadow = `0px 0px 20px 0px ${popupData.backgroundColor}9c`;
+                        container.style.backgroundColor = `${popupData.backgroundColor}9c`;
+                        container.style.color = popupData.textColor;
+                    }
+
+                    const lineTitle = contentNode.querySelector('[data-role="line-title"]');
+                    if (lineTitle && marker._lastLineTitleText !== popupData.lineTitleText) {
+                        lineTitle.textContent = popupData.lineTitleText;
+                        marker._lastLineTitleText = popupData.lineTitleText;
+                    }
+
+                    const direction = contentNode.querySelector('[data-role="vehicle-direction"]');
+                    if (direction && marker._lastDirectionText !== popupData.directionText) {
+                        direction.textContent = popupData.directionText;
+                        marker._lastDirectionText = popupData.directionText;
+                    }
+
+                    const backgroundText = contentNode.querySelector('[data-role="background-text"]');
+                    if (backgroundText && marker._lastBackgroundText !== popupData.backgroundText) {
+                        backgroundText.textContent = popupData.backgroundText;
+                        marker._lastBackgroundText = popupData.backgroundText;
+                    }
+
+                    const stopsHeader = contentNode.querySelector('[data-role="stops-header"]');
+                    if (stopsHeader && marker._lastStopsHeaderText !== popupData.stopsHeaderText) {
+                        stopsHeader.innerHTML = popupData.stopsHeaderText;
+                        marker._lastStopsHeaderText = popupData.stopsHeaderText;
+                    }
+
+                    const optionsBadges = contentNode.querySelector('[data-role="vehicle-options-badges"]');
+                    if (optionsBadges && marker._lastOptionsKey !== popupData.optionsKey) {
+                        optionsBadges.innerHTML = popupData.vehicleOptionsBadges || '';
+                        marker._lastOptionsKey = popupData.optionsKey;
+                    }
+
+                    if (marker._lastNextStopsKey !== popupData.nextStopsKey) {
+                        const listElement = contentNode.querySelector('[data-role="next-stops-list"]');
+                        updateStopsList(listElement, popupData.nextStopsData);
+                        marker._lastNextStopsKey = popupData.nextStopsKey;
+                    }
+
+                    return true;
+                }
+
                 function animateTooltip(tooltip, newLatLng, duration = 1000) {
                     if (!tooltip || !tooltip._container) return;
 
