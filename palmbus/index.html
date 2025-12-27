@@ -4850,7 +4850,20 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 }
 
 
-                    const textColor = getOptimalTextColor(color);
+                const textColor = getOptimalTextColor(color);
+                if (getOptimalTextColor(color) === '#1a1a1a') {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(1)';
+                        });
+                } else {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(0)';
+                        });
+                }
 
                 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
@@ -5037,7 +5050,20 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         }
 
 
-                    const textColor = getOptimalTextColor(color);
+                        const textColor = getOptimalTextColor(color);
+                        if (getOptimalTextColor(color) === '#1a1a1a') {
+                            document
+                                .querySelectorAll('#menubtm img')
+                                .forEach(img => {
+                                    img.style.filter = 'invert(1)';
+                                });
+                        } else {
+                            document
+                                .querySelectorAll('#menubtm img')
+                                .forEach(img => {
+                                    img.style.filter = 'invert(0)';
+                                });
+                        }
 
                         
                         styleSheet.textContent = `
