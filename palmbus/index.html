@@ -10026,7 +10026,7 @@ function startFetchUpdates() {
             fetchTripUpdates().catch(() => null),
             fetchVehiclePositions().catch(() => null)
         ]).catch(error => {
-            console.warn('Erreur lors des mises … jour', error);
+            console.warn('Erreur lors des mises a jour', error);
         });
     }, FETCH_INTERVAL);
 }
