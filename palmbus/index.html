@@ -10016,20 +10016,19 @@ async function fetchTripUpdates() {
     }
 }
 
-let lastUpdateTime = 0;
-function scheduleFetchUpdates(timestamp) {
-    if (!lastUpdateTime || timestamp - lastUpdateTime >= FETCH_INTERVAL) {
-        lastUpdateTime = timestamp;
-        
+let fetchTimerId = null;
+
+function startFetchUpdates() {
+    if (fetchTimerId) return;
+
+    fetchTimerId = setInterval(() => {
         Promise.all([
             fetchTripUpdates().catch(() => null),
             fetchVehiclePositions().catch(() => null)
         ]).catch(error => {
-            console.warn('Erreur lors des mises à jour', error);
+            console.warn('Erreur lors des mises … jour', error);
         });
-    }
-    
-    requestAnimationFrame(scheduleFetchUpdates);
+    }, FETCH_INTERVAL);
 }
 
 
@@ -10048,7 +10047,7 @@ async function main() {
             fetchVehiclePositions()
         ]);
         
-        requestAnimationFrame(scheduleFetchUpdates);
+        startFetchUpdates();
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
@@ -10062,3 +10061,4 @@ if (document.readyState === 'loading') {
 } 
 </script>
 </html>
+
