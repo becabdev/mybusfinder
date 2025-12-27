@@ -7614,6 +7614,11 @@ async function fetchVehiclePositions() {
                     const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                     marker.bindPopup(popupContent);
                     markers[id]._lastNextStopsKey = nextStopsKey;
+                    markers[id]._lastOptionsKey = optionsKey;
+                    markers[id]._lastStopsHeaderText = stopsHeaderText;
+                    markers[id]._lastLineTitleText = lineTitleText;
+                    markers[id]._lastDirectionText = directionText;
+                    markers[id]._lastBackgroundText = backgroundText;
 
                     marker.on('popupopen', function (e) {
                         if (markers[id].minimalPopup) {
@@ -7626,6 +7631,11 @@ async function fetchVehiclePositions() {
                                 popupElement.classList.remove('hide'); 
                                 popupElement.classList.add('show');  
                             }
+                        }
+
+                        if (markers[id]._pendingPopupData) {
+                            updatePopupDom(markers[id], markers[id]._pendingPopupData);
+                            markers[id]._pendingPopupData = null;
                         }
                     });
 
