@@ -799,6 +799,7 @@
         bottom: 10px;
         left: 50%;
         transform: translateX(-50%);
+        --menu-icon-filter: none;
         border: 1px solid rgba(255, 255, 255, 0.3);
         list-style: none;
         margin: 0;
@@ -4690,6 +4691,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                     const isDarkText = ['#1a1a1a', '#000000', '#000'].includes(textColor.toLowerCase());
                     const iconFilter = isDarkText ? 'brightness(0) saturate(100%)' : 'none';
 
+
                 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
@@ -4856,6 +4858,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
+                    }
+                    #menubtm {
+                        --menu-icon-filter: ${iconFilter};
                     }
 
                 `;
@@ -5033,6 +5038,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         styleSheet.textContent = `
                         #menubtm * {
                             color: ${textColor};
+                        }
+                        #menubtm {
+                            --menu-icon-filter: ${iconFilter};
                         }
                         `;
                         
@@ -7037,6 +7045,8 @@ async function fetchVehiclePositions() {
                             
                             const color = lineColors[marker.line] || '#000000';
                             const textColor = getOptimalTextColor(color);
+                            const isDarkText = ['#1a1a1a', '#000000', '#000'].includes(textColor.toLowerCase());
+                            const iconFilter = isDarkText ? 'brightness(0) saturate(100%)' : 'none';
                             
                             const minimalContent = `
                                 <div class="minimal-popup minimal-popup-appear" style="
@@ -7397,6 +7407,9 @@ async function fetchVehiclePositions() {
                             styleSheet.textContent = `
                                 #menubtm * {
                                     color: ${textColor};
+                                }
+                                #menubtm {
+                                    --menu-icon-filter: ${iconFilter};
                                 }
 
                             `;
