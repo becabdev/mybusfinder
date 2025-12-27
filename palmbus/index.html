@@ -1959,6 +1959,11 @@
   z-index: -1;
 }
 
+.invert-img img {
+    filter: invert(1);
+}
+
+
 </style>
 
 </head>
@@ -4681,11 +4686,11 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                     }
                 }
 
-                    const textColor = getOptimalTextColor(color);
+                const textColor = getOptimalTextColor(color);
+                if (getOptimalTextColor(color) === '#1a1a1a') {
+                    document.getElementById('menubtm').classList.add('invert-img');
+                }
 
-                    if (getOptimalTextColor(color) === '#1a1a1a') {
-                        document.getElementById('menubtm').style.filter = 'invert(1)';
-                    }
 
                 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
