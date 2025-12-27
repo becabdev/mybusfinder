@@ -578,7 +578,7 @@
             opacity: 0.7;
         }
     }
-    .next-stops-content div {
+    #nextStopsContent div {
         animation: 0.3s ease-in fadeInScroll;
         display: inherit;
     }
@@ -6534,39 +6534,30 @@ async function fetchVehiclePositions() {
                 }
 
 
-                const nextStopsData = filteredStops.map(stop => {
-                    const timeLeft = stop.delay;
-                    const timeLeftText = timeLeft !== null 
-                        ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                        : '';
-                    
-                    const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                    const stopIdKey = (stop.stopId || '').replace("0:", "");
-                    
-                    tempElement.textContent = stopName;
-                    
-                    return {
-                        stopId: stopIdKey,
-                        stopName,
-                        timeLeftText,
-                        departureTime: stop.arrivalTime || stop.departureTime || "Inconnu"
-                    };
-                });
-
                 let stopsListHTML = '';
-                if (nextStopsData.length > 0) {
-                    stopsListHTML = nextStopsData.map(stop => `
-                        <li data-stop-id="${stop.stopId}" style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
+                if (filteredStops.length > 0) {
+                    stopsListHTML = filteredStops.map(stop => {
+                        const timeLeft = stop.delay;
+                        const timeLeftText = timeLeft !== null 
+                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                            : '';
+                        
+                        const stopName = stopNameMap[stop.stopId] || stop.stopId;
+                        
+                        tempElement.textContent = stopName;
+                        
+                        return `
+                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
                             <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
                                 <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" data-role="stop-name" style="position: relative; display: inline-block;">${stop.stopName}</div>
+                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
                                 </div>
                             </div>
                             <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
                                 <div class="time-display" 
-                                    data-time-left="${stop.timeLeftText}" 
-                                    data-departure-time="${stop.departureTime}">
-                                    ${stop.timeLeftText}
+                                    data-time-left="${timeLeftText}" 
+                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                                    ${timeLeftText}
                                 </div>
                                 <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <g class="rss-waves">
@@ -6576,16 +6567,17 @@ async function fetchVehiclePositions() {
                                     <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
                                 </svg>
                             </div>
-                        </li>`
-                    ).join('');
+                        </li>`;
+                    }).join('');
                 }
 
-                const nextStopsHTML = stopsListHTML;
-                const nextStopsKey = buildStopsKey(nextStopsData);
-                const optionsKey = vehicleOptionsBadges;
-                const lineTitleText = `${t("line")} ${lineName[line] || t("unknownarrival")}`;
-                const directionText = `➜ ${lastStopName}`;
-                const backgroundText = `${t("line")} ${lineName[line] || "??????????????"}`;
+                const nextStopsHTML = `
+                    <div style="position: relative; max-height: 120px;">
+                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
+                            ${stopsListHTML}
+                        </ul>
+                    </div>
+                `;
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
@@ -6926,8 +6918,8 @@ async function fetchVehiclePositions() {
 
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
-                                    <p class="line-title" data-role="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <strong class="vehicle-direction" data-role="vehicle-direction">➜ ${lastStopName}</strong>
+                                    <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
+                                    <strong class="vehicle-direction">➜ ${lastStopName}</strong>
                                     <div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
@@ -6941,7 +6933,7 @@ async function fetchVehiclePositions() {
                                                     </span>
                                                     
                                                     <!-- Badges des options du véhicule -->
-                                                    <span class="vehicle-options-badges" data-role="vehicle-options-badges">${vehicleOptionsBadges}</span>
+                                                    ${vehicleOptionsBadges}
                                                 </div>
                                             </div>
                                         </div>
@@ -6952,19 +6944,17 @@ async function fetchVehiclePositions() {
                                 </div>
 
                                 <!-- Texte en arrière-plan -->
-                                <div class="background-text" data-role="background-text" style="color: ${textColor};">
+                                <div class="background-text" style="color: ${textColor};">
                                     ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
                                 </div>
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header" data-role="stops-header">${stopsHeaderText}</p>
-                                <div class="next-stops-content" data-role="next-stops">
-                                    <div style="position: relative; max-height: 120px;">
-                                        <ul class="next-stops-list" data-role="next-stops-list" style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
-                                            ${nextStopsHTML}
-                                        </ul>
-                                    </div>
+                                <p class="stops-header">${stopsHeaderText}</p>
+                                <ul>
+                                    <div id="nextStopsContent" class="next-stops-content">
+                                        ${nextStopsHTML}
+                                    </div>   
                                 </div>
                             </div>
                         </div>
@@ -6978,135 +6968,6 @@ async function fetchVehiclePositions() {
                     
                     contentCache.set(cacheKey, popupContent);
                     return popupContent;
-                }
-
-                function buildStopsKey(nextStopsData) {
-                    if (!nextStopsData || nextStopsData.length === 0) return '';
-                    return nextStopsData
-                        .map(stop => `${stop.stopId}|${stop.timeLeftText}|${stop.departureTime}`)
-                        .join('||');
-                }
-
-                function createStopListItem(stop) {
-                    const listItem = document.createElement('li');
-                    listItem.setAttribute('data-stop-id', stop.stopId);
-                    listItem.style.cssText = 'list-style: none; padding: 0px; display: flex; justify-content: space-between;';
-                    listItem.innerHTML = `
-                        <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
-                            <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                <div class="stop-name" data-role="stop-name" style="position: relative; display: inline-block;">${stop.stopName}</div>
-                            </div>
-                        </div>
-                        <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                            <div class="time-display"
-                                data-time-left="${stop.timeLeftText}"
-                                data-departure-time="${stop.departureTime}">
-                                ${stop.timeLeftText}
-                            </div>
-                            <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <g class="rss-waves">
-                                    <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
-                                    <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
-                                </g>
-                                <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
-                            </svg>
-                        </div>
-                    `;
-                    return listItem;
-                }
-
-                function updateStopListItem(listItem, stop) {
-                    listItem.setAttribute('data-stop-id', stop.stopId);
-
-                    const nameElement = listItem.querySelector('[data-role="stop-name"]');
-                    if (nameElement && nameElement.textContent !== stop.stopName) {
-                        nameElement.textContent = stop.stopName;
-                    }
-
-                    const timeDisplay = listItem.querySelector('.time-display');
-                    if (timeDisplay) {
-                        timeDisplay.setAttribute('data-time-left', stop.timeLeftText);
-                        timeDisplay.setAttribute('data-departure-time', stop.departureTime);
-                        const showTimeLeft = window.showTimeLeft !== false;
-                        timeDisplay.textContent = showTimeLeft ? stop.timeLeftText : stop.departureTime;
-                    }
-                }
-
-                function updateStopsList(listElement, nextStopsData) {
-                    if (!listElement) return;
-
-                    const existingItems = Array.from(listElement.querySelectorAll('li[data-stop-id]'));
-                    const existingMap = new Map(existingItems.map(item => [item.getAttribute('data-stop-id'), item]));
-                    const usedItems = new Set();
-
-                    nextStopsData.forEach(stop => {
-                        let listItem = existingMap.get(stop.stopId);
-                        if (!listItem) {
-                            listItem = createStopListItem(stop);
-                        } else {
-                            updateStopListItem(listItem, stop);
-                        }
-
-                        listElement.appendChild(listItem);
-                        usedItems.add(listItem);
-                    });
-
-                    existingItems.forEach(listItem => {
-                        if (!usedItems.has(listItem)) {
-                            listItem.remove();
-                        }
-                    });
-                }
-
-                function updatePopupDom(marker, popupData) {
-                    const popup = marker.getPopup();
-                    if (!popup || !popup._contentNode) return false;
-
-                    const contentNode = popup._contentNode;
-                    const container = contentNode.querySelector('.popup-container');
-                    if (container) {
-                        container.style.boxShadow = `0px 0px 20px 0px ${popupData.backgroundColor}9c`;
-                        container.style.backgroundColor = `${popupData.backgroundColor}9c`;
-                        container.style.color = popupData.textColor;
-                    }
-
-                    const lineTitle = contentNode.querySelector('[data-role="line-title"]');
-                    if (lineTitle && (popupData.forceUpdate || marker._lastLineTitleText !== popupData.lineTitleText)) {
-                        lineTitle.textContent = popupData.lineTitleText;
-                        marker._lastLineTitleText = popupData.lineTitleText;
-                    }
-
-                    const direction = contentNode.querySelector('[data-role="vehicle-direction"]');
-                    if (direction && (popupData.forceUpdate || marker._lastDirectionText !== popupData.directionText)) {
-                        direction.textContent = popupData.directionText;
-                        marker._lastDirectionText = popupData.directionText;
-                    }
-
-                    const backgroundText = contentNode.querySelector('[data-role="background-text"]');
-                    if (backgroundText && (popupData.forceUpdate || marker._lastBackgroundText !== popupData.backgroundText)) {
-                        backgroundText.textContent = popupData.backgroundText;
-                        marker._lastBackgroundText = popupData.backgroundText;
-                    }
-
-                    const stopsHeader = contentNode.querySelector('[data-role="stops-header"]');
-                    if (stopsHeader && (popupData.forceUpdate || marker._lastStopsHeaderText !== popupData.stopsHeaderText)) {
-                        stopsHeader.innerHTML = popupData.stopsHeaderText;
-                        marker._lastStopsHeaderText = popupData.stopsHeaderText;
-                    }
-
-                    const optionsBadges = contentNode.querySelector('[data-role="vehicle-options-badges"]');
-                    if (optionsBadges && (popupData.forceUpdate || marker._lastOptionsKey !== popupData.optionsKey)) {
-                        optionsBadges.innerHTML = popupData.vehicleOptionsBadges || '';
-                        marker._lastOptionsKey = popupData.optionsKey;
-                    }
-
-                    if (popupData.forceUpdate || marker._lastNextStopsKey !== popupData.nextStopsKey) {
-                        const listElement = contentNode.querySelector('[data-role="next-stops-list"]');
-                        updateStopsList(listElement, popupData.nextStopsData);
-                        marker._lastNextStopsKey = popupData.nextStopsKey;
-                    }
-
-                    return true;
                 }
 
                 function animateTooltip(tooltip, newLatLng, duration = 1000) {
@@ -7282,17 +7143,19 @@ async function fetchVehiclePositions() {
                         }
                     }
                 }
-                function updatePopupContent(marker, popupData) {
-    const popup = marker.getPopup();
-    if (!popup) return false;
-
-                    if (!popup._contentNode) {
-                        marker._pendingPopupData = { ...popupData, forceUpdate: true };
-                        return false;
+                function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
+                    const popup = marker.getPopup();
+                    if (!popup) return false;
+                    
+                    const newContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    
+                    // màj si le contenu a changé
+                    if (popup.getContent() !== newContent) {
+                        popup.setContent(newContent);
+                        return true;
                     }
-
-    return updatePopupDom(marker, popupData);
-}
+                    return false;
+                }
 
                 function updateMinimalPopups() {
                     if (this.rafId) cancelAnimationFrame(this.rafId);
@@ -7477,9 +7340,7 @@ async function fetchVehiclePositions() {
             const hasChanges = (
                 markers[id].line !== line ||
                 markers[id].destination !== lastStopName ||
-                markers[id]._lastNextStopsKey !== nextStopsKey ||
-                markers[id]._lastOptionsKey !== optionsKey ||
-                markers[id]._lastStopsHeaderText !== stopsHeaderText
+                markers[id]._lastNextStopsHTML !== nextStopsHTML
         
         );
             
@@ -7490,6 +7351,7 @@ async function fetchVehiclePositions() {
                 if (markers[id].line !== line) {
                     const oldLine = markers[id].line;
                     markers[id].line = line;
+                    markers[id]._lastNextStopsHTML = nextStopsHTML;
                     
                     const color = lineColors[line] || '#000000';
                     if (markers[id]._icon) {
@@ -7536,27 +7398,8 @@ async function fetchVehiclePositions() {
                 
                 updateLinesDisplay();
 
-                const popupData = {
-                    lineTitleText,
-                    directionText,
-                    backgroundText,
-                    stopsHeaderText,
-                    backgroundColor,
-                    textColor,
-                    nextStopsData,
-                    nextStopsKey,
-                    optionsKey,
-                    vehicleOptionsBadges
-                };
-
-                const contentUpdated = updatePopupContent(markers[id], popupData);
-                markers[id]._lastNextStopsKey = nextStopsKey;
-                markers[id]._lastOptionsKey = optionsKey;
-                markers[id]._lastStopsHeaderText = stopsHeaderText;
-                markers[id]._lastLineTitleText = lineTitleText;
-                markers[id]._lastDirectionText = directionText;
-                markers[id]._lastBackgroundText = backgroundText;
-
+                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                 if (markers[id].isPopupOpen() && contentUpdated) {
                     const popup = markers[id]._popup;
                     if (popup && popup._contentNode) {
@@ -7612,12 +7455,7 @@ async function fetchVehiclePositions() {
                     
                     const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                     marker.bindPopup(popupContent);
-                    markers[id]._lastNextStopsKey = nextStopsKey;
-                    markers[id]._lastOptionsKey = optionsKey;
-                    markers[id]._lastStopsHeaderText = stopsHeaderText;
-                    markers[id]._lastLineTitleText = lineTitleText;
-                    markers[id]._lastDirectionText = directionText;
-                    markers[id]._lastBackgroundText = backgroundText;
+                    markers[id]._lastNextStopsHTML = nextStopsHTML;
 
                     marker.on('popupopen', function (e) {
                         if (markers[id].minimalPopup) {
@@ -7630,11 +7468,6 @@ async function fetchVehiclePositions() {
                                 popupElement.classList.remove('hide'); 
                                 popupElement.classList.add('show');  
                             }
-                        }
-
-                        if (markers[id]._pendingPopupData) {
-                            updatePopupDom(markers[id], markers[id]._pendingPopupData);
-                            markers[id]._pendingPopupData = null;
                         }
                     });
 
@@ -10193,7 +10026,7 @@ function startFetchUpdates() {
             fetchTripUpdates().catch(() => null),
             fetchVehiclePositions().catch(() => null)
         ]).catch(error => {
-            console.warn('Erreur lors des mises a jour', error);
+            console.warn('Erreur lors des mises … jour', error);
         });
     }, FETCH_INTERVAL);
 }
@@ -10228,5 +10061,4 @@ if (document.readyState === 'loading') {
 } 
 </script>
 </html>
-
 
