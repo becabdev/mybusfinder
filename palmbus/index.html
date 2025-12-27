@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <script defer src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
     <script defer src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
@@ -799,6 +799,7 @@
         bottom: 10px;
         left: 50%;
         transform: translateX(-50%);
+        --menu-icon-filter: none;
         border: 1px solid rgba(255, 255, 255, 0.3);
         list-style: none;
         margin: 0;
@@ -838,6 +839,11 @@
         display: flex;
         justify-content: center;
         align-items: center;
+    }
+    .menubottom ul li a .icon img {
+        opacity: 0.8;
+        filter: var(--menu-icon-filter, none);
+        transition: filter 0.3s ease, opacity 0.3s ease;
     }
     .menubottom ul li a .title {
         font-family: League Spartan;
@@ -4682,6 +4688,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 }
 
                     const textColor = getOptimalTextColor(color);
+                    const isDarkText = ['#1a1a1a', '#000000', '#000'].includes(textColor.toLowerCase());
+                    const iconFilter = isDarkText ? 'brightness(0) saturate(100%)' : 'none';
+
 
                 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
@@ -4693,6 +4702,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
+                    }
+                    #menubtm {
+                        --menu-icon-filter: ${iconFilter};
                     }
                 `;
                 
@@ -4846,6 +4858,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
+                    }
+                    #menubtm {
+                        --menu-icon-filter: ${iconFilter};
                     }
 
                 `;
@@ -5023,6 +5038,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         styleSheet.textContent = `
                         #menubtm * {
                             color: ${textColor};
+                        }
+                        #menubtm {
+                            --menu-icon-filter: ${iconFilter};
                         }
                         `;
                         
@@ -7027,6 +7045,8 @@ async function fetchVehiclePositions() {
                             
                             const color = lineColors[marker.line] || '#000000';
                             const textColor = getOptimalTextColor(color);
+                            const isDarkText = ['#1a1a1a', '#000000', '#000'].includes(textColor.toLowerCase());
+                            const iconFilter = isDarkText ? 'brightness(0) saturate(100%)' : 'none';
                             
                             const minimalContent = `
                                 <div class="minimal-popup minimal-popup-appear" style="
@@ -7387,6 +7407,9 @@ async function fetchVehiclePositions() {
                             styleSheet.textContent = `
                                 #menubtm * {
                                     color: ${textColor};
+                                }
+                                #menubtm {
+                                    --menu-icon-filter: ${iconFilter};
                                 }
 
                             `;
