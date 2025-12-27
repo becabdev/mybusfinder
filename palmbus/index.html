@@ -6953,11 +6953,13 @@ async function fetchVehiclePositions() {
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header">${stopsHeaderText}</p>
-                                <ul>
-                                    <div id="nextStopsContent" class="next-stops-content">
-                                        ${nextStopsHTML}
-                                    </div>   
+                                <p class="stops-header" data-role="stops-header">${stopsHeaderText}</p>
+                                <div class="next-stops-content" data-role="next-stops">
+                                    <div style="position: relative; max-height: 120px;">
+                                        <ul class="next-stops-list" data-role="next-stops-list" style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
+                                            ${nextStopsHTML}
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
