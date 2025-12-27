@@ -7490,7 +7490,7 @@ async function fetchVehiclePositions() {
                 if (markers[id].line !== line) {
                     const oldLine = markers[id].line;
                     markers[id].line = line;
-                    markers[id]._lastNextStopsHTML = nextStopsHTML;
+                    markers[id]._lastNextStopsKey = nextStopsKey;
                     
                     const color = lineColors[line] || '#000000';
                     if (markers[id]._icon) {
@@ -7594,7 +7594,7 @@ async function fetchVehiclePositions() {
                     
                     const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                     marker.bindPopup(popupContent);
-                    markers[id]._lastNextStopsHTML = nextStopsHTML;
+                    markers[id]._lastNextStopsKey = nextStopsKey;
 
                     marker.on('popupopen', function (e) {
                         if (markers[id].minimalPopup) {
