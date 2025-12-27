@@ -7286,10 +7286,10 @@ async function fetchVehiclePositions() {
     const popup = marker.getPopup();
     if (!popup) return false;
 
-    if (!popup._contentNode) {
-        marker._pendingPopupData = popupData;
-        return false;
-    }
+                    if (!popup._contentNode) {
+                        marker._pendingPopupData = { ...popupData, forceUpdate: true };
+                        return false;
+                    }
 
     return updatePopupDom(marker, popupData);
 }
