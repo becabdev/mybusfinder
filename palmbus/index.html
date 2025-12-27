@@ -7537,8 +7537,27 @@ async function fetchVehiclePositions() {
                 
                 updateLinesDisplay();
 
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                const popupData = {
+                    lineTitleText,
+                    directionText,
+                    backgroundText,
+                    stopsHeaderText,
+                    backgroundColor,
+                    textColor,
+                    nextStopsData,
+                    nextStopsKey,
+                    optionsKey,
+                    vehicleOptionsBadges
+                };
+
+                const contentUpdated = updatePopupContent(markers[id], popupData);
+                markers[id]._lastNextStopsKey = nextStopsKey;
+                markers[id]._lastOptionsKey = optionsKey;
+                markers[id]._lastStopsHeaderText = stopsHeaderText;
+                markers[id]._lastLineTitleText = lineTitleText;
+                markers[id]._lastDirectionText = directionText;
+                markers[id]._lastBackgroundText = backgroundText;
+
                 if (markers[id].isPopupOpen() && contentUpdated) {
                     const popup = markers[id]._popup;
                     if (popup && popup._contentNode) {
