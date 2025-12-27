@@ -7071,36 +7071,36 @@ async function fetchVehiclePositions() {
                     }
 
                     const lineTitle = contentNode.querySelector('[data-role="line-title"]');
-                    if (lineTitle && marker._lastLineTitleText !== popupData.lineTitleText) {
+                    if (lineTitle && (popupData.forceUpdate || marker._lastLineTitleText !== popupData.lineTitleText)) {
                         lineTitle.textContent = popupData.lineTitleText;
                         marker._lastLineTitleText = popupData.lineTitleText;
                     }
 
                     const direction = contentNode.querySelector('[data-role="vehicle-direction"]');
-                    if (direction && marker._lastDirectionText !== popupData.directionText) {
+                    if (direction && (popupData.forceUpdate || marker._lastDirectionText !== popupData.directionText)) {
                         direction.textContent = popupData.directionText;
                         marker._lastDirectionText = popupData.directionText;
                     }
 
                     const backgroundText = contentNode.querySelector('[data-role="background-text"]');
-                    if (backgroundText && marker._lastBackgroundText !== popupData.backgroundText) {
+                    if (backgroundText && (popupData.forceUpdate || marker._lastBackgroundText !== popupData.backgroundText)) {
                         backgroundText.textContent = popupData.backgroundText;
                         marker._lastBackgroundText = popupData.backgroundText;
                     }
 
                     const stopsHeader = contentNode.querySelector('[data-role="stops-header"]');
-                    if (stopsHeader && marker._lastStopsHeaderText !== popupData.stopsHeaderText) {
+                    if (stopsHeader && (popupData.forceUpdate || marker._lastStopsHeaderText !== popupData.stopsHeaderText)) {
                         stopsHeader.innerHTML = popupData.stopsHeaderText;
                         marker._lastStopsHeaderText = popupData.stopsHeaderText;
                     }
 
                     const optionsBadges = contentNode.querySelector('[data-role="vehicle-options-badges"]');
-                    if (optionsBadges && marker._lastOptionsKey !== popupData.optionsKey) {
+                    if (optionsBadges && (popupData.forceUpdate || marker._lastOptionsKey !== popupData.optionsKey)) {
                         optionsBadges.innerHTML = popupData.vehicleOptionsBadges || '';
                         marker._lastOptionsKey = popupData.optionsKey;
                     }
 
-                    if (marker._lastNextStopsKey !== popupData.nextStopsKey) {
+                    if (popupData.forceUpdate || marker._lastNextStopsKey !== popupData.nextStopsKey) {
                         const listElement = contentNode.querySelector('[data-role="next-stops-list"]');
                         updateStopsList(listElement, popupData.nextStopsData);
                         marker._lastNextStopsKey = popupData.nextStopsKey;
