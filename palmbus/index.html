@@ -4687,6 +4687,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 }
 
                     const textColor = getOptimalTextColor(color);
+                    const isDarkText = ['#1a1a1a', '#000000', '#000'].includes(textColor.toLowerCase());
+                    const iconFilter = isDarkText ? 'brightness(0) saturate(100%)' : 'none';
 
                 
                 document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
@@ -4698,6 +4700,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 styleSheet.textContent = `
                     #menubtm * {
                         color: ${textColor};
+                    }
+                    #menubtm {
+                        --menu-icon-filter: ${iconFilter};
                     }
                 `;
                 
