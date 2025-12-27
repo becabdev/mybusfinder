@@ -6581,6 +6581,11 @@ async function fetchVehiclePositions() {
                 }
 
                 const nextStopsHTML = stopsListHTML;
+                const nextStopsKey = buildStopsKey(nextStopsData);
+                const optionsKey = vehicleOptionsBadges;
+                const lineTitleText = `${t("line")} ${lineName[line] || t("unknownarrival")}`;
+                const directionText = `➜ ${lastStopName}`;
+                const backgroundText = `${t("line")} ${lineName[line] || "??????????????"}`;
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
