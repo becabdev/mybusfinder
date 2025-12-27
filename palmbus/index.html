@@ -7477,7 +7477,9 @@ async function fetchVehiclePositions() {
             const hasChanges = (
                 markers[id].line !== line ||
                 markers[id].destination !== lastStopName ||
-                markers[id]._lastNextStopsHTML !== nextStopsHTML
+                markers[id]._lastNextStopsKey !== nextStopsKey ||
+                markers[id]._lastOptionsKey !== optionsKey ||
+                markers[id]._lastStopsHeaderText !== stopsHeaderText
         
         );
             
