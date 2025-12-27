@@ -4688,8 +4688,19 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
                 const textColor = getOptimalTextColor(color);
                 if (getOptimalTextColor(color) === '#1a1a1a') {
-                    document.getElementById('menubtm').classList.add('invert-img');
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(1)';
+                        });
+                } else {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(0)';
+                        });
                 }
+
 
 
                 
