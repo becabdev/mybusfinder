@@ -1005,16 +1005,8 @@
                 window.parent.postMessage({ type: 'settings' }, '*');
             };
 
-            document.getElementById('app').onclick = () => {
-                window.parent.postMessage({ type: 'app' }, '*');
-            };
-
             document.getElementById('mbh').onclick = () => {
                 window.parent.postMessage({ type: 'mbh' }, '*');
-            };
-
-            document.getElementById('header-settings').onclick = () => {
-                window.parent.postMessage({ type: 'settings' }, '*');
             };
         }
 
