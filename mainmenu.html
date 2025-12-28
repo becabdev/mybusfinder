@@ -2,57 +2,23 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>My Bus Finder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Menu Principal</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            overscroll-behavior: none;
-            overscroll-behavior-y: none;
-            overscroll-behavior-x: none;
-        }
-
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #161621;
-            --bg-card: rgba(25, 25, 40, 0.8);
-            --text-primary: #e8e9f0;
-            --text-secondary: #9ca3af;
-            --text-tertiary: #6b7280;
-            --accent: #7c3aed;
-            --accent-light: #8b5cf6;
-            --accent-dark: #5b21b6;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --info: #3b82f6;
-            --purple-glow: rgba(124, 58, 237, 0.3);
-            --border: rgba(139, 92, 246, 0.2);
-            --glass-bg: rgba(25, 25, 40, 0.6);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            --shadow-glow: 0 0 20px var(--purple-glow);
-            --shadow-subtle: 0 4px 16px rgba(0, 0, 0, 0.1);
-            --gradient-primary: linear-gradient(135deg, var(--accent), var(--accent-light));
-            --gradient-card: linear-gradient(135deg, rgba(25, 25, 40, 0.9), rgba(30, 30, 50, 0.8));
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
             overflow-x: hidden;
             position: relative;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        input, textarea, select {
-            font-size: 16px;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .animated-bg {
@@ -62,187 +28,114 @@
             width: 100%;
             height: 100%;
             z-index: -1;
-            background: var(--bg-primary);
+            background: linear-gradient(135deg, #1a0033 0%, #0a0a1a 50%, #1a0033 100%);
+            animation: bgShift 20s ease infinite;
+        }
+
+        @keyframes bgShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
         }
 
         .animated-bg::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 20%, var(--accent-dark) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, var(--accent) 0%, transparent 50%),
-                radial-gradient(circle at 40% 60%, #4c1d95 0%, transparent 30%);
-            opacity: 0.12;
-            animation: float 25s ease-in-out infinite;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 30%, rgba(138, 43, 226, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(75, 0, 130, 0.15) 0%, transparent 50%);
+            animation: bgFloat 15s ease-in-out infinite;
         }
 
-        .animated-bg::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                linear-gradient(45deg, transparent 40%, rgba(124, 58, 237, 0.06) 50%, transparent 60%),
-                linear-gradient(-45deg, transparent 40%, rgba(139, 92, 246, 0.06) 50%, transparent 60%);
-            animation: slide 20s linear infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
-            33% { transform: translateY(-15px) rotate(60deg) scale(1.05); }
-            66% { transform: translateY(-30px) rotate(120deg) scale(0.95); }
-        }
-
-        @keyframes slide {
-            0% { transform: translateX(-100%) translateY(-20px); }
-            100% { transform: translateX(100%) translateY(20px); }
+        @keyframes bgFloat {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-50px, -50px); }
         }
 
         .header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: var(--glass-bg);
-            backdrop-filter: blur(25px);
-            border-bottom: 1px solid var(--border);
-            padding: 1rem;
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            flex: 1;
-            min-width: 0;
+            gap: 12px;
         }
 
         .logo-icon {
-            width: 135px;
-            height: 50px;
-            border-radius: 50px;
+            width: 40px;
+            height: 40px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            position: relative;
             overflow: hidden;
-            flex-shrink: 0;
         }
 
-        .logo-icon::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-        }
-
-        .logo-text {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .logo-title {
-            font-size: 1.4rem;
-            font-weight: 300;
-            background: linear-gradient(135deg, var(--text-primary), var(--accent-light));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.02em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .greeting-text {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            opacity: 0.9;
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-shrink: 0;
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
 
         .header-action {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: rgba(124, 58, 237, 0.1);
-            border: 1px solid rgba(124, 58, 237, 0.2);
-            color: var(--accent-light);
-            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 1.1rem;
+            font-size: 20px;
             position: relative;
             overflow: hidden;
+        }
+
+        .header-action:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
         }
 
         .header-action:active {
             transform: scale(0.95);
         }
 
-        .header-action:hover {
-            background: var(--accent);
-            color: white;
-            box-shadow: var(--shadow-glow);
-        }
-
         .main-container {
-            max-width: 1400px;
+            padding: 20px;
+            padding-bottom: 100px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
         }
 
         .carousel-section {
-            background: var(--gradient-card);
-            backdrop-filter: blur(25px);
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            box-shadow: var(--shadow), var(--shadow-subtle);
-            position: relative;
+            margin-bottom: 30px;
         }
 
         .carousel {
             position: relative;
-            height: 180px;
+            width: 100%;
+            height: 200px;
+            border-radius: 16px;
             overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
         }
 
         .carousel-track {
             display: flex;
-            transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             height: 100%;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .carousel-slide {
@@ -254,43 +147,42 @@
         .carousel-slide img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            object-fit: cover;
         }
 
         .carousel-nav {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            border: 1px solid var(--border);
-            width: 44px;
-            height: 44px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-primary);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            transition: all 0.3s ease;
             z-index: 10;
-            font-size: 1.1rem;
-            font-weight: 600;
-            touch-action: manipulation;
-        }
-
-        .carousel-nav:active {
-            transform: translateY(-50%) scale(0.95);
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
         }
 
         .carousel-nav:hover {
-            background: var(--accent);
-            box-shadow: var(--shadow-glow);
-            border-color: var(--accent-light);
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-50%) scale(1.1);
         }
 
-        .carousel-nav.prev { left: 15px; }
-        .carousel-nav.next { right: 15px; }
+        .carousel-nav.prev {
+            left: 10px;
+        }
+
+        .carousel-nav.next {
+            right: 10px;
+        }
 
         .carousel-indicators {
             position: absolute;
@@ -303,347 +195,123 @@
         }
 
         .carousel-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.4);
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .carousel-dot.active {
-            background: var(--accent-light);
-            box-shadow: 0 0 10px var(--purple-glow);
-        }
-
-        .whats-new-section {
-            background: var(--gradient-card);
-            backdrop-filter: blur(25px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow), var(--shadow-subtle);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .whats-new-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: var(--gradient-primary);
-        }
-
-        .whats-new-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.25rem;
-        }
-
-        .whats-new-title {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            flex: 1;
-            min-width: 0;
-        }
-
-        .whats-new-badge {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 0.2rem 0.6rem;
-            border-radius: 15px;
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.025em;
-            margin-left: 0.5rem;
-        }
-
-        .close-whats-new {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(156, 163, 175, 0.1);
-            border: 1px solid rgba(156, 163, 175, 0.2);
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-            font-size: 1.2rem;
-            flex-shrink: 0;
-        }
-
-        .close-whats-new:active {
-            transform: scale(0.95);
-        }
-
-        .close-whats-new:hover {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: rgba(239, 68, 68, 0.3);
-            color: #ef4444;
-        }
-
-        .whats-new-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .whats-new-item {
-            background: rgba(139, 92, 246, 0.05);
-            border: 1px solid rgba(139, 92, 246, 0.1);
-            border-radius: 16px;
-            padding: 1.25rem;
-            transition: all 0.3s ease;
-        }
-
-        .whats-new-item:active {
-            transform: translateY(1px);
-        }
-
-        .whats-new-item:hover {
-            background: rgba(139, 92, 246, 0.08);
-            border-color: rgba(139, 92, 246, 0.2);
-        }
-
-        .whats-new-item-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .whats-new-item-icon {
-            width: 35px;
-            height: 35px;
-            border-radius: 10px;
-            background: var(--gradient-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-
-        .whats-new-item-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .whats-new-item-desc {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            line-height: 1.5;
+            background: #ffffff;
+            width: 24px;
+            border-radius: 4px;
         }
 
         .features-section {
+            margin-bottom: 30px;
+        }
+
+        .features-section h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .features-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
         }
 
         .feature-card {
-            background: var(--gradient-card);
-            backdrop-filter: blur(25px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
             cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 1rem;
-            box-shadow: var(--shadow), var(--shadow-subtle);
-            min-height: 140px;
-        }
-
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--purple-glow), transparent);
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
-
-        .feature-card:active {
-            transform: scale(0.98);
         }
 
         .feature-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            border-color: var(--accent);
-            box-shadow: var(--shadow-glow), 0 15px 30px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(138, 43, 226, 0.2);
         }
 
-        .feature-card:hover::before {
-            opacity: 1;
+        .feature-card:active {
+            transform: translateY(-2px);
         }
 
         .feature-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 18px;
-            background: var(--gradient-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8rem;
-            box-shadow: var(--shadow-glow), var(--shadow-subtle);
-            position: relative;
-            z-index: 2;
+            font-size: 40px;
+            margin-bottom: 12px;
+            display: block;
         }
 
         .feature-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            position: relative;
-            z-index: 2;
-            letter-spacing: -0.01em;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
         }
 
         .feature-desc {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
             line-height: 1.4;
-            position: relative;
-            z-index: 2;
-            display: none; 
         }
 
         .quick-links {
-            background: var(--gradient-card);
-            backdrop-filter: blur(25px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow), var(--shadow-subtle);
+            margin-bottom: 30px;
         }
 
-        .section-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 1.25rem;
-            color: var(--text-primary);
-            position: relative;
-            padding-left: 1rem;
-            letter-spacing: -0.01em;
-        }
-
-        .section-title::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 4px;
-            height: 20px;
-            background: var(--gradient-primary);
-            border-radius: 2px;
+        .quick-links h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            font-weight: 600;
         }
 
         .links-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
         }
 
         .link-card {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            border-radius: 14px;
-            background: rgba(124, 58, 237, 0.05);
-            border: 1px solid rgba(124, 58, 237, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
-        }
-
-        .link-card:active {
-            transform: scale(0.98);
+            text-align: center;
         }
 
         .link-card:hover {
-            background: var(--accent);
-            color: white;
-            transform: scale(0.97);
-            box-shadow: var(--shadow-glow);
-            border-color: var(--accent-light);
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .link-card:active {
+            transform: translateY(0);
         }
 
         .link-icon {
-            font-size: 1.2rem;
-            width: 35px;
-            text-align: center;
-            transition: transform 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        .link-card:hover .link-icon {
-            transform: scale(1.1);
+            font-size: 28px;
+            margin-bottom: 8px;
+            display: block;
         }
 
         .link-title {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .notepad-section {
-            background: var(--gradient-card);
-            backdrop-filter: blur(25px);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow), var(--shadow-subtle);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .notepad-textarea {
-            flex: 1;
-            min-height: 120px;
-            background: rgba(139, 92, 246, 0.05);
-            border: 2px solid rgba(139, 92, 246, 0.1);
-            border-radius: 14px;
-            padding: 1.25rem;
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            resize: none;
-            outline: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .notepad-textarea:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px var(--purple-glow);
-            background: rgba(139, 92, 246, 0.08);
-        }
-
-        .notepad-textarea::placeholder {
-            color: var(--text-tertiary);
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .bottom-nav {
@@ -651,71 +319,65 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: var(--glass-bg);
-            backdrop-filter: blur(25px);
-            border-top: 1px solid var(--border);
-            padding: 1rem;
-            z-index: 100;
+            background: rgba(20, 20, 30, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 0;
             display: flex;
             justify-content: space-around;
-            align-items: center;
-            gap: 1rem;
+            z-index: 1000;
         }
 
         .nav-item {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 0.25rem;
-            padding: 0.5rem;
-            border-radius: 12px;
+            gap: 4px;
+            padding: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
-            flex: 1;
-            max-width: 80px;
             position: relative;
             overflow: hidden;
-        }
-
-        .nav-item:active {
-            transform: scale(0.95);
+            border-radius: 8px;
         }
 
         .nav-item:hover {
-            background: rgba(124, 58, 237, 0.1);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .nav-item.active {
-            background: var(--accent);
-            color: white;
-            box-shadow: var(--shadow-glow);
+            color: #8a2be2;
         }
 
-        .nav-icon {
-            font-size: 1.3rem;
-            transition: transform 0.3s ease;
-        }
-
-        .nav-item:hover .nav-icon {
+        .nav-item.active .nav-icon {
             transform: scale(1.1);
         }
 
+        .nav-icon {
+            font-size: 24px;
+            transition: transform 0.3s ease;
+        }
+
         .nav-label {
-            font-size: 0.7rem;
+            font-size: 11px;
             font-weight: 500;
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 100%;
         }
 
-        .whats-new-hidden {
-            display: none !important;
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            transform: scale(0);
+            animation: rippleEffect 0.6s ease-out;
         }
 
-        .main-container {
-            padding-bottom: 100px;
+        @keyframes rippleEffect {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
         }
 
         .ripple-container {
@@ -723,190 +385,27 @@
             overflow: hidden;
         }
 
-        .ripple {
-            position: absolute;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            animation: ripple-animation 0.6s linear;
-            pointer-events: none;
-        }
-
-        @keyframes ripple-animation {
-            0% {
-                transform: scale(0);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(4);
-                opacity: 0;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .main-container {
-                padding: 2rem;
-                gap: 2rem;
-                display: grid;
-                grid-template-columns: 2fr 1fr;
-                grid-template-rows: auto auto auto 1fr;
-                grid-template-areas: 
-                    "carousel carousel"
-                    "whats-new whats-new"
-                    "features sidebar"
-                    "notepad sidebar";
-            }
-
-            .carousel-section {
-                grid-area: carousel;
-            }
-
-            .whats-new-section {
-                grid-area: whats-new;
-            }
-
-            .whats-new-content {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 1.25rem;
-            }
-
-            .features-section {
-                grid-area: features;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 1.5rem;
-            }
-
-            .quick-links {
-                grid-area: sidebar;
-            }
-
-            .notepad-section {
-                grid-area: notepad;
-            }
-
-            .feature-desc {
-                display: block;
-            }
-
-            .feature-card {
-                min-height: 160px;
-                padding: 2rem;
-            }
-
-            .carousel {
-                height: 280px;
-            }
-
-            .bottom-nav {
-                display: none;
-            }
-
-            .main-container {
-                padding-bottom: 2rem;
-            }
-        }
-
-        @media (min-width: 1024px) {
-            .features-section {
+        @media (max-width: 768px) {
+            .features-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-
-            .feature-card {
-                min-height: 180px;
+            
+            .links-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
-
-        @media (hover: none) and (pointer: coarse) {
-            .feature-card:hover {
-                transform: none;
-                box-shadow: var(--shadow), var(--shadow-subtle);
-            }
-
-            .feature-card:hover::before {
-                opacity: 0;
-            }
-
-            .link-card:hover {
-                background: rgba(124, 58, 237, 0.05);
-                color: var(--text-primary);
-                transform: none;
-                box-shadow: none;
-                border-color: rgba(124, 58, 237, 0.1);
-            }
-
-            .carousel-nav:hover {
-                background: var(--glass-bg);
-                box-shadow: none;
-                border-color: var(--border);
-            }
-        }
-
-        /* Animations */
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .carousel-section,
-        .whats-new-section,
-        .feature-card,
-        .quick-links,
-        .notepad-section {
-            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        }
-
-        .feature-card:nth-child(1) { animation-delay: 0.1s; }
-        .feature-card:nth-child(2) { animation-delay: 0.2s; }
-        .feature-card:nth-child(3) { animation-delay: 0.3s; }
-        .feature-card:nth-child(4) { animation-delay: 0.4s; }
-        .whats-new-section { animation-delay: 0.15s; }
-        .quick-links { animation-delay: 0.5s; }
-        .notepad-section { animation-delay: 0.6s; }
-
-        .whats-new-item {
-            animation: fadeIn 0.5s ease forwards;
-        }
-
-        .whats-new-item:nth-child(1) { animation-delay: 0.7s; }
-        .whats-new-item:nth-child(2) { animation-delay: 0.8s; }
-        .whats-new-item:nth-child(3) { animation-delay: 0.9s; }
     </style>
 </head>
 <body>
     <div class="animated-bg"></div>
 
     <header class="header">
-        <div class="header-content">
-            <div class="logo-section">
-                <div class="logo-text">
-                    <div class="logo-icon">
-                        <img style="width: inherit;" src="./src/logow.png"></img>
-                    </div>
-                </div>
-            </div>
-            <div class="header-actions">
-                <div class="header-action ripple-container" id="header-settings" title="Paramètres">
-                    ⚙️
-                </div>
+        <div class="logo-section">
+            <div class="logo-icon">
+                <img src="./src/logow.png" alt="Logo">
             </div>
         </div>
+        <button class="header-action ripple-container" id="header-settings">⚙️</button>
     </header>
 
     <main class="main-container">
@@ -914,70 +413,69 @@
             <div class="carousel">
                 <div class="carousel-track">
                     <div class="carousel-slide">
-                        <img src="../ads/2.jpg" alt="Pub 2" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMzYjgyZjY7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMTBiOTgxO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgMjwvdGV4dD48L3N2Zz4='">
+                        <img src="../ads/2.jpg" alt="Slide 1" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22800%22 height=%22400%22%3E%3Crect fill=%22%234b0082%22 width=%22800%22 height=%22400%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2240%22 fill=%22white%22%3EPublicité 1%3C/text%3E%3C/svg%3E'">
                     </div>
                     <div class="carousel-slide">
-                        <img src="../ads/3.jpg" alt="Pub 3" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmNTllMGI7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZWY0NDQ0O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgMzwvdGV4dD48L3N2Zz4='">
+                        <img src="../ads/3.jpg" alt="Slide 2" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22800%22 height=%22400%22%3E%3Crect fill=%22%238a2be2%22 width=%22800%22 height=%22400%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2240%22 fill=%22white%22%3EPublicité 2%3C/text%3E%3C/svg%3E'">
                     </div>
                     <div class="carousel-slide">
-                        <img src="../ads/4.jpg" alt="Pub 4" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmNTllMGI7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZWY0NDQ0O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgMzwvdGV4dD48L3N2Zz4='">
+                        <img src="../ads/4.jpg" alt="Slide 3" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22800%22 height=%22400%22%3E%3Crect fill=%22%239370db%22 width=%22800%22 height=%22400%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2240%22 fill=%22white%22%3EPublicité 3%3C/text%3E%3C/svg%3E'">
                     </div>
                 </div>
-                <button class="carousel-nav prev ripple-container" onclick="changeSlide(-1)">‹</button>
-                <button class="carousel-nav next ripple-container" onclick="changeSlide(1)">›</button>
+                <button class="carousel-nav prev" aria-label="Previous">‹</button>
+                <button class="carousel-nav next" aria-label="Next">›</button>
                 <div class="carousel-indicators">
-                    <div class="carousel-dot active" onclick="goToSlide(0)"></div>
-                    <div class="carousel-dot" onclick="goToSlide(1)"></div>
-                    <div class="carousel-dot" onclick="goToSlide(2)"></div>
+                    <span class="carousel-dot active"></span>
+                    <span class="carousel-dot"></span>
+                    <span class="carousel-dot"></span>
                 </div>
             </div>
         </section>
 
         <section class="features-section">
-            <div id="bus" class="feature-card ripple-container">
-                <div class="feature-icon">🚌</div>
-                <div class="feature-title" data-i18n="search_bus">Localiser un bus</div>
-                <div class="feature-desc" data-i18n="search_bus_desc">Trouvez facilement votre bus et ses horaires en temps réel avec géolocalisation précise</div>
-            </div>
-
-            <div id="clock" class="feature-card ripple-container">
-                <div class="feature-icon">⏰</div>
-                <div class="feature-title" data-i18n="schedules">Horaires</div>
-                <div class="feature-desc" data-i18n="schedules_desc">Fiches horaires théoriques et temps-réel avec prédictions intelligentes</div>
-            </div>
-
-            <div id="ticket" class="feature-card ripple-container">
-                <div class="feature-icon">🎫</div>
-                <div class="feature-title" data-i18n="reloadticket">Recharger</div>
-                <div class="feature-desc" data-i18n="reloadticket_desc">Rechargez votre abonnement via le portail officiel en toute sécurité</div>
-            </div>
-
-            <div id="actu" class="feature-card ripple-container">
-                <div class="feature-icon">📰</div>
-                <div class="feature-title" data-i18n="news">Actualités</div>
-                <div class="feature-desc" data-i18n="news_desc">Informations et déviations des transports par ligne</div>
+            <h2 data-i18n="features_title">Fonctionnalités</h2>
+            <div class="features-grid">
+                <div class="feature-card ripple-container" id="bus">
+                    <span class="feature-icon">🚌</span>
+                    <div class="feature-title" data-i18n="locate_bus">Localiser un bus</div>
+                    <div class="feature-desc" data-i18n="locate_bus_desc">Trouvez votre bus en temps réel</div>
+                </div>
+                <div class="feature-card ripple-container" id="clock">
+                    <span class="feature-icon">🕐</span>
+                    <div class="feature-title" data-i18n="schedules">Horaires</div>
+                    <div class="feature-desc" data-i18n="schedules_desc">Consultez les horaires de passage</div>
+                </div>
+                <div class="feature-card ripple-container" id="ticket">
+                    <span class="feature-icon">🎫</span>
+                    <div class="feature-title" data-i18n="recharge">Recharger</div>
+                    <div class="feature-desc" data-i18n="recharge_desc">Rechargez votre carte de transport</div>
+                </div>
+                <div class="feature-card ripple-container" id="actu">
+                    <span class="feature-icon">📰</span>
+                    <div class="feature-title" data-i18n="news">Actualités</div>
+                    <div class="feature-desc" data-i18n="news_desc">Restez informé des dernières nouvelles</div>
+                </div>
             </div>
         </section>
 
-
         <section class="quick-links">
-            <h2 class="section-title" data-i18n="quick_links">Accès rapide</h2>
+            <h2 data-i18n="quick_links">Liens rapides</h2>
             <div class="links-grid">
-                <div id="settings" class="link-card ripple-container">
-                    <div class="link-icon">⚙️</div>
+                <div class="link-card ripple-container" id="settings">
+                    <span class="link-icon">⚙️</span>
                     <div class="link-title" data-i18n="settings">Paramètres</div>
                 </div>
-                <div id="app" class="link-card ripple-container">
-                    <div class="link-icon">📱</div>
+                <div class="link-card ripple-container" id="app">
+                    <span class="link-icon">📱</span>
                     <div class="link-title" data-i18n="mobile_app">Application mobile</div>
                 </div>
-                <div id="mbh" class="link-card ripple-container">
-                    <div class="link-icon">🚇</div>
-                    <div class="link-title">My Bus History</div>
+                <div class="link-card ripple-container" id="mbh">
+                    <span class="link-icon">📜</span>
+                    <div class="link-title" data-i18n="my_bus_history">My Bus History</div>
                 </div>
-                <div id="mybusfinderhome" class="link-card ripple-container" onclick="window.open('https://mybusfinder.fr', '_blank')">
-                    <div class="link-icon">🏠</div>
-                    <div class="link-title">mybusfinder.fr</div>
+                <div class="link-card ripple-container" id="mybusfinderhome">
+                    <span class="link-icon">🌐</span>
+                    <div class="link-title" data-i18n="website">Site web</div>
                 </div>
             </div>
         </section>
@@ -985,73 +483,66 @@
 
     <nav class="bottom-nav">
         <div class="nav-item active ripple-container" id="nav-home">
-            <div class="nav-icon">🏠</div>
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label" data-i18n="nav_home">Accueil</span>
         </div>
         <div class="nav-item ripple-container" id="nav-map">
-            <div class="nav-icon">🚌</div>
+            <span class="nav-icon">🗺️</span>
+            <span class="nav-label" data-i18n="nav_map">Carte</span>
         </div>
         <div class="nav-item ripple-container" id="nav-schedule">
-            <div class="nav-icon">⏰</div>
+            <span class="nav-icon">📅</span>
+            <span class="nav-label" data-i18n="nav_schedule">Horaires</span>
         </div>
         <div class="nav-item ripple-container" id="nav-news">
-            <div class="nav-icon">📰</div>
+            <span class="nav-icon">📰</span>
+            <span class="nav-label" data-i18n="nav_news">Actualités</span>
         </div>
         <div class="nav-item ripple-container" id="nav-more">
-            <div class="nav-icon">⚙️</div>
+            <span class="nav-icon">⋯</span>
+            <span class="nav-label" data-i18n="nav_more">Plus</span>
         </div>
     </nav>
 
     <script>
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function (event) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
+        // Anti double-tap zoom
+        (function() {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        })();
 
+        // Ripple effect
         function createRipple(event) {
             const button = event.currentTarget;
+            const ripple = document.createElement('span');
             const rect = button.getBoundingClientRect();
             const size = Math.max(rect.width, rect.height);
             const x = event.clientX - rect.left - size / 2;
             const y = event.clientY - rect.top - size / 2;
-            
-            const ripple = document.createElement('span');
-            ripple.classList.add('ripple');
+
             ripple.style.width = ripple.style.height = size + 'px';
             ripple.style.left = x + 'px';
             ripple.style.top = y + 'px';
-            
+            ripple.classList.add('ripple');
+
             button.appendChild(ripple);
-            
+
             setTimeout(() => {
                 ripple.remove();
             }, 600);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const rippleElements = document.querySelectorAll('.ripple-container');
-            rippleElements.forEach(element => {
-                element.addEventListener('click', createRipple);
-            });
-        });
-
-        function hideWhatsNew() {
-            const whatsNewSection = document.getElementById('whats-new-section');
-            whatsNewSection.style.opacity = '0';
-            whatsNewSection.style.transform = 'translateY(-20px)';
-            
-            setTimeout(() => {
-                whatsNewSection.classList.add('whats-new-hidden');
-            }, 300);
-        }
-
+        // Carousel
         let currentSlide = 0;
         const totalSlides = 3;
         let autoPlayInterval;
-        
+
         function updateCarousel() {
             const track = document.querySelector('.carousel-track');
             const dots = document.querySelectorAll('.carousel-dot');
@@ -1062,37 +553,31 @@
                 dot.classList.toggle('active', index === currentSlide);
             });
         }
-        
+
         function changeSlide(direction) {
-            currentSlide += direction;
-            
-            if (currentSlide >= totalSlides) {
-                currentSlide = 0;
-            } else if (currentSlide < 0) {
-                currentSlide = totalSlides - 1;
-            }
-            
+            currentSlide = (currentSlide + direction + totalSlides) % totalSlides;
             updateCarousel();
             resetAutoPlay();
         }
-        
-        function goToSlide(slideIndex) {
-            currentSlide = slideIndex;
+
+        function goToSlide(index) {
+            currentSlide = index;
             updateCarousel();
             resetAutoPlay();
         }
-        
+
         function startAutoPlay() {
             autoPlayInterval = setInterval(() => {
                 changeSlide(1);
-            }, 12000); 
+            }, 12000);
         }
-        
+
         function resetAutoPlay() {
             clearInterval(autoPlayInterval);
             startAutoPlay();
         }
-        
+
+        // Carousel keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') {
                 changeSlide(-1);
@@ -1100,246 +585,219 @@
                 changeSlide(1);
             }
         });
-        
-        let startX = 0;
-        let endX = 0;
+
+        // Carousel touch/swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+
         const carousel = document.querySelector('.carousel');
-        
         carousel.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-        }, { passive: true });
-        
+            touchStartX = e.changedTouches[0].screenX;
+        }, false);
+
         carousel.addEventListener('touchmove', (e) => {
-            endX = e.touches[0].clientX;
-        }, { passive: true });
-        
+            touchEndX = e.changedTouches[0].screenX;
+        }, false);
+
         carousel.addEventListener('touchend', () => {
-            const threshold = 50;
-            const diff = startX - endX;
-            
-            if (Math.abs(diff) > threshold) {
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
                 if (diff > 0) {
-                    changeSlide(1); 
+                    changeSlide(1);
                 } else {
-                    changeSlide(-1); 
+                    changeSlide(-1);
                 }
             }
-        });
+        }, false);
 
+        // Whats new section
+        const whatsNewSection = document.getElementById('whats-new-section');
+        if (whatsNewSection) {
+            const closeBtn = whatsNewSection.querySelector('.close-whats-new');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    whatsNewSection.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    whatsNewSection.style.opacity = '0';
+                    whatsNewSection.style.transform = 'translateY(-20px)';
+                    setTimeout(() => {
+                        whatsNewSection.classList.add('whats-new-hidden');
+                    }, 300);
+                });
+            }
+        }
+
+        // i18n System
+        const i18n = {
+            supportedLanguages: ['fr', 'it', 'ar', 'en'],
+            defaultLang: 'fr',
+            currentLang: 'fr',
+            translations: {},
+
+            detectLanguage() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlLang = urlParams.get('lang');
+                
+                if (urlLang && this.supportedLanguages.includes(urlLang)) {
+                    return urlLang;
+                }
+
+                const storedLang = localStorage.getItem('preferredLanguage');
+                if (storedLang && this.supportedLanguages.includes(storedLang)) {
+                    return storedLang;
+                }
+
+                const browserLang = navigator.language.split('-')[0];
+                if (this.supportedLanguages.includes(browserLang)) {
+                    return browserLang;
+                }
+
+                return this.defaultLang;
+            },
+
+            async loadTranslations() {
+                this.currentLang = this.detectLanguage();
+                
+                try {
+                    const response = await fetch(`../locales/${this.currentLang}.json`);
+                    if (!response.ok) throw new Error('Translation file not found');
+                    this.translations = await response.json();
+                } catch (error) {
+                    console.warn('Failed to load translations, using fallback');
+                    this.translations = {
+                        features_title: 'Fonctionnalités',
+                        locate_bus: 'Localiser un bus',
+                        locate_bus_desc: 'Trouvez votre bus en temps réel',
+                        schedules: 'Horaires',
+                        schedules_desc: 'Consultez les horaires de passage',
+                        recharge: 'Recharger',
+                        recharge_desc: 'Rechargez votre carte de transport',
+                        news: 'Actualités',
+                        news_desc: 'Restez informé des dernières nouvelles',
+                        quick_links: 'Liens rapides',
+                        settings: 'Paramètres',
+                        mobile_app: 'Application mobile',
+                        my_bus_history: 'My Bus History',
+                        website: 'Site web',
+                        nav_home: 'Accueil',
+                        nav_map: 'Carte',
+                        nav_schedule: 'Horaires',
+                        nav_news: 'Actualités',
+                        nav_more: 'Plus'
+                    };
+                }
+            },
+
+            t(key) {
+                return this.translations[key] || key;
+            },
+
+            applyTranslations() {
+                document.querySelectorAll('[data-i18n]').forEach(element => {
+                    const key = element.getAttribute('data-i18n');
+                    element.textContent = this.t(key);
+                });
+
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                    const key = element.getAttribute('data-i18n-placeholder');
+                    element.placeholder = this.t(key);
+                });
+            },
+
+            async init() {
+                await this.loadTranslations();
+                this.applyTranslations();
+            }
+        };
+
+        // PostMessage handlers
+        function sendMessage(type) {
+            window.parent.postMessage({ type }, '*');
+        }
+
+        // UI State
         function setActiveNavItem(activeId) {
-            const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
+            document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
-            
             const activeItem = document.getElementById(activeId);
             if (activeItem) {
                 activeItem.classList.add('active');
             }
         }
 
-        const i18n = {
-            translations: {},
-            currentLang: 'fr',
-            supportedLanguages: ['fr', 'it', 'ar', 'en'],
-            defaultLang: 'fr',
-            isLoaded: false,
-            
-            getBrowserLanguage() {
-                const fullLang = navigator.language || navigator.userLanguage;
-                const primaryLang = fullLang.split('-')[0];
-                
-                if (this.supportedLanguages.includes(primaryLang)) {
-                    return primaryLang;
-                }
-                
-                return this.defaultLang;
-            },
-            
-            getLanguageFromUrl() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const lang = urlParams.get('lang');
-                return lang || localStorage.getItem('preferredLanguage') || this.defaultLang;
-            },
-            
-            async loadTranslations() {
-                this.currentLang = this.getLanguageFromUrl();
-                localStorage.setItem('preferredLanguage', this.currentLang);
-                
-                try {
-                    const response = await fetch(`../locales/${this.currentLang}.json`);
-                    this.translations = await response.json();
-                    this.isLoaded = true;
-                    document.dispatchEvent(new CustomEvent('translationsLoaded'));
-                    return this.translations;
-                } catch (error) {
-                    console.error("Erreur lors du chargement des traductions:", error);
-                    this.translations = {
-                        welcome: "Bienvenue sur My Bus Finder",
-                        search_bus: "Localiser mon bus",
-                        search_bus_desc: "Trouvez facilement votre bus et ses horaires en temps réel",
-                        schedules: "Horaires",
-                        schedules_desc: "Fiches horaires théoriques et temps-réel",
-                        news: "Actualités",
-                        news_desc: "Informations et déviations des transports par ligne",
-                        notepad: "Bloc-notes",
-                        notepad_placeholder: "Écrivez vos notes ici...",
-                        quick_links: "Accès rapides",
-                        settings: "Paramètres",
-                        mobile_app: "Application mobile (a venir)",
-                        bus_history: "My Bus History",
-                        loading: "Chargement...",
-                    };
-                    this.isLoaded = true;
-                    document.dispatchEvent(new CustomEvent('translationsLoaded'));
-                    return this.translations;
-                }
-            },
-            
-            t(key, params = {}) {
-                let text = this.translations[key] || key;
-                
-                Object.keys(params).forEach(param => {
-                    text = text.replace(`{${param}}`, params[param]);
+        // Context menu prevention
+        function preventContextMenu(selector) {
+            document.querySelectorAll(selector).forEach(element => {
+                element.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
                 });
-                
-                return text;
-            },
-            
-            applyTranslations() {
-                document.querySelectorAll('[data-i18n]').forEach(element => {
-                    const key = element.getAttribute('data-i18n');
-                    if (this.translations[key]) {
-                        element.textContent = this.translations[key];
-                    }
-                });
-
-                document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-                    const key = element.getAttribute('data-i18n-placeholder');
-                    if (this.translations[key]) {
-                        element.placeholder = this.translations[key];
-                    }
-                });
-            },
-            
-            addLangToUrl() {
-                const browserLang = this.getBrowserLanguage();
-                
-                if (browserLang !== this.defaultLang) {
-                    const currentUrl = new URL(window.location.href);
-                    if (!currentUrl.searchParams.has('lang')) {
-                        currentUrl.searchParams.set('lang', browserLang);
-                        window.history.replaceState({}, '', currentUrl.toString());
-                    }
-                }
-                
-                return browserLang;
-            },
-            
-            init() {
-                const detectedLang = this.addLangToUrl();
-                const urlLang = new URLSearchParams(window.location.search).get('lang');
-                
-                if (!localStorage.getItem('preferredLanguage')) {
-                    localStorage.setItem('preferredLanguage', urlLang || detectedLang);
-                }
-                
-                return this.loadTranslations();
-            }
-        };
-
-        window.t = (key, params) => i18n.t(key, params);
-
-        function waitForTranslations() {
-            return new Promise(resolve => {
-                if (i18n.isLoaded) {
-                    resolve();
-                } else {
-                    document.addEventListener('translationsLoaded', () => resolve(), { once: true });
-                }
             });
         }
 
-
+        // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            // Load translations
             await i18n.init();
-            await waitForTranslations();
-            i18n.applyTranslations();
-            
-            initEventHandlers();
-            startAutoPlay();
-        });
 
-        function initEventHandlers() {
-            document.getElementById('bus').onclick = () => {
-                window.parent.postMessage({ type: 'openmap' }, '*');
-            };
-
-            document.getElementById('clock').onclick = () => {
-                window.parent.postMessage({ type: 'schedule' }, '*');
-            };
-
-            document.getElementById('actu').onclick = () => {
-                window.parent.postMessage({ type: 'news' }, '*');
-            };
-
-            document.getElementById('ticket').onclick = () => {
-                window.parent.postMessage({ type: 'boutique' }, '*');
-            };
-            
-            document.getElementById('settings').onclick = () => {
-                window.parent.postMessage({ type: 'settings' }, '*');
-            };
-
-            document.getElementById('app').onclick = () => {
-                window.parent.postMessage({ type: 'app' }, '*');
-            };
-
-            document.getElementById('mbh').onclick = () => {
-                window.parent.postMessage({ type: 'mbh' }, '*');
-            };
-
-            document.getElementById('header-settings').onclick = () => {
-                window.parent.postMessage({ type: 'settings' }, '*');
-            };
-
-            document.getElementById('nav-home').onclick = () => {
-            };
-
-            document.getElementById('nav-map').onclick = () => {
-                window.parent.postMessage({ type: 'openmap' }, '*');
-            };
-
-            document.getElementById('nav-schedule').onclick = () => {
-                window.parent.postMessage({ type: 'schedule' }, '*');
-            };
-
-            document.getElementById('nav-news').onclick = () => {
-                window.parent.postMessage({ type: 'news' }, '*');
-            };
-
-            document.getElementById('nav-more').onclick = () => {
-                window.parent.postMessage({ type: 'settings' }, '*');
-            };
-        }
-
-        function initNotepad() {
-            const notepadElement = document.getElementById('notepad');
-            let notes = '';
-            
-            notepadElement.addEventListener('input', () => {
-                notes = notepadElement.value;
-            });
-        }
-
-        window.addEventListener('resize', () => {
+            // Initialize carousel
             updateCarousel();
-        });
+            startAutoPlay();
 
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('.feature-card') || e.target.closest('.link-card') || e.target.closest('.nav-item')) {
-                e.preventDefault();
-            }
+            // Carousel controls
+            document.querySelector('.carousel-nav.prev').addEventListener('click', () => changeSlide(-1));
+            document.querySelector('.carousel-nav.next').addEventListener('click', () => changeSlide(1));
+            
+            document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+                dot.addEventListener('click', () => goToSlide(index));
+            });
+
+            // Add ripple effect to all interactive elements
+            document.querySelectorAll('.ripple-container').forEach(element => {
+                element.addEventListener('click', createRipple);
+            });
+
+            // Feature cards
+            document.getElementById('bus')?.addEventListener('click', () => sendMessage('openmap'));
+            document.getElementById('clock')?.addEventListener('click', () => sendMessage('schedule'));
+            document.getElementById('ticket')?.addEventListener('click', () => sendMessage('boutique'));
+            document.getElementById('actu')?.addEventListener('click', () => sendMessage('news'));
+
+            // Quick links
+            document.getElementById('settings')?.addEventListener('click', () => sendMessage('settings'));
+            document.getElementById('app')?.addEventListener('click', () => sendMessage('app'));
+            document.getElementById('mbh')?.addEventListener('click', () => sendMessage('mbh'));
+            document.getElementById('mybusfinderhome')?.addEventListener('click', () => {
+                window.open('https://mybusfinder.fr', '_blank');
+            });
+
+            // Header
+            document.getElementById('header-settings')?.addEventListener('click', () => sendMessage('settings'));
+
+            // Bottom navigation
+            document.getElementById('nav-home')?.addEventListener('click', () => {
+                setActiveNavItem('nav-home');
+            });
+            document.getElementById('nav-map')?.addEventListener('click', () => {
+                setActiveNavItem('nav-map');
+                sendMessage('openmap');
+            });
+            document.getElementById('nav-schedule')?.addEventListener('click', () => {
+                setActiveNavItem('nav-schedule');
+                sendMessage('schedule');
+            });
+            document.getElementById('nav-news')?.addEventListener('click', () => {
+                setActiveNavItem('nav-news');
+                sendMessage('news');
+            });
+            document.getElementById('nav-more')?.addEventListener('click', () => {
+                setActiveNavItem('nav-more');
+                sendMessage('settings');
+            });
+
+            // Prevent context menu
+            preventContextMenu('.feature-card');
+            preventContextMenu('.link-card');
+            preventContextMenu('.nav-item');
         });
     </script>
 </body>
