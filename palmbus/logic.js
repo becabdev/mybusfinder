@@ -5487,10 +5487,6 @@ markersToRemove.forEach(id => {
 });
 
 setInterval(() => {
-    if (contentCache.size > 30) {
-        const keysToDelete = Array.from(contentCache.keys()).slice(0, 15);
-        keysToDelete.forEach(key => contentCache.delete(key));
-    }
     if (colorCache.size > 20) {
         colorCache.clear();
     }
