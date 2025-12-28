@@ -892,12 +892,12 @@
         align-items: center;
         gap: 8px;
         font-size: 16px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
 
     .close-btn:active {
         background-color: #007aff;
-        transform: scale(0.7);
+        transform: scale(0.3);
     }
     .textpop h4 {
         margin-bottom: 0.3rem;
