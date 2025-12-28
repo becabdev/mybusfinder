@@ -882,7 +882,7 @@
         position: fixed;
         bottom: 20px;
         right: 20px;
-        background-color: #333;
+        background-color: #007aff;
         color: #fff;
         border: none;
         padding: 10px;
@@ -892,10 +892,15 @@
         align-items: center;
         gap: 8px;
         font-size: 16px;
-        transition: background-color 0.3s;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .close-btn:hover {
-        background-color: #555;
+        background-color: #007aff;
+        transform: scale(1.05);
+    }
+    .close-btn:active {
+        background-color: #007aff;
+        transform: scale(0.85);
     }
     .textpop h4 {
         margin-bottom: 0.3rem;
