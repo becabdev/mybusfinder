@@ -53,7 +53,7 @@
             
             --radius-sm: 12px;
             --radius-md: 16px;
-            --radius-lg: 20px;
+            --radius-lg: 36px;
             --radius-xl: 24px;
             --radius-pill: 50px;
             
@@ -232,6 +232,7 @@
             box-shadow: var(--glass-shadow-soft);
             margin-bottom: var(--spacing-md);
             transition: var(--transition-standard);
+            margin-top: 18px;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -388,7 +389,7 @@
         .refresh-fab {
             position: fixed;
             bottom: var(--spacing-lg);
-            right: var(--spacing-lg);
+            left: var(--spacing-lg);
             width: 64px;
             height: 64px;
             border: none;
@@ -1029,11 +1030,6 @@
                 <div class="state-description">Récupération des alertes en cours...</div>
             </div>
         </section>
-
-        <div class="update-info" id="last-updated">
-            <i class="fas fa-clock"></i>
-            <span>Dernière mise à jour : --/--/---- à --:--</span>
-        </div>
     </main>
 
     <button class="refresh-fab gpu-accelerated" id="refresh-button">
@@ -1133,7 +1129,6 @@
 
                 currentAlerts = sortAlertsByPriority(activeAlerts);
                 displayAlerts(currentAlerts);
-                updateLastUpdated();
                 
             } catch (error) {
                 showError(error.message);
@@ -1564,16 +1559,6 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
-
-        function updateLastUpdated() {
-            const now = new Date();
-            const formattedDate = now.toLocaleDateString('fr-FR');
-            const formattedTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-            document.getElementById('last-updated').innerHTML = `
-                <i class="fas fa-clock"></i>
-                <span>Dernière mise à jour : ${formattedDate} à ${formattedTime}</span>
-            `;
         }
 
         function initEventListeners() {
