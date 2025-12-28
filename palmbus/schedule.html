@@ -76,11 +76,6 @@
             50% { opacity: 0.5; }
         }
 
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); }
-            50% { box-shadow: 0 0 40px rgba(139, 92, 246, 0.8); }
-        }
-
         .container {
             max-width: 800px;
             margin: 0 auto;
@@ -98,23 +93,6 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s;
-        }
-
-        .header:hover::before {
-            left: 100%;
         }
 
         .back-btn {
@@ -410,7 +388,6 @@
 
         .favorite-btn:hover {
             transform: scale(1.1);
-            animation: glow 2s ease-in-out infinite;
         }
 
         .favorite-btn.active {
@@ -455,51 +432,6 @@
         .empty-state-icon {
             font-size: 48px;
             margin-bottom: 16px;
-        }
-
-        .stops-timeline {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .stops-timeline.active {
-            display: flex;
-        }
-
-        .timeline-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(30px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-lg);
-        }
-
-        .skeleton {
-            background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 75%);
-            background-size: 200% 100%;
-            animation: skeleton-loading 1.5s ease-in-out infinite;
-            border-radius: 10px;
-            height: 60px;
-            margin-bottom: 12px;
-        }
-
-        @keyframes skeleton-loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
         }
 
         @media (max-width: 768px) {
@@ -584,41 +516,36 @@
 
     <script>
         // ==================== SOURCE DES DONNÉES ====================
-        // GTFS statique: fichier ZIP local ou distant contenant routes.txt, trips.txt, stop_times.txt, stops.txt, calendar.txt, calendar_dates.txt
-        const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php'; // À remplacer par l'URL réelle
-        
-        // GTFS-Realtime: endpoint protobuf pour les données temps réel
-        const GTFS_RT_URL = 'proxy-cors/tripupdate.php'; // À remplacer par l'URL réelle
-        
-        // TTL du cache: 24 heures
+        const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
+        const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
         const CACHE_TTL = 24 * 60 * 60 * 1000;
         const CACHE_VERSION = '1.0';
         // ============================================================
 
-        // État global
+        // État global optimisé
         const state = {
-            routes: [],
-            stops: [],
+            routes: {},
+            stops: {},
             trips: {},
             stopTimes: {},
-            calendar: [],
-            calendarDates: [],
+            calendar: {},
+            calendarDates: {},
             viewHistory: [],
             currentRoute: null,
             currentStop: null,
             currentDestination: null,
             favorites: [],
             coreLoaded: false,
-            realtimeInterval: null
+            realtimeInterval: null,
+            loadedRoutes: new Set()
         };
 
-        // Cache
+        // Cache optimisé
         const cache = {
-            serviceIds: {},
-            tripsByRoute: {}
+            serviceIds: new Map(),
+            scheduleData: new Map()
         };
 
-        // Initialisation
         document.addEventListener('DOMContentLoaded', init);
 
         async function init() {
@@ -627,15 +554,12 @@
             showLines();
         }
 
-        // ==================== CHARGEMENT GTFS ====================
+        // ==================== CHARGEMENT GTFS OPTIMISÉ ====================
         async function loadGtfsCore() {
             try {
                 const cached = getCachedData('gtfs_core');
                 if (cached) {
-                    state.routes = cached.routes;
-                    state.stops = cached.stops;
-                    state.calendar = cached.calendar;
-                    state.calendarDates = cached.calendarDates;
+                    Object.assign(state, cached);
                     state.coreLoaded = true;
                     return;
                 }
@@ -644,12 +568,29 @@
                 const blob = await response.blob();
                 const zip = await JSZip.loadAsync(blob);
 
-                state.routes = await parseCSV(await zip.file('routes.txt').async('text'));
-                state.stops = await parseCSV(await zip.file('stops.txt').async('text'));
-                state.calendar = await parseCSV(await zip.file('calendar.txt').async('text'));
+                const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
+                    zip.file('routes.txt').async('text'),
+                    zip.file('stops.txt').async('text'),
+                    zip.file('calendar.txt').async('text'),
+                    zip.file('calendar_dates.txt') ? zip.file('calendar_dates.txt').async('text') : Promise.resolve('')
+                ]);
+
+                state.routes = parseCSVToObject(routesText, 'route_id');
+                state.stops = parseCSVToObject(stopsText, 'stop_id');
+                state.calendar = parseCSVToObject(calendarText, 'service_id');
                 
-                if (zip.file('calendar_dates.txt')) {
-                    state.calendarDates = await parseCSV(await zip.file('calendar_dates.txt').async('text'));
+                if (calendarDatesText) {
+                    const dates = parseCSV(calendarDatesText);
+                    dates.forEach(cd => {
+                        if (!state.calendarDates[cd.date]) {
+                            state.calendarDates[cd.date] = { added: [], removed: [] };
+                        }
+                        if (cd.exception_type === '1') {
+                            state.calendarDates[cd.date].added.push(cd.service_id);
+                        } else if (cd.exception_type === '2') {
+                            state.calendarDates[cd.date].removed.push(cd.service_id);
+                        }
+                    });
                 }
 
                 setCachedData('gtfs_core', {
@@ -662,18 +603,20 @@
                 state.coreLoaded = true;
             } catch (error) {
                 console.error('Erreur chargement GTFS:', error);
-                document.getElementById('loading').textContent = 'Erreur de chargement des données';
+                document.getElementById('loading').textContent = 'Erreur de chargement';
             }
         }
 
         async function loadTripsAndStopTimesForRoute(routeId) {
-            if (state.trips[routeId]) return;
+            if (state.loadedRoutes.has(routeId)) return;
 
             const cacheKey = `route_${routeId}`;
             const cached = getCachedData(cacheKey);
+            
             if (cached) {
                 state.trips[routeId] = cached.trips;
                 state.stopTimes[routeId] = cached.stopTimes;
+                state.loadedRoutes.add(routeId);
                 return;
             }
 
@@ -682,27 +625,51 @@
                 const blob = await response.blob();
                 const zip = await JSZip.loadAsync(blob);
 
-                const tripsData = await parseCSV(await zip.file('trips.txt').async('text'));
-                const stopTimesData = await parseCSV(await zip.file('stop_times.txt').async('text'));
+                const [tripsText, stopTimesText] = await Promise.all([
+                    zip.file('trips.txt').async('text'),
+                    zip.file('stop_times.txt').async('text')
+                ]);
 
-                const routeTrips = tripsData.filter(t => t.route_id === routeId);
+                const allTrips = parseCSV(tripsText);
+                const routeTrips = allTrips.filter(t => t.route_id === routeId);
                 const tripIds = new Set(routeTrips.map(t => t.trip_id));
-                const routeStopTimes = stopTimesData.filter(st => tripIds.has(st.trip_id));
+
+                const allStopTimes = parseCSV(stopTimesText);
+                const stopTimesByTrip = {};
+                
+                allStopTimes.forEach(st => {
+                    if (tripIds.has(st.trip_id)) {
+                        if (!stopTimesByTrip[st.trip_id]) {
+                            stopTimesByTrip[st.trip_id] = [];
+                        }
+                        stopTimesByTrip[st.trip_id].push({
+                            stop_id: st.stop_id,
+                            arrival_time: formatTimeString(st.arrival_time),
+                            departure_time: formatTimeString(st.departure_time || st.arrival_time),
+                            stop_sequence: parseInt(st.stop_sequence, 10)
+                        });
+                    }
+                });
+
+                Object.values(stopTimesByTrip).forEach(times => {
+                    times.sort((a, b) => a.stop_sequence - b.stop_sequence);
+                });
 
                 state.trips[routeId] = routeTrips;
-                state.stopTimes[routeId] = routeStopTimes;
+                state.stopTimes[routeId] = stopTimesByTrip;
+                state.loadedRoutes.add(routeId);
 
                 setCachedData(cacheKey, {
                     trips: routeTrips,
-                    stopTimes: routeStopTimes
+                    stopTimes: stopTimesByTrip
                 });
             } catch (error) {
-                console.error('Erreur chargement trips:', error);
+                console.error('Erreur chargement route:', error);
             }
         }
 
         function parseCSV(text) {
-            const lines = text.trim().split('\n');
+            const lines = text.trim().split(/\r?\n/);
             const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
             return lines.slice(1).map(line => {
                 const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
@@ -710,6 +677,26 @@
                 headers.forEach((h, i) => obj[h] = values[i] || '');
                 return obj;
             });
+        }
+
+        function parseCSVToObject(text, keyField) {
+            const items = parseCSV(text);
+            const obj = {};
+            items.forEach(item => {
+                if (item[keyField]) {
+                    obj[item[keyField]] = item;
+                }
+            });
+            return obj;
+        }
+
+        function formatTimeString(timeStr) {
+            if (!timeStr) return '00h00';
+            const parts = timeStr.split(':');
+            let hour = parseInt(parts[0], 10);
+            const minute = parts[1] || '00';
+            if (hour >= 24) hour -= 24;
+            return `${hour}h${minute}`;
         }
 
         // ==================== CACHE ====================
@@ -751,7 +738,12 @@
         }
 
         function addToFavorites(routeId, stopId, destinationId) {
-            const fav = { routeId, stopId, destinationId };
+            const fav = { 
+                routeId, 
+                stopId, 
+                destinationId,
+                id: `${routeId}-${stopId}-${destinationId}`
+            };
             if (!isFavorite(routeId, stopId, destinationId)) {
                 state.favorites.push(fav);
                 saveFavorites();
@@ -783,7 +775,47 @@
             }
         }
 
+        async function updateFavoritesSection() {
+            const section = document.getElementById('favorites-section');
+            const list = document.getElementById('favorites-list');
+
+            if (state.favorites.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            list.innerHTML = '';
+
+            for (const fav of state.favorites) {
+                await loadTripsAndStopTimesForRoute(fav.routeId);
+
+                const route = state.routes[fav.routeId];
+                const stop = state.stops[fav.stopId];
+                const dest = state.stops[fav.destinationId];
+
+                if (!route || !stop || !dest) continue;
+
+                const item = document.createElement('div');
+                item.className = 'favorite-item';
+                item.innerHTML = `
+                    <div class="favorite-info">
+                        <div class="favorite-route">${route.route_short_name}</div>
+                        <div class="favorite-details">${stop.stop_name} → ${dest.stop_name}</div>
+                    </div>
+                    <div class="favorite-times">Chargement...</div>
+                `;
+                
+                item.onclick = () => showSchedule(fav.routeId, fav.stopId, fav.destinationId);
+                list.appendChild(item);
+            }
+        }
+
         // ==================== VUES ====================
+        function hideAllViews() {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        }
+
         function showLines() {
             hideAllViews();
             document.getElementById('loading').style.display = 'none';
@@ -796,7 +828,7 @@
             const linesList = document.getElementById('lines-list');
             linesList.innerHTML = '';
 
-            state.routes.forEach(route => {
+            Object.entries(state.routes).forEach(([routeId, route]) => {
                 const item = document.createElement('div');
                 item.className = 'bus-item';
                 item.innerHTML = `
@@ -805,17 +837,11 @@
                     </span>
                     <span class="bus-name">${route.route_long_name}</span>
                 `;
-                item.onclick = () => showDestinations(route.route_id);
+                item.onclick = () => showDestinations(routeId);
                 linesList.appendChild(item);
             });
 
             updateFavoritesSection();
-            if (state.realtimeInterval) {
-                clearInterval(state.realtimeInterval);
-                state.realtimeInterval = setInterval(updateFavoritesSection, 30000);
-            } else {
-                state.realtimeInterval = setInterval(updateFavoritesSection, 30000);
-            }
         }
 
         async function showDestinations(routeId) {
@@ -826,7 +852,7 @@
             document.getElementById('destinations-view').classList.add('active');
             document.getElementById('back-btn').style.display = 'block';
             
-            const route = state.routes.find(r => r.route_id === routeId);
+            const route = state.routes[routeId];
             document.getElementById('header-title').textContent = route.route_short_name;
             document.getElementById('header-subtitle').textContent = route.route_long_name;
             
@@ -897,8 +923,8 @@
             document.getElementById('back-btn').style.display = 'block';
             state.viewHistory.push('stops');
 
-            const route = state.routes.find(r => r.route_id === routeId);
-            const stop = state.stops.find(s => s.stop_id === stopId);
+            const route = state.routes[routeId];
+            const stop = state.stops[stopId];
             document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
 
             updateFavoriteButton();
@@ -908,7 +934,6 @@
             document.getElementById('date-picker').value = today;
             
             updateScheduleByDate(routeId, stopId, destinationId, today);
-            scrollToTop();
         }
 
         function setupTabHandlers() {
@@ -962,19 +987,30 @@
         function displaySchedule(validTrips, stopId, destinationId, container) {
             container.innerHTML = '';
 
-            const tripIds = validTrips.map(t => t.trip_id);
-            const stopTimesForStop = state.stopTimes[state.currentRoute]
-                .filter(st => st.stop_id === stopId && tripIds.includes(st.trip_id));
+            const schedule = [];
+            const stopTimesByRoute = state.stopTimes[state.currentRoute];
 
-            if (stopTimesForStop.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette date</div></div>';
+            validTrips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops) return;
+
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+                if (destIndex === -1) return;
+
+                const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
+                if (stopIndex !== -1 && stopIndex < destIndex) {
+                    schedule.push(tripStops[stopIndex].arrival_time);
+                }
+            });
+
+            if (schedule.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible</div></div>';
                 return;
             }
 
             const timesByHour = {};
-            stopTimesForStop.forEach(st => {
-                const time = normalizeTime(st.departure_time);
-                const [hour, minute] = time.split(':');
+            schedule.forEach(time => {
+                const [hour, minute] = time.split('h');
                 if (!timesByHour[hour]) timesByHour[hour] = [];
                 timesByHour[hour].push(minute);
             });
@@ -991,7 +1027,8 @@
                 const times = document.createElement('div');
                 times.className = 'schedule-times';
                 
-                timesByHour[hour].sort((a, b) => parseInt(a) - parseInt(b)).forEach(minute => {
+                const uniqueMinutes = [...new Set(timesByHour[hour])].sort((a, b) => parseInt(a) - parseInt(b));
+                uniqueMinutes.forEach(minute => {
                     const timeEl = document.createElement('div');
                     timeEl.className = 'schedule-time';
                     timeEl.textContent = minute;
@@ -1005,55 +1042,47 @@
 
         function getActiveServiceIds(dayOfWeek, gtfsDate) {
             const cacheKey = `${dayOfWeek}_${gtfsDate}`;
-            if (cache.serviceIds[cacheKey]) return cache.serviceIds[cacheKey];
+            if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
 
             const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             const dayName = dayNames[dayOfWeek];
 
-            let serviceIds = state.calendar
-                .filter(cal => {
+            let serviceIds = Object.entries(state.calendar)
+                .filter(([_, cal]) => {
                     if (cal[dayName] !== '1') return false;
                     if (gtfsDate < cal.start_date || gtfsDate > cal.end_date) return false;
                     return true;
                 })
-                .map(cal => cal.service_id);
+                .map(([id]) => id);
 
-            state.calendarDates.forEach(cd => {
-                if (cd.date === gtfsDate) {
-                    if (cd.exception_type === '1') {
-                        if (!serviceIds.includes(cd.service_id)) {
-                            serviceIds.push(cd.service_id);
-                        }
-                    } else if (cd.exception_type === '2') {
-                        serviceIds = serviceIds.filter(id => id !== cd.service_id);
-                    }
-                }
-            });
+            if (state.calendarDates[gtfsDate]) {
+                state.calendarDates[gtfsDate].added.forEach(id => {
+                    if (!serviceIds.includes(id)) serviceIds.push(id);
+                });
+                state.calendarDates[gtfsDate].removed.forEach(id => {
+                    serviceIds = serviceIds.filter(sid => sid !== id);
+                });
+            }
 
-            cache.serviceIds[cacheKey] = serviceIds;
+            cache.serviceIds.set(cacheKey, serviceIds);
             return serviceIds;
-        }
-
-        function normalizeTime(time) {
-            let [hour, minute, second] = time.split(':').map(Number);
-            if (hour >= 24) hour -= 24;
-            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         }
 
         function getDestinations(routeId) {
             const trips = state.trips[routeId];
+            const stopTimesByRoute = state.stopTimes[routeId];
             const destinations = new Map();
 
             trips.forEach(trip => {
-                const tripStopTimes = state.stopTimes[routeId]
-                    .filter(st => st.trip_id === trip.trip_id)
-                    .sort((a, b) => parseInt(a.stop_sequence) - parseInt(b.stop_sequence));
-
-                if (tripStopTimes.length > 0) {
-                    const lastStop = tripStopTimes[tripStopTimes.length - 1];
-                    const stop = state.stops.find(s => s.stop_id === lastStop.stop_id);
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (tripStops && tripStops.length > 0) {
+                    const lastStop = tripStops[tripStops.length - 1];
+                    const stop = state.stops[lastStop.stop_id];
                     if (stop && !destinations.has(stop.stop_id)) {
-                        destinations.set(stop.stop_id, { id: stop.stop_id, name: stop.stop_name });
+                        destinations.set(stop.stop_id, { 
+                            id: stop.stop_id, 
+                            name: stop.stop_name 
+                        });
                     }
                 }
             });
@@ -1063,18 +1092,18 @@
 
         function getStopsForDestination(routeId, destinationId) {
             const trips = state.trips[routeId];
+            const stopTimesByRoute = state.stopTimes[routeId];
             const stopsMap = new Map();
 
             trips.forEach(trip => {
-                const tripStopTimes = state.stopTimes[routeId]
-                    .filter(st => st.trip_id === trip.trip_id)
-                    .sort((a, b) => parseInt(a.stop_sequence) - parseInt(b.stop_sequence));
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops) return;
 
-                const destIndex = tripStopTimes.findIndex(st => st.stop_id === destinationId);
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
                 if (destIndex === -1) return;
 
-                tripStopTimes.slice(0, destIndex + 1).forEach(st => {
-                    const stop = state.stops.find(s => s.stop_id === st.stop_id);
+                tripStops.slice(0, destIndex + 1).forEach(st => {
+                    const stop = state.stops[st.stop_id];
                     if (stop && !stopsMap.has(stop.stop_id)) {
                         stopsMap.set(stop.stop_id, stop);
                     }
@@ -1111,15 +1140,14 @@
             message.entity.forEach(entity => {
                 if (entity.tripUpdate) {
                     const trip = entity.tripUpdate;
-                    if (trip.trip.routeId !== routeId) return;
-
+                    
                     trip.stopTimeUpdate.forEach(update => {
                         if (update.stopId === stopId) {
                             const arrivalTime = update.arrival?.time || update.departure?.time;
                             if (arrivalTime && arrivalTime > now) {
                                 arrivals.push({
                                     time: arrivalTime,
-                                    headsign: trip.trip.tripHeadsign || 'Destination inconnue'
+                                    headsign: trip.trip.tripHeadsign || 'Destination'
                                 });
                             }
                         }
@@ -1154,77 +1182,7 @@
             });
         }
 
-        function displayRealtimeDataInFavorite(arrivals, container) {
-            if (arrivals.length === 0) {
-                container.textContent = 'Aucune arrivée';
-                return;
-            }
-
-            const times = arrivals.slice(0, 2).map(a => {
-                const date = new Date(a.time * 1000);
-                return `${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
-            });
-
-            container.textContent = times.join(' • ');
-        }
-
-        async function updateFavoritesSection() {
-            const section = document.getElementById('favorites-section');
-            const list = document.getElementById('favorites-list');
-
-            if (state.favorites.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-
-            section.style.display = 'block';
-            list.innerHTML = '';
-
-            for (const fav of state.favorites) {
-                await loadTripsAndStopTimesForRoute(fav.routeId);
-
-                const route = state.routes.find(r => r.route_id === fav.routeId);
-                const stop = state.stops.find(s => s.stop_id === fav.stopId);
-                const dest = state.stops.find(s => s.stop_id === fav.destinationId);
-
-                const item = document.createElement('div');
-                item.className = 'favorite-item';
-                item.innerHTML = `
-                    <div class="favorite-info">
-                        <div class="favorite-route">${route.route_short_name}</div>
-                        <div class="favorite-details">${stop.stop_name} → ${dest.stop_name}</div>
-                    </div>
-                    <div class="favorite-times">--</div>
-                `;
-                
-                item.onclick = () => showSchedule(fav.routeId, fav.stopId, fav.destinationId);
-                list.appendChild(item);
-
-                loadFavoriteRealtime(fav, item.querySelector('.favorite-times'));
-            }
-        }
-
-        async function loadFavoriteRealtime(fav, container) {
-            try {
-                const response = await fetch(GTFS_RT_URL);
-                const buffer = await response.arrayBuffer();
-                
-                const root = await protobuf.load('https://developers.google.com/static/transit/gtfs-realtime/gtfs-realtime.proto');
-                const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
-                const message = FeedMessage.decode(new Uint8Array(buffer));
-
-                const arrivals = processRealtimeDataForStop(message, fav.routeId, fav.stopId);
-                displayRealtimeDataInFavorite(arrivals, container);
-            } catch (error) {
-                container.textContent = 'N/A';
-            }
-        }
-
         // ==================== NAVIGATION ====================
-        function hideAllViews() {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        }
-
         function goBack() {
             const previous = state.viewHistory.pop();
             
@@ -1244,10 +1202,6 @@
                     showStops(state.currentRoute, state.currentDestination);
                     break;
             }
-        }
-
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         // ==================== EVENT LISTENERS ====================
