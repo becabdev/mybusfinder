@@ -630,7 +630,6 @@ h1, h2, h3, h4 {
     color: var(--text-primary);
     cursor: pointer;
     appearance: none;
-    transition: var(--transition);
     box-shadow: var(--shadow-glass);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -641,14 +640,6 @@ h1, h2, h3, h4 {
     background: var(--glass-surface-hover);
     box-shadow: var(--shadow-glass-hover);
     transform: translateY(-1px);
-}
-
-#destination-select:focus {
-    outline: none;
-    border-color: var(--accent-purple);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 0 3px rgba(139, 92, 246, 0.3);
 }
 
 .alerts-button {
@@ -1234,19 +1225,6 @@ select:focus {
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     transition: var(--transition);
     overflow: hidden;
-}
-
-.textpop::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(from 0deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-    animation: rotate 6s linear infinite;
-    opacity: 0;
-    transition: var(--transition);
 }
 
 @keyframes rotate {
