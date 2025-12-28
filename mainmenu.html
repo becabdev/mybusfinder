@@ -63,10 +63,6 @@
                 --page-gradient: radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.15), transparent 60%),
                                  radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.12), transparent 60%);
             }
-
-            .logo-icon img {
-                filter: invert(0) drop-shadow(0 2px 8px var(--accent-glow));
-            }
         }
 
         /* ===== RESET & BASE ===== */
@@ -162,6 +158,12 @@
             height: 300%;
             width: auto;
             filter: invert(1) drop-shadow(0 2px 8px var(--accent-glow));
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .logo-icon img {
+                filter: invert(0) drop-shadow(0 2px 8px var(--accent-glow));
+            }
         }
 
         .header-action {
