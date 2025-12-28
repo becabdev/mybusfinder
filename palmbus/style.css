@@ -880,9 +880,14 @@
     }
     .close-btn {
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #007aff;
+        bottom: 24px;
+        right: 24px;
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #007AFF 0%, #0051D5 100%);
+        box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4),
+        0 4px 12px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.3);
         color: #fff;
         border: none;
         padding: 10px;
@@ -896,7 +901,6 @@
     }
 
     .close-btn:active {
-        background-color: #007aff;
         transform: scale(0.3);
     }
     .textpop h4 {
