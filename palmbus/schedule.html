@@ -572,8 +572,8 @@
                 const blob = await response.blob();
                 const zip = await JSZip.loadAsync(blob);
 
-                // Vérification des fichiers requis
-                const requiredFiles = ['routes.txt', 'stops.txt', 'calendar.txt', 'trips.txt', 'stop_times.txt'];
+                // Vérification des fichiers requis (calendar.txt optionnel si calendar_dates.txt existe)
+                const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
                 const missingFiles = requiredFiles.filter(f => !zip.file(f));
                 
                 if (missingFiles.length > 0) {
@@ -586,17 +586,27 @@
                 const calendarFile = zip.file('calendar.txt');
                 const calendarDatesFile = zip.file('calendar_dates.txt');
 
+                // Vérifier qu'au moins calendar.txt ou calendar_dates.txt existe
+                if (!calendarFile && !calendarDatesFile) {
+                    throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
+                }
+
                 const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
                     routesFile ? routesFile.async('text') : Promise.reject('routes.txt manquant'),
                     stopsFile ? stopsFile.async('text') : Promise.reject('stops.txt manquant'),
-                    calendarFile ? calendarFile.async('text') : Promise.reject('calendar.txt manquant'),
+                    calendarFile ? calendarFile.async('text') : Promise.resolve(''),
                     calendarDatesFile ? calendarDatesFile.async('text') : Promise.resolve('')
                 ]);
 
                 state.routes = parseCSVToObject(routesText, 'route_id');
                 state.stops = parseCSVToObject(stopsText, 'stop_id');
-                state.calendar = parseCSVToObject(calendarText, 'service_id');
                 
+                // Charger calendar.txt si présent
+                if (calendarText) {
+                    state.calendar = parseCSVToObject(calendarText, 'service_id');
+                }
+                
+                // Charger calendar_dates.txt si présent
                 if (calendarDatesText) {
                     const dates = parseCSV(calendarDatesText);
                     dates.forEach(cd => {
@@ -608,6 +618,31 @@
                         } else if (cd.exception_type === '2') {
                             state.calendarDates[cd.date].removed.push(cd.service_id);
                         }
+                    });
+                }
+
+                // Si calendar.txt manque, créer des services par défaut basés sur calendar_dates.txt
+                if (!calendarText && calendarDatesText) {
+                    console.warn('calendar.txt manquant, utilisation de calendar_dates.txt uniquement');
+                    const serviceIds = new Set();
+                    Object.values(state.calendarDates).forEach(dateInfo => {
+                        dateInfo.added.forEach(id => serviceIds.add(id));
+                    });
+                    
+                    // Créer des entrées calendar par défaut pour tous les services
+                    serviceIds.forEach(serviceId => {
+                        state.calendar[serviceId] = {
+                            service_id: serviceId,
+                            monday: '1',
+                            tuesday: '1',
+                            wednesday: '1',
+                            thursday: '1',
+                            friday: '1',
+                            saturday: '1',
+                            sunday: '1',
+                            start_date: '20200101',
+                            end_date: '20991231'
+                        };
                     });
                 }
 
