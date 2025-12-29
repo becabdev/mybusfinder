@@ -2,219 +2,115 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MBS - Powered by MyBusFinder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MBS - My Bus Schedule</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <style>
-        /* ===== VARIABLES LIQUID GLASS ===== */
         :root {
-            --primary-purple: #7c3aed;
-            --primary-purple-light: #8b5cf6;
-            --primary-purple-dark: #5b21b6;
+            --glass-bg-light: rgba(255, 255, 255, 0.72);
+            --glass-bg-light-strong: rgba(255, 255, 255, 0.88);
+            --glass-bg-dark: rgba(28, 28, 30, 0.78);
+            --glass-bg-dark-strong: rgba(28, 28, 30, 0.9);
             
-            --glass-bg: rgba(255, 255, 255, 0.72);
-            --glass-bg-heavy: rgba(255, 255, 255, 0.85);
-            --glass-bg-light: rgba(255, 255, 255, 0.6);
-            --glass-border: rgba(0, 0, 0, 0.08);
-            --glass-border-highlight: rgba(255, 255, 255, 0.3);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.12);
-            --glass-blur: blur(24px);
-            --glass-blur-heavy: blur(40px);
+            --glass-blur-mobile: blur(20px);
+            --glass-blur-tablet: blur(32px);
+            --glass-blur-strong: blur(40px);
             
-            --text-primary: rgba(0, 0, 0, 0.9);
-            --text-secondary: rgba(0, 0, 0, 0.65);
-            --text-tertiary: rgba(0, 0, 0, 0.45);
+            --glass-border-light: rgba(255, 255, 255, 0.18);
+            --glass-border-dark: rgba(0, 0, 0, 0.08);
+            --glass-border-highlight: rgba(255, 255, 255, 0.35);
             
-            --accent-gradient: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(139, 92, 246, 0.1));
-            --accent-glow: rgba(124, 58, 237, 0.15);
+            --glass-shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.08), 
+                                  0 2px 8px rgba(0, 0, 0, 0.04),
+                                  inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            --glass-shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.12), 
+                                   0 4px 12px rgba(0, 0, 0, 0.08),
+                                   inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            --glass-shadow-pressed: 0 4px 16px rgba(0, 0, 0, 0.08),
+                                     inset 0 2px 6px rgba(0, 0, 0, 0.1);
             
-            --page-bg: #f5f5f7;
-            --page-gradient: radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.08), transparent 60%),
-                             radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.06), transparent 60%);
+            --accent-blue: #007AFF;
+            --accent-blue-glow: rgba(0, 122, 255, 0.3);
+            --accent-purple: #8b5cf6;
+            --accent-red: #FF3B30;
+            --accent-orange: #FF9500;
+            --accent-yellow: #FFCC00;
+            --accent-green: #34C759;
+            --accent-gray: #8E8E93;
+            
+            --text-primary: rgba(0, 0, 0, 0.92);
+            --text-secondary: rgba(0, 0, 0, 0.68);
+            --text-tertiary: rgba(0, 0, 0, 0.48);
+            
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+            --radius-pill: 50px;
+            
+            --transition-smooth: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --glass-bg: rgba(28, 28, 30, 0.78);
-                --glass-bg-heavy: rgba(28, 28, 30, 0.9);
-                --glass-bg-light: rgba(28, 28, 30, 0.65);
-                --glass-border: rgba(255, 255, 255, 0.12);
-                --glass-border-highlight: rgba(255, 255, 255, 0.25);
-                --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-                --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.4);
-                
                 --text-primary: rgba(255, 255, 255, 0.95);
-                --text-secondary: rgba(255, 255, 255, 0.7);
-                --text-tertiary: rgba(255, 255, 255, 0.5);
-                
-                --accent-gradient: linear-gradient(135deg, rgba(124, 58, 237, 0.3), rgba(139, 92, 246, 0.15));
-                --accent-glow: rgba(124, 58, 237, 0.25);
-                
-                --page-bg: #0a0a0f;
-                --page-gradient: radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.15), transparent 60%),
-                                 radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.12), transparent 60%);
+                --text-secondary: rgba(255, 255, 255, 0.72);
+                --text-tertiary: rgba(255, 255, 255, 0.52);
             }
         }
 
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--page-bg);
+            font-family: 'League Spartan', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, 
+                rgba(0, 122, 255, 0.08) 0%, 
+                rgba(168, 85, 247, 0.05) 50%,
+                rgba(255, 149, 0, 0.06) 100%);
+            background-attachment: fixed;
             color: var(--text-primary);
-            min-height: 100vh;
+            line-height: 1.5;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            position: relative;
+            min-height: 100vh;
         }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--page-gradient);
-            z-index: -1;
-            animation: breathe 15s ease-in-out infinite;
+        .gpu-accelerated {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            perspective: 1000px;
         }
 
-        @keyframes breathe {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(1.05); }
-        }
-
-        input, textarea, select {
-            font-size: 16px;
-        }
-
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 12px 20px;
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .header.scrolled {
-            background: var(--glass-bg-heavy);
-            backdrop-filter: var(--glass-blur-heavy) saturate(200%);
-            -webkit-backdrop-filter: var(--glass-blur-heavy) saturate(200%);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), inset 0 1px 0 var(--glass-border-highlight);
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .back-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: var(--glass-bg-light);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            color: var(--text-primary);
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-border-highlight);
-            margin-right: 12px;
-        }
-
-        .back-btn.show {
-            display: flex;
-        }
-
-        .back-btn:active {
-            transform: scale(0.92) translateY(1px);
-        }
-
-        @media (hover: hover) {
-            .back-btn:hover {
-                background: var(--primary-purple);
-                color: white;
-                transform: translateY(-2px) scale(1.05);
-                box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-                border-color: var(--primary-purple-light);
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
             }
         }
 
-        .header-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: -0.02em;
-        }
-
-        .header-subtitle {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .view {
-            display: none;
-            animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .view.active {
-            display: block;
-        }
-
-        @keyframes slideUp {
+        @keyframes fadeInUp {
             from {
                 opacity: 0;
                 transform: translateY(30px);
@@ -225,40 +121,208 @@
             }
         }
 
-        .section-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-            margin: 24px 0 16px;
-            color: var(--text-primary);
-            letter-spacing: -0.02em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        @keyframes cardAppear {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 20px;
-            background: linear-gradient(180deg, var(--primary-purple), var(--primary-purple-light));
-            border-radius: 2px;
-            box-shadow: 0 0 8px var(--accent-glow);
+        .header {
+            position: sticky;
+            top: var(--spacing-md);
+            z-index: 1000;
+            margin: var(--spacing-md);
+            animation: slideDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .header-glass {
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-lg);
+            box-shadow: var(--glass-shadow-soft);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            transition: var(--transition-standard);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header-glass {
+                background: var(--glass-bg-dark);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+        }
+
+        .header.scrolled .header-glass {
+            background: var(--glass-bg-light-strong);
+            backdrop-filter: var(--glass-blur-strong) saturate(200%);
+            -webkit-backdrop-filter: var(--glass-blur-strong) saturate(200%);
+            box-shadow: var(--glass-shadow-hover);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header.scrolled .header-glass {
+                background: var(--glass-bg-dark-strong);
+            }
+        }
+
+        .back-btn {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.4) 0%, 
+                rgba(255, 255, 255, 0.25) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            border-radius: var(--radius-sm);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            font-size: 20px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            flex-shrink: 0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .back-btn {
+                background: linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.15) 0%, 
+                    rgba(255, 255, 255, 0.08) 100%);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+        }
+
+        .back-btn:active {
+            transform: scale(0.92);
+            box-shadow: var(--glass-shadow-pressed);
+        }
+
+        .header-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #0051D5 100%);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            flex-shrink: 0;
+            transition: var(--transition-smooth);
+        }
+
+        .header-icon:active {
+            transform: scale(0.92);
+        }
+
+        .header-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-text h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            letter-spacing: -0.5px;
+        }
+
+        .header-text p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .main-container {
+            padding: 0 var(--spacing-md) var(--spacing-xl);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: var(--spacing-xl);
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(0, 122, 255, 0.2);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+            margin: 0 auto var(--spacing-md);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .state-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: var(--spacing-xs);
+            letter-spacing: -0.3px;
+        }
+
+        .state-description {
+            color: var(--text-secondary);
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .view {
+            display: none;
+            animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s backwards;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin: var(--spacing-lg) 0 var(--spacing-md);
+            padding-left: 5px;
+            letter-spacing: -0.3px;
         }
 
         .bus-item, .favorite-item, .destination-item, .stop-item {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border-radius: 16px;
-            border: 1px solid var(--glass-border);
-            padding: 18px;
-            margin-bottom: 12px;
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
             cursor: pointer;
+            transition: var(--transition-smooth);
+            box-shadow: var(--glass-shadow-soft);
             position: relative;
             overflow: hidden;
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateZ(0);
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            animation: cardAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .bus-item, .favorite-item, .destination-item, .stop-item {
+                background: var(--glass-bg-dark);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
         }
 
         .bus-item::before, .destination-item::before, .stop-item::before {
@@ -266,101 +330,95 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--accent-gradient);
+            right: 0;
+            height: 50%;
+            background: linear-gradient(to bottom,
+                rgba(255, 255, 255, 0.15) 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                rgba(255, 255, 255, 0) 100%);
+            pointer-events: none;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: var(--transition-standard);
         }
 
         .bus-item:active, .destination-item:active, .stop-item:active {
             transform: scale(0.97);
+            box-shadow: var(--glass-shadow-pressed);
         }
 
         .bus-item:active::before, .destination-item:active::before, .stop-item:active::before {
             opacity: 1;
         }
 
-        @media (hover: hover) {
-            .bus-item:hover, .destination-item:hover, .stop-item:hover {
-                transform: translateY(-2px);
-                border-color: var(--primary-purple-light);
-                box-shadow: 0 16px 48px rgba(124, 58, 237, 0.2), 
-                            0 8px 24px rgba(0, 0, 0, 0.12),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
-            }
-
-            .bus-item:hover::before, .destination-item:hover::before, .stop-item:hover::before {
-                opacity: 1;
-            }
-        }
-
         .bus-number {
-            display: inline-block;
-            padding: 8px 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            height: 36px;
+            padding: 0 14px;
             border-radius: 10px;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 18px;
             margin-right: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            position: relative;
-            z-index: 2;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .bus-name {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: var(--text-primary);
-            position: relative;
-            z-index: 2;
+            font-size: 16px;
+            font-weight: 600;
+            vertical-align: middle;
         }
 
         .favorite-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--glass-bg);
+            background: linear-gradient(135deg, 
+                rgba(0, 122, 255, 0.1) 0%, 
+                rgba(168, 85, 247, 0.08) 100%);
         }
 
         .favorite-info {
             flex: 1;
-            position: relative;
-            z-index: 2;
+            min-width: 0;
         }
 
         .favorite-route {
-            font-weight: 600;
-            font-size: 1rem;
+            font-weight: 700;
+            font-size: 16px;
             margin-bottom: 4px;
-            color: var(--text-primary);
         }
 
         .favorite-details {
-            font-size: 0.8rem;
+            font-size: 13px;
             color: var(--text-secondary);
+            font-weight: 500;
         }
 
         .favorite-times {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--primary-purple-light);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-blue);
             min-width: 100px;
             text-align: right;
-            position: relative;
-            z-index: 2;
         }
 
         .tabs {
             display: flex;
             gap: 8px;
-            background: var(--glass-bg-light);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(0, 0, 0, 0.05);
             padding: 6px;
             border-radius: 14px;
-            margin-bottom: 20px;
+            margin-bottom: var(--spacing-lg);
             position: relative;
-            border: 1px solid var(--glass-border);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tabs {
+                background: rgba(255, 255, 255, 0.08);
+            }
         }
 
         .tab {
@@ -371,11 +429,12 @@
             color: var(--text-secondary);
             border-radius: 10px;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: var(--transition-standard);
             font-weight: 600;
-            font-size: 0.85rem;
+            font-size: 14px;
             position: relative;
             z-index: 1;
+            font-family: 'League Spartan', sans-serif;
         }
 
         .tab.active {
@@ -387,42 +446,63 @@
             top: 6px;
             left: 6px;
             height: calc(100% - 12px);
-            background: var(--glass-bg-heavy);
+            background: var(--glass-bg-light);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--glass-border-light);
             border-radius: 10px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--glass-shadow);
+            transition: var(--transition-smooth);
+            box-shadow: var(--glass-shadow-soft);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab-indicator {
+                background: var(--glass-bg-dark);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
         }
 
         .date-picker, .destination-select {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            border: 2px solid transparent;
+            border-radius: var(--radius-sm);
             padding: 14px 16px;
             color: var(--text-primary);
             width: 100%;
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            font-weight: 500;
-            margin-bottom: 20px;
+            font-family: 'League Spartan', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
+            transition: var(--transition-standard);
+            box-shadow: var(--glass-shadow-soft);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .date-picker, .destination-select {
+                background: var(--glass-bg-dark);
+            }
         }
 
         .date-picker:focus, .destination-select:focus {
             outline: none;
-            border-color: var(--primary-purple);
-            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 4px var(--accent-blue-glow);
+            transform: scale(1.01);
         }
 
         .destination-select option {
-            background: var(--page-bg);
-            color: var(--text-primary);
+            background: white;
+            color: black;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .destination-select option {
+                background: #1c1c1e;
+                color: white;
+            }
         }
 
         .schedule-content {
@@ -434,15 +514,16 @@
         }
 
         .schedule-group {
-            margin-bottom: 28px;
+            margin-bottom: var(--spacing-lg);
         }
 
         .schedule-hour {
-            font-size: 1.3rem;
+            font-size: 20px;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: var(--spacing-sm);
             padding-left: 5px;
-            color: var(--primary-purple-light);
+            color: var(--accent-blue);
+            letter-spacing: -0.3px;
         }
 
         .schedule-times {
@@ -452,255 +533,213 @@
         }
 
         .schedule-time {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border: 1px solid var(--glass-border);
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            border: 1px solid var(--glass-border-light);
             border-radius: 10px;
-            padding: 12px 18px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--glass-shadow);
+            padding: 10px 16px;
+            font-weight: 700;
+            font-size: 15px;
+            transition: var(--transition-smooth);
+            box-shadow: var(--glass-shadow-soft);
+            cursor: pointer;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .schedule-time {
+                background: var(--glass-bg-dark);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
         }
 
         .schedule-time:active {
-            transform: translateY(-2px) scale(0.98);
-            background: var(--accent-gradient);
-        }
-
-        @media (hover: hover) {
-            .schedule-time:hover {
-                background: rgba(124, 58, 237, 0.2);
-                transform: translateY(-2px);
-                box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
-            }
+            transform: scale(0.94);
+            box-shadow: var(--glass-shadow-pressed);
         }
 
         .favorite-btn {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
+            bottom: var(--spacing-lg);
+            right: var(--spacing-lg);
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-purple), var(--primary-purple-light));
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #0051D5 100%);
             border: none;
             color: white;
             font-size: 28px;
             cursor: pointer;
-            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4),
+                        0 4px 12px rgba(0, 0, 0, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: var(--transition-smooth);
+            z-index: 999;
             display: none;
             align-items: center;
             justify-content: center;
-            z-index: 100;
+            animation: fabPulse 2s ease-in-out infinite;
         }
 
-        .favorite-btn.show {
-            display: flex;
+        @keyframes fabPulse {
+            0%, 100% {
+                box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4),
+                            0 4px 12px rgba(0, 0, 0, 0.15),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            }
+            50% {
+                box-shadow: 0 16px 56px rgba(0, 122, 255, 0.5),
+                            0 6px 16px rgba(0, 0, 0, 0.2),
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
         }
 
         .favorite-btn:active {
-            transform: scale(0.9);
-        }
-
-        @media (hover: hover) {
-            .favorite-btn:hover {
-                transform: scale(1.1);
-                box-shadow: 0 12px 48px rgba(124, 58, 237, 0.5);
-            }
+            transform: scale(0.88);
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.3),
+                        inset 0 3px 8px rgba(0, 0, 0, 0.2);
         }
 
         .favorite-btn.active {
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            box-shadow: 0 12px 40px rgba(251, 191, 36, 0.4),
+                        0 4px 12px rgba(0, 0, 0, 0.15),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .realtime-item {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 12px;
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
+            transition: var(--transition-smooth);
+            box-shadow: var(--glass-shadow-soft);
             cursor: pointer;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .realtime-item {
+                background: var(--glass-bg-dark);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
         }
 
         .realtime-item:active {
-            background: rgba(124, 58, 237, 0.15);
-            transform: scale(0.98);
-        }
-
-        @media (hover: hover) {
-            .realtime-item:hover {
-                background: rgba(124, 58, 237, 0.15);
-                transform: translateY(-2px);
-                box-shadow: 0 8px 24px rgba(124, 58, 237, 0.2);
-            }
+            transform: scale(0.97);
+            box-shadow: var(--glass-shadow-pressed);
         }
 
         .realtime-destination {
-            font-weight: 600;
-            font-size: 1rem;
-            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 16px;
         }
 
         .realtime-time {
-            font-size: 1.1rem;
+            font-size: 18px;
             font-weight: 700;
-            color: var(--primary-purple-light);
+            color: var(--accent-blue);
         }
 
         .empty-state {
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl) var(--spacing-lg);
+            box-shadow: var(--glass-shadow-soft);
             text-align: center;
-            padding: 60px 20px;
-            color: var(--text-secondary);
+            animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .empty-state {
+                background: var(--glass-bg-dark);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
         }
 
         .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.6;
-        }
-
-        #overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 9998;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-        }
-
-        #rt-panel {
-            display: none;
-            position: fixed;
-            left: 50%;
-            top: 60px;
-            transform: translateX(-50%);
-            width: min(720px, calc(100vw - 24px));
-            max-height: calc(100vh - 120px);
-            background: var(--glass-bg-heavy);
-            backdrop-filter: var(--glass-blur-heavy) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur-heavy) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: 18px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-            z-index: 9999;
-            overflow: hidden;
-            color: var(--text-primary);
-        }
-
-        .rt-panel-header {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto var(--spacing-md);
+            background: linear-gradient(135deg, 
+                rgba(0, 122, 255, 0.12) 0%, 
+                rgba(168, 85, 247, 0.08) 100%);
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--glass-border);
-            gap: 12px;
+            justify-content: center;
+            font-size: 36px;
         }
 
-        .rt-panel-title {
-            font-weight: 800;
-            font-size: 1.1rem;
-        }
-
-        .rt-panel-close {
-            cursor: pointer;
-            border: none;
-            background: var(--glass-bg-light);
-            color: var(--text-primary);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .rt-panel-close:active {
-            transform: scale(0.9);
-        }
-
-        @media (hover: hover) {
-            .rt-panel-close:hover {
-                background: var(--primary-purple);
-                color: white;
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .header {
+                top: var(--spacing-lg);
+                margin: var(--spacing-lg) var(--spacing-lg) 0;
             }
         }
 
-        .rt-panel-content {
-            padding: 14px 16px;
-            overflow: auto;
-            max-height: calc(100vh - 190px);
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
+        @media (min-width: 1025px) {
+            .header {
+                top: var(--spacing-xl);
+                margin: var(--spacing-xl) var(--spacing-xl) 0;
             }
             
-            .header-title {
-                font-size: 1rem;
+            .bus-item:hover, .destination-item:hover, .stop-item:hover, .realtime-item:hover {
+                transform: translateY(-4px) scale(1.01);
+                box-shadow: var(--glass-shadow-hover);
             }
             
-            .favorite-btn {
-                width: 56px;
-                height: 56px;
-                bottom: 20px;
-                right: 20px;
-            }
-        }
-
-        @media (prefers-reduced-transparency: reduce) {
-            .header, .bus-item, .favorite-item, .destination-item, .stop-item,
-            .tabs, .date-picker, .destination-select, .schedule-time,
-            .realtime-item, #rt-panel {
-                backdrop-filter: none;
-                -webkit-backdrop-filter: none;
-                background: var(--glass-bg-heavy);
+            .favorite-btn:hover {
+                transform: scale(1.08);
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
+            * {
                 animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
-            
-            body::before {
-                animation: none;
-            }
+        }
+
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="header" id="header">
-        <div class="header-content">
-            <div class="logo-section">
-                <button class="back-btn" id="back-btn">←</button>
-                <div>
-                    <div class="header-title" id="header-title">My Bus Schedule</div>
-                    <div class="header-subtitle" id="header-subtitle"></div>
-                </div>
+    <div class="header gpu-accelerated">
+        <div class="header-glass">
+            <button class="back-btn" id="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="header-icon">
+                <i class="fas fa-bus"></i>
+            </div>
+            <div class="header-text">
+                <h1 id="header-title">My Bus Schedule</h1>
+                <p id="header-subtitle">Horaires de bus</p>
             </div>
         </div>
     </div>
 
-    <div class="container">
-        <div id="loading" class="loading">Chargement des données...</div>
+    <main class="main-container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div class="state-title">Chargement</div>
+            <div class="state-description">Récupération des données...</div>
+        </div>
 
         <div id="lines-view" class="view">
             <div id="favorites-section" style="display: none;">
-                <div class="section-title">⭐ Favoris</div>
+                <div class="section-title"><i class="fas fa-star"></i> Favoris</div>
                 <div id="favorites-list"></div>
             </div>
             <div class="section-title">Lignes de bus</div>
@@ -732,18 +771,11 @@
             <div id="theoretical-content" class="schedule-content active"></div>
             <div id="realtime-content" class="schedule-content"></div>
         </div>
-    </div>
+    </main>
 
-    <button class="favorite-btn" id="favorite-btn">★</button>
-
-    <div id="overlay"></div>
-    <div id="rt-panel">
-        <div class="rt-panel-header">
-            <div class="rt-panel-title" id="rt-panel-title">Détails</div>
-            <button class="rt-panel-close" id="rt-panel-close">✕</button>
-        </div>
-        <div class="rt-panel-content" id="rt-panel-content"></div>
-    </div>
+    <button class="favorite-btn gpu-accelerated" id="favorite-btn">
+        <i class="fas fa-star"></i>
+    </button>
 
     <script>
         const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
@@ -777,36 +809,37 @@
             stops: new Map()
         };
 
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function (event) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
-
-        let lastScrollTop = 0;
-        const header = document.getElementById('header');
-        
-        window.addEventListener('scroll', () => {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            
-            if (scrollTop > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-            
-            lastScrollTop = scrollTop;
-        }, { passive: true });
-
         document.addEventListener('DOMContentLoaded', init);
 
         async function init() {
             loadFavorites();
             await loadGtfsCore();
             showLines();
+            initScrollEffects();
+        }
+
+        function initScrollEffects() {
+            const header = document.querySelector('.header');
+            let lastScroll = 0;
+            let ticking = false;
+            
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        const currentScroll = window.scrollY;
+                        
+                        if (currentScroll > 50) {
+                            header.classList.add('scrolled');
+                        } else {
+                            header.classList.remove('scrolled');
+                        }
+                        
+                        lastScroll = currentScroll;
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
         }
 
         async function getZip() {
@@ -898,13 +931,10 @@
             } catch (error) {
                 console.error('Erreur chargement GTFS:', error);
                 document.getElementById('loading').innerHTML = `
-                    <div style="color: #ef4444; text-align: center;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                        <div style="font-weight: 600; margin-bottom: 8px;">Erreur de chargement des données</div>
-                        <div style="font-size: 14px; opacity: 0.8;">${error.message}</div>
-                        <div style="margin-top: 20px; font-size: 13px; opacity: 0.7;">
-                            Vérifiez que le fichier <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${GTFS_ZIP_URL}</code> existe et contient les fichiers GTFS requis.
-                        </div>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="state-title">Erreur de chargement</div>
+                        <div class="state-description">${error.message}</div>
                     </div>
                 `;
             }
@@ -1088,6 +1118,9 @@
                 state.favorites.push(fav);
                 saveFavorites();
                 updateFavoriteButton();
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
             }
         }
 
@@ -1097,6 +1130,9 @@
             );
             saveFavorites();
             updateFavoriteButton();
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10);
+            }
         }
 
         function isFavorite(routeId, stopId, destinationId) {
@@ -1108,10 +1144,10 @@
         function updateFavoriteButton() {
             const btn = document.getElementById('favorite-btn');
             if (state.currentRoute && state.currentStop && state.currentDestination) {
-                btn.classList.add('show');
+                btn.style.display = 'flex';
                 btn.classList.toggle('active', isFavorite(state.currentRoute, state.currentStop, state.currentDestination));
             } else {
-                btn.classList.remove('show');
+                btn.style.display = 'none';
             }
         }
 
@@ -1159,19 +1195,20 @@
             hideAllViews();
             document.getElementById('loading').style.display = 'none';
             document.getElementById('lines-view').classList.add('active');
-            document.getElementById('back-btn').classList.remove('show');
+            document.getElementById('back-btn').style.display = 'none';
             document.getElementById('header-title').textContent = 'My Bus Schedule';
-            document.getElementById('header-subtitle').textContent = '';
+            document.getElementById('header-subtitle').textContent = 'Horaires de bus';
             state.viewHistory = [];
 
             const linesList = document.getElementById('lines-list');
             linesList.innerHTML = '';
 
-            Object.entries(state.routes).forEach(([routeId, route]) => {
+            Object.entries(state.routes).forEach(([routeId, route], index) => {
                 const item = document.createElement('div');
                 item.className = 'bus-item';
+                item.style.animationDelay = `${index * 0.05}s`;
                 item.innerHTML = `
-                    <span class="bus-number" style="background: #${route.route_color || '8b5cf6'}; color: #${route.route_text_color || 'ffffff'}">
+                    <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
                         ${route.route_short_name}
                     </span>
                     <span class="bus-name">${route.route_long_name}</span>
@@ -1188,7 +1225,7 @@
             
             hideAllViews();
             document.getElementById('destinations-view').classList.add('active');
-            document.getElementById('back-btn').classList.add('show');
+            document.getElementById('back-btn').style.display = 'flex';
             
             const route = state.routes[routeId];
             document.getElementById('header-title').textContent = route.route_short_name;
@@ -1197,16 +1234,17 @@
             state.viewHistory.push('lines');
 
             const list = document.getElementById('destinations-list');
-            list.innerHTML = '<div class="loading">Chargement des destinations...</div>';
+            list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Récupération des destinations...</div></div>';
 
             await loadTripsAndStopTimesForRoute(routeId);
 
             const destinations = getDestinations(routeId);
             list.innerHTML = '';
 
-            destinations.forEach(dest => {
+            destinations.forEach((dest, index) => {
                 const item = document.createElement('div');
                 item.className = 'destination-item';
+                item.style.animationDelay = `${index * 0.05}s`;
                 item.innerHTML = `<strong>${dest.name}</strong>`;
                 item.onclick = () => showStops(routeId, dest.id);
                 list.appendChild(item);
@@ -1216,7 +1254,7 @@
         function showStops(routeId, destinationId = null) {
             hideAllViews();
             document.getElementById('stops-view').classList.add('active');
-            document.getElementById('back-btn').classList.add('show');
+            document.getElementById('back-btn').style.display = 'flex';
             state.viewHistory.push('destinations');
 
             const destinations = getDestinations(routeId);
@@ -1246,9 +1284,10 @@
 
             const stops = getStopsForDestination(routeId, destinationId);
             
-            stops.forEach(stop => {
+            stops.forEach((stop, index) => {
                 const item = document.createElement('div');
                 item.className = 'stop-item';
+                item.style.animationDelay = `${index * 0.05}s`;
                 item.innerHTML = `<strong>${stop.stop_name}</strong>`;
                 item.onclick = () => showSchedule(routeId, stop.stop_id, destinationId);
                 list.appendChild(item);
@@ -1262,12 +1301,13 @@
 
             hideAllViews();
             document.getElementById('schedule-view').classList.add('active');
-            document.getElementById('back-btn').classList.add('show');
+            document.getElementById('back-btn').style.display = 'flex';
             state.viewHistory.push('stops');
 
             const route = state.routes[routeId];
             const stop = state.stops[stopId];
             document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
+            document.getElementById('header-subtitle').textContent = route.route_long_name;
 
             updateFavoriteButton();
             setupTabHandlers();
@@ -1303,6 +1343,10 @@
                         datePicker.style.display = 'none';
                         loadRealtimeData();
                     }
+
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate(10);
+                    }
                 };
             });
 
@@ -1328,7 +1372,7 @@
 
             if (activeServiceIds.length === 0) {
                 const container = document.getElementById('theoretical-content');
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div>Aucun service actif pour cette date</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="state-title">Aucun service</div><div class="state-description">Aucun service actif pour cette date</div></div>';
                 return;
             }
 
@@ -1358,7 +1402,7 @@
             });
 
             if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucun horaire</div><div class="state-description">Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
                 return;
             }
 
@@ -1496,7 +1540,7 @@
 
         async function loadRealtimeData() {
             const container = document.getElementById('realtime-content');
-            container.innerHTML = '<div class="loading">Chargement des données temps réel...</div>';
+            container.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Récupération des données temps réel...</div></div>';
 
             try {
                 const response = await fetch(GTFS_RT_URL);
@@ -1510,146 +1554,11 @@
                 displayRealtimeArrivals(arrivals, container);
             } catch (error) {
                 console.error('Erreur temps réel:', error);
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div>Données temps réel non disponibles</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="state-title">Données indisponibles</div><div class="state-description">Données temps réel non disponibles</div></div>';
             }
         }
 
         function pad2(n) { return String(n).padStart(2, '0'); }
-
-        function parseTimeHHhMM(timeStr) {
-            const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
-            return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
-        }
-
-        function getMinutesFromHHhMM(timeStr) {
-            const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
-            return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
-        }
-
-        function sendVehicleToParent(vehicleId, tripId) {
-            const message = {
-                type: 'vehicleSelected',
-                vehicleId: vehicleId || null,
-                tripId: tripId || null,
-                stopId: state.currentStop || null,
-                routeId: state.currentRoute || null,
-                timestamp: new Date().getTime()
-            };
-
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage(message, '*');
-            } else if (window.opener) {
-                window.opener.postMessage(message, '*');
-            } else {
-                console.warn('Aucun parent/opener pour recevoir le message:', message);
-            }
-        }
-
-        function openRtPanel(title, html) {
-            const overlay = document.getElementById('overlay');
-            const panel = document.getElementById('rt-panel');
-            const titleEl = document.getElementById('rt-panel-title');
-            const contentEl = document.getElementById('rt-panel-content');
-
-            if (titleEl) titleEl.textContent = title || 'Détails';
-            if (contentEl) contentEl.innerHTML = html || '';
-
-            overlay.style.display = 'block';
-            panel.style.display = 'block';
-        }
-
-        function closeRtPanel() {
-            const overlay = document.getElementById('overlay');
-            const panel = document.getElementById('rt-panel');
-            if (overlay) overlay.style.display = 'none';
-            if (panel) panel.style.display = 'none';
-        }
-
-        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
-            const route = state.routes?.[routeId];
-            const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
-            const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
-
-            const tripStops = state.stopTimes?.[routeId]?.[tripId];
-            if (!tripStops || tripStops.length === 0) {
-                openRtPanel(
-                    `Bus ${vehicleId || '—'} • ${routeLabel}`,
-                    `<div style="opacity:.8">Aucun détail d'arrêts pour ce trajet.</div>`
-                );
-                return;
-            }
-
-            const now = new Date();
-            const nowMin = now.getHours() * 60 + now.getMinutes();
-
-            let nextIndex = 0;
-            for (let i = 0; i < tripStops.length; i++) {
-                const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
-                if (tMin >= nowMin) { nextIndex = i; break; }
-                nextIndex = i;
-            }
-
-            const rows = tripStops.map((st, idx) => {
-                const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
-                const time = st.arrival_time || '--h--';
-
-                const isNext = idx === nextIndex;
-                const isPast = idx < nextIndex;
-
-                return `
-                    <div style="
-                        display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
-                        border-bottom:1px solid var(--glass-border);
-                        background:${isNext ? 'rgba(124, 58, 237, 0.15)' : 'transparent'};
-                        opacity:${isPast ? '.55' : '1'};
-                    ">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="
-                                width:10px; height:10px; border-radius:999px;
-                                background:${isNext ? routeColor : 'var(--text-tertiary)'};
-                                box-shadow:${isNext ? '0 0 0 3px rgba(124,92,246,.25)' : 'none'};
-                            "></div>
-                            <div>${stopName}</div>
-                        </div>
-                        <div style="font-weight:800;">${time}</div>
-                    </div>
-                `;
-            }).join('');
-
-            const html = `
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-                    <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(124,92,246,.25)"></div>
-                    <div style="font-weight:800;">${routeLabel}</div>
-                    <div style="opacity:.85;">• Trajet ${tripId}</div>
-                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
-                </div>
-
-                <div style="border:1px solid var(--glass-border); border-radius:14px; overflow:hidden;">
-                    ${rows}
-                </div>
-
-                <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
-                    <button id="rt-show-map-btn" style="
-                        cursor:pointer; border:none; color:#fff;
-                        background:linear-gradient(135deg, var(--primary-purple), var(--primary-purple-light));
-                        padding:10px 14px; border-radius:12px; font-weight:800;
-                        box-shadow:0 8px 24px rgba(0,0,0,.25);
-                    ">
-                        Afficher dans la carte
-                    </button>
-                </div>
-            `;
-
-            openRtPanel(`Détails • ${routeLabel}`, html);
-
-            const btn = document.getElementById('rt-show-map-btn');
-            if (btn) {
-                btn.onclick = () => {
-                    sendVehicleToParent(vehicleId, tripId);
-                    closeRtPanel();
-                };
-            }
-        }
 
         function processRealtimeDataForStop(message, routeId, stopId) {
             const arrivals = [];
@@ -1673,7 +1582,7 @@
                     if (!ok) return;
                 }
 
-                const vehicleId =
+                constvehicleId =
                     entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
                     entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
 
@@ -1699,17 +1608,21 @@
             container.innerHTML = '';
 
             if (!arrivals || arrivals.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucune arrivée</div><div class="state-description">Aucune arrivée prévue</div></div>';
                 return;
             }
 
-            arrivals.forEach(arr => {
+            arrivals.forEach((arr, index) => {
                 const date = new Date(arr.time * 1000);
                 const hh = pad2(date.getHours());
                 const mm = pad2(date.getMinutes());
 
                 const item = document.createElement('div');
                 item.className = 'realtime-item';
+                item.style.animationDelay = `${index * 0.05}s`;
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(30px) scale(0.95)';
+                item.style.animation = 'cardAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
 
                 const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
 
@@ -1717,16 +1630,11 @@
                     <div>
                         <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
                             <span>${arr.headsign || 'Destination'}</span>
-                            ${busLabel ? `<span style="font-size:0.75rem; opacity:.75;">${busLabel}</span>` : ''}
+                            ${busLabel ? `<span style="font-size:12px; opacity:.75;">${busLabel}</span>` : ''}
                         </div>
-                        ${arr.delayText ? `<div style="font-size:0.8rem; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
                     </div>
                     <div class="realtime-time">${hh}h${mm}</div>
                 `;
-
-                item.addEventListener('click', () => {
-                    showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
-                });
 
                 container.appendChild(item);
             });
@@ -1753,7 +1661,12 @@
             }
         }
 
-        document.getElementById('back-btn').onclick = goBack;
+        document.getElementById('back-btn').onclick = () => {
+            goBack();
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10);
+            }
+        };
         
         document.getElementById('favorite-btn').onclick = () => {
             if (isFavorite(state.currentRoute, state.currentStop, state.currentDestination)) {
@@ -1764,22 +1677,39 @@
             updateFavoritesSection();
         };
 
-        document.getElementById('overlay').onclick = closeRtPanel;
-        document.getElementById('rt-panel-close').onclick = closeRtPanel;
-
         window.addEventListener('beforeunload', () => {
             if (state.realtimeInterval) {
                 clearInterval(state.realtimeInterval);
             }
         });
 
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('.bus-item') || 
-                e.target.closest('.destination-item') || 
-                e.target.closest('.stop-item') ||
-                e.target.closest('.favorite-item') ||
-                e.target.closest('.realtime-item')) {
-                e.preventDefault();
+        // Pull to refresh
+        let touchStartY = 0;
+        let touchEndY = 0;
+        
+        document.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', (e) => {
+            touchEndY = e.touches[0].clientY;
+        }, { passive: true });
+        
+        document.addEventListener('touchend', () => {
+            if (window.scrollY === 0 && touchEndY > touchStartY + 100) {
+                if (state.viewHistory.length === 0) {
+                    init();
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate(20);
+                    }
+                }
+            }
+        }, { passive: true });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                goBack();
             }
         });
     </script>
