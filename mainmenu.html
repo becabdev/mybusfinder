@@ -2,36 +2,51 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>My Bus Finder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBS - Powered by MyBusFinder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <style>
-        /* ===== Merci ChatGPT pour le design <3 (même si la plupart du boulot je l'ai fait moi) ===== */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
-        /* ===== VARIABLES LIQUID GLASS ===== */
+        /* ============================================
+           VARIABLES CSS LIQUID GLASS
+           ============================================ */
         :root {
-            /* Couleurs de base */
+            /* Couleurs de base - thème violet */
             --primary-purple: #7c3aed;
             --primary-purple-light: #8b5cf6;
             --primary-purple-dark: #5b21b6;
+            --color-success: #34C759;
             
-            /* Liquid Glass - Mode clair par défaut */
-            --glass-bg: rgba(255, 255, 255, 0.72);
-            --glass-bg-heavy: rgba(255, 255, 255, 0.85);
-            --glass-bg-light: rgba(255, 255, 255, 0.6);
-            --glass-border: rgba(0, 0, 0, 0.08);
+            /* Backgrounds Liquid Glass - Light Mode */
+            --glass-bg-clear: rgba(255, 255, 255, 0.72);
+            --glass-bg-tinted: rgba(255, 255, 255, 0.85);
+            --glass-bg-card: rgba(255, 255, 255, 0.6);
+            --glass-bg-button: rgba(255, 255, 255, 0.72);
+            --glass-bg-overlay: rgba(0, 0, 0, 0.4);
+            
+            /* Bordures */
+            --glass-border-light: rgba(0, 0, 0, 0.08);
             --glass-border-highlight: rgba(255, 255, 255, 0.3);
-            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.12);
-            --glass-blur: blur(24px);
+            
+            /* Blur */
+            --glass-blur-light: blur(24px);
+            --glass-blur-medium: blur(32px);
             --glass-blur-heavy: blur(40px);
+            
+            /* Ombres Liquid Glass */
+            --shadow-glass-sm: 0 8px 32px rgba(0, 0, 0, 0.08);
+            --shadow-glass-md: 0 12px 40px rgba(0, 0, 0, 0.12);
+            --shadow-glass-hover: 0 16px 48px rgba(124, 58, 237, 0.2);
             
             /* Texte */
             --text-primary: rgba(0, 0, 0, 0.9);
             --text-secondary: rgba(0, 0, 0, 0.65);
             --text-tertiary: rgba(0, 0, 0, 0.45);
             
-            /* Accents colorés */
+            /* Accents */
             --accent-gradient: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(139, 92, 246, 0.1));
             --accent-glow: rgba(124, 58, 237, 0.15);
             
@@ -39,18 +54,39 @@
             --page-bg: #f5f5f7;
             --page-gradient: radial-gradient(circle at 20% 30%, rgba(124, 58, 237, 0.08), transparent 60%),
                              radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.06), transparent 60%);
+            
+            /* Transitions */
+            --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Spacing */
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 20px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            
+            /* Border radius */
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+            --radius-pill: 9999px;
         }
 
-        /* Mode sombre */
+        /* Dark Mode */
         @media (prefers-color-scheme: dark) {
             :root {
-                --glass-bg: rgba(28, 28, 30, 0.78);
-                --glass-bg-heavy: rgba(28, 28, 30, 0.9);
-                --glass-bg-light: rgba(28, 28, 30, 0.65);
-                --glass-border: rgba(255, 255, 255, 0.12);
+                --glass-bg-clear: rgba(28, 28, 30, 0.78);
+                --glass-bg-tinted: rgba(28, 28, 30, 0.9);
+                --glass-bg-card: rgba(28, 28, 30, 0.65);
+                --glass-bg-button: rgba(58, 58, 60, 0.78);
+                --glass-bg-overlay: rgba(0, 0, 0, 0.6);
+                
+                --glass-border-light: rgba(255, 255, 255, 0.12);
                 --glass-border-highlight: rgba(255, 255, 255, 0.25);
-                --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-                --glass-shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.4);
+                --shadow-glass-sm: 0 8px 32px rgba(0, 0, 0, 0.3);
+                --shadow-glass-md: 0 12px 40px rgba(0, 0, 0, 0.4);
                 
                 --text-primary: rgba(255, 255, 255, 0.95);
                 --text-secondary: rgba(255, 255, 255, 0.7);
@@ -65,7 +101,9 @@
             }
         }
 
-        /* ===== RESET & BASE ===== */
+        /* ============================================
+           RESET ET BASE
+           ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -73,17 +111,24 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--page-bg);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
+        html {
+            font-size: 16px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            position: relative;
         }
 
+        body {
+            font-family: 'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--page-bg);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Background avec effet de parallaxe */
         body::before {
             content: '';
             position: fixed;
@@ -92,7 +137,8 @@
             width: 100%;
             height: 100%;
             background: var(--page-gradient);
-            z-index: -1;
+            z-index: 0;
+            pointer-events: none;
             animation: breathe 15s ease-in-out infinite;
         }
 
@@ -101,97 +147,77 @@
             50% { opacity: 0.8; transform: scale(1.05); }
         }
 
-        /* Empêcher le zoom lors du double tap */
-        input, textarea, select {
-            font-size: 16px;
+        /* ============================================
+           LAYOUT CONTAINER
+           ============================================ */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            padding-bottom: 100px;
         }
 
-        /* ===== HEADER LIQUID GLASS ===== */
+        /* ============================================
+           HEADER LIQUID GLASS
+           ============================================ */
         .header {
+            background: var(--glass-bg-clear);
+            backdrop-filter: var(--glass-blur-light) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-light) saturate(180%);
+            border: none;
+            border-bottom: 1px solid var(--glass-border-light);
+            border-radius: 0;
+            padding: var(--spacing-sm) var(--spacing-lg);
+            margin-bottom: 0;
+            box-shadow: var(--shadow-glass-sm), inset 0 1px 0 var(--glass-border-highlight);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
             position: sticky;
             top: 0;
-            z-index: 1000;
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 12px 20px;
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+            transform: translateZ(0);
+            will-change: transform, opacity;
+            transition: all var(--transition-smooth);
         }
 
         .header.scrolled {
-            background: var(--glass-bg-heavy);
+            background: var(--glass-bg-tinted);
             backdrop-filter: var(--glass-blur-heavy) saturate(200%);
             -webkit-backdrop-filter: var(--glass-blur-heavy) saturate(200%);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), inset 0 1px 0 var(--glass-border-highlight);
         }
 
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            flex: 1;
-            min-width: 0;
-        }
-
-        .logo-icon {
-            height: 50px;
-            display: flex;
-            align-items: center;
-            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .logo-icon:active {
-            transform: scale(0.95);
-        }
-
-        .logo-icon img {
-            height: 300%;
-            width: auto;
-            filter: invert(1) drop-shadow(0 2px 8px var(--accent-glow));
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .logo-icon img {
-                filter: invert(0) drop-shadow(0 2px 8px var(--accent-glow));
-            }
-        }
-
-        .header-action {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: var(--glass-bg-light);
+        .back-btn {
+            background: var(--glass-bg-card);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
+            border: 1px solid var(--glass-border-light);
             color: var(--text-primary);
-            cursor: pointer;
+            min-width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 600;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-border-highlight);
+            transition: all var(--transition-smooth);
             transform: translateZ(0);
-            will-change: transform;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .header-action:active {
+        .back-btn:active {
             transform: scale(0.92) translateY(1px);
         }
 
         @media (hover: hover) {
-            .header-action:hover {
+            .back-btn:hover {
                 background: var(--primary-purple);
                 color: white;
                 transform: translateY(-2px) scale(1.05);
@@ -200,250 +226,64 @@
             }
         }
 
-        /* ===== MAIN CONTAINER ===== */
-        .main-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+        .header-content {
+            flex: 1;
         }
 
-        /* ===== CAROUSEL LIQUID GLASS ===== */
-        .carousel-section {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border-radius: 24px;
-            border: 1px solid var(--glass-border);
-            overflow: hidden;
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
-            position: relative;
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 2px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* ============================================
+           LOADING STATE
+           ============================================ */
+        .loading {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            animation: pulse-text 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ============================================
+           VIEWS SYSTÈME
+           ============================================ */
+        .view {
+            display: none;
             animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .carousel {
-            position: relative;
-            height: 200px;
-            overflow: hidden;
+        .view.active {
+            display: block;
         }
 
-        .carousel-track {
-            display: flex;
-            transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            height: 100%;
-        }
-
-        .carousel-slide {
-            min-width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        .carousel-slide img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .carousel-nav {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%) translateZ(0);
-            background: var(--glass-bg-heavy);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid var(--glass-border);
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-primary);
-            font-size: 1.4rem;
-            font-weight: 600;
-            z-index: 10;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 var(--glass-border-highlight);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform;
-        }
-
-        .carousel-nav:active {
-            transform: translateY(-50%) scale(0.9);
-        }
-
-        .carousel-nav.prev { left: 15px; }
-        .carousel-nav.next { right: 15px; }
-
-        @media (hover: hover) {
-            .carousel-nav:hover {
-                background: var(--primary-purple);
-                color: white;
-                transform: translateY(-50%) scale(1.1);
-                box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-            }
-        }
-
-        .carousel-indicators {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 8px;
-            padding: 8px 16px;
-            background: var(--glass-bg-heavy);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 50px;
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .carousel-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--text-tertiary);
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .carousel-dot.active {
-            width: 24px;
-            border-radius: 4px;
-            background: var(--primary-purple);
-            box-shadow: 0 0 12px var(--accent-glow);
-        }
-
-        /* ===== FEATURES GRID LIQUID GLASS ===== */
-        .features-section {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        .feature-card {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border-radius: 20px;
-            border: 1px solid var(--glass-border);
-            padding: 24px 20px;
-            cursor: pointer;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 12px;
-            min-height: 140px;
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateZ(0);
-            will-change: transform;
-        }
-
-        /* Effet de gradient au survol/tap */
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--accent-gradient);
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            pointer-events: none;
-        }
-
-        .feature-card:active {
-            transform: scale(0.96) translateY(2px);
-        }
-
-        .feature-card:active::before {
-            opacity: 1;
-        }
-
-        @media (hover: hover) {
-            .feature-card:hover {
-                transform: translateY(-4px) scale(1.02);
-                border-color: var(--primary-purple-light);
-                box-shadow: 0 16px 48px rgba(124, 58, 237, 0.2), 
-                            0 8px 24px rgba(0, 0, 0, 0.12),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
-            }
-
-            .feature-card:hover::before {
-                opacity: 1;
-            }
-        }
-
-        .feature-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.6rem;
-            position: relative;
-            z-index: 2;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .feature-card:active .feature-icon {
-            transform: scale(0.9);
-        }
-
-        @media (hover: hover) {
-            .feature-card:hover .feature-icon {
-                transform: scale(1.1) rotate(5deg);
-            }
-        }
-
-        .feature-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            position: relative;
-            z-index: 2;
-            letter-spacing: -0.01em;
-            transition: color 0.3s ease;
-        }
-
-        .feature-desc {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            line-height: 1.4;
-            position: relative;
-            z-index: 2;
-            display: none;
-        }
-
-        /* ===== QUICK LINKS SECTION ===== */
-        .quick-links {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur) saturate(180%);
-            -webkit-backdrop-filter: var(--glass-blur) saturate(180%);
-            border-radius: 24px;
-            border: 1px solid var(--glass-border);
-            padding: 24px;
-            box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-border-highlight);
-            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.5s backwards;
-        }
-
+        /* ============================================
+           SECTION TITLES
+           ============================================ */
         .section-title {
-            font-size: 1.15rem;
+            font-size: 15px;
             font-weight: 700;
-            margin-bottom: 20px;
-            color: var(--text-primary);
-            letter-spacing: -0.02em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: var(--spacing-lg) 0 var(--spacing-md);
+            padding-left: var(--spacing-xs);
+            color: var(--text-secondary);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -458,95 +298,294 @@
             box-shadow: 0 0 8px var(--accent-glow);
         }
 
-        .links-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .link-card {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            border-radius: 16px;
-            background: var(--glass-bg-light);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
+        /* ============================================
+           ITEMS GÉNÉRIQUES (BUS, DESTINATION, STOP)
+           ============================================ */
+        .bus-item, .destination-item, .stop-item {
+            background: var(--glass-bg-clear);
+            backdrop-filter: var(--glass-blur-light) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-light) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
             cursor: pointer;
+            box-shadow: var(--shadow-glass-sm), inset 0 1px 0 var(--glass-border-highlight);
             position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 0 var(--glass-border-highlight);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform: translateZ(0);
+            transition: all var(--transition-smooth);
         }
 
-        .link-card::before {
+        /* Effet de bordure colorée */
+        .bus-item::before, .destination-item::before, .stop-item::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
+            width: 4px;
             height: 100%;
-            background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), transparent);
+            background: linear-gradient(180deg, var(--primary-purple), var(--primary-purple-light));
+            transition: all var(--transition-smooth);
+        }
+
+        /* Effet de gradient au tap */
+        .bus-item::after, .destination-item::after, .stop-item::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--accent-gradient);
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity var(--transition-smooth);
+            pointer-events: none;
         }
 
-        .link-card:active {
-            transform: scale(0.97);
+        .bus-item:active, .destination-item:active, .stop-item:active {
+            transform: scale(0.96) translateY(2px);
         }
 
-        .link-card:active::before {
+        .bus-item:active::before, .destination-item:active::before, .stop-item:active::before {
+            width: 100%;
+            opacity: 0.3;
+        }
+
+        .bus-item:active::after, .destination-item:active::after, .stop-item:active::after {
             opacity: 1;
         }
 
         @media (hover: hover) {
-            .link-card:hover {
-                background: var(--primary-purple);
-                color: white;
-                transform: translateX(4px);
-                box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3), 
-                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            .bus-item:hover, .destination-item:hover, .stop-item:hover {
+                transform: translateY(-4px) scale(1.02);
                 border-color: var(--primary-purple-light);
+                box-shadow: var(--shadow-glass-hover), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
             }
 
-            .link-card:hover .link-icon {
-                transform: scale(1.2) rotate(10deg);
-            }
-
-            .link-card:hover .link-title {
-                color: white;
+            .bus-item:hover::after, .destination-item:hover::after, .stop-item:hover::after {
+                opacity: 1;
             }
         }
 
-        .link-icon {
-            font-size: 1.3rem;
-            width: 40px;
-            height: 40px;
-            display: flex;
+        /* ============================================
+           BUS ITEM SPÉCIFIQUE
+           ============================================ */
+        .bus-number {
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: var(--accent-gradient);
-            border-radius: 12px;
-            flex-shrink: 0;
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            box-shadow: 0 4px 12px var(--accent-glow);
-            position: relative;
-            z-index: 2;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 18px;
+            margin-right: var(--spacing-sm);
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            min-width: 48px;
         }
 
-        .link-title {
+        .bus-name {
+            font-size: 15px;
             font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text-primary);
-            position: relative;
-            z-index: 2;
-            transition: color 0.3s ease;
+            line-height: 1.3;
         }
 
-        /* ===== ANIMATIONS ===== */
+        /* ============================================
+           FAVORIS
+           ============================================ */
+        #favorites-section {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .favorite-item {
+            background: var(--glass-bg-clear);
+            backdrop-filter: var(--glass-blur-light) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-light) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-md);
+            cursor: pointer;
+            box-shadow: var(--shadow-glass-sm), inset 0 1px 0 var(--glass-border-highlight);
+            transition: all var(--transition-smooth);
+            transform: translateZ(0);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .favorite-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--accent-gradient);
+            opacity: 0.5;
+            z-index: 0;
+        }
+
+        .favorite-item:active {
+            transform: scale(0.96) translateY(2px);
+        }
+
+        @media (hover: hover) {
+            .favorite-item:hover {
+                transform: translateY(-4px) scale(1.02);
+                border-color: var(--primary-purple-light);
+                box-shadow: var(--shadow-glass-hover), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        .favorite-info {
+            flex: 1;
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .favorite-route {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .favorite-details {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .favorite-times {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary-purple);
+            text-align: right;
+            white-space: nowrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================
+           TABS SYSTÈME
+           ============================================ */
+        .tabs {
+            display: flex;
+            gap: var(--spacing-xs);
+            background: rgba(0, 0, 0, 0.08);
+            backdrop-filter: var(--glass-blur-light);
+            -webkit-backdrop-filter: var(--glass-blur-light);
+            padding: 6px;
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            font-family: inherit;
+            position: relative;
+            z-index: 2;
+            transition: color var(--transition-smooth);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .tab.active {
+            color: var(--text-primary);
+        }
+
+        .tab-indicator {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            height: calc(100% - 12px);
+            background: var(--glass-bg-button);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-spring);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-border-highlight);
+            z-index: 1;
+        }
+
+        /* ============================================
+           INPUT FIELDS (DATE PICKER, SELECT)
+           ============================================ */
+        .date-picker, .destination-select {
+            background: var(--glass-bg-button);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            color: var(--text-primary);
+            width: 100%;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-border-highlight);
+            transition: all var(--transition-smooth);
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .date-picker:focus, .destination-select:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+            box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15),
+                        0 4px 16px rgba(0, 0, 0, 0.06);
+            transform: translateY(-1px);
+        }
+
+        @media (hover: hover) {
+            .date-picker:hover, .destination-select:hover {
+                background: var(--primary-purple);
+                color: white;
+                border-color: var(--primary-purple-light);
+                transform: translateY(-2px);
+                box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+        }
+
+        .destination-select option {
+            background: var(--glass-bg-tinted);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* ============================================
+           SCHEDULE CONTENT
+           ============================================ */
+        .schedule-content {
+            display: none;
+        }
+
+        .schedule-content.active {
+            display: block;
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         @keyframes slideUp {
             from {
                 opacity: 0;
@@ -558,470 +597,1472 @@
             }
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: scale(0.95);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
+        .schedule-group {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .schedule-hour {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: var(--spacing-md);
+            padding-left: var(--spacing-xs);
+            color: var(--primary-purple);
+            text-shadow: 0 2px 8px var(--accent-glow);
+        }
+
+        .schedule-times {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: var(--spacing-sm);
+        }
+
+        .schedule-time {
+            background: var(--glass-bg-button);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 15px;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-border-highlight);
+            transition: all var(--transition-smooth);
+            cursor: default;
+            transform: translateZ(0);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .schedule-time::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--accent-gradient);
+            opacity: 0;
+            transition: opacity var(--transition-smooth);
+        }
+
+        .schedule-time:active {
+            transform: scale(0.95);
+        }
+
+        .schedule-time:active::before {
+            opacity: 1;
+        }
+
+        @media (hover: hover) {
+            .schedule-time:hover {
+                background: var(--primary-purple);
+                color: white;
+                transform: translateY(-2px);
+                box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                border-color: var(--primary-purple-light);
             }
         }
 
-        .feature-card:nth-child(1) { animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.1s backwards; }
-        .feature-card:nth-child(2) { animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s backwards; }
-        .feature-card:nth-child(3) { animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.3s backwards; }
-        .feature-card:nth-child(4) { animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.4s backwards; }
+        /* ============================================
+           REALTIME ITEMS
+           ============================================ */
+        .realtime-item {
+            background: var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-light) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-light) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-md);
+            cursor: pointer;
+            box-shadow: var(--shadow-glass-sm), inset 0 1px 0 var(--glass-border-highlight);
+            transition: all var(--transition-smooth);
+            transform: translateZ(0);
+            position: relative;
+            overflow: hidden;
+        }
 
-        /* ===== FALLBACK ACCESSIBILITÉ ===== */
+        .realtime-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--accent-gradient);
+            opacity: 0;
+            transition: opacity var(--transition-smooth);
+        }
+
+        .realtime-item:active {
+            transform: scale(0.96) translateY(2px);
+        }
+
+        .realtime-item:active::before {
+            opacity: 1;
+        }
+
+        @media (hover: hover) {
+            .realtime-item:hover {
+                transform: translateY(-4px) scale(1.02);
+                border-color: var(--primary-purple-light);
+                box-shadow: var(--shadow-glass-hover), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            }
+
+            .realtime-item:hover::before {
+                opacity: 1;
+            }
+        }
+
+        .realtime-destination {
+            font-weight: 600;
+            font-size: 15px;
+            line-height: 1.3;
+            position: relative;
+            z-index: 1;
+        }
+
+        .realtime-time {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--color-success);
+            white-space: nowrap;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================
+           FAVORITE BUTTON (FAB)
+           ============================================ */
+        .favorite-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-pill);
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-purple-light));
+            border: 1px solid var(--glass-border-light);
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            transition: all var(--transition-spring);
+            transform: translateZ(0);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .favorite-btn:active {
+            transform: scale(0.88);
+        }
+
+        @media (hover: hover) {
+            .favorite-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 12px 40px rgba(124, 58, 237, 0.5), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        .favorite-btn.active {
+            background: linear-gradient(135deg, #FF9500, #FF6B00);
+            box-shadow: 0 8px 32px rgba(255, 149, 0, 0.4), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 56px;
+            margin-bottom: var(--spacing-md);
+            opacity: 0.6;
+        }
+
+        .empty-state div:last-child {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* ============================================
+           RESPONSIVE ADAPTATIONS
+           ============================================ */
+        @media (max-width: 360px) {
+            :root {
+                --spacing-md: 16px;
+                --spacing-lg: 24px;
+            }
+            
+            .container {
+                padding: var(--spacing-sm);
+            }
+            
+            .header {
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+            
+            .header-title {
+                font-size: 18px;
+            }
+            
+            .favorite-btn {
+                width: 56px;
+                height: 56px;
+                bottom: 20px;
+                right: 20px;
+            }
+            
+            .schedule-times {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            }
+        }
+
+        @media (min-width: 768px) {
+            :root {
+                --glass-blur-light: blur(32px);
+                --glass-blur-medium: blur(40px);
+                --glass-blur-heavy: blur(48px);
+            }
+            
+            .container {
+                padding: var(--spacing-lg);
+            }
+        }
+
+        /* ============================================
+           ACCESSIBILITÉ
+           ============================================ */
         @media (prefers-reduced-transparency: reduce) {
-            .header,
-            .carousel-section,
-            .feature-card,
-            .quick-links,
-            .carousel-nav,
-            .link-card {
+            .header, .bus-item, .destination-item, .stop-item,
+            .favorite-item, .tabs, .tab-indicator,
+            .date-picker, .destination-select,
+            .schedule-time, .realtime-item {
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
-                background: var(--glass-bg-heavy);
+                background: var(--glass-bg-tinted);
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            *,
-            *::before,
-            *::after {
+            *, *::before, *::after {
                 animation-duration: 0.01ms !important;
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
-        }
-
-        /* ===== RESPONSIVE DESKTOP ===== */
-        @media (min-width: 768px) {
-            .main-container {
-                padding: 32px;
-                gap: 24px;
-                display: grid;
-                grid-template-columns: 2fr 1fr;
-                grid-template-rows: auto auto 1fr;
-                grid-template-areas: 
-                    "carousel carousel"
-                    "features sidebar"
-                    "features sidebar";
-            }
-
-            .carousel-section {
-                grid-area: carousel;
-            }
-
-            .carousel {
-                height: 300px;
-            }
-
-            .features-section {
-                grid-area: features;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 20px;
-            }
-
-            .quick-links {
-                grid-area: sidebar;
-            }
-
-            .feature-card {
-                min-height: 180px;
-                padding: 28px 24px;
-            }
-
-            .feature-desc {
-                display: block;
-            }
-
-            .header {
-                padding: 16px 32px;
+            
+            body::before {
+                animation: none;
             }
         }
 
-        @media (min-width: 1024px) {
-            .features-section {
-                grid-template-columns: repeat(2, 1fr);
-            }
+        /* ============================================
+           MODAL/PANEL SYSTÈME (REALTIME)
+           ============================================ */
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--glass-bg-overlay);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 9998;
+            animation: fadeIn 0.3s ease-out;
+        }
 
-            .feature-card {
-                min-height: 200px;
-            }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
 
-            .carousel {
-                height: 350px;
+        #rt-panel {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 80px;
+            transform: translateX(-50%);
+            width: min(440px, calc(100vw - 32px));
+            max-height: calc(100vh - 160px);
+            background: var(--glass-bg-tinted);
+            backdrop-filter: var(--glass-blur-heavy) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-heavy) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-glass-md), 
+                        inset 0 1px 0 var(--glass-border-highlight);
+            z-index: 9999;
+            overflow: hidden;
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #rt-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-bottom: 1px solid var(--glass-border-subtle);
+            gap: var(--spacing-md);
+        }
+
+        #rt-panel-title {
+            font-weight: 800;
+            font-size: 18px;
+        }
+
+        #rt-panel-close {
+            cursor: pointer;
+            border: 1px solid var(--glass-border-light);
+            background: var(--glass-bg-card);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-smooth);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-border-highlight);
+        }
+
+        #rt-panel-close:active {
+            transform: scale(0.92);
+        }
+
+        @media (hover: hover) {
+            #rt-panel-close:hover {
+                background: var(--primary-purple);
+                color: white;
+                transform: scale(1.05);
+                box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3), 
+                            inset 0 1px 0 rgba(255, 255, 255, 0.4);
+                border-color: var(--primary-purple-light);
             }
+        }
+
+        #rt-panel-content {
+            padding: var(--spacing-md) var(--spacing-lg);
+            overflow: auto;
+            max-height: calc(100vh - 250px);
         }
     </style>
 </head>
 <body>
-    <!-- Header Liquid Glass -->
-    <header class="header" id="header">
-        <div class="header-content">
-            <div class="logo-section">
-                <div class="logo-icon">
-                    <img src="./src/logow.png" alt="My Bus Finder">
-                </div>
+    <div class="container">
+        <div class="header">
+            <button class="back-btn" id="back-btn" style="display: none;">←</button>
+            <div class="header-content">
+                <div class="header-title" id="header-title">My Bus Schedule</div>
+                <div class="header-subtitle" id="header-subtitle">Sélectionnez une ligne</div>
             </div>
         </div>
-    </header>
 
-    <!-- Main Container -->
-    <main class="main-container">
-        <!-- Carousel Section -->
-        <section class="carousel-section">
-            <div class="carousel">
-                <div class="carousel-track">
-                    <div class="carousel-slide">
-                        <img src="../ads/2.jpg" alt="Pub 2" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMzYjgyZjY7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojMTBiOTgxO3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgMjwvdGV4dD48L3N2Zz4='">
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="../ads/3.jpg" alt="Pub 3" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNmNTllMGI7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojZWY0NDQ0O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgMzwvdGV4dD48L3N2Zz4='">
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="../ads/4.jpg" alt="Pub 4" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3YzNhZWQ7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojOGI1Y2Y2O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgNDwvdGV4dD48L3N2Zz4='">
-                    </div>
-                </div>
-                <div class="carousel-indicators">
-                    <div class="carousel-dot active" onclick="goToSlide(0)"></div>
-                    <div class="carousel-dot" onclick="goToSlide(1)"></div>
-                    <div class="carousel-dot" onclick="goToSlide(2)"></div>
-                </div>
+        <div id="loading" class="loading">Chargement des données...</div>
+
+        <div id="lines-view" class="view">
+            <div id="favorites-section" style="display: none;">
+                <div class="section-title">⭐ Favoris</div>
+                <div id="favorites-list"></div>
             </div>
-        </section>
+            <div class="section-title">Lignes disponibles</div>
+            <div id="lines-list"></div>
+        </div>
 
-        <!-- Features Grid -->
-        <section class="features-section">
-            <div id="bus" class="feature-card">
-                <div class="feature-icon">🚌</div>
-                <div class="feature-title" data-i18n="search_bus">Localiser un bus</div>
-                <div class="feature-desc" data-i18n="search_bus_desc">Trouvez facilement votre bus et ses horaires en temps réel avec géolocalisation précise</div>
+        <div id="destinations-view" class="view">
+            <div class="section-title">Destinations</div>
+            <div id="destinations-list"></div>
+        </div>
+
+        <div id="stops-view" class="view">
+            <select class="destination-select" id="destination-select">
+                <option value="">Choisir une destination</option>
+            </select>
+            <div class="section-title">Arrêts disponibles</div>
+            <div id="stops-list"></div>
+        </div>
+
+        <div id="schedule-view" class="view">
+            <div class="tabs">
+                <div class="tab-indicator"></div>
+                <button class="tab active" data-tab="theoretical">Horaires</button>
+                <button class="tab" data-tab="realtime">Temps réel</button>
             </div>
 
-            <div id="clock" class="feature-card">
-                <div class="feature-icon">⏰</div>
-                <div class="feature-title" data-i18n="schedules">Horaires</div>
-                <div class="feature-desc" data-i18n="schedules_desc">Fiches horaires théoriques et temps-réel avec prédictions intelligentes</div>
-            </div>
+            <input type="date" class="date-picker" id="date-picker">
 
-            <div id="ticket" class="feature-card">
-                <div class="feature-icon">🎫</div>
-                <div class="feature-title" data-i18n="reloadticket">Recharger</div>
-                <div class="feature-desc" data-i18n="reloadticket_desc">Rechargez votre abonnement via le portail officiel en toute sécurité</div>
-            </div>
+            <div id="theoretical-content" class="schedule-content active"></div>
+            <div id="realtime-content" class="schedule-content"></div>
+        </div>
+    </div>
 
-            <div id="actu" class="feature-card">
-                <div class="feature-icon">📰</div>
-                <div class="feature-title" data-i18n="news">Actualités</div>
-                <div class="feature-desc" data-i18n="news_desc">Informations et déviations des transports par ligne</div>
-            </div>
-        </section>
+    <button class="favorite-btn" id="favorite-btn" style="display: none;">★</button>
 
-        <!-- Quick Links -->
-        <section class="quick-links">
-            <h2 class="section-title" data-i18n="quick_links">Accès rapide</h2>
-            <div class="links-grid">
-                <div id="settings" class="link-card">
-                    <div class="link-icon">⚙️</div>
-                    <div class="link-title" data-i18n="settings">Paramètres</div>
-                </div>
-                <div id="mbh" class="link-card">
-                    <div class="link-icon">🚇</div>
-                    <div class="link-title">My Bus History</div>
-                </div>
-                <div id="mybusfinderhome" class="link-card" onclick="window.open('https://mybusfinder.fr', '_blank')">
-                    <div class="link-icon">🏠</div>
-                    <div class="link-title">mybusfinder.fr</div>
-                </div>
-            </div>
-        </section>
-    </main>
+    <div id="overlay"></div>
+    <div id="rt-panel">
+        <div id="rt-panel-header">
+            <div id="rt-panel-title">Détails</div>
+            <button id="rt-panel-close">✕</button>
+        </div>
+        <div id="rt-panel-content"></div>
+    </div>
 
     <script>
-        // ===== EMPÊCHER LE DOUBLE TAP ZOOM =====
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function (event) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                event.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, false);
+        const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
+        const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
+        const CACHE_TTL = 24 * 60 * 60 * 1000;
+        const CACHE_VERSION = '1.0';
 
-        // ===== HEADER SCROLL EFFECT =====
-        let lastScrollTop = 0;
-        const header = document.getElementById('header');
-        
-        window.addEventListener('scroll', () => {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            
-            if (scrollTop > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-            
-            lastScrollTop = scrollTop;
-        }, { passive: true });
-
-        // ===== CAROUSEL LIQUID GLASS =====
-        let currentSlide = 0;
-        const totalSlides = 3;
-        let autoPlayInterval;
-        
-        function updateCarousel() {
-            const track = document.querySelector('.carousel-track');
-            const dots = document.querySelectorAll('.carousel-dot');
-            
-            track.style.transform = `translateX(-${currentSlide * 100}%)`;
-            
-            dots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentSlide);
-            });
-        }
-        
-        function changeSlide(direction) {
-            currentSlide += direction;
-            
-            if (currentSlide >= totalSlides) {
-                currentSlide = 0;
-            } else if (currentSlide < 0) {
-                currentSlide = totalSlides - 1;
-            }
-            
-            updateCarousel();
-            resetAutoPlay();
-        }
-        
-        function goToSlide(slideIndex) {
-            currentSlide = slideIndex;
-            updateCarousel();
-            resetAutoPlay();
-        }
-        
-        function startAutoPlay() {
-            autoPlayInterval = setInterval(() => {
-                changeSlide(1);
-            }, 5000);
-        }
-        
-        function resetAutoPlay() {
-            clearInterval(autoPlayInterval);
-            startAutoPlay();
-        }
-
-        // Swipe tactile pour carousel
-        let startX = 0;
-        let endX = 0;
-        const carousel = document.querySelector('.carousel');
-        
-        carousel.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-        }, { passive: true });
-        
-        carousel.addEventListener('touchmove', (e) => {
-            endX = e.touches[0].clientX;
-        }, { passive: true });
-        
-        carousel.addEventListener('touchend', () => {
-            const threshold = 50;
-            const diff = startX - endX;
-            
-            if (Math.abs(diff) > threshold) {
-                if (diff > 0) {
-                    changeSlide(1);
-                } else {
-                    changeSlide(-1);
-                }
-            }
-        });
-
-        // Navigation au clavier
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') {
-                changeSlide(-1);
-            } else if (e.key === 'ArrowRight') {
-                changeSlide(1);
-            }
-        });
-
-        // ===== SYSTÈME I18N =====
-        const i18n = {
-            translations: {},
-            currentLang: 'fr',
-            supportedLanguages: ['fr', 'it', 'ar', 'en'],
-            defaultLang: 'fr',
-            isLoaded: false,
-            
-            getBrowserLanguage() {
-                const fullLang = navigator.language || navigator.userLanguage;
-                const primaryLang = fullLang.split('-')[0];
-                
-                if (this.supportedLanguages.includes(primaryLang)) {
-                    return primaryLang;
-                }
-                
-                return this.defaultLang;
-            },
-            
-            getLanguageFromUrl() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const lang = urlParams.get('lang');
-                return lang || localStorage.getItem('preferredLanguage') || this.defaultLang;
-            },
-            
-            async loadTranslations() {
-                this.currentLang = this.getLanguageFromUrl();
-                localStorage.setItem('preferredLanguage', this.currentLang);
-                
-                try {
-                    const response = await fetch(`../locales/${this.currentLang}.json`);
-                    this.translations = await response.json();
-                    this.isLoaded = true;
-                    document.dispatchEvent(new CustomEvent('translationsLoaded'));
-                    return this.translations;
-                } catch (error) {
-                    console.error("Erreur lors du chargement des traductions:", error);
-                    this.translations = {
-                        welcome: "Bienvenue sur My Bus Finder",
-                        search_bus: "Localiser mon bus",
-                        search_bus_desc: "Trouvez facilement votre bus et ses horaires en temps réel",
-                        schedules: "Horaires",
-                        schedules_desc: "Fiches horaires théoriques et temps-réel",
-                        reloadticket: "Recharger",
-                        reloadticket_desc: "Rechargez votre abonnement en ligne",
-                        news: "Actualités",
-                        news_desc: "Informations et déviations des transports par ligne",
-                        quick_links: "Accès rapides",
-                        settings: "Paramètres",
-                        mobile_app: "Application mobile",
-                    };
-                    this.isLoaded = true;
-                    document.dispatchEvent(new CustomEvent('translationsLoaded'));
-                    return this.translations;
-                }
-            },
-            
-            t(key, params = {}) {
-                let text = this.translations[key] || key;
-                
-                Object.keys(params).forEach(param => {
-                    text = text.replace(`{${param}}`, params[param]);
-                });
-                
-                return text;
-            },
-            
-            applyTranslations() {
-                document.querySelectorAll('[data-i18n]').forEach(element => {
-                    const key = element.getAttribute('data-i18n');
-                    if (this.translations[key]) {
-                        element.textContent = this.translations[key];
-                    }
-                });
-
-                document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
-                    const key = element.getAttribute('data-i18n-placeholder');
-                    if (this.translations[key]) {
-                        element.placeholder = this.translations[key];
-                    }
-                });
-            },
-            
-            addLangToUrl() {
-                const browserLang = this.getBrowserLanguage();
-                
-                if (browserLang !== this.defaultLang) {
-                    const currentUrl = new URL(window.location.href);
-                    if (!currentUrl.searchParams.has('lang')) {
-                        currentUrl.searchParams.set('lang', browserLang);
-                        window.history.replaceState({}, '', currentUrl.toString());
-                    }
-                }
-                
-                return browserLang;
-            },
-            
-            init() {
-                const detectedLang = this.addLangToUrl();
-                const urlLang = new URLSearchParams(window.location.search).get('lang');
-                
-                if (!localStorage.getItem('preferredLanguage')) {
-                    localStorage.setItem('preferredLanguage', urlLang || detectedLang);
-                }
-                
-                return this.loadTranslations();
-            }
+        const state = {
+            routes: {},
+            stops: {},
+            trips: {},
+            stopTimes: {},
+            calendar: {},
+            calendarDates: {},
+            viewHistory: [],
+            currentRoute: null,
+            currentStop: null,
+            currentDestination: null,
+            favorites: [],
+            coreLoaded: false,
+            realtimeInterval: null,
+            loadedRoutes: new Set(),
+            zipCache: null,
+            zipFiles: {}
         };
 
-        window.t = (key, params) => i18n.t(key, params);
+        const cache = {
+            serviceIds: new Map(),
+            scheduleData: new Map(),
+            destinations: new Map(),
+            stops: new Map()
+        };
 
-        function waitForTranslations() {
-            return new Promise(resolve => {
-                if (i18n.isLoaded) {
-                    resolve();
-                } else {
-                    document.addEventListener('translationsLoaded', () => resolve(), { once: true });
+        document.addEventListener('DOMContentLoaded', init);
+
+        async function init() {
+            loadFavorites();
+            await loadGtfsCore();
+            showLines();
+        }
+
+        async function getZip() {
+            if (state.zipCache) return state.zipCache;
+            
+            const response = await fetch(GTFS_ZIP_URL);
+            if (!response.ok) {
+                throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
+            }
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            state.zipCache = fflate.unzipSync(uint8Array);
+            
+            return state.zipCache;
+        }
+
+        async function getFileFromZip(zip, filename) {
+            if (!zip[filename]) return null;
+            
+            const decoder = new TextDecoder('utf-8');
+            return decoder.decode(zip[filename]);
+        }
+
+        async function loadGtfsCore() {
+            try {
+                const cached = getCachedData('gtfs_core');
+                if (cached) {
+                    Object.assign(state, cached);
+                    state.coreLoaded = true;
+                    return;
                 }
+
+                const zip = await getZip();
+
+                const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
+                const missingFiles = requiredFiles.filter(f => !zip[f]);
+                
+                if (missingFiles.length > 0) {
+                    throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
+                }
+
+                if (!zip['calendar.txt'] && !zip['calendar_dates.txt']) {
+                    throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
+                }
+
+                const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
+                    getFileFromZip(zip, 'routes.txt'),
+                    getFileFromZip(zip, 'stops.txt'),
+                    getFileFromZip(zip, 'calendar.txt'),
+                    getFileFromZip(zip, 'calendar_dates.txt')
+                ]);
+
+                state.routes = parseCSVToObject(routesText, 'route_id');
+                state.stops = parseCSVToObject(stopsText, 'stop_id');
+                
+                if (calendarText) {
+                    state.calendar = parseCSVToObject(calendarText, 'service_id');
+                }
+                
+                if (calendarDatesText) {
+                    const dates = parseCSV(calendarDatesText);
+                    dates.forEach(cd => {
+                        if (!state.calendarDates[cd.date]) {
+                            state.calendarDates[cd.date] = { added: [], removed: [] };
+                        }
+                        if (cd.exception_type === '1') {
+                            state.calendarDates[cd.date].added.push(cd.service_id);
+                        } else if (cd.exception_type === '2') {
+                            state.calendarDates[cd.date].removed.push(cd.service_id);
+                        }
+                    });
+                }
+
+                if (!calendarText && calendarDatesText) {
+                    console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
+                    state.calendar = {};
+                }
+
+                setCachedData('gtfs_core', {
+                    routes: state.routes,
+                    stops: state.stops,
+                    calendar: state.calendar,
+                    calendarDates: state.calendarDates
+                });
+
+                state.coreLoaded = true;
+            } catch (error) {
+                console.error('Erreur chargement GTFS:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: var(--color-accent); text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                        <div style="font-weight: 700; margin-bottom: 8px;">Erreur de chargement</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadTripsAndStopTimesForRoute(routeId) {
+            if (state.loadedRoutes.has(routeId)) return;
+
+            const cacheKey = `route_${routeId}`;
+            const cached = getCachedData(cacheKey);
+            
+            if (cached) {
+                state.trips[routeId] = cached.trips;
+                state.stopTimes[routeId] = cached.stopTimes;
+                state.loadedRoutes.add(routeId);
+                return;
+            }
+
+            try {
+                const zip = await getZip();
+
+                if (!zip['trips.txt'] || !zip['stop_times.txt']) {
+                    throw new Error('Fichiers trips.txt ou stop_times.txt manquants dans le ZIP');
+                }
+
+                const [tripsText, stopTimesText] = await Promise.all([
+                    getFileFromZip(zip, 'trips.txt'),
+                    getFileFromZip(zip, 'stop_times.txt')
+                ]);
+
+                const allTrips = parseCSV(tripsText);
+                const routeTrips = allTrips.filter(t => t.route_id === routeId);
+                const tripIds = new Set(routeTrips.map(t => t.trip_id));
+
+                const allStopTimes = parseCSV(stopTimesText);
+                const stopTimesByTrip = {};
+                
+                allStopTimes.forEach(st => {
+                    if (tripIds.has(st.trip_id)) {
+                        if (!stopTimesByTrip[st.trip_id]) {
+                            stopTimesByTrip[st.trip_id] = [];
+                        }
+                        stopTimesByTrip[st.trip_id].push({
+                            stop_id: st.stop_id,
+                            arrival_time: formatTimeString(st.arrival_time),
+                            departure_time: formatTimeString(st.departure_time || st.arrival_time),
+                            stop_sequence: parseInt(st.stop_sequence, 10)
+                        });
+                    }
+                });
+
+                Object.values(stopTimesByTrip).forEach(times => {
+                    times.sort((a, b) => a.stop_sequence - b.stop_sequence);
+                });
+
+                state.trips[routeId] = routeTrips;
+                state.stopTimes[routeId] = stopTimesByTrip;
+                state.loadedRoutes.add(routeId);
+
+                setCachedData(cacheKey, {
+                    trips: routeTrips,
+                    stopTimes: stopTimesByTrip
+                });
+            } catch (error) {
+                console.error('Erreur chargement route:', error);
+                alert(`Erreur lors du chargement de la ligne: ${error.message}`);
+            }
+        }
+
+        function parseCSV(text) {
+            const lines = text.trim().split(/\r?\n/);
+            const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+
+            return lines.slice(1).filter(l => l.trim()).map(line => {
+                const values = parseCSVLine(line);
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = (values[i] ?? '').trim().replace(/"/g, ''));
+                return obj;
             });
         }
 
-        // ===== INITIALISATION =====
-        document.addEventListener('DOMContentLoaded', async () => {
-            await i18n.init();
-            await waitForTranslations();
-            i18n.applyTranslations();
-            
-            initEventHandlers();
-            startAutoPlay();
-        });
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
 
-        // ===== EVENT HANDLERS =====
-        function initEventHandlers() {
-            // Feature cards
-            document.getElementById('bus').onclick = () => {
-                window.parent.postMessage({ type: 'openmap' }, '*');
-            };
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
 
-            document.getElementById('clock').onclick = () => {
-                window.parent.postMessage({ type: 'schedule' }, '*');
-            };
-
-            document.getElementById('actu').onclick = () => {
-                window.parent.postMessage({ type: 'news' }, '*');
-            };
-
-            document.getElementById('ticket').onclick = () => {
-                window.parent.postMessage({ type: 'boutique' }, '*');
-            };
-            
-            // Quick links
-            document.getElementById('settings').onclick = () => {
-                window.parent.postMessage({ type: 'settings' }, '*');
-            };
-
-            document.getElementById('mbh').onclick = () => {
-                window.parent.postMessage({ type: 'mbh' }, '*');
-            };
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result;
         }
 
-        // ===== EMPÊCHER LE MENU CONTEXTUEL SUR LES ÉLÉMENTS INTERACTIFS =====
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.closest('.feature-card') || 
-                e.target.closest('.link-card') || 
-                e.target.closest('.header-action')) {
-                e.preventDefault();
-            }
-        });
+        function parseCSVToObject(text, keyField) {
+            const items = parseCSV(text);
+            const obj = {};
+            items.forEach(item => {
+                if (item[keyField]) {
+                    obj[item[keyField]] = item;
+                }
+            });
+            return obj;
+        }
 
-        // ===== RESIZE HANDLER =====
-        window.addEventListener('resize', () => {
-            updateCarousel();
+        function formatTimeString(timeStr) {
+            if (!timeStr) return '00h00';
+            const parts = timeStr.split(':');
+            let hour = parseInt(parts[0], 10);
+            const minute = parts[1] || '00';
+            if (hour >= 24) hour -= 24;
+            return `${hour}h${minute}`;
+        }
+
+        function getCachedData(key) {
+            try {
+                const item = localStorage.getItem(`gtfs_${key}`);
+                if (!item) return null;
+                
+                const data = JSON.parse(item);
+                if (data.version !== CACHE_VERSION) return null;
+                if (Date.now() - data.timestamp > CACHE_TTL) return null;
+                
+                return data.value;
+            } catch {
+                return null;
+            }
+        }
+
+        function setCachedData(key, value) {
+            try {
+                if (key.startsWith('route_')) {
+                    return;
+                }
+                
+                localStorage.setItem(`gtfs_${key}`, JSON.stringify({
+                    version: CACHE_VERSION,
+                    timestamp: Date.now(),
+                    value
+                }));
+            } catch (error) {
+                console.warn('Cache localStorage plein, nettoyage...', error);
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('gtfs_route_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
+            }
+        }
+
+        function loadFavorites() {
+            const stored = localStorage.getItem('favorites');
+            state.favorites = stored ? JSON.parse(stored) : [];
+        }
+
+        function saveFavorites() {
+            localStorage.setItem('favorites', JSON.stringify(state.favorites));
+        }
+
+        function addToFavorites(routeId, stopId, destinationId) {
+            const fav = { 
+                routeId, 
+                stopId, 
+                destinationId,
+                id: `${routeId}-${stopId}-${destinationId}`
+            };
+            if (!isFavorite(routeId, stopId, destinationId)) {
+                state.favorites.push(fav);
+                saveFavorites();
+                updateFavoriteButton();
+            }
+        }
+
+        function removeFromFavorites(routeId, stopId, destinationId) {
+            state.favorites = state.favorites.filter(f => 
+                !(f.routeId === routeId && f.stopId === stopId && f.destinationId === destinationId)
+            );
+            saveFavorites();
+            updateFavoriteButton();
+        }
+
+        function isFavorite(routeId, stopId, destinationId) {
+            return state.favorites.some(f => 
+                f.routeId === routeId && f.stopId === stopId && f.destinationId === destinationId
+            );
+        }
+
+        function updateFavoriteButton() {
+            const btn = document.getElementById('favorite-btn');
+            if (state.currentRoute && state.currentStop && state.currentDestination) {
+                btn.style.display = 'flex';
+                btn.classList.toggle('active', isFavorite(state.currentRoute, state.currentStop, state.currentDestination));
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        async function updateFavoritesSection() {
+            const section = document.getElementById('favorites-section');
+            const list = document.getElementById('favorites-list');
+
+            if (state.favorites.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            list.innerHTML = '';
+
+            for (const fav of state.favorites) {
+                await loadTripsAndStopTimesForRoute(fav.routeId);
+
+                const route = state.routes[fav.routeId];
+                const stop = state.stops[fav.stopId];
+                const dest = state.stops[fav.destinationId];
+
+                if (!route || !stop || !dest) continue;
+
+                const item = document.createElement('div');
+                item.className = 'favorite-item';
+                item.innerHTML = `
+                    <div class="favorite-info">
+                        <div class="favorite-route">${route.route_short_name}</div>
+                        <div class="favorite-details">${stop.stop_name} → ${dest.stop_name}</div>
+                    </div>
+                    <div class="favorite-times">Chargement...</div>
+                `;
+                
+                item.onclick = () => showSchedule(fav.routeId, fav.stopId, fav.destinationId);
+                list.appendChild(item);
+            }
+        }
+
+        function hideAllViews() {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        }
+
+        function showLines() {
+            hideAllViews();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('lines-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'none';
+            document.getElementById('header-title').textContent = 'My Bus Schedule';
+            document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
+            state.viewHistory = [];
+
+            const linesList = document.getElementById('lines-list');
+            linesList.innerHTML = '';
+
+            Object.entries(state.routes).forEach(([routeId, route]) => {
+                const item = document.createElement('div');
+                item.className = 'bus-item';
+                item.innerHTML = `
+                    <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
+                        ${route.route_short_name}
+                    </span>
+                    <span class="bus-name">${route.route_long_name}</span>
+                `;
+                item.onclick = () => showDestinations(routeId);
+                linesList.appendChild(item);
+            });
+
+            updateFavoritesSection();
+        }
+
+        async function showDestinations(routeId) {
+            state.currentRoute = routeId;
+            
+            hideAllViews();
+            document.getElementById('destinations-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'block';
+            
+            const route = state.routes[routeId];
+            document.getElementById('header-title').textContent = route.route_short_name;
+            document.getElementById('header-subtitle').textContent = route.route_long_name;
+            
+            state.viewHistory.push('lines');
+
+            const list = document.getElementById('destinations-list');
+            list.innerHTML = '<div class="loading">Chargement des destinations...</div>';
+
+            await loadTripsAndStopTimesForRoute(routeId);
+
+            const destinations = getDestinations(routeId);
+            list.innerHTML = '';
+
+            destinations.forEach(dest => {
+                const item = document.createElement('div');
+                item.className = 'destination-item';
+                item.innerHTML = `<strong>${dest.name}</strong>`;
+                item.onclick = () => showStops(routeId, dest.id);
+                list.appendChild(item);
+            });
+        }
+
+        function showStops(routeId, destinationId = null) {
+            hideAllViews();
+            document.getElementById('stops-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'block';
+            state.viewHistory.push('destinations');
+
+            const destinations = getDestinations(routeId);
+            const select = document.getElementById('destination-select');
+            select.innerHTML = '<option value="">Choisir une destination</option>';
+            
+            destinations.forEach(dest => {
+                const option = document.createElement('option');
+                option.value = dest.id;
+                option.textContent = dest.name;
+                if (dest.id === destinationId) option.selected = true;
+                select.appendChild(option);
+            });
+
+            select.onchange = () => updateStopsForDestination(routeId, select.value);
+
+            if (destinationId) {
+                updateStopsForDestination(routeId, destinationId);
+            }
+        }
+
+        function updateStopsForDestination(routeId, destinationId) {
+            const list = document.getElementById('stops-list');
+            list.innerHTML = '';
+
+            if (!destinationId) return;
+
+            const stops = getStopsForDestination(routeId, destinationId);
+            
+            stops.forEach(stop => {
+                const item = document.createElement('div');
+                item.className = 'stop-item';
+                item.innerHTML = `<strong>${stop.stop_name}</strong>`;
+                item.onclick = () => showSchedule(routeId, stop.stop_id, destinationId);
+                list.appendChild(item);
+            });
+        }
+
+        function showSchedule(routeId, stopId, destinationId) {
+            state.currentRoute = routeId;
+            state.currentStop = stopId;
+            state.currentDestination = destinationId;
+
+            hideAllViews();
+            document.getElementById('schedule-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'block';
+            state.viewHistory.push('stops');
+
+            const route = state.routes[routeId];
+            const stop = state.stops[stopId];
+            document.getElementById('header-title').textContent = `Ligne ${route.route_short_name}`;
+            document.getElementById('header-subtitle').textContent = stop.stop_name;
+
+            updateFavoriteButton();
+            setupTabHandlers();
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date-picker').value = today;
+            
+            updateScheduleByDate(routeId, stopId, destinationId, today);
+        }
+
+        function setupTabHandlers() {
+            const tabs = document.querySelectorAll('.tab');
+            const indicator = document.querySelector('.tab-indicator');
+            const datePicker = document.getElementById('date-picker');
+
+            tabs.forEach((tab, index) => {
+                tab.onclick = () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    const width = tab.offsetWidth;
+                    const left = tab.offsetLeft;
+                    indicator.style.width = `${width}px`;
+                    indicator.style.transform = `translateX(${left}px)`;
+
+                    document.querySelectorAll('.schedule-content').forEach(c => c.classList.remove('active'));
+                    
+                    if (tab.dataset.tab === 'theoretical') {
+                        document.getElementById('theoretical-content').classList.add('active');
+                        datePicker.style.display = 'block';
+                    } else {
+                        document.getElementById('realtime-content').classList.add('active');
+                        datePicker.style.display = 'none';
+                        loadRealtimeData();
+                    }
+                };
+            });
+
+            const activeTab = document.querySelector('.tab.active');
+            indicator.style.width = `${activeTab.offsetWidth}px`;
+            indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
+
+            datePicker.onchange = (e) => {
+                updateScheduleByDate(state.currentRoute, state.currentStop, state.currentDestination, e.target.value);
+            };
+        }
+        
+        function computeGtfsDateAndDow(dateString) {
+            const gtfsDate = dateString.replace(/-/g, '');
+            const safe = new Date(dateString + 'T12:00:00');
+            const dayOfWeek = safe.getDay();
+            return { gtfsDate, dayOfWeek };
+        }
+
+        function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
+            const { gtfsDate, dayOfWeek } = computeGtfsDateAndDow(dateString);
+            const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
+
+            if (activeServiceIds.length === 0) {
+                const container = document.getElementById('theoretical-content');
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div>Aucun service actif pour cette date</div></div>';
+                return;
+            }
+
+            const validTrips = state.trips[routeId].filter(trip => 
+                activeServiceIds.includes(trip.service_id)
+            );
+
+            displaySchedule(validTrips, stopId, destinationId, document.getElementById('theoretical-content'));
+        }
+
+        function displaySchedule(validTrips, stopId, destinationId, container) {
+            container.innerHTML = '';
+
+            const schedule = [];
+            const stopTimesByRoute = state.stopTimes[state.currentRoute];
+
+            validTrips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops || tripStops.length === 0) return;
+
+                const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+
+                if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
+
+                schedule.push(tripStops[stopIndex].arrival_time);
+            });
+
+            if (schedule.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible</div></div>';
+                return;
+            }
+
+            const timesByHour = {};
+            schedule.forEach(time => {
+                const [hour, minute] = time.split('h');
+                if (!timesByHour[hour]) timesByHour[hour] = [];
+                timesByHour[hour].push(minute);
+            });
+
+            Object.keys(timesByHour)
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+                .forEach(hour => {
+                    const group = document.createElement('div');
+                    group.className = 'schedule-group';
+
+                    const hourTitle = document.createElement('div');
+                    hourTitle.className = 'schedule-hour';
+                    hourTitle.textContent = `${hour}h`;
+                    group.appendChild(hourTitle);
+
+                    const times = document.createElement('div');
+                    times.className = 'schedule-times';
+
+                    const uniqueMinutes = [...new Set(timesByHour[hour])]
+                        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+                    uniqueMinutes.forEach(minute => {
+                        const timeEl = document.createElement('div');
+                        timeEl.className = 'schedule-time';
+                        timeEl.textContent = minute;
+                        times.appendChild(timeEl);
+                    });
+
+                    group.appendChild(times);
+                    container.appendChild(group);
+                });
+        }
+
+        function getActiveServiceIds(dayOfWeek, gtfsDate) {
+            const cacheKey = `${dayOfWeek}_${gtfsDate}`;
+            if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
+
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayName = dayNames[dayOfWeek];
+
+            let serviceIds = [];
+
+            const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
+
+            if (hasCalendar) {
+                for (const [serviceId, cal] of Object.entries(state.calendar)) {
+                    const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
+                    if (!inRange) continue;
+
+                    if (String(cal[dayName]).trim() === '1') {
+                        serviceIds.push(serviceId);
+                    }
+                }
+            } else {
+                serviceIds = [];
+            }
+
+            const ex = state.calendarDates?.[gtfsDate];
+            if (ex) {
+                for (const id of ex.added || []) {
+                    if (!serviceIds.includes(id)) serviceIds.push(id);
+                }
+                for (const id of ex.removed || []) {
+                    serviceIds = serviceIds.filter(sid => sid !== id);
+                }
+            }
+
+            cache.serviceIds.set(cacheKey, serviceIds);
+            return serviceIds;
+        }
+
+        function getDestinations(routeId) {
+            if (cache.destinations.has(routeId)) {
+                return cache.destinations.get(routeId);
+            }
+
+            const trips = state.trips[routeId];
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const destinations = new Map();
+
+            trips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (tripStops && tripStops.length > 0) {
+                    const lastStop = tripStops[tripStops.length - 1];
+                    const stop = state.stops[lastStop.stop_id];
+                    if (stop && !destinations.has(stop.stop_id)) {
+                        destinations.set(stop.stop_id, { 
+                            id: stop.stop_id, 
+                            name: stop.stop_name 
+                        });
+                    }
+                }
+            });
+
+            const result = Array.from(destinations.values());
+            cache.destinations.set(routeId, result);
+            return result;
+        }
+
+        function getStopsForDestination(routeId, destinationId) {
+            const cacheKey = `${routeId}_${destinationId}`;
+            if (cache.stops.has(cacheKey)) {
+                return cache.stops.get(cacheKey);
+            }
+
+            const trips = state.trips[routeId];
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const stopsMap = new Map();
+
+            trips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops) return;
+
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+                if (destIndex === -1) return;
+
+                tripStops.slice(0, destIndex).forEach(st => { 
+                    const stop = state.stops[st.stop_id];
+                    if (stop && !stopsMap.has(stop.stop_id)) {
+                        stopsMap.set(stop.stop_id, stop);
+                    }
+                });
+            });
+
+            const result = Array.from(stopsMap.values());
+            cache.stops.set(cacheKey, result);
+            return result;
+        }
+
+        async function loadRealtimeData() {
+            const container = document.getElementById('realtime-content');
+            container.innerHTML = '<div class="loading">Chargement des données temps réel...</div>';
+
+            try {
+                const response = await fetch(GTFS_RT_URL);
+                const buffer = await response.arrayBuffer();
+                
+                const root = await protobuf.load('src/gtfs-realtime.proto');
+                const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+                const message = FeedMessage.decode(new Uint8Array(buffer));
+
+                const arrivals = processRealtimeDataForStop(message, state.currentRoute, state.currentStop);
+                displayRealtimeArrivals(arrivals, container);
+            } catch (error) {
+                console.error('Erreur temps réel:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div>Données temps réel non disponibles</div></div>';
+            }
+        }
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function parseTimeHHhMM(timeStr) {
+            const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
+            return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
+        }
+
+        function buildDateFromPicker(timeHHhMM, dateString) {
+            const { h, m } = parseTimeHHhMM(timeHHhMM);
+            const d = new Date(dateString + 'T12:00:00');
+            d.setHours(h, m, 0, 0);
+            return d;
+        }
+
+        function getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString) {
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const tripStops = stopTimesByRoute?.[tripId];
+            if (!tripStops) return null;
+
+            const st = tripStops.find(x => x.stop_id === stopId);
+            if (!st?.arrival_time) return null;
+
+            return buildDateFromPicker(st.arrival_time, dateString);
+        }
+
+        function minutesDiff(a, b) {
+            return Math.round((a.getTime() - b.getTime()) / 60000);
+        }
+
+        function matchesCurrentRouteRt(tripDescriptor, routeId) {
+            const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
+            if (rtRouteId) return String(rtRouteId) === String(routeId);
+
+            const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
+            if (!rtTripId) return false;
+
+            const routeTrips = state.trips?.[routeId] || [];
+            return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
+        }
+
+        function openRtPanel(title, html) {
+            const overlay = document.getElementById('overlay');
+            const panel = document.getElementById('rt-panel');
+            const titleEl = document.getElementById('rt-panel-title');
+            const contentEl = document.getElementById('rt-panel-content');
+
+            if (titleEl) titleEl.textContent = title || 'Détails';
+            if (contentEl) contentEl.innerHTML = html || '';
+
+            overlay.style.display = 'block';
+            panel.style.display = 'block';
+        }
+
+        function closeRtPanel() {
+            const overlay = document.getElementById('overlay');
+            const panel = document.getElementById('rt-panel');
+            if (overlay) overlay.style.display = 'none';
+            if (panel) panel.style.display = 'none';
+        }
+
+        function getMinutesFromHHhMM(timeStr) {
+            const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
+            return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+        }
+
+        function sendVehicleToParent(vehicleId, tripId) {
+            const message = {
+                type: 'vehicleSelected',
+                vehicleId: vehicleId || null,
+                tripId: tripId || null,
+                stopId: state.currentStop || null,
+                routeId: state.currentRoute || null,
+                timestamp: new Date().getTime()
+            };
+
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(message, '*');
+            } else if (window.opener) {
+                window.opener.postMessage(message, '*');
+            } else {
+                console.warn('Aucun parent/opener pour recevoir le message:', message);
+            }
+        }
+
+        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
+            const route = state.routes?.[routeId];
+            const routeLabel = route?.route_short_name ? `Ligne ${route.route_short_name}` : 'Ligne';
+            const routeColor = route?.route_color ? `#${route.route_color}` : '#007AFF';
+
+            const tripStops = state.stopTimes?.[routeId]?.[tripId];
+            if (!tripStops || tripStops.length === 0) {
+                openRtPanel(
+                    `${routeLabel} • Bus ${vehicleId || '—'}`,
+                    `<div style="color: var(--text-secondary)">Aucun détail d'arrêts pour ce trajet.</div>`
+                );
+                return;
+            }
+
+            const now = new Date();
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+
+            let nextIndex = 0;
+            for (let i = 0; i < tripStops.length; i++) {
+                const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
+                if (tMin >= nowMin) { nextIndex = i; break; }
+                nextIndex = i;
+            }
+
+            const rows = tripStops.map((st, idx) => {
+                const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
+                const time = st.arrival_time || '--h--';
+
+                const isNext = idx === nextIndex;
+                const isPast = idx < nextIndex;
+
+                return `
+                    <div style="
+                        display:flex; justify-content:space-between; align-items:center; gap:12px; 
+                        padding:14px 16px;
+                        border-bottom:1px solid var(--glass-border-subtle);
+                        background:${isNext ? 'rgba(0, 122, 255, 0.08)' : 'transparent'};
+                        opacity:${isPast ? '.5' : '1'};
+                        border-radius:8px;
+                        margin-bottom:4px;
+                    ">
+                        <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+                            <div style="
+                                width:12px; height:12px; border-radius:50%;
+                                background:${isNext ? routeColor : 'var(--text-tertiary)'};
+                                box-shadow:${isNext ? `0 0 0 4px ${routeColor}25` : 'none'};
+                                flex-shrink:0;
+                            "></div>
+                            <div style="font-weight:${isNext ? '700' : '500'}; overflow:hidden; text-overflow:ellipsis;">${stopName}</div>
+                        </div>
+                        <div style="font-weight:800; color:${isNext ? routeColor : 'var(--text-primary)'}; white-space:nowrap;">${time}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const html = `
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; padding:12px; background:var(--glass-bg-card); border-radius:12px;">
+                    <div style="width:12px; height:12px; border-radius:50%; background:${routeColor}; box-shadow:0 0 0 4px ${routeColor}25"></div>
+                    <div style="font-weight:800; font-size:16px;">${routeLabel}</div>
+                    ${vehicleId ? `<div style="margin-left:auto; font-weight:700; color:${routeColor};">Bus ${vehicleId}</div>` : ''}
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    ${rows}
+                </div>
+
+                <button id="rt-show-map-btn" style="
+                    cursor:pointer; border:none; color:#fff; width:100%;
+                    background:linear-gradient(135deg, ${routeColor}, #5856D6);
+                    padding:14px 20px; border-radius:12px; font-weight:700; font-size:15px;
+                    box-shadow:0 8px 24px ${routeColor}40;
+                    font-family:inherit;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                ">
+                    📍 Afficher dans la carte
+                </button>
+            `;
+
+            openRtPanel(`${routeLabel}`, html);
+
+            const btn = document.getElementById('rt-show-map-btn');
+            if (btn) {
+                btn.onclick = () => {
+                    sendVehicleToParent(vehicleId, tripId);
+                    closeRtPanel();
+                };
+                btn.onmousedown = () => btn.style.transform = 'scale(0.97)';
+                btn.onmouseup = () => btn.style.transform = 'scale(1)';
+            }
+        }
+
+        function processRealtimeDataForStop(message, routeId, stopId) {
+            const arrivals = [];
+            const now = Date.now() / 1000;
+
+            message.entity.forEach(entity => {
+                if (!entity.tripUpdate) return;
+
+                const tu = entity.tripUpdate;
+                const td = tu.trip;
+
+                const tripId = td.tripId || td.trip_id;
+                if (!tripId) return;
+
+                const rtRouteId = td.routeId || td.route_id;
+                if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
+
+                if (!rtRouteId) {
+                    const routeTrips = state.trips?.[routeId] || [];
+                    const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
+                    if (!ok) return;
+                }
+
+                const vehicleId =
+                    entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
+                    entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
+
+                tu.stopTimeUpdate?.forEach(update => {
+                    if (update.stopId !== stopId) return;
+
+                    const arrivalTime = update.arrival?.time || update.departure?.time;
+                    if (!arrivalTime || arrivalTime <= now) return;
+
+                    arrivals.push({
+                        time: arrivalTime,
+                        tripId: tripId,
+                        vehicleId: vehicleId,
+                        headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
+                    });
+                });
+            });
+
+            return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
+        }
+
+        function displayRealtimeArrivals(arrivals, container) {
+            container.innerHTML = '';
+
+            if (!arrivals || arrivals.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
+                return;
+            }
+
+            arrivals.forEach(arr => {
+                const date = new Date(arr.time * 1000);
+                const hh = pad2(date.getHours());
+                const mm = pad2(date.getMinutes());
+
+                const item = document.createElement('div');
+                item.className = 'realtime-item';
+
+                const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
+
+                item.innerHTML = `
+                    <div style="flex:1; min-width:0;">
+                        <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+                            <span>${arr.headsign || 'Destination'}</span>
+                            ${busLabel ? `<span style="font-size:12px; color:var(--text-secondary); font-weight:600;">${busLabel}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="realtime-time">${hh}h${mm}</div>
+                `;
+
+                item.addEventListener('click', () => {
+                    showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
+                });
+
+                container.appendChild(item);
+            });
+        }
+
+        function goBack() {
+            const previous = state.viewHistory.pop();
+            
+            if (!previous) {
+                showLines();
+                return;
+            }
+
+            switch (previous) {
+                case 'lines':
+                    showLines();
+                    break;
+                case 'destinations':
+                    showDestinations(state.currentRoute);
+                    break;
+                case 'stops':
+                    showStops(state.currentRoute, state.currentDestination);
+                    break;
+            }
+        }
+
+        document.getElementById('back-btn').onclick = goBack;
+        
+        document.getElementById('favorite-btn').onclick = () => {
+            if (isFavorite(state.currentRoute, state.currentStop, state.currentDestination)) {
+                removeFromFavorites(state.currentRoute, state.currentStop, state.currentDestination);
+            } else {
+                addToFavorites(state.currentRoute, state.currentStop, state.currentDestination);
+            }
+            updateFavoritesSection();
+        };
+
+        const overlay = document.getElementById('overlay');
+        const closeBtn = document.getElementById('rt-panel-close');
+        if (overlay) overlay.onclick = closeRtPanel;
+        if (closeBtn) closeBtn.onclick = closeRtPanel;
+
+        window.addEventListener('beforeunload', () => {
+            if (state.realtimeInterval) {
+                clearInterval(state.realtimeInterval);
+            }
         });
     </script>
 </body>
