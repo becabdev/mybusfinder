@@ -517,7 +517,7 @@
     <script>
         // ==================== SOURCE DES DONNÉES ====================
         const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
-        const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
+        const GTFS_RT_URL = 'proxy-cors/tripupdate.php';
         const CACHE_TTL = 24 * 60 * 60 * 1000;
         const CACHE_VERSION = '1.0';
         // ============================================================
@@ -791,13 +791,24 @@
 
         function setCachedData(key, value) {
             try {
+                // Pour les routes, ne pas mettre en cache car trop volumineux
+                if (key.startsWith('route_')) {
+                    return; // Skip cache pour les routes individuelles
+                }
+                
                 localStorage.setItem(`gtfs_${key}`, JSON.stringify({
                     version: CACHE_VERSION,
                     timestamp: Date.now(),
                     value
                 }));
             } catch (error) {
-                console.error('Erreur cache:', error);
+                console.warn('Cache localStorage plein, nettoyage...', error);
+                // Nettoyer le cache des routes si plein
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('gtfs_route_')) {
+                        localStorage.removeItem(key);
+                    }
+                });
             }
         }
 
@@ -1048,12 +1059,21 @@
         }
 
         function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
-            const date = new Date(dateString);
-            const dayOfWeek = date.getDay();
-            const gtfsDate = dateString.replace(/-/g, '');
+            const selectedDate = new Date(dateString);
+            const gtfsDate = selectedDate.toISOString().split('T')[0].replace(/-/g, '');
+            const dayOfWeek = selectedDate.getDay();
 
-            const serviceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
-            const validTrips = state.trips[routeId].filter(trip => serviceIds.includes(trip.service_id));
+            const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
+            
+            if (activeServiceIds.length === 0) {
+                const container = document.getElementById('theoretical-content');
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div>Aucun service actif pour cette date</div></div>';
+                return;
+            }
+
+            const validTrips = state.trips[routeId].filter(trip => 
+                activeServiceIds.includes(trip.service_id)
+            );
 
             displaySchedule(validTrips, stopId, destinationId, document.getElementById('theoretical-content'));
         }
@@ -1068,20 +1088,28 @@
                 const tripStops = stopTimesByRoute[trip.trip_id];
                 if (!tripStops) return;
 
-                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
-                if (destIndex === -1) return;
-
-                const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
-                if (stopIndex !== -1 && stopIndex < destIndex) {
-                    schedule.push(tripStops[stopIndex].arrival_time);
-                }
+                // Vérifier si ce trip dessert la destination
+                let destinationReached = false;
+                
+                tripStops.forEach(stopTime => {
+                    // Si on atteint la destination, marquer le flag
+                    if (stopTime.stop_id === destinationId) {
+                        destinationReached = true;
+                    }
+                    
+                    // Ajouter l'horaire seulement si c'est notre arrêt ET qu'on n'a pas encore atteint la destination
+                    if (stopTime.stop_id === stopId && !destinationReached) {
+                        schedule.push(stopTime.arrival_time);
+                    }
+                });
             });
 
             if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
                 return;
             }
 
+            // Grouper par heure
             const timesByHour = {};
             schedule.forEach(time => {
                 const [hour, minute] = time.split('h');
@@ -1089,29 +1117,35 @@
                 timesByHour[hour].push(minute);
             });
 
-            Object.keys(timesByHour).sort((a, b) => parseInt(a) - parseInt(b)).forEach(hour => {
-                const group = document.createElement('div');
-                group.className = 'schedule-group';
-                
-                const hourTitle = document.createElement('div');
-                hourTitle.className = 'schedule-hour';
-                hourTitle.textContent = `${hour}h`;
-                group.appendChild(hourTitle);
+            // Trier les heures et afficher
+            Object.keys(timesByHour)
+                .sort((a, b) => parseInt(a) - parseInt(b))
+                .forEach(hour => {
+                    const group = document.createElement('div');
+                    group.className = 'schedule-group';
+                    
+                    const hourTitle = document.createElement('div');
+                    hourTitle.className = 'schedule-hour';
+                    hourTitle.textContent = `${hour}h`;
+                    group.appendChild(hourTitle);
 
-                const times = document.createElement('div');
-                times.className = 'schedule-times';
-                
-                const uniqueMinutes = [...new Set(timesByHour[hour])].sort((a, b) => parseInt(a) - parseInt(b));
-                uniqueMinutes.forEach(minute => {
-                    const timeEl = document.createElement('div');
-                    timeEl.className = 'schedule-time';
-                    timeEl.textContent = minute;
-                    times.appendChild(timeEl);
+                    const times = document.createElement('div');
+                    times.className = 'schedule-times';
+                    
+                    // Dédupliquer et trier les minutes
+                    const uniqueMinutes = [...new Set(timesByHour[hour])]
+                        .sort((a, b) => parseInt(a) - parseInt(b));
+                    
+                    uniqueMinutes.forEach(minute => {
+                        const timeEl = document.createElement('div');
+                        timeEl.className = 'schedule-time';
+                        timeEl.textContent = minute;
+                        times.appendChild(timeEl);
+                    });
+
+                    group.appendChild(times);
+                    container.appendChild(group);
                 });
-
-                group.appendChild(times);
-                container.appendChild(group);
-            });
         }
 
         function getActiveServiceIds(dayOfWeek, gtfsDate) {
@@ -1121,18 +1155,31 @@
             const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
             const dayName = dayNames[dayOfWeek];
 
-            let serviceIds = Object.entries(state.calendar)
-                .filter(([_, cal]) => {
-                    if (cal[dayName] !== '1') return false;
-                    if (gtfsDate < cal.start_date || gtfsDate > cal.end_date) return false;
-                    return true;
-                })
-                .map(([id]) => id);
+            let serviceIds = [];
 
+            // Parcourir calendar pour trouver les services actifs
+            Object.entries(state.calendar).forEach(([serviceId, cal]) => {
+                // Vérifier la plage de dates
+                const isInDateRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
+                
+                if (isInDateRange) {
+                    // Vérifier le jour de la semaine
+                    if (cal[dayName] === '1') {
+                        serviceIds.push(serviceId);
+                    }
+                }
+            });
+
+            // Appliquer les exceptions de calendar_dates
             if (state.calendarDates[gtfsDate]) {
+                // Ajouter les services activés pour cette date
                 state.calendarDates[gtfsDate].added.forEach(id => {
-                    if (!serviceIds.includes(id)) serviceIds.push(id);
+                    if (!serviceIds.includes(id)) {
+                        serviceIds.push(id);
+                    }
                 });
+                
+                // Retirer les services désactivés pour cette date
                 state.calendarDates[gtfsDate].removed.forEach(id => {
                     serviceIds = serviceIds.filter(sid => sid !== id);
                 });
