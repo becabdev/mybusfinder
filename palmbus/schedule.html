@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fflate/0.8.1/umd/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <style>
         :root {
@@ -535,7 +535,8 @@
             coreLoaded: false,
             realtimeInterval: null,
             loadedRoutes: new Set(),
-            zipCache: null
+            zipCache: null,
+            zipFiles: {}
         };
 
         const cache = {
@@ -561,9 +562,19 @@
                 throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
             }
             
-            const blob = await response.blob();
-            state.zipCache = await JSZip.loadAsync(blob);
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            state.zipCache = fflate.unzipSync(uint8Array);
+            
             return state.zipCache;
+        }
+
+        async function getFileFromZip(zip, filename) {
+            if (!zip[filename]) return null;
+            
+            const decoder = new TextDecoder('utf-8');
+            return decoder.decode(zip[filename]);
         }
 
         async function loadGtfsCore() {
@@ -578,26 +589,21 @@
                 const zip = await getZip();
 
                 const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
-                const missingFiles = requiredFiles.filter(f => !zip.file(f));
+                const missingFiles = requiredFiles.filter(f => !zip[f]);
                 
                 if (missingFiles.length > 0) {
                     throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
                 }
 
-                const routesFile = zip.file('routes.txt');
-                const stopsFile = zip.file('stops.txt');
-                const calendarFile = zip.file('calendar.txt');
-                const calendarDatesFile = zip.file('calendar_dates.txt');
-
-                if (!calendarFile && !calendarDatesFile) {
+                if (!zip['calendar.txt'] && !zip['calendar_dates.txt']) {
                     throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
                 }
 
                 const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
-                    routesFile ? routesFile.async('text') : Promise.reject('routes.txt manquant'),
-                    stopsFile ? stopsFile.async('text') : Promise.reject('stops.txt manquant'),
-                    calendarFile ? calendarFile.async('text') : Promise.resolve(''),
-                    calendarDatesFile ? calendarDatesFile.async('text') : Promise.resolve('')
+                    getFileFromZip(zip, 'routes.txt'),
+                    getFileFromZip(zip, 'stops.txt'),
+                    getFileFromZip(zip, 'calendar.txt'),
+                    getFileFromZip(zip, 'calendar_dates.txt')
                 ]);
 
                 state.routes = parseCSVToObject(routesText, 'route_id');
@@ -665,16 +671,13 @@
             try {
                 const zip = await getZip();
 
-                const tripsFile = zip.file('trips.txt');
-                const stopTimesFile = zip.file('stop_times.txt');
-
-                if (!tripsFile || !stopTimesFile) {
+                if (!zip['trips.txt'] || !zip['stop_times.txt']) {
                     throw new Error('Fichiers trips.txt ou stop_times.txt manquants dans le ZIP');
                 }
 
                 const [tripsText, stopTimesText] = await Promise.all([
-                    tripsFile.async('text'),
-                    stopTimesFile.async('text')
+                    getFileFromZip(zip, 'trips.txt'),
+                    getFileFromZip(zip, 'stop_times.txt')
                 ]);
 
                 const allTrips = parseCSV(tripsText);
