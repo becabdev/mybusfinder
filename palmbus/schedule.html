@@ -1356,8 +1356,8 @@
             }
 
             const vehicleId =
-            tu.vehicle.id || tu.vehicle.label ||
-            entity.vehicle.vehicle.id || entity.vehicle.vehicle.label;
+            entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
+            entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
 
             tu.stopTimeUpdate?.forEach(update => {
             if (update.stopId !== stopId) return;
