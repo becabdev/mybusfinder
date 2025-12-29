@@ -1367,13 +1367,9 @@
         openRtPanel(`Détails — ${route?.route_short_name || ''}`, html);
         }
 
-        // ------------------------------------------------------------------
-        // ✅ REMPLACE COMPLETEMENT ta fonction processRealtimeDataForStop
-        // ------------------------------------------------------------------
         function processRealtimeDataForStop(message, routeId, stopId) {
         const arrivals = [];
-        const nowSec = Date.now() / 1000;
-        const dateString = document.getElementById('date-picker')?.value || new Date().toISOString().slice(0, 10);
+        const now = Date.now() / 1000;
 
         message.entity.forEach(entity => {
             if (!entity.tripUpdate) return;
@@ -1381,39 +1377,39 @@
             const tu = entity.tripUpdate;
             const td = tu.trip;
 
-            if (!matchesCurrentRouteRt(td, routeId)) return;
-
             const tripId = td.tripId || td.trip_id;
             if (!tripId) return;
 
+            // Filtre route : routeId direct sinon match via GTFS trips
+            const rtRouteId = td.routeId || td.route_id;
+            if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
+
+            if (!rtRouteId) {
+            const routeTrips = state.trips?.[routeId] || [];
+            const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
+            if (!ok) return;
+            }
+
             const vehicleId =
-            tu.vehicle?.id || tu.vehicle?.label || entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label || null;
+            tu.vehicle?.id || tu.vehicle?.label ||
+            entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label || null;
 
             tu.stopTimeUpdate?.forEach(update => {
             if (update.stopId !== stopId) return;
 
-            const arrivalSec = update.arrival?.time || update.departure?.time;
-            if (!arrivalSec || arrivalSec <= nowSec) return;
-
-            const rtDate = new Date(arrivalSec * 1000);
-
-            // Théorique + retard
-            const theoDate = getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString);
-            const delayMin = theoDate ? minutesDiff(rtDate, theoDate) : null;
+            const arrivalTime = update.arrival?.time || update.departure?.time;
+            if (!arrivalTime || arrivalTime <= now) return;
 
             arrivals.push({
-                timeSec: arrivalSec,
-                rtDate,
-                theoDate,
-                delayMin,
-                tripId,
-                vehicleId,
+                time: arrivalTime,          // seconds
+                tripId: tripId,             // ✅ pour timeline
+                vehicleId: vehicleId,       // ✅ affichage + map
                 headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
             });
             });
         });
 
-        return arrivals.sort((a, b) => a.timeSec - b.timeSec).slice(0, 8);
+        return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
         }
 
         // ============================================================
