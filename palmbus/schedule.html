@@ -516,8 +516,8 @@
 
     <script>
         // ==================== SOURCE DES DONNÉES ====================
-        const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
-        const GTFS_RT_URL = 'proxy-cors/tripupdate.php';
+        const GTFS_ZIP_URL = 'palmbus_gtfs.zip';
+        const GTFS_RT_URL = 'https://api.example.com/gtfs-rt.pb';
         const CACHE_TTL = 24 * 60 * 60 * 1000;
         const CACHE_VERSION = '1.0';
         // ============================================================
@@ -603,23 +603,7 @@
                 
                 // Charger calendar.txt si présent
                 if (calendarText) {
-                    const calendarData = parseCSV(calendarText);
-                    calendarData.forEach(cal => {
-                        if (cal.service_id) {
-                            state.calendar[cal.service_id] = {
-                                service_id: cal.service_id,
-                                monday: cal.monday,      // Garder comme string
-                                tuesday: cal.tuesday,
-                                wednesday: cal.wednesday,
-                                thursday: cal.thursday,
-                                friday: cal.friday,
-                                saturday: cal.saturday,
-                                sunday: cal.sunday,
-                                start_date: cal.start_date,
-                                end_date: cal.end_date
-                            };
-                        }
-                    });
+                    state.calendar = parseCSVToObject(calendarText, 'service_id');
                 }
                 
                 // Charger calendar_dates.txt si présent
@@ -1080,12 +1064,6 @@
             const dayOfWeek = selectedDate.getDay();
 
             const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
-
-            console.log('Date sélectionnée:', dateString);
-            console.log('GTFS Date:', gtfsDate);
-            console.log('Jour de la semaine:', dayOfWeek, ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][dayOfWeek]);
-            console.log('Services actifs:', activeServiceIds);
-            console.log('Tous les services disponibles:', Object.keys(state.calendar));
             
             if (activeServiceIds.length === 0) {
                 const container = document.getElementById('theoretical-content');
@@ -1181,18 +1159,12 @@
 
             // Parcourir calendar pour trouver les services actifs
             Object.entries(state.calendar).forEach(([serviceId, cal]) => {
-                // Vérifier la plage de dates (IMPORTANT: conversion en nombre)
-                const startDate = parseInt(cal.start_date, 10);
-                const endDate = parseInt(cal.end_date, 10);
-                const dateNumber = parseInt(gtfsDate, 10);
-                
-                const isInDateRange = dateNumber >= startDate && dateNumber <= endDate;
+                // Vérifier la plage de dates
+                const isInDateRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
                 
                 if (isInDateRange) {
-                    // Vérifier le jour de la semaine (IMPORTANT: comparaison stricte)
-                    const isDayActive = cal[dayName] === '1' || parseInt(cal[dayName], 10) === 1;
-                    
-                    if (isDayActive) {
+                    // Vérifier le jour de la semaine
+                    if (cal[dayName] === '1') {
                         serviceIds.push(serviceId);
                     }
                 }
@@ -1200,14 +1172,14 @@
 
             // Appliquer les exceptions de calendar_dates
             if (state.calendarDates[gtfsDate]) {
-                // Ajouter les services activés pour cette date (exception_type = 1)
+                // Ajouter les services activés pour cette date
                 state.calendarDates[gtfsDate].added.forEach(id => {
                     if (!serviceIds.includes(id)) {
                         serviceIds.push(id);
                     }
                 });
                 
-                // Retirer les services désactivés pour cette date (exception_type = 2)
+                // Retirer les services désactivés pour cette date
                 state.calendarDates[gtfsDate].removed.forEach(id => {
                     serviceIds = serviceIds.filter(sid => sid !== id);
                 });
