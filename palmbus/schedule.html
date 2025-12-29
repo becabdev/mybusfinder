@@ -6,77 +6,96 @@
     <title>MBS - Powered by MyBusFinder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <style>
-        /* ===== VARIABLES CSS LIQUID GLASS ===== */
+        /* ============================================
+           VARIABLES CSS LIQUID GLASS
+           ============================================ */
         :root {
-            /* Couleurs principales */
-            --accent-primary: #0A84FF;
-            --accent-secondary: #5E5CE6;
-            --accent-gradient: linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%);
+            /* Couleurs de base */
+            --color-primary: #007AFF;
+            --color-secondary: #5856D6;
+            --color-accent: #FF2D55;
+            --color-success: #34C759;
             
             /* Backgrounds Liquid Glass - Light Mode */
-            --glass-bg-light: rgba(255, 255, 255, 0.72);
-            --glass-bg-light-hover: rgba(255, 255, 255, 0.85);
+            --glass-bg-clear: rgba(255, 255, 255, 0.7);
+            --glass-bg-tinted: rgba(255, 255, 255, 0.88);
             --glass-bg-card: rgba(255, 255, 255, 0.65);
-            --glass-bg-nav: rgba(255, 255, 255, 0.75);
-            --glass-bg-button: rgba(255, 255, 255, 0.8);
+            --glass-bg-button: rgba(255, 255, 255, 0.75);
+            --glass-bg-overlay: rgba(0, 0, 0, 0.4);
             
-            /* Backgrounds Liquid Glass - Dark Mode */
-            --glass-bg-dark: rgba(28, 28, 30, 0.78);
-            --glass-bg-dark-hover: rgba(28, 28, 30, 0.88);
-            --glass-bg-card-dark: rgba(40, 40, 42, 0.72);
-            --glass-bg-nav-dark: rgba(28, 28, 30, 0.82);
-            --glass-bg-button-dark: rgba(60, 60, 62, 0.75);
+            /* Bordures */
+            --glass-border-light: rgba(255, 255, 255, 0.18);
+            --glass-border-subtle: rgba(0, 0, 0, 0.08);
+            --glass-border-strong: rgba(0, 0, 0, 0.12);
             
             /* Blur */
-            --glass-blur-mobile: blur(24px);
-            --glass-blur-desktop: blur(40px);
-            --glass-saturate: saturate(180%);
+            --glass-blur-light: blur(20px);
+            --glass-blur-medium: blur(32px);
+            --glass-blur-heavy: blur(40px);
             
-            /* Borders */
-            --glass-border-light: rgba(0, 0, 0, 0.08);
-            --glass-border-dark: rgba(255, 255, 255, 0.12);
-            --glass-border-highlight: rgba(255, 255, 255, 0.3);
+            /* Ombres Liquid Glass */
+            --shadow-glass-sm: 
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            --shadow-glass-md: 
+                0 8px 32px rgba(0, 0, 0, 0.12),
+                0 2px 8px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            --shadow-glass-lg: 
+                0 12px 40px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
             
-            /* Shadows */
-            --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            /* Texte */
+            --text-primary: rgba(0, 0, 0, 0.9);
+            --text-secondary: rgba(0, 0, 0, 0.65);
+            --text-tertiary: rgba(0, 0, 0, 0.45);
             
-            /* Text */
-            --text-primary-light: rgba(0, 0, 0, 0.92);
-            --text-secondary-light: rgba(0, 0, 0, 0.65);
-            --text-primary-dark: rgba(255, 255, 255, 0.95);
-            --text-secondary-dark: rgba(255, 255, 255, 0.7);
+            /* Transitions */
+            --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-quick: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             
-            /* Spacing augmenté (Liquid Glass nécessite plus d'air) */
+            /* Spacing augmenté pour Liquid Glass */
             --spacing-xs: 8px;
             --spacing-sm: 12px;
             --spacing-md: 20px;
             --spacing-lg: 28px;
-            --spacing-xl: 40px;
+            --spacing-xl: 36px;
             
             /* Border radius */
             --radius-sm: 12px;
             --radius-md: 16px;
             --radius-lg: 20px;
-            --radius-xl: 24px;
-            --radius-pill: 50px;
-            
-            /* Transitions fluides */
-            --transition-quick: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            
-            /* Background de la page */
-            --page-bg-light: linear-gradient(135deg, #F0F4FF 0%, #E8EEFF 50%, #F5F0FF 100%);
-            --page-bg-dark: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
+            --radius-xl: 28px;
+            --radius-pill: 9999px;
         }
 
-        /* ===== RESET & BASE ===== */
+        /* Dark Mode */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --glass-bg-clear: rgba(28, 28, 30, 0.8);
+                --glass-bg-tinted: rgba(28, 28, 30, 0.92);
+                --glass-bg-card: rgba(44, 44, 46, 0.75);
+                --glass-bg-button: rgba(58, 58, 60, 0.8);
+                --glass-bg-overlay: rgba(0, 0, 0, 0.6);
+                
+                --glass-border-light: rgba(255, 255, 255, 0.12);
+                --glass-border-subtle: rgba(255, 255, 255, 0.08);
+                --glass-border-strong: rgba(255, 255, 255, 0.15);
+                
+                --text-primary: rgba(255, 255, 255, 0.95);
+                --text-secondary: rgba(255, 255, 255, 0.7);
+                --text-tertiary: rgba(255, 255, 255, 0.5);
+            }
+        }
+
+        /* ============================================
+           RESET ET BASE
+           ============================================ */
         * {
             margin: 0;
             padding: 0;
@@ -84,31 +103,176 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--page-bg-light);
-            min-height: 100vh;
-            color: var(--text-primary-light);
-            overflow-x: hidden;
-            position: relative;
-            line-height: 1.5;
+        html {
+            font-size: 16px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Dark mode */
-        @media (prefers-color-scheme: dark) {
-            body {
-                background: var(--page-bg-dark);
-                color: var(--text-primary-dark);
-            }
+        body {
+            font-family: 'League Spartan', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(160deg, #E0E7FF 0%, #F3E8FF 50%, #FEE2F8 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
         }
 
-        /* ===== ANIMATIONS LIQUID GLASS ===== */
+        /* Background avec effet de parallaxe */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+            animation: gentle-float 20s ease-in-out infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes gentle-float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-2%, 3%) scale(1.05); }
+            66% { transform: translate(3%, -2%) scale(0.98); }
+        }
+
+        /* ============================================
+           LAYOUT CONTAINER
+           ============================================ */
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: var(--spacing-md);
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        /* ============================================
+           HEADER LIQUID GLASS
+           ============================================ */
+        .header {
+            background: var(--glass-bg-clear);
+            backdrop-filter: var(--glass-blur-light) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-light) saturate(180%);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-glass-md);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            position: sticky;
+            top: var(--spacing-md);
+            z-index: 100;
+            transform: translateZ(0);
+            will-change: transform, opacity;
+            transition: all var(--transition-smooth);
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255, 255, 255, 0.3) 50%, 
+                transparent 100%);
+        }
+
+        .back-btn {
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.8) 0%, 
+                rgba(255, 255, 255, 0.6) 100%);
+            backdrop-filter: var(--glass-blur-light);
+            -webkit-backdrop-filter: var(--glass-blur-light);
+            border: 1px solid var(--glass-border-light);
+            color: var(--text-primary);
+            min-width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 20px;
+            font-weight: 600;
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: all var(--transition-smooth);
+            transform: translateZ(0);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .back-btn:active {
+            transform: scale(0.95) translateX(-2px);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.1),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            flex: 1;
+        }
+
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 2px;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* ============================================
+           LOADING STATE
+           ============================================ */
+        .loading {
+            text-align: center;
+            padding: var(--spacing-xl) var(--spacing-md);
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            animation: pulse-text 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-text {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ============================================
+           VIEWS SYSTÈME
+           ============================================ */
+        .view {
+            display: none;
+            animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .view.active {
+            display: block;
+        }
+
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(24px);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
@@ -116,359 +280,142 @@
             }
         }
 
-        @keyframes slideInFromLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
+        /* ============================================
+           SECTION TITLES
+           ============================================ */
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: var(--spacing-lg) 0 var(--spacing-md);
+            padding-left: var(--spacing-xs);
+            color: var(--text-secondary);
         }
 
-        @keyframes scaleIn {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        @keyframes shimmer {
-            0% {
-                background-position: -200% center;
-            }
-            100% {
-                background-position: 200% center;
-            }
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% {
-                box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.4);
-            }
-            50% {
-                box-shadow: 0 0 0 8px rgba(10, 132, 255, 0);
-            }
-        }
-
-        /* ===== CONTAINER ===== */
-        .container {
-            max-width: 680px;
-            margin: 0 auto;
-            padding: var(--spacing-md);
-            animation: fadeInUp 0.6s ease-out;
-        }
-
-        /* ===== HEADER LIQUID GLASS ===== */
-        .header {
-            background: var(--glass-bg-nav);
-            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
-            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+        /* ============================================
+           ITEMS GÉNÉRIQUES (BUS, DESTINATION, STOP)
+           ============================================ */
+        .bus-item, .destination-item, .stop-item {
+            background: var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-medium) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-medium) saturate(180%);
             border: 1px solid var(--glass-border-light);
             border-radius: var(--radius-lg);
-            padding: var(--spacing-md) var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-            box-shadow: var(--glass-shadow-md);
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-            transform: translateZ(0);
-            will-change: transform;
-            position: sticky;
-            top: var(--spacing-sm);
-            z-index: 100;
-            transition: all var(--transition-smooth);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .header {
-                background: var(--glass-bg-nav-dark);
-                border-color: var(--glass-border-dark);
-            }
-        }
-
-        .header.scrolled {
-            background: var(--glass-bg-light-hover);
-            backdrop-filter: blur(32px) var(--glass-saturate);
-            -webkit-backdrop-filter: blur(32px) var(--glass-saturate);
-            box-shadow: var(--glass-shadow-lg);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .header.scrolled {
-                background: var(--glass-bg-dark-hover);
-            }
-        }
-
-        .back-btn {
-            background: var(--glass-bg-button);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border-light);
-            color: var(--text-primary-light);
-            width: 44px;
-            height: 44px;
-            min-width: 44px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all var(--transition-smooth);
-            font-size: 22px;
-            font-weight: 600;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            transform: translateZ(0);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .back-btn {
-                background: var(--glass-bg-button-dark);
-                border-color: var(--glass-border-dark);
-                color: var(--text-primary-dark);
-            }
-        }
-
-        .back-btn:hover {
-            transform: scale(1.05) translateX(-2px);
-            box-shadow: 0 4px 16px rgba(10, 132, 255, 0.2);
-            background: var(--glass-bg-light-hover);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .back-btn:hover {
-                background: var(--glass-bg-dark-hover);
-            }
-        }
-
-        .back-btn:active {
-            transform: scale(0.95);
-        }
-
-        .header-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .header-title {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 2px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .header-subtitle {
-            font-size: 13px;
-            color: var(--text-secondary-light);
-            font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .header-subtitle {
-                color: var(--text-secondary-dark);
-            }
-        }
-
-        /* ===== LOADING STATE ===== */
-        .loading {
-            text-align: center;
-            padding: var(--spacing-xl);
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--text-secondary-light);
-            animation: shimmer 2s linear infinite;
-            background: linear-gradient(90deg, 
-                var(--text-secondary-light) 0%, 
-                var(--text-primary-light) 50%, 
-                var(--text-secondary-light) 100%);
-            background-size: 200% auto;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .loading {
-                background: linear-gradient(90deg, 
-                    var(--text-secondary-dark) 0%, 
-                    var(--text-primary-dark) 50%, 
-                    var(--text-secondary-dark) 100%);
-                background-size: 200% auto;
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }
-        }
-
-        /* ===== VIEWS ===== */
-        .view {
-            display: none;
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        .view.active {
-            display: block;
-        }
-
-        /* ===== SECTION TITLES ===== */
-        .section-title {
-            font-size: 16px;
-            font-weight: 700;
-            margin: var(--spacing-lg) 0 var(--spacing-md);
-            padding-left: 4px;
-            color: var(--text-secondary-light);
-            letter-spacing: -0.01em;
-            text-transform: uppercase;
-            font-size: 12px;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .section-title {
-                color: var(--text-secondary-dark);
-            }
-        }
-
-        /* ===== GLASS ITEMS (Bus, Destination, Stop) ===== */
-        .bus-item, .favorite-item, .destination-item, .stop-item {
-            background: var(--glass-bg-card);
-            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
-            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
-            border: 1px solid var(--glass-border-light);
-            border-radius: var(--radius-md);
             padding: var(--spacing-md) var(--spacing-lg);
             margin-bottom: var(--spacing-sm);
             cursor: pointer;
-            transition: all var(--transition-smooth);
-            box-shadow: var(--glass-shadow-sm);
+            box-shadow: var(--shadow-glass-sm);
             position: relative;
             overflow: hidden;
             transform: translateZ(0);
-            animation: fadeInUp 0.4s ease-out backwards;
+            transition: all var(--transition-smooth);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .bus-item, .favorite-item, .destination-item, .stop-item {
-                background: var(--glass-bg-card-dark);
-                border-color: var(--glass-border-dark);
-            }
-        }
-
-        /* Animation stagger pour les listes */
-        .bus-item:nth-child(1) { animation-delay: 0.05s; }
-        .bus-item:nth-child(2) { animation-delay: 0.1s; }
-        .bus-item:nth-child(3) { animation-delay: 0.15s; }
-        .bus-item:nth-child(4) { animation-delay: 0.2s; }
-        .bus-item:nth-child(5) { animation-delay: 0.25s; }
-        .destination-item:nth-child(1) { animation-delay: 0.05s; }
-        .destination-item:nth-child(2) { animation-delay: 0.1s; }
-        .destination-item:nth-child(3) { animation-delay: 0.15s; }
-        .stop-item:nth-child(1) { animation-delay: 0.05s; }
-        .stop-item:nth-child(2) { animation-delay: 0.1s; }
-        .stop-item:nth-child(3) { animation-delay: 0.15s; }
-
-        /* Barre de couleur à gauche (accent subtil) */
+        /* Effet de bordure colorée */
         .bus-item::before, .destination-item::before, .stop-item::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--accent-gradient);
-            transition: all var(--transition-smooth);
-            opacity: 0;
-        }
-
-        .bus-item:hover, .destination-item:hover, .stop-item:hover {
-            transform: scale(1.02) translateY(-2px);
-            box-shadow: var(--glass-shadow-md);
-            border-color: rgba(10, 132, 255, 0.3);
-            background: var(--glass-bg-light-hover);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .bus-item:hover, .destination-item:hover, .stop-item:hover {
-                background: var(--glass-bg-dark-hover);
-                border-color: rgba(10, 132, 255, 0.4);
-            }
-        }
-
-        .bus-item:hover::before, .destination-item:hover::before, .stop-item:hover::before {
-            opacity: 1;
             width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--color-primary), var(--color-secondary));
+            transition: all var(--transition-smooth);
         }
 
-        .bus-item:active, .destination-item:active, .stop-item:active {
-            transform: scale(0.98);
-        }
-
-        /* Effet de highlight au top */
+        /* Specular highlight */
         .bus-item::after, .destination-item::after, .stop-item::after {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 1px;
-            background: var(--glass-border-highlight);
-            opacity: 0.6;
+            height: 50%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0.15) 0%,
+                rgba(255, 255, 255, 0.05) 50%,
+                transparent 100%
+            );
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--transition-smooth);
         }
 
-        /* ===== BUS ITEM ===== */
+        .bus-item:active, .destination-item:active, .stop-item:active {
+            transform: scale(0.98);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.1),
+                inset 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .bus-item:active::before, .destination-item:active::before, .stop-item:active::before {
+            width: 100%;
+            opacity: 0.12;
+        }
+
+        .bus-item:active::after, .destination-item:active::after, .stop-item:active::after {
+            opacity: 1;
+        }
+
+        /* ============================================
+           BUS ITEM SPÉCIFIQUE
+           ============================================ */
         .bus-number {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             padding: 8px 16px;
             border-radius: var(--radius-sm);
-            font-weight: 800;
-            font-size: 17px;
+            font-weight: 700;
+            font-size: 18px;
             margin-right: var(--spacing-sm);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-            min-width: 52px;
-            letter-spacing: -0.02em;
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            min-width: 48px;
         }
 
         .bus-name {
             font-size: 15px;
             font-weight: 600;
-            color: var(--text-primary-light);
+            line-height: 1.3;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .bus-name {
-                color: var(--text-primary-dark);
-            }
+        /* ============================================
+           FAVORIS
+           ============================================ */
+        #favorites-section {
+            margin-bottom: var(--spacing-lg);
         }
 
-        /* ===== FAVORITE ITEM ===== */
         .favorite-item {
+            background: linear-gradient(135deg, 
+                rgba(99, 102, 241, 0.12) 0%, 
+                rgba(168, 85, 247, 0.08) 100%),
+                var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-medium) saturate(200%);
+            -webkit-backdrop-filter: var(--glass-blur-medium) saturate(200%);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: var(--spacing-md);
-            background: linear-gradient(135deg, 
-                rgba(10, 132, 255, 0.12), 
-                rgba(94, 92, 230, 0.08));
+            cursor: pointer;
+            box-shadow: var(--shadow-glass-sm);
+            transition: all var(--transition-smooth);
+            transform: translateZ(0);
         }
 
-        @media (prefers-color-scheme: dark) {
-            .favorite-item {
-                background: linear-gradient(135deg, 
-                    rgba(10, 132, 255, 0.18), 
-                    rgba(94, 92, 230, 0.12));
-            }
+        .favorite-item:active {
+            transform: scale(0.98);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.1),
+                inset 0 2px 4px rgba(0, 0, 0, 0.08);
         }
 
         .favorite-info {
@@ -484,44 +431,32 @@
 
         .favorite-details {
             font-size: 13px;
-            color: var(--text-secondary-light);
+            color: var(--text-secondary);
             font-weight: 500;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .favorite-details {
-                color: var(--text-secondary-dark);
-            }
         }
 
         .favorite-times {
             font-size: 15px;
             font-weight: 700;
-            color: var(--accent-primary);
-            min-width: 80px;
+            color: var(--color-primary);
             text-align: right;
+            white-space: nowrap;
         }
 
-        /* ===== TABS LIQUID GLASS ===== */
+        /* ============================================
+           TABS SYSTÈME
+           ============================================ */
         .tabs {
             display: flex;
-            gap: 6px;
+            gap: var(--spacing-xs);
             background: rgba(0, 0, 0, 0.08);
-            padding: 5px;
+            backdrop-filter: var(--glass-blur-light);
+            -webkit-backdrop-filter: var(--glass-blur-light);
+            padding: 6px;
             border-radius: var(--radius-md);
             margin-bottom: var(--spacing-lg);
             position: relative;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .tabs {
-                background: rgba(255, 255, 255, 0.08);
-            }
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
         }
 
         .tab {
@@ -529,236 +464,136 @@
             padding: 12px 16px;
             border: none;
             background: transparent;
-            color: var(--text-secondary-light);
+            color: var(--text-secondary);
             border-radius: var(--radius-sm);
             cursor: pointer;
-            transition: color var(--transition-smooth);
             font-weight: 600;
             font-size: 14px;
+            font-family: inherit;
             position: relative;
-            z-index: 1;
-            letter-spacing: -0.01em;
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .tab {
-                color: var(--text-secondary-dark);
-            }
+            z-index: 2;
+            transition: color var(--transition-smooth);
+            -webkit-tap-highlight-color: transparent;
         }
 
         .tab.active {
-            color: var(--text-primary-light);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .tab.active {
-                color: var(--text-primary-dark);
-            }
+            color: var(--text-primary);
         }
 
         .tab-indicator {
             position: absolute;
-            top: 5px;
-            left: 5px;
-            height: calc(100% - 10px);
-            background: var(--glass-bg-light);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            top: 6px;
+            left: 6px;
+            height: calc(100% - 12px);
+            background: var(--glass-bg-button);
+            backdrop-filter: var(--glass-blur-light);
+            -webkit-backdrop-filter: var(--glass-blur-light);
             border: 1px solid var(--glass-border-light);
             border-radius: var(--radius-sm);
-            transition: all var(--transition-smooth);
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 
-                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
-            z-index: 0;
+            transition: all var(--transition-spring);
+            box-shadow: var(--shadow-glass-sm);
+            z-index: 1;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .tab-indicator {
-                background: var(--glass-bg-dark);
-                border-color: var(--glass-border-dark);
-            }
-        }
-
-        /* ===== DATE PICKER & SELECT ===== */
+        /* ============================================
+           INPUT FIELDS (DATE PICKER, SELECT)
+           ============================================ */
         .date-picker, .destination-select {
-            background: var(--glass-bg-card);
-            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
-            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            background: var(--glass-bg-button);
+            backdrop-filter: var(--glass-blur-light) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-light) saturate(180%);
             border: 1px solid var(--glass-border-light);
             border-radius: var(--radius-md);
-            padding: 14px 16px;
-            color: var(--text-primary-light);
+            padding: 14px 18px;
+            color: var(--text-primary);
             width: 100%;
-            font-family: 'Inter', sans-serif;
-            font-size: 15px;
+            font-family: inherit;
+            font-size: 16px;
             font-weight: 600;
             margin-bottom: var(--spacing-lg);
             cursor: pointer;
+            box-shadow: var(--shadow-glass-sm);
             transition: all var(--transition-smooth);
-            box-shadow: var(--glass-shadow-sm);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .date-picker, .destination-select {
-                background: var(--glass-bg-card-dark);
-                border-color: var(--glass-border-dark);
-                color: var(--text-primary-dark);
-            }
+            -webkit-appearance: none;
+            appearance: none;
         }
 
         .date-picker:focus, .destination-select:focus {
             outline: none;
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15),
-                        var(--glass-shadow-sm);
-            transform: scale(1.01);
-        }
-
-        .date-picker:hover, .destination-select:hover {
-            background: var(--glass-bg-light-hover);
-            transform: scale(1.005);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .date-picker:hover, .destination-select:hover {
-                background: var(--glass-bg-dark-hover);
-            }
+            border-color: var(--color-primary);
+            box-shadow: 
+                0 0 0 4px rgba(0, 122, 255, 0.15),
+                var(--shadow-glass-sm);
+            transform: translateY(-1px);
         }
 
         .destination-select option {
-            background: #FFFFFF;
-            color: #000000;
+            background: var(--glass-bg-tinted);
+            color: var(--text-primary);
+            font-weight: 600;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .destination-select option {
-                background: #2C2C2E;
-                color: #FFFFFF;
-            }
-        }
-
-        /* ===== SCHEDULE CONTENT ===== */
+        /* ============================================
+           SCHEDULE CONTENT
+           ============================================ */
         .schedule-content {
             display: none;
         }
 
         .schedule-content.active {
             display: block;
-            animation: fadeInUp 0.4s ease-out;
+            animation: fadeInUp 0.3s ease-out;
         }
 
         .schedule-group {
-            margin-bottom: var(--spacing-lg);
-            animation: fadeInUp 0.5s ease-out backwards;
+            margin-bottom: var(--spacing-xl);
         }
 
-        .schedule-group:nth-child(1) { animation-delay: 0.05s; }
-        .schedule-group:nth-child(2) { animation-delay: 0.1s; }
-        .schedule-group:nth-child(3) { animation-delay: 0.15s; }
-        .schedule-group:nth-child(4) { animation-delay: 0.2s; }
-
         .schedule-hour {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
-            margin-bottom: var(--spacing-sm);
-            padding-left: 4px;
-            color: var(--accent-primary);
-            letter-spacing: -0.02em;
+            margin-bottom: var(--spacing-md);
+            padding-left: var(--spacing-xs);
+            color: var(--color-primary);
+            text-shadow: 0 1px 2px rgba(0, 122, 255, 0.2);
         }
 
         .schedule-times {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-            gap: var(--spacing-xs);
+            gap: var(--spacing-sm);
         }
 
         .schedule-time {
-            background: var(--glass-bg-card);
-            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
-            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            background: var(--glass-bg-button);
+            backdrop-filter: var(--glass-blur-light);
+            -webkit-backdrop-filter: var(--glass-blur-light);
             border: 1px solid var(--glass-border-light);
             border-radius: var(--radius-sm);
-            padding: 12px 8px;
+            padding: 12px 16px;
             font-weight: 700;
             font-size: 15px;
-            transition: all var(--transition-smooth);
-            box-shadow: var(--glass-shadow-sm);
             text-align: center;
-            cursor: pointer;
+            box-shadow: var(--shadow-glass-sm);
+            transition: all var(--transition-smooth);
+            cursor: default;
             transform: translateZ(0);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .schedule-time {
-                background: var(--glass-bg-card-dark);
-                border-color: var(--glass-border-dark);
-            }
-        }
-
-        .schedule-time:hover {
-            background: var(--glass-bg-light-hover);
-            transform: scale(1.08) translateY(-2px);
-            box-shadow: var(--glass-shadow-md);
-            border-color: var(--accent-primary);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .schedule-time:hover {
-                background: var(--glass-bg-dark-hover);
-            }
         }
 
         .schedule-time:active {
             transform: scale(0.95);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.08),
+                inset 0 2px 4px rgba(0, 0, 0, 0.08);
         }
 
-        /* ===== FLOATING ACTION BUTTON ===== */
-        .favorite-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            min-width: 56px;
-            min-height: 56px;
-            border-radius: 50%;
-            background: var(--accent-gradient);
-            border: none;
-            color: white;
-            font-size: 26px;
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transition: all var(--transition-smooth);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            transform: translateZ(0);
-            animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-
-        .favorite-btn:hover {
-            transform: scale(1.12) translateY(-2px);
-            box-shadow: 0 12px 32px rgba(10, 132, 255, 0.45),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
-        }
-
-        .favorite-btn:active {
-            transform: scale(0.95);
-            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
-        }
-
-        .favorite-btn.active {
-            background: linear-gradient(135deg, #FF9500 0%, #FF6B00 100%);
-            animation: pulse-glow 1.5s ease-in-out infinite;
-        }
-
-        /* ===== REALTIME ITEMS ===== */
+        /* ============================================
+           REALTIME ITEMS
+           ============================================ */
         .realtime-item {
             background: var(--glass-bg-card);
-            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
-            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            backdrop-filter: var(--glass-blur-medium) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-medium) saturate(180%);
             border: 1px solid var(--glass-border-light);
             border-radius: var(--radius-md);
             padding: var(--spacing-md) var(--spacing-lg);
@@ -766,65 +601,97 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: all var(--transition-smooth);
+            gap: var(--spacing-md);
             cursor: pointer;
-            box-shadow: var(--glass-shadow-sm);
+            box-shadow: var(--shadow-glass-sm);
+            transition: all var(--transition-smooth);
             transform: translateZ(0);
-            animation: fadeInUp 0.4s ease-out backwards;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .realtime-item {
-                background: var(--glass-bg-card-dark);
-                border-color: var(--glass-border-dark);
-            }
-        }
-
-        .realtime-item:nth-child(1) { animation-delay: 0.05s; }
-        .realtime-item:nth-child(2) { animation-delay: 0.1s; }
-        .realtime-item:nth-child(3) { animation-delay: 0.15s; }
-        .realtime-item:nth-child(4) { animation-delay: 0.2s; }
-
-        .realtime-item:hover {
-            background: var(--glass-bg-light-hover);
-            transform: scale(1.02) translateY(-2px);
-            box-shadow: var(--glass-shadow-md);
-            border-color: rgba(10, 132, 255, 0.3);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .realtime-item:hover {
-                background: var(--glass-bg-dark-hover);
-            }
+        .realtime-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--color-success);
+            opacity: 0;
+            transition: opacity var(--transition-smooth);
         }
 
         .realtime-item:active {
             transform: scale(0.98);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.1),
+                inset 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .realtime-item:active::before {
+            opacity: 1;
         }
 
         .realtime-destination {
-            font-weight: 700;
+            font-weight: 600;
             font-size: 15px;
+            line-height: 1.3;
         }
 
         .realtime-time {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
-            color: var(--accent-primary);
-            letter-spacing: -0.02em;
+            color: var(--color-success);
+            white-space: nowrap;
         }
 
-        /* ===== EMPTY STATE ===== */
+        /* ============================================
+           FAVORITE BUTTON (FAB)
+           ============================================ */
+        .favorite-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-pill);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 
+                0 12px 40px rgba(0, 122, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            transition: all var(--transition-spring);
+            transform: translateZ(0);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .favorite-btn:active {
+            transform: scale(0.92);
+            box-shadow: 
+                0 8px 24px rgba(0, 122, 255, 0.3),
+                inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .favorite-btn.active {
+            background: linear-gradient(135deg, #FF9500, #FF2D55);
+            box-shadow: 
+                0 12px 40px rgba(255, 45, 85, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
         .empty-state {
             text-align: center;
             padding: var(--spacing-xl) var(--spacing-md);
-            color: var(--text-secondary-light);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .empty-state {
-                color: var(--text-secondary-dark);
-            }
+            color: var(--text-secondary);
         }
 
         .empty-state-icon {
@@ -833,12 +700,90 @@
             opacity: 0.6;
         }
 
-        /* ===== REALTIME PANEL (MODAL) ===== */
+        .empty-state div:last-child {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        /* ============================================
+           RESPONSIVE ADAPTATIONS
+           ============================================ */
+        @media (max-width: 360px) {
+            :root {
+                --spacing-md: 16px;
+                --spacing-lg: 24px;
+            }
+            
+            .container {
+                padding: var(--spacing-sm);
+            }
+            
+            .header {
+                padding: var(--spacing-sm) var(--spacing-md);
+            }
+            
+            .header-title {
+                font-size: 18px;
+            }
+            
+            .favorite-btn {
+                width: 56px;
+                height: 56px;
+                bottom: 20px;
+                right: 20px;
+            }
+            
+            .schedule-times {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            }
+        }
+
+        @media (min-width: 768px) {
+            :root {
+                --glass-blur-light: blur(32px);
+                --glass-blur-medium: blur(40px);
+                --glass-blur-heavy: blur(48px);
+            }
+            
+            .container {
+                padding: var(--spacing-lg);
+            }
+        }
+
+        /* ============================================
+           ACCESSIBILITÉ
+           ============================================ */
+        @media (prefers-reduced-transparency: reduce) {
+            .header, .bus-item, .destination-item, .stop-item,
+            .favorite-item, .tabs, .tab-indicator,
+            .date-picker, .destination-select,
+            .schedule-time, .realtime-item {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                background: var(--glass-bg-tinted);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            body::before {
+                animation: none;
+            }
+        }
+
+        /* ============================================
+           MODAL/PANEL SYSTÈME (REALTIME)
+           ============================================ */
         #overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.4);
+            background: var(--glass-bg-overlay);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             z-index: 9998;
@@ -854,81 +799,57 @@
             display: none;
             position: fixed;
             left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: min(600px, calc(100vw - 32px));
-            max-height: calc(100vh - 120px);
-            background: var(--glass-bg-light);
-            backdrop-filter: var(--glass-blur-desktop) var(--glass-saturate);
-            -webkit-backdrop-filter: var(--glass-blur-desktop) var(--glass-saturate);
+            top: 80px;
+            transform: translateX(-50%);
+            width: min(440px, calc(100vw - 32px));
+            max-height: calc(100vh - 160px);
+            background: var(--glass-bg-tinted);
+            backdrop-filter: var(--glass-blur-heavy) saturate(180%);
+            -webkit-backdrop-filter: var(--glass-blur-heavy) saturate(180%);
             border: 1px solid var(--glass-border-light);
             border-radius: var(--radius-xl);
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            box-shadow: 
+                0 24px 64px rgba(0, 0, 0, 0.16),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
             z-index: 9999;
             overflow: hidden;
-            color: var(--text-primary-light);
-            animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @media (prefers-color-scheme: dark) {
-            #rt-panel {
-                background: var(--glass-bg-dark);
-                border-color: var(--glass-border-dark);
-                color: var(--text-primary-dark);
-            }
-        }
-
-        @keyframes modalSlideIn {
+        @keyframes slideUp {
             from {
                 opacity: 0;
-                transform: translate(-50%, -50%) scale(0.9);
+                transform: translateX(-50%) translateY(20px);
             }
             to {
                 opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
+                transform: translateX(-50%) translateY(0);
             }
         }
 
-        .rt-panel-header {
+        #rt-panel-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: var(--spacing-md) var(--spacing-lg);
-            border-bottom: 1px solid var(--glass-border-light);
-            gap: var(--spacing-sm);
-            background: linear-gradient(to bottom, 
-                rgba(255, 255, 255, 0.1) 0%,
-                rgba(255, 255, 255, 0) 100%);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .rt-panel-header {
-                border-bottom-color: var(--glass-border-dark);
-                background: linear-gradient(to bottom, 
-                    rgba(255, 255, 255, 0.05) 0%,
-                    rgba(255, 255, 255, 0) 100%);
-            }
+            border-bottom: 1px solid var(--glass-border-subtle);
+            gap: var(--spacing-md);
         }
 
         #rt-panel-title {
             font-weight: 800;
             font-size: 18px;
-            letter-spacing: -0.02em;
         }
 
         #rt-panel-close {
             cursor: pointer;
-            border: none;
-            background: var(--glass-bg-button);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            color: var(--text-primary-light);
             border: 1px solid var(--glass-border-light);
+            background: var(--glass-bg-button);
+            color: var(--text-primary);
             border-radius: var(--radius-sm);
-            width: 36px;
-            height: 36px;
-            font-size: 18px;
+            width: 44px;
+            height: 44px;
+            font-size: 20px;
             font-weight: 600;
             display: flex;
             align-items: center;
@@ -936,196 +857,25 @@
             transition: all var(--transition-smooth);
         }
 
-        @media (prefers-color-scheme: dark) {
-            #rt-panel-close {
-                background: var(--glass-bg-button-dark);
-                border-color: var(--glass-border-dark);
-                color: var(--text-primary-dark);
-            }
-        }
-
-        #rt-panel-close:hover {
-            transform: scale(1.1);
-            background: var(--glass-bg-light-hover);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            #rt-panel-close:hover {
-                background: var(--glass-bg-dark-hover);
-            }
-        }
-
         #rt-panel-close:active {
             transform: scale(0.95);
+            background: rgba(0, 0, 0, 0.08);
         }
 
         #rt-panel-content {
-            padding: var(--spacing-lg);
+            padding: var(--spacing-md) var(--spacing-lg);
             overflow: auto;
-            max-height: calc(100vh - 220px);
-        }
-
-        .rt-stop-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-sm) var(--spacing-md);
-            border-bottom: 1px solid var(--glass-border-light);
-            transition: all var(--transition-smooth);
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .rt-stop-row {
-                border-bottom-color: var(--glass-border-dark);
-            }
-        }
-
-        .rt-stop-row:hover {
-            background: rgba(10, 132, 255, 0.08);
-        }
-
-        .rt-stop-indicator {
-            width: 10px;
-            height: 10px;
-            min-width: 10px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.35);
-            transition: all var(--transition-smooth);
-        }
-
-        .rt-stop-row.next .rt-stop-indicator {
-            width: 12px;
-            height: 12px;
-            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.25);
-            animation: pulse-glow 2s ease-in-out infinite;
-        }
-
-        #rt-show-map-btn {
-            cursor: pointer;
-            border: none;
-            color: white;
-            background: var(--accent-gradient);
-            padding: 12px 20px;
-            border-radius: var(--radius-sm);
-            font-weight: 700;
-            font-size: 15px;
-            box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transition: all var(--transition-smooth);
-            font-family: 'Inter', sans-serif;
-        }
-
-        #rt-show-map-btn:hover {
-            transform: scale(1.05) translateY(-1px);
-            box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
-        }
-
-        #rt-show-map-btn:active {
-            transform: scale(0.98);
-        }
-
-        /* ===== RESPONSIVE MOBILE ===== */
-        @media (max-width: 768px) {
-            .container {
-                padding: var(--spacing-sm);
-            }
-            
-            .header {
-                padding: var(--spacing-sm) var(--spacing-md);
-                top: var(--spacing-xs);
-            }
-            
-            .header-title {
-                font-size: 18px;
-            }
-
-            .header-subtitle {
-                font-size: 12px;
-            }
-            
-            .favorite-btn {
-                width: 52px;
-                height: 52px;
-                min-width: 52px;
-                min-height: 52px;
-                bottom: 20px;
-                right: 20px;
-                font-size: 24px;
-            }
-
-            .bus-number {
-                font-size: 16px;
-                padding: 6px 12px;
-                min-width: 48px;
-            }
-
-            .bus-name {
-                font-size: 14px;
-            }
-
-            .schedule-times {
-                grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-            }
-
-            #rt-panel {
-                width: calc(100vw - 24px);
-                max-height: calc(100vh - 80px);
-            }
-
-            #rt-panel-content {
-                padding: var(--spacing-md);
-            }
-        }
-
-        /* ===== ACCESSIBILITY ===== */
-        @media (prefers-reduced-transparency: reduce) {
-            .header,
-            .bus-item, .favorite-item, .destination-item, .stop-item,
-            .date-picker, .destination-select,
-            .schedule-time,
-            .realtime-item,
-            #rt-panel {
-                backdrop-filter: none;
-                -webkit-backdrop-filter: none;
-                background: rgba(255, 255, 255, 0.95);
-            }
-
-            @media (prefers-color-scheme: dark) {
-                .header,
-                .bus-item, .favorite-item, .destination-item, .stop-item,
-                .date-picker, .destination-select,
-                .schedule-time,
-                .realtime-item,
-                #rt-panel {
-                    background: rgba(28, 28, 30, 0.95);
-                }
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-
-        /* ===== FOCUS STATES ===== */
-        *:focus-visible {
-            outline: 3px solid var(--accent-primary);
-            outline-offset: 2px;
+            max-height: calc(100vh - 250px);
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <button class="back-btn" id="back-btn" style="display: none;" aria-label="Retour">←</button>
+            <button class="back-btn" id="back-btn" style="display: none;">←</button>
             <div class="header-content">
                 <div class="header-title" id="header-title">My Bus Schedule</div>
-                <div class="header-subtitle" id="header-subtitle"></div>
+                <div class="header-subtitle" id="header-subtitle">Sélectionnez une ligne</div>
             </div>
         </div>
 
@@ -1133,47 +883,47 @@
 
         <div id="lines-view" class="view">
             <div id="favorites-section" style="display: none;">
-                <div class="section-title">⭐ FAVORIS</div>
+                <div class="section-title">⭐ Favoris</div>
                 <div id="favorites-list"></div>
             </div>
-            <div class="section-title">LIGNES DE BUS</div>
+            <div class="section-title">Lignes disponibles</div>
             <div id="lines-list"></div>
         </div>
 
         <div id="destinations-view" class="view">
-            <div class="section-title">DESTINATIONS</div>
+            <div class="section-title">Destinations</div>
             <div id="destinations-list"></div>
         </div>
 
         <div id="stops-view" class="view">
-            <select class="destination-select" id="destination-select" aria-label="Sélectionner une destination">
+            <select class="destination-select" id="destination-select">
                 <option value="">Choisir une destination</option>
             </select>
-            <div class="section-title">ARRÊTS</div>
+            <div class="section-title">Arrêts disponibles</div>
             <div id="stops-list"></div>
         </div>
 
         <div id="schedule-view" class="view">
             <div class="tabs">
                 <div class="tab-indicator"></div>
-                <button class="tab active" data-tab="theoretical">Horaires théoriques</button>
+                <button class="tab active" data-tab="theoretical">Horaires</button>
                 <button class="tab" data-tab="realtime">Temps réel</button>
             </div>
 
-            <input type="date" class="date-picker" id="date-picker" aria-label="Sélectionner une date">
+            <input type="date" class="date-picker" id="date-picker">
 
             <div id="theoretical-content" class="schedule-content active"></div>
             <div id="realtime-content" class="schedule-content"></div>
         </div>
     </div>
 
-    <button class="favorite-btn" id="favorite-btn" style="display: none;" aria-label="Ajouter aux favoris">★</button>
+    <button class="favorite-btn" id="favorite-btn" style="display: none;">★</button>
 
     <div id="overlay"></div>
     <div id="rt-panel">
-        <div class="rt-panel-header">
+        <div id="rt-panel-header">
             <div id="rt-panel-title">Détails</div>
-            <button id="rt-panel-close" aria-label="Fermer">✕</button>
+            <button id="rt-panel-close">✕</button>
         </div>
         <div id="rt-panel-content"></div>
     </div>
@@ -1211,21 +961,6 @@
         };
 
         document.addEventListener('DOMContentLoaded', init);
-
-        // Effet de scroll sur le header
-        let lastScroll = 0;
-        window.addEventListener('scroll', () => {
-            const header = document.querySelector('.header');
-            const currentScroll = window.pageYOffset;
-            
-            if (currentScroll > 20) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-            
-            lastScroll = currentScroll;
-        });
 
         async function init() {
             loadFavorites();
@@ -1322,10 +1057,10 @@
             } catch (error) {
                 console.error('Erreur chargement GTFS:', error);
                 document.getElementById('loading').innerHTML = `
-                    <div style="text-align: center; color: #FF3B30;">
-                        <div style="font-size: 56px; margin-bottom: 16px; opacity: 0.6;">⚠️</div>
-                        <div style="font-weight: 700; margin-bottom: 8px; font-size: 18px;">Erreur de chargement</div>
-                        <div style="font-size: 14px; opacity: 0.7;">${error.message}</div>
+                    <div style="color: var(--color-accent); text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                        <div style="font-weight: 700; margin-bottom: 8px;">Erreur de chargement</div>
+                        <div style="font-size: 14px; color: var(--text-secondary);">${error.message}</div>
                     </div>
                 `;
             }
@@ -1582,7 +1317,7 @@
             document.getElementById('lines-view').classList.add('active');
             document.getElementById('back-btn').style.display = 'none';
             document.getElementById('header-title').textContent = 'My Bus Schedule';
-            document.getElementById('header-subtitle').textContent = '';
+            document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
             state.viewHistory = [];
 
             const linesList = document.getElementById('lines-list');
@@ -1592,7 +1327,7 @@
                 const item = document.createElement('div');
                 item.className = 'bus-item';
                 item.innerHTML = `
-                    <span class="bus-number" style="background: #${route.route_color || '0A84FF'}; color: #${route.route_text_color || 'ffffff'}">
+                    <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
                         ${route.route_short_name}
                     </span>
                     <span class="bus-name">${route.route_long_name}</span>
@@ -1688,7 +1423,8 @@
 
             const route = state.routes[routeId];
             const stop = state.stops[stopId];
-            document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
+            document.getElementById('header-title').textContent = `Ligne ${route.route_short_name}`;
+            document.getElementById('header-subtitle').textContent = stop.stop_name;
 
             updateFavoriteButton();
             setupTabHandlers();
@@ -1779,7 +1515,7 @@
             });
 
             if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible</div></div>';
                 return;
             }
 
@@ -1975,18 +1711,7 @@
             return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
         }
 
-        function ensureRtUi() {
-            let overlay = document.getElementById('overlay');
-            let panel = document.getElementById('rt-panel');
-            
-            const close = () => closeRtPanel();
-            overlay.onclick = close;
-            const closeBtn = document.getElementById('rt-panel-close');
-            if (closeBtn) closeBtn.onclick = close;
-        }
-
         function openRtPanel(title, html) {
-            ensureRtUi();
             const overlay = document.getElementById('overlay');
             const panel = document.getElementById('rt-panel');
             const titleEl = document.getElementById('rt-panel-title');
@@ -2031,17 +1756,15 @@
         }
 
         function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
-            ensureRtUi();
-
             const route = state.routes?.[routeId];
-            const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
-            const routeColor = route?.route_color ? `#${route.route_color}` : '#0A84FF';
+            const routeLabel = route?.route_short_name ? `Ligne ${route.route_short_name}` : 'Ligne';
+            const routeColor = route?.route_color ? `#${route.route_color}` : '#007AFF';
 
             const tripStops = state.stopTimes?.[routeId]?.[tripId];
             if (!tripStops || tripStops.length === 0) {
                 openRtPanel(
-                    `Bus ${vehicleId || '—'} • ${routeLabel}`,
-                    `<div style="opacity:.8">Aucun détail d'arrêts pour ce trajet.</div>`
+                    `${routeLabel} • Bus ${vehicleId || '—'}`,
+                    `<div style="color: var(--text-secondary)">Aucun détail d'arrêts pour ce trajet.</div>`
                 );
                 return;
             }
@@ -2064,38 +1787,53 @@
                 const isPast = idx < nextIndex;
 
                 return `
-                    <div class="rt-stop-row ${isNext ? 'next' : ''}" style="opacity:${isPast ? '.55' : '1'};">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div class="rt-stop-indicator" style="background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};"></div>
-                            <div>${stopName}</div>
+                    <div style="
+                        display:flex; justify-content:space-between; align-items:center; gap:12px; 
+                        padding:14px 16px;
+                        border-bottom:1px solid var(--glass-border-subtle);
+                        background:${isNext ? 'rgba(0, 122, 255, 0.08)' : 'transparent'};
+                        opacity:${isPast ? '.5' : '1'};
+                        border-radius:8px;
+                        margin-bottom:4px;
+                    ">
+                        <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+                            <div style="
+                                width:12px; height:12px; border-radius:50%;
+                                background:${isNext ? routeColor : 'var(--text-tertiary)'};
+                                box-shadow:${isNext ? `0 0 0 4px ${routeColor}25` : 'none'};
+                                flex-shrink:0;
+                            "></div>
+                            <div style="font-weight:${isNext ? '700' : '500'}; overflow:hidden; text-overflow:ellipsis;">${stopName}</div>
                         </div>
-                        <div style="font-weight:800;">${time}</div>
+                        <div style="font-weight:800; color:${isNext ? routeColor : 'var(--text-primary)'}; white-space:nowrap;">${time}</div>
                     </div>
                 `;
             }).join('');
 
             const html = `
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-                    <div style="width:12px; height:12px; border-radius:50%; background:${routeColor}; box-shadow:0 0 0 4px rgba(10,132,255,.25)"></div>
-                    <div style="font-weight:800; font-size: 16px;">${routeLabel}</div>
-                    <div style="opacity:.75; font-size: 14px;">• Trajet ${tripId}</div>
-                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800; font-size: 15px;">Bus ${vehicleId}</div>` : ''}
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; padding:12px; background:var(--glass-bg-card); border-radius:12px;">
+                    <div style="width:12px; height:12px; border-radius:50%; background:${routeColor}; box-shadow:0 0 0 4px ${routeColor}25"></div>
+                    <div style="font-weight:800; font-size:16px;">${routeLabel}</div>
+                    ${vehicleId ? `<div style="margin-left:auto; font-weight:700; color:${routeColor};">Bus ${vehicleId}</div>` : ''}
                 </div>
 
-                <div style="border:1px solid var(--glass-border-light); border-radius:${
-                    getComputedStyle(document.documentElement).getPropertyValue('--radius-md')
-                }; overflow:hidden; margin-bottom: 16px;">
+                <div style="margin-bottom:20px;">
                     ${rows}
                 </div>
 
-                <div style="display:flex; gap:10px; justify-content:flex-end;">
-                    <button id="rt-show-map-btn">
-                        Afficher dans la carte
-                    </button>
-                </div>
+                <button id="rt-show-map-btn" style="
+                    cursor:pointer; border:none; color:#fff; width:100%;
+                    background:linear-gradient(135deg, ${routeColor}, #5856D6);
+                    padding:14px 20px; border-radius:12px; font-weight:700; font-size:15px;
+                    box-shadow:0 8px 24px ${routeColor}40;
+                    font-family:inherit;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                ">
+                    📍 Afficher dans la carte
+                </button>
             `;
 
-            openRtPanel(`Détails • ${routeLabel}`, html);
+            openRtPanel(`${routeLabel}`, html);
 
             const btn = document.getElementById('rt-show-map-btn');
             if (btn) {
@@ -2103,6 +1841,8 @@
                     sendVehicleToParent(vehicleId, tripId);
                     closeRtPanel();
                 };
+                btn.onmousedown = () => btn.style.transform = 'scale(0.97)';
+                btn.onmouseup = () => btn.style.transform = 'scale(1)';
             }
         }
 
@@ -2169,12 +1909,11 @@
                 const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
 
                 item.innerHTML = `
-                    <div>
+                    <div style="flex:1; min-width:0;">
                         <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
                             <span>${arr.headsign || 'Destination'}</span>
-                            ${busLabel ? `<span style="font-size:12px; opacity:.65; font-weight: 600;">${busLabel}</span>` : ''}
+                            ${busLabel ? `<span style="font-size:12px; color:var(--text-secondary); font-weight:600;">${busLabel}</span>` : ''}
                         </div>
-                        ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.8;">${arr.delayText}</div>` : ''}
                     </div>
                     <div class="realtime-time">${hh}h${mm}</div>
                 `;
@@ -2218,6 +1957,11 @@
             }
             updateFavoritesSection();
         };
+
+        const overlay = document.getElementById('overlay');
+        const closeBtn = document.getElementById('rt-panel-close');
+        if (overlay) overlay.onclick = closeRtPanel;
+        if (closeBtn) closeBtn.onclick = closeRtPanel;
 
         window.addEventListener('beforeunload', () => {
             if (state.realtimeInterval) {
