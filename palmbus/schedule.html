@@ -515,14 +515,11 @@
     <button class="favorite-btn" id="favorite-btn" style="display: none;">★</button>
 
     <script>
-        // ==================== SOURCE DES DONNÉES ====================
         const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
         const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
         const CACHE_TTL = 24 * 60 * 60 * 1000;
         const CACHE_VERSION = '1.0';
-        // ============================================================
 
-        // État global optimisé
         const state = {
             routes: {},
             stops: {},
@@ -537,13 +534,15 @@
             favorites: [],
             coreLoaded: false,
             realtimeInterval: null,
-            loadedRoutes: new Set()
+            loadedRoutes: new Set(),
+            zipCache: null
         };
 
-        // Cache optimisé
         const cache = {
             serviceIds: new Map(),
-            scheduleData: new Map()
+            scheduleData: new Map(),
+            destinations: new Map(),
+            stops: new Map()
         };
 
         document.addEventListener('DOMContentLoaded', init);
@@ -554,7 +553,19 @@
             showLines();
         }
 
-        // ==================== CHARGEMENT GTFS OPTIMISÉ ====================
+        async function getZip() {
+            if (state.zipCache) return state.zipCache;
+            
+            const response = await fetch(GTFS_ZIP_URL);
+            if (!response.ok) {
+                throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
+            }
+            
+            const blob = await response.blob();
+            state.zipCache = await JSZip.loadAsync(blob);
+            return state.zipCache;
+        }
+
         async function loadGtfsCore() {
             try {
                 const cached = getCachedData('gtfs_core');
@@ -564,15 +575,8 @@
                     return;
                 }
 
-                const response = await fetch(GTFS_ZIP_URL);
-                if (!response.ok) {
-                    throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
-                }
-                
-                const blob = await response.blob();
-                const zip = await JSZip.loadAsync(blob);
+                const zip = await getZip();
 
-                // Vérification des fichiers requis (calendar.txt optionnel si calendar_dates.txt existe)
                 const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
                 const missingFiles = requiredFiles.filter(f => !zip.file(f));
                 
@@ -580,13 +584,11 @@
                     throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
                 }
 
-                // Chargement sécurisé des fichiers
                 const routesFile = zip.file('routes.txt');
                 const stopsFile = zip.file('stops.txt');
                 const calendarFile = zip.file('calendar.txt');
                 const calendarDatesFile = zip.file('calendar_dates.txt');
 
-                // Vérifier qu'au moins calendar.txt ou calendar_dates.txt existe
                 if (!calendarFile && !calendarDatesFile) {
                     throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
                 }
@@ -601,12 +603,10 @@
                 state.routes = parseCSVToObject(routesText, 'route_id');
                 state.stops = parseCSVToObject(stopsText, 'stop_id');
                 
-                // Charger calendar.txt si présent
                 if (calendarText) {
                     state.calendar = parseCSVToObject(calendarText, 'service_id');
                 }
                 
-                // Charger calendar_dates.txt si présent
                 if (calendarDatesText) {
                     const dates = parseCSV(calendarDatesText);
                     dates.forEach(cd => {
@@ -622,8 +622,8 @@
                 }
 
                 if (!calendarText && calendarDatesText) {
-                console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
-                state.calendar = {}; // important : ne pas créer de faux services "tous les jours"
+                    console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
+                    state.calendar = {};
                 }
 
                 setCachedData('gtfs_core', {
@@ -663,13 +663,7 @@
             }
 
             try {
-                const response = await fetch(GTFS_ZIP_URL);
-                if (!response.ok) {
-                    throw new Error(`Fichier GTFS introuvable (${response.status})`);
-                }
-                
-                const blob = await response.blob();
-                const zip = await JSZip.loadAsync(blob);
+                const zip = await getZip();
 
                 const tripsFile = zip.file('trips.txt');
                 const stopTimesFile = zip.file('stop_times.txt');
@@ -723,44 +717,42 @@
         }
 
         function parseCSV(text) {
-        const lines = text.trim().split(/\r?\n/);
-        const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+            const lines = text.trim().split(/\r?\n/);
+            const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
 
-        return lines.slice(1).filter(l => l.trim()).map(line => {
-            const values = parseCSVLine(line);
-            const obj = {};
-            headers.forEach((h, i) => obj[h] = (values[i] ?? '').trim().replace(/"/g, ''));
-            return obj;
-        });
+            return lines.slice(1).filter(l => l.trim()).map(line => {
+                const values = parseCSVLine(line);
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = (values[i] ?? '').trim().replace(/"/g, ''));
+                return obj;
+            });
         }
 
         function parseCSVLine(line) {
-        const result = [];
-        let current = '';
-        let inQuotes = false;
+            const result = [];
+            let current = '';
+            let inQuotes = false;
 
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
 
-            if (char === '"') {
-            // double quote escape
-            if (inQuotes && line[i + 1] === '"') {
-                current += '"';
-                i++;
-            } else {
-                inQuotes = !inQuotes;
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
             }
-            } else if (char === ',' && !inQuotes) {
             result.push(current);
-            current = '';
-            } else {
-            current += char;
-            }
+            return result;
         }
-        result.push(current);
-        return result;
-        }
-
 
         function parseCSVToObject(text, keyField) {
             const items = parseCSV(text);
@@ -782,7 +774,6 @@
             return `${hour}h${minute}`;
         }
 
-        // ==================== CACHE ====================
         function getCachedData(key) {
             try {
                 const item = localStorage.getItem(`gtfs_${key}`);
@@ -800,9 +791,8 @@
 
         function setCachedData(key, value) {
             try {
-                // Pour les routes, ne pas mettre en cache car trop volumineux
                 if (key.startsWith('route_')) {
-                    return; // Skip cache pour les routes individuelles
+                    return;
                 }
                 
                 localStorage.setItem(`gtfs_${key}`, JSON.stringify({
@@ -812,7 +802,6 @@
                 }));
             } catch (error) {
                 console.warn('Cache localStorage plein, nettoyage...', error);
-                // Nettoyer le cache des routes si plein
                 Object.keys(localStorage).forEach(key => {
                     if (key.startsWith('gtfs_route_')) {
                         localStorage.removeItem(key);
@@ -821,7 +810,6 @@
             }
         }
 
-        // ==================== FAVORIS ====================
         function loadFavorites() {
             const stored = localStorage.getItem('favorites');
             state.favorites = stored ? JSON.parse(stored) : [];
@@ -905,7 +893,6 @@
             }
         }
 
-        // ==================== VUES ====================
         function hideAllViews() {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         }
@@ -940,8 +927,7 @@
 
         async function showDestinations(routeId) {
             state.currentRoute = routeId;
-            await loadTripsAndStopTimesForRoute(routeId);
-
+            
             hideAllViews();
             document.getElementById('destinations-view').classList.add('active');
             document.getElementById('back-btn').style.display = 'block';
@@ -952,8 +938,12 @@
             
             state.viewHistory.push('lines');
 
-            const destinations = getDestinations(routeId);
             const list = document.getElementById('destinations-list');
+            list.innerHTML = '<div class="loading">Chargement des destinations...</div>';
+
+            await loadTripsAndStopTimesForRoute(routeId);
+
+            const destinations = getDestinations(routeId);
             list.innerHTML = '';
 
             destinations.forEach(dest => {
@@ -1068,18 +1058,16 @@
         }
         
         function computeGtfsDateAndDow(dateString) {
-            const gtfsDate = dateString.replace(/-/g, ''); // exact jour choisi
-            const safe = new Date(dateString + 'T12:00:00'); // midi local => pas de décalage
-            const dayOfWeek = safe.getDay(); // 0..6
+            const gtfsDate = dateString.replace(/-/g, '');
+            const safe = new Date(dateString + 'T12:00:00');
+            const dayOfWeek = safe.getDay();
             return { gtfsDate, dayOfWeek };
         }
-
 
         function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
             const { gtfsDate, dayOfWeek } = computeGtfsDateAndDow(dateString);
             const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
 
-            
             if (activeServiceIds.length === 0) {
                 const container = document.getElementById('theoretical-content');
                 container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div>Aucun service actif pour cette date</div></div>';
@@ -1094,114 +1082,107 @@
         }
 
         function displaySchedule(validTrips, stopId, destinationId, container) {
-        container.innerHTML = '';
+            container.innerHTML = '';
 
-        const schedule = [];
-        const stopTimesByRoute = state.stopTimes[state.currentRoute];
+            const schedule = [];
+            const stopTimesByRoute = state.stopTimes[state.currentRoute];
 
-        validTrips.forEach(trip => {
-            const tripStops = stopTimesByRoute[trip.trip_id];
-            if (!tripStops || tripStops.length === 0) return;
+            validTrips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops || tripStops.length === 0) return;
 
-            // Indices (ordre garanti car tu as trié par stop_sequence)
-            const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
-            const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+                const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
 
-            // IMPORTANT : on ignore les trips qui ne vont pas à la destination
-            // ou si la destination est avant l'arrêt (mauvaise direction)
-            if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
+                if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
 
-            schedule.push(tripStops[stopIndex].arrival_time);
-        });
-
-        if (schedule.length === 0) {
-            container.innerHTML =
-            '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
-            return;
-        }
-
-        // Grouper par heure
-        const timesByHour = {};
-        schedule.forEach(time => {
-            const [hour, minute] = time.split('h');
-            if (!timesByHour[hour]) timesByHour[hour] = [];
-            timesByHour[hour].push(minute);
-        });
-
-        Object.keys(timesByHour)
-            .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-            .forEach(hour => {
-            const group = document.createElement('div');
-            group.className = 'schedule-group';
-
-            const hourTitle = document.createElement('div');
-            hourTitle.className = 'schedule-hour';
-            hourTitle.textContent = `${hour}h`;
-            group.appendChild(hourTitle);
-
-            const times = document.createElement('div');
-            times.className = 'schedule-times';
-
-            const uniqueMinutes = [...new Set(timesByHour[hour])]
-                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-
-            uniqueMinutes.forEach(minute => {
-                const timeEl = document.createElement('div');
-                timeEl.className = 'schedule-time';
-                timeEl.textContent = minute;
-                times.appendChild(timeEl);
+                schedule.push(tripStops[stopIndex].arrival_time);
             });
 
-            group.appendChild(times);
-            container.appendChild(group);
-            });
-        }
+            if (schedule.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
+                return;
+            }
 
+            const timesByHour = {};
+            schedule.forEach(time => {
+                const [hour, minute] = time.split('h');
+                if (!timesByHour[hour]) timesByHour[hour] = [];
+                timesByHour[hour].push(minute);
+            });
+
+            Object.keys(timesByHour)
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+                .forEach(hour => {
+                    const group = document.createElement('div');
+                    group.className = 'schedule-group';
+
+                    const hourTitle = document.createElement('div');
+                    hourTitle.className = 'schedule-hour';
+                    hourTitle.textContent = `${hour}h`;
+                    group.appendChild(hourTitle);
+
+                    const times = document.createElement('div');
+                    times.className = 'schedule-times';
+
+                    const uniqueMinutes = [...new Set(timesByHour[hour])]
+                        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+                    uniqueMinutes.forEach(minute => {
+                        const timeEl = document.createElement('div');
+                        timeEl.className = 'schedule-time';
+                        timeEl.textContent = minute;
+                        times.appendChild(timeEl);
+                    });
+
+                    group.appendChild(times);
+                    container.appendChild(group);
+                });
+        }
 
         function getActiveServiceIds(dayOfWeek, gtfsDate) {
-        const cacheKey = `${dayOfWeek}_${gtfsDate}`;
-        if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
+            const cacheKey = `${dayOfWeek}_${gtfsDate}`;
+            if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
 
-        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayName = dayNames[dayOfWeek];
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayName = dayNames[dayOfWeek];
 
-        let serviceIds = [];
+            let serviceIds = [];
 
-        const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
+            const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
 
-        if (hasCalendar) {
-            // 1) Services venant de calendar.txt
-            for (const [serviceId, cal] of Object.entries(state.calendar)) {
-            const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
-            if (!inRange) continue;
+            if (hasCalendar) {
+                for (const [serviceId, cal] of Object.entries(state.calendar)) {
+                    const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
+                    if (!inRange) continue;
 
-            // cal[dayName] vaut "1"/"0" dans ta nouvelle version
-            if (String(cal[dayName]).trim() === '1') {
-                serviceIds.push(serviceId);
+                    if (String(cal[dayName]).trim() === '1') {
+                        serviceIds.push(serviceId);
+                    }
+                }
+            } else {
+                serviceIds = [];
             }
+
+            const ex = state.calendarDates?.[gtfsDate];
+            if (ex) {
+                for (const id of ex.added || []) {
+                    if (!serviceIds.includes(id)) serviceIds.push(id);
+                }
+                for (const id of ex.removed || []) {
+                    serviceIds = serviceIds.filter(sid => sid !== id);
+                }
             }
-        } else {
-            // 2) Pas de calendar.txt => on part de rien et on s'appuie sur calendar_dates pour CE JOUR
-            serviceIds = [];
+
+            cache.serviceIds.set(cacheKey, serviceIds);
+            return serviceIds;
         }
-
-        // 3) Exceptions calendar_dates : ajout/suppression pour CE JOUR (prioritaire)
-        const ex = state.calendarDates?.[gtfsDate];
-        if (ex) {
-            for (const id of ex.added || []) {
-            if (!serviceIds.includes(id)) serviceIds.push(id);
-            }
-            for (const id of ex.removed || []) {
-            serviceIds = serviceIds.filter(sid => sid !== id);
-            }
-        }
-
-        cache.serviceIds.set(cacheKey, serviceIds);
-        return serviceIds;
-        }
-
 
         function getDestinations(routeId) {
+            if (cache.destinations.has(routeId)) {
+                return cache.destinations.get(routeId);
+            }
+
             const trips = state.trips[routeId];
             const stopTimesByRoute = state.stopTimes[routeId];
             const destinations = new Map();
@@ -1220,10 +1201,17 @@
                 }
             });
 
-            return Array.from(destinations.values());
+            const result = Array.from(destinations.values());
+            cache.destinations.set(routeId, result);
+            return result;
         }
 
         function getStopsForDestination(routeId, destinationId) {
+            const cacheKey = `${routeId}_${destinationId}`;
+            if (cache.stops.has(cacheKey)) {
+                return cache.stops.get(cacheKey);
+            }
+
             const trips = state.trips[routeId];
             const stopTimesByRoute = state.stopTimes[routeId];
             const stopsMap = new Map();
@@ -1243,7 +1231,9 @@
                 });
             });
 
-            return Array.from(stopsMap.values());
+            const result = Array.from(stopsMap.values());
+            cache.stops.set(cacheKey, result);
+            return result;
         }
 
         async function loadRealtimeData() {
@@ -1266,355 +1256,303 @@
             }
         }
 
-        // ---------- Helpers temps / retard ----------
         function pad2(n) { return String(n).padStart(2, '0'); }
 
         function parseTimeHHhMM(timeStr) {
-        // "8h05" -> {h:8, m:5}
-        const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
-        return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
+            const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
+            return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
         }
 
         function buildDateFromPicker(timeHHhMM, dateString) {
-        // dateString = "YYYY-MM-DD"
-        const { h, m } = parseTimeHHhMM(timeHHhMM);
-        // midi pour éviter soucis timezone, puis on set heure/min
-        const d = new Date(dateString + 'T12:00:00');
-        d.setHours(h, m, 0, 0);
-        return d;
+            const { h, m } = parseTimeHHhMM(timeHHhMM);
+            const d = new Date(dateString + 'T12:00:00');
+            d.setHours(h, m, 0, 0);
+            return d;
         }
 
         function getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString) {
-        const stopTimesByRoute = state.stopTimes[routeId];
-        const tripStops = stopTimesByRoute?.[tripId];
-        if (!tripStops) return null;
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const tripStops = stopTimesByRoute?.[tripId];
+            if (!tripStops) return null;
 
-        const st = tripStops.find(x => x.stop_id === stopId);
-        if (!st?.arrival_time) return null;
+            const st = tripStops.find(x => x.stop_id === stopId);
+            if (!st?.arrival_time) return null;
 
-        return buildDateFromPicker(st.arrival_time, dateString);
+            return buildDateFromPicker(st.arrival_time, dateString);
         }
 
         function minutesDiff(a, b) {
-        return Math.round((a.getTime() - b.getTime()) / 60000);
+            return Math.round((a.getTime() - b.getTime()) / 60000);
         }
 
-        // ---------- Filtre route pour GTFS-RT ----------
         function matchesCurrentRouteRt(tripDescriptor, routeId) {
-        // 1) si GTFS-RT donne routeId
-        const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
-        if (rtRouteId) return String(rtRouteId) === String(routeId);
+            const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
+            if (rtRouteId) return String(rtRouteId) === String(routeId);
 
-        // 2) sinon on matche via tripId dans tes trips GTFS
-        const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
-        if (!rtTripId) return false;
+            const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
+            if (!rtTripId) return false;
 
-        const routeTrips = state.trips?.[routeId] || [];
-        return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
-        }
-
-        // ---------- Panel (timeline) ----------
-        function openRtPanel(title, html) {
-        const overlay = document.getElementById('overlay');
-        const panel = document.getElementById('rt-panel');
-        document.getElementById('rt-panel-title').textContent = title;
-        document.getElementById('rt-panel-content').innerHTML = html;
-
-        overlay.style.display = 'block';
-        panel.style.display = 'block';
-        }
-
-        function closeRtPanel() {
-        document.getElementById('overlay').style.display = 'none';
-        document.getElementById('rt-panel').style.display = 'none';
-        }
-
-        document.getElementById('overlay').onclick = closeRtPanel;
-        document.getElementById('rt-panel-close').onclick = closeRtPanel;
-
-        function processRealtimeDataForStop(message, routeId, stopId) {
-        const arrivals = [];
-        const now = Date.now() / 1000;
-
-        message.entity.forEach(entity => {
-            if (!entity.tripUpdate) return;
-
-            const tu = entity.tripUpdate;
-            const td = tu.trip;
-
-            const tripId = td.tripId || td.trip_id;
-            if (!tripId) return;
-
-            // Filtre route : routeId direct sinon match via GTFS trips
-            const rtRouteId = td.routeId || td.route_id;
-            if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
-
-            if (!rtRouteId) {
             const routeTrips = state.trips?.[routeId] || [];
-            const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
-            if (!ok) return;
-            }
-
-            const vehicleId =
-            entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
-            entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
-
-            tu.stopTimeUpdate?.forEach(update => {
-            if (update.stopId !== stopId) return;
-
-            const arrivalTime = update.arrival?.time || update.departure?.time;
-            if (!arrivalTime || arrivalTime <= now) return;
-
-            arrivals.push({
-                time: arrivalTime,          // seconds
-                tripId: tripId,             // ✅ pour timeline
-                vehicleId: vehicleId,       // ✅ affichage + map
-                headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
-            });
-            });
-        });
-
-        return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
+            return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
         }
-
-        // ============================================================
-        //  RT PANEL + TIMELINE (adapté de l’ancienne version)
-        //  - Pas de null : crée overlay/panel si manquant
-        //  - Click sur un item RT => timeline + "Afficher dans la carte"
-        //  - Envoi postMessage identique à l’ancienne version
-        // ============================================================
 
         function ensureRtUi() {
-        // Overlay
-        let overlay = document.getElementById('overlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'overlay';
-            overlay.style.cssText = `
-            display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
-            z-index:9998;
-            `;
-            document.body.appendChild(overlay);
-        }
+            let overlay = document.getElementById('overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'overlay';
+                overlay.style.cssText = `
+                    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+                    z-index:9998;
+                `;
+                document.body.appendChild(overlay);
+            }
 
-        // Panel
-        let panel = document.getElementById('rt-panel');
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.id = 'rt-panel';
-            panel.style.cssText = `
-            display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
-            width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
-            background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
-            border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
-            z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
-            color:#fff;
-            `;
-            panel.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
-                border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
-                <div style="font-weight:800" id="rt-panel-title">Détails</div>
-                <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
-                color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
-            </div>
-            <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
-            `;
-            document.body.appendChild(panel);
-        }
+            let panel = document.getElementById('rt-panel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'rt-panel';
+                panel.style.cssText = `
+                    display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
+                    width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
+                    background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
+                    border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
+                    z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
+                    color:#fff;
+                `;
+                panel.innerHTML = `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+                        border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
+                        <div style="font-weight:800" id="rt-panel-title">Détails</div>
+                        <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
+                        color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
+                    </div>
+                    <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
+                `;
+                document.body.appendChild(panel);
+            }
 
-        // Close handlers (idempotent)
-        const close = () => closeRtPanel();
-        overlay.onclick = close;
-        const closeBtn = document.getElementById('rt-panel-close');
-        if (closeBtn) closeBtn.onclick = close;
+            const close = () => closeRtPanel();
+            overlay.onclick = close;
+            const closeBtn = document.getElementById('rt-panel-close');
+            if (closeBtn) closeBtn.onclick = close;
         }
 
         function openRtPanel(title, html) {
-        ensureRtUi();
-        const overlay = document.getElementById('overlay');
-        const panel = document.getElementById('rt-panel');
-        const titleEl = document.getElementById('rt-panel-title');
-        const contentEl = document.getElementById('rt-panel-content');
+            ensureRtUi();
+            const overlay = document.getElementById('overlay');
+            const panel = document.getElementById('rt-panel');
+            const titleEl = document.getElementById('rt-panel-title');
+            const contentEl = document.getElementById('rt-panel-content');
 
-        if (titleEl) titleEl.textContent = title || 'Détails';
-        if (contentEl) contentEl.innerHTML = html || '';
+            if (titleEl) titleEl.textContent = title || 'Détails';
+            if (contentEl) contentEl.innerHTML = html || '';
 
-        overlay.style.display = 'block';
-        panel.style.display = 'block';
+            overlay.style.display = 'block';
+            panel.style.display = 'block';
         }
 
         function closeRtPanel() {
-        const overlay = document.getElementById('overlay');
-        const panel = document.getElementById('rt-panel');
-        if (overlay) overlay.style.display = 'none';
-        if (panel) panel.style.display = 'none';
+            const overlay = document.getElementById('overlay');
+            const panel = document.getElementById('rt-panel');
+            if (overlay) overlay.style.display = 'none';
+            if (panel) panel.style.display = 'none';
         }
-
-        // --------- Helpers temps / affichage ----------
-        function pad2(n) { return String(n).padStart(2, '0'); }
 
         function getMinutesFromHHhMM(timeStr) {
-        // "8h05" -> 485
-        const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
-        return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+            const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
+            return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
         }
 
-        // --------- Map button: postMessage identique à l’ancienne version ----------
         function sendVehicleToParent(vehicleId, tripId) {
-        const message = {
-            type: 'vehicleSelected',
-            vehicleId: vehicleId || null,
-            tripId: tripId || null,
-            stopId: state.currentStop || null,
-            routeId: state.currentRoute || null,
-            timestamp: new Date().getTime()
-        };
-
-        if (window.parent && window.parent !== window) {
-            window.parent.postMessage(message, '*');
-        } else if (window.opener) {
-            window.opener.postMessage(message, '*');
-        } else {
-            console.warn('Aucun parent/opener pour recevoir le message:', message);
-        }
-        }
-
-        // --------- Timeline "comme ancienne version" (arrêts + prochains) ----------
-        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
-        ensureRtUi();
-
-        const route = state.routes?.[routeId];
-        const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
-        const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
-
-        const tripStops = state.stopTimes?.[routeId]?.[tripId];
-        if (!tripStops || tripStops.length === 0) {
-            openRtPanel(
-            `Bus ${vehicleId || '—'} • ${routeLabel}`,
-            `<div style="opacity:.8">Aucun détail d’arrêts pour ce trajet.</div>`
-            );
-            return;
-        }
-
-        // Calcule position "prochain arrêt" basé sur l’heure théorique (comme ton ancienne version)
-        const now = new Date();
-        const nowMin = now.getHours() * 60 + now.getMinutes();
-
-        let nextIndex = 0;
-        for (let i = 0; i < tripStops.length; i++) {
-            const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
-            if (tMin >= nowMin) { nextIndex = i; break; }
-            nextIndex = i;
-        }
-
-        const rows = tripStops.map((st, idx) => {
-            const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
-            const time = st.arrival_time || '--h--';
-
-            const isNext = idx === nextIndex;
-            const isPast = idx < nextIndex;
-
-            return `
-            <div style="
-                display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
-                border-bottom:1px solid rgba(255,255,255,.08);
-                background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
-                opacity:${isPast ? '.55' : '1'};
-            ">
-                <div style="display:flex; align-items:center; gap:10px;">
-                <div style="
-                    width:10px; height:10px; border-radius:999px;
-                    background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
-                    box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
-                "></div>
-                <div>${stopName}</div>
-                </div>
-                <div style="font-weight:800;">${time}</div>
-            </div>
-            `;
-        }).join('');
-
-        const html = `
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-            <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
-            <div style="font-weight:800;">${routeLabel}</div>
-            <div style="opacity:.85;">• Trajet ${tripId}</div>
-            ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
-            </div>
-
-            <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
-            ${rows}
-            </div>
-
-            <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
-            <button id="rt-show-map-btn" style="
-                cursor:pointer; border:none; color:#fff;
-                background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
-                padding:10px 14px; border-radius:12px; font-weight:800;
-                box-shadow:0 8px 24px rgba(0,0,0,.25);
-            ">
-                Afficher dans la carte
-            </button>
-            </div>
-        `;
-
-        openRtPanel(`Détails • ${routeLabel}`, html);
-
-        // Bind bouton map
-        const btn = document.getElementById('rt-show-map-btn');
-        if (btn) {
-            btn.onclick = () => {
-            sendVehicleToParent(vehicleId, tripId);
-            closeRtPanel();
+            const message = {
+                type: 'vehicleSelected',
+                vehicleId: vehicleId || null,
+                tripId: tripId || null,
+                stopId: state.currentStop || null,
+                routeId: state.currentRoute || null,
+                timestamp: new Date().getTime()
             };
-        }
-        }
 
-        // ============================================================
-        //  RT LIST : afficher vehicleId + click => timeline
-        //  -> Remplace ta displayRealtimeArrivals si besoin
-        // ============================================================
-        function displayRealtimeArrivals(arrivals, container) {
-        container.innerHTML = '';
-
-        if (!arrivals || arrivals.length === 0) {
-            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
-            return;
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(message, '*');
+            } else if (window.opener) {
+                window.opener.postMessage(message, '*');
+            } else {
+                console.warn('Aucun parent/opener pour recevoir le message:', message);
+            }
         }
 
-        arrivals.forEach(arr => {
-            const date = new Date(arr.time * 1000);
-            const hh = pad2(date.getHours());
-            const mm = pad2(date.getMinutes());
+        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
+            ensureRtUi();
 
-            const item = document.createElement('div');
-            item.className = 'realtime-item';
-            item.style.cursor = 'pointer';
+            const route = state.routes?.[routeId];
+            const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
+            const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
 
-            // ✅ ID bus affiché
-            const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
+            const tripStops = state.stopTimes?.[routeId]?.[tripId];
+            if (!tripStops || tripStops.length === 0) {
+                openRtPanel(
+                    `Bus ${vehicleId || '—'} • ${routeLabel}`,
+                    `<div style="opacity:.8">Aucun détail d'arrêts pour ce trajet.</div>`
+                );
+                return;
+            }
 
-            item.innerHTML = `
-            <div>
-                <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
-                <span>${arr.headsign || 'Destination'}</span>
-                ${busLabel ? `<span style="font-size:12px; opacity:.75;">${busLabel}</span>` : ''}
+            const now = new Date();
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+
+            let nextIndex = 0;
+            for (let i = 0; i < tripStops.length; i++) {
+                const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
+                if (tMin >= nowMin) { nextIndex = i; break; }
+                nextIndex = i;
+            }
+
+            const rows = tripStops.map((st, idx) => {
+                const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
+                const time = st.arrival_time || '--h--';
+
+                const isNext = idx === nextIndex;
+                const isPast = idx < nextIndex;
+
+                return `
+                    <div style="
+                        display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
+                        border-bottom:1px solid rgba(255,255,255,.08);
+                        background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
+                        opacity:${isPast ? '.55' : '1'};
+                    ">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="
+                                width:10px; height:10px; border-radius:999px;
+                                background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
+                                box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
+                            "></div>
+                            <div>${stopName}</div>
+                        </div>
+                        <div style="font-weight:800;">${time}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const html = `
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                    <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
+                    <div style="font-weight:800;">${routeLabel}</div>
+                    <div style="opacity:.85;">• Trajet ${tripId}</div>
+                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
                 </div>
-                ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
-            </div>
-            <div class="realtime-time">${hh}h${mm}</div>
+
+                <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
+                    ${rows}
+                </div>
+
+                <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
+                    <button id="rt-show-map-btn" style="
+                        cursor:pointer; border:none; color:#fff;
+                        background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
+                        padding:10px 14px; border-radius:12px; font-weight:800;
+                        box-shadow:0 8px 24px rgba(0,0,0,.25);
+                    ">
+                        Afficher dans la carte
+                    </button>
+                </div>
             `;
 
-            // ✅ Clique : timeline + bouton "Afficher dans la carte"
-            item.addEventListener('click', () => {
-            showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
+            openRtPanel(`Détails • ${routeLabel}`, html);
+
+            const btn = document.getElementById('rt-show-map-btn');
+            if (btn) {
+                btn.onclick = () => {
+                    sendVehicleToParent(vehicleId, tripId);
+                    closeRtPanel();
+                };
+            }
+        }
+
+        function processRealtimeDataForStop(message, routeId, stopId) {
+            const arrivals = [];
+            const now = Date.now() / 1000;
+
+            message.entity.forEach(entity => {
+                if (!entity.tripUpdate) return;
+
+                const tu = entity.tripUpdate;
+                const td = tu.trip;
+
+                const tripId = td.tripId || td.trip_id;
+                if (!tripId) return;
+
+                const rtRouteId = td.routeId || td.route_id;
+                if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
+
+                if (!rtRouteId) {
+                    const routeTrips = state.trips?.[routeId] || [];
+                    const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
+                    if (!ok) return;
+                }
+
+                const vehicleId =
+                    entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
+                    entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
+
+                tu.stopTimeUpdate?.forEach(update => {
+                    if (update.stopId !== stopId) return;
+
+                    const arrivalTime = update.arrival?.time || update.departure?.time;
+                    if (!arrivalTime || arrivalTime <= now) return;
+
+                    arrivals.push({
+                        time: arrivalTime,
+                        tripId: tripId,
+                        vehicleId: vehicleId,
+                        headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
+                    });
+                });
             });
 
-            container.appendChild(item);
-        });
+            return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
         }
 
-        // ==================== NAVIGATION ====================
+        function displayRealtimeArrivals(arrivals, container) {
+            container.innerHTML = '';
+
+            if (!arrivals || arrivals.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
+                return;
+            }
+
+            arrivals.forEach(arr => {
+                const date = new Date(arr.time * 1000);
+                const hh = pad2(date.getHours());
+                const mm = pad2(date.getMinutes());
+
+                const item = document.createElement('div');
+                item.className = 'realtime-item';
+                item.style.cursor = 'pointer';
+
+                const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
+
+                item.innerHTML = `
+                    <div>
+                        <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+                            <span>${arr.headsign || 'Destination'}</span>
+                            ${busLabel ? `<span style="font-size:12px; opacity:.75;">${busLabel}</span>` : ''}
+                        </div>
+                        ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
+                    </div>
+                    <div class="realtime-time">${hh}h${mm}</div>
+                `;
+
+                item.addEventListener('click', () => {
+                    showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
+                });
+
+                container.appendChild(item);
+            });
+        }
+
         function goBack() {
             const previous = state.viewHistory.pop();
             
@@ -1636,7 +1574,6 @@
             }
         }
 
-        // ==================== EVENT LISTENERS ====================
         document.getElementById('back-btn').onclick = goBack;
         
         document.getElementById('favorite-btn').onclick = () => {
