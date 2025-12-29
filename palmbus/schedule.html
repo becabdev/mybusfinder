@@ -743,15 +743,44 @@
         }
 
         function parseCSV(text) {
-            const lines = text.trim().split(/\r?\n/);
-            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            return lines.slice(1).map(line => {
-                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-                const obj = {};
-                headers.forEach((h, i) => obj[h] = values[i] || '');
-                return obj;
-            });
+        const lines = text.trim().split(/\r?\n/);
+        const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+
+        return lines.slice(1).filter(l => l.trim()).map(line => {
+            const values = parseCSVLine(line);
+            const obj = {};
+            headers.forEach((h, i) => obj[h] = (values[i] ?? '').trim().replace(/"/g, ''));
+            return obj;
+        });
         }
+
+        function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (char === '"') {
+            // double quote escape
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+            } else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+            } else {
+            current += char;
+            }
+        }
+        result.push(current);
+        return result;
+        }
+
 
         function parseCSVToObject(text, keyField) {
             const items = parseCSV(text);
@@ -1079,74 +1108,69 @@
         }
 
         function displaySchedule(validTrips, stopId, destinationId, container) {
-            container.innerHTML = '';
+        container.innerHTML = '';
 
-            const schedule = [];
-            const stopTimesByRoute = state.stopTimes[state.currentRoute];
+        const schedule = [];
+        const stopTimesByRoute = state.stopTimes[state.currentRoute];
 
-            validTrips.forEach(trip => {
-                const tripStops = stopTimesByRoute[trip.trip_id];
-                if (!tripStops) return;
+        validTrips.forEach(trip => {
+            const tripStops = stopTimesByRoute[trip.trip_id];
+            if (!tripStops || tripStops.length === 0) return;
 
-                // Vérifier si ce trip dessert la destination
-                let destinationReached = false;
-                
-                tripStops.forEach(stopTime => {
-                    // Si on atteint la destination, marquer le flag
-                    if (stopTime.stop_id === destinationId) {
-                        destinationReached = true;
-                    }
-                    
-                    // Ajouter l'horaire seulement si c'est notre arrêt ET qu'on n'a pas encore atteint la destination
-                    if (stopTime.stop_id === stopId && !destinationReached) {
-                        schedule.push(stopTime.arrival_time);
-                    }
-                });
-            });
+            // Indices (ordre garanti car tu as trié par stop_sequence)
+            const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
+            const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
 
-            if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
-                return;
-            }
+            // IMPORTANT : on ignore les trips qui ne vont pas à la destination
+            // ou si la destination est avant l'arrêt (mauvaise direction)
+            if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
 
-            // Grouper par heure
-            const timesByHour = {};
-            schedule.forEach(time => {
-                const [hour, minute] = time.split('h');
-                if (!timesByHour[hour]) timesByHour[hour] = [];
-                timesByHour[hour].push(minute);
-            });
+            schedule.push(tripStops[stopIndex].arrival_time);
+        });
 
-            // Trier les heures et afficher
-            Object.keys(timesByHour)
-                .sort((a, b) => parseInt(a) - parseInt(b))
-                .forEach(hour => {
-                    const group = document.createElement('div');
-                    group.className = 'schedule-group';
-                    
-                    const hourTitle = document.createElement('div');
-                    hourTitle.className = 'schedule-hour';
-                    hourTitle.textContent = `${hour}h`;
-                    group.appendChild(hourTitle);
-
-                    const times = document.createElement('div');
-                    times.className = 'schedule-times';
-                    
-                    // Dédupliquer et trier les minutes
-                    const uniqueMinutes = [...new Set(timesByHour[hour])]
-                        .sort((a, b) => parseInt(a) - parseInt(b));
-                    
-                    uniqueMinutes.forEach(minute => {
-                        const timeEl = document.createElement('div');
-                        timeEl.className = 'schedule-time';
-                        timeEl.textContent = minute;
-                        times.appendChild(timeEl);
-                    });
-
-                    group.appendChild(times);
-                    container.appendChild(group);
-                });
+        if (schedule.length === 0) {
+            container.innerHTML =
+            '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
+            return;
         }
+
+        // Grouper par heure
+        const timesByHour = {};
+        schedule.forEach(time => {
+            const [hour, minute] = time.split('h');
+            if (!timesByHour[hour]) timesByHour[hour] = [];
+            timesByHour[hour].push(minute);
+        });
+
+        Object.keys(timesByHour)
+            .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+            .forEach(hour => {
+            const group = document.createElement('div');
+            group.className = 'schedule-group';
+
+            const hourTitle = document.createElement('div');
+            hourTitle.className = 'schedule-hour';
+            hourTitle.textContent = `${hour}h`;
+            group.appendChild(hourTitle);
+
+            const times = document.createElement('div');
+            times.className = 'schedule-times';
+
+            const uniqueMinutes = [...new Set(timesByHour[hour])]
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+            uniqueMinutes.forEach(minute => {
+                const timeEl = document.createElement('div');
+                timeEl.className = 'schedule-time';
+                timeEl.textContent = minute;
+                times.appendChild(timeEl);
+            });
+
+            group.appendChild(times);
+            container.appendChild(group);
+            });
+        }
+
 
         function getActiveServiceIds(dayOfWeek, gtfsDate) {
             const cacheKey = `${dayOfWeek}_${gtfsDate}`;
@@ -1223,7 +1247,7 @@
                 const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
                 if (destIndex === -1) return;
 
-                tripStops.slice(0, destIndex + 1).forEach(st => {
+                tripStops.slice(0, destIndex).forEach(st => { 
                     const stop = state.stops[st.stop_id];
                     if (stop && !stopsMap.has(stop.stop_id)) {
                         stopsMap.set(stop.stop_id, stop);
