@@ -1254,7 +1254,7 @@
                 const response = await fetch(GTFS_RT_URL);
                 const buffer = await response.arrayBuffer();
                 
-                const root = await protobuf.load('https://developers.google.com/static/transit/gtfs-realtime/gtfs-realtime.proto');
+                const root = await protobuf.load('src/gtfs-realtime.proto');
                 const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
                 const message = FeedMessage.decode(new Uint8Array(buffer));
 
