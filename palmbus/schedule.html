@@ -686,7 +686,7 @@
             </div>
             <div class="header-text">
                 <h1 id="header-title">My Bus Schedule</h1>
-                <p id="header-subtitle">Horaires de bus</p>
+                <p id="header-subtitle">Sélectionnez une ligne</p>
             </div>
         </div>
     </div>
@@ -703,7 +703,6 @@
                 <div class="section-title"><i class="fas fa-star"></i> Favoris</div>
                 <div id="favorites-list"></div>
             </div>
-            <div class="section-title">Lignes de bus</div>
             <div id="lines-list"></div>
         </div>
 
@@ -1064,7 +1063,7 @@
             document.getElementById('lines-view').classList.add('active');
             document.getElementById('back-btn').style.display = 'none';
             document.getElementById('header-title').textContent = 'My Bus Schedule';
-            document.getElementById('header-subtitle').textContent = 'Horaires de bus';
+            document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
             state.viewHistory = [];
 
             const linesList = document.getElementById('lines-list');
@@ -1094,7 +1093,7 @@
             document.getElementById('back-btn').style.display = 'flex';
             
             const route = state.routes[routeId];
-            document.getElementById('header-title').textContent = route.route_short_name;
+            document.getElementById('header-title').textContent = "Ligne " + route.route_short_name;
             document.getElementById('header-subtitle').textContent = route.route_long_name;
             
             state.viewHistory.push('lines');
