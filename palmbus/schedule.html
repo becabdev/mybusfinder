@@ -1582,7 +1582,7 @@
                     if (!ok) return;
                 }
 
-                constvehicleId =
+                const vehicleId =
                     entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
                     entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
 
@@ -1608,21 +1608,17 @@
             container.innerHTML = '';
 
             if (!arrivals || arrivals.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucune arrivée</div><div class="state-description">Aucune arrivée prévue</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucune arrivée</div><div class="state-description">Aucune arrivée prévue actuellement</div></div>';
                 return;
             }
 
-            arrivals.forEach((arr, index) => {
+            arrivals.forEach(arr => {
                 const date = new Date(arr.time * 1000);
                 const hh = pad2(date.getHours());
                 const mm = pad2(date.getMinutes());
 
                 const item = document.createElement('div');
                 item.className = 'realtime-item';
-                item.style.animationDelay = `${index * 0.05}s`;
-                item.style.opacity = '0';
-                item.style.transform = 'translateY(30px) scale(0.95)';
-                item.style.animation = 'cardAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
 
                 const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
 
@@ -1661,12 +1657,7 @@
             }
         }
 
-        document.getElementById('back-btn').onclick = () => {
-            goBack();
-            if ('vibrate' in navigator) {
-                navigator.vibrate(10);
-            }
-        };
+        document.getElementById('back-btn').onclick = goBack;
         
         document.getElementById('favorite-btn').onclick = () => {
             if (isFavorite(state.currentRoute, state.currentStop, state.currentDestination)) {
@@ -1683,7 +1674,7 @@
             }
         });
 
-        // Pull to refresh
+        // Pull to refresh on mobile
         let touchStartY = 0;
         let touchEndY = 0;
         
@@ -1698,17 +1689,33 @@
         document.addEventListener('touchend', () => {
             if (window.scrollY === 0 && touchEndY > touchStartY + 100) {
                 if (state.viewHistory.length === 0) {
-                    init();
-                    if ('vibrate' in navigator) {
-                        navigator.vibrate(20);
-                    }
+                    // On est sur la page d'accueil, on recharge
+                    const loading = document.getElementById('loading');
+                    loading.style.display = 'block';
+                    hideAllViews();
+                    
+                    setTimeout(() => {
+                        showLines();
+                        if ('vibrate' in navigator) {
+                            navigator.vibrate(20);
+                        }
+                    }, 500);
                 }
             }
         }, { passive: true });
 
+        // Smooth page load
+        window.addEventListener('load', () => {
+            document.body.style.opacity = '0';
+            requestAnimationFrame(() => {
+                document.body.style.transition = 'opacity 0.4s ease';
+                document.body.style.opacity = '1';
+            });
+        });
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && state.viewHistory.length > 0) {
                 goBack();
             }
         });
