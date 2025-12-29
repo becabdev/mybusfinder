@@ -1187,6 +1187,7 @@
             const tabs = document.querySelectorAll('.tab');
             const indicator = document.querySelector('.tab-indicator');
             const datePicker = document.getElementById('date-picker');
+            indicator.style.transform = `translateX(0px)`;
 
             tabs.forEach((tab, index) => {
                 tab.onclick = () => {
