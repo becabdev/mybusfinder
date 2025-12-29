@@ -751,7 +751,6 @@
             currentRoute: null,
             currentStop: null,
             currentDestination: null,
-            favorites: [],
             coreLoaded: false,
             realtimeInterval: null,
             loadedRoutes: new Set(),
@@ -769,7 +768,6 @@
         document.addEventListener('DOMContentLoaded', init);
 
         async function init() {
-            loadFavorites();
             await loadGtfsCore();
             showLines();
             initScrollEffects();
@@ -1055,84 +1053,6 @@
             }
         }
 
-        function loadFavorites() {
-            const stored = localStorage.getItem('favorites');
-            state.favorites = stored ? JSON.parse(stored) : [];
-        }
-
-        function saveFavorites() {
-            localStorage.setItem('favorites', JSON.stringify(state.favorites));
-        }
-
-        function addToFavorites(routeId, stopId, destinationId) {
-            const fav = { 
-                routeId, 
-                stopId, 
-                destinationId,
-                id: `${routeId}-${stopId}-${destinationId}`
-            };
-            if (!isFavorite(routeId, stopId, destinationId)) {
-                state.favorites.push(fav);
-                saveFavorites();
-                updateFavoriteButton();
-                if ('vibrate' in navigator) {
-                    navigator.vibrate(10);
-                }
-            }
-        }
-
-        function removeFromFavorites(routeId, stopId, destinationId) {
-            state.favorites = state.favorites.filter(f => 
-                !(f.routeId === routeId && f.stopId === stopId && f.destinationId === destinationId)
-            );
-            saveFavorites();
-            updateFavoriteButton();
-            if ('vibrate' in navigator) {
-                navigator.vibrate(10);
-            }
-        }
-
-        function isFavorite(routeId, stopId, destinationId) {
-            return state.favorites.some(f => 
-                f.routeId === routeId && f.stopId === stopId && f.destinationId === destinationId
-            );
-        }
-
-        async function updateFavoritesSection() {
-            const section = document.getElementById('favorites-section');
-            const list = document.getElementById('favorites-list');
-
-            if (state.favorites.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-
-            section.style.display = 'block';
-            list.innerHTML = '';
-
-            for (const fav of state.favorites) {
-                await loadTripsAndStopTimesForRoute(fav.routeId);
-
-                const route = state.routes[fav.routeId];
-                const stop = state.stops[fav.stopId];
-                const dest = state.stops[fav.destinationId];
-
-                if (!route || !stop || !dest) continue;
-
-                const item = document.createElement('div');
-                item.className = 'favorite-item';
-                item.innerHTML = `
-                    <div class="favorite-info">
-                        <div class="favorite-route">${route.route_short_name}</div>
-                        <div class="favorite-details">${stop.stop_name} → ${dest.stop_name}</div>
-                    </div>
-                    <div class="favorite-times">Chargement...</div>
-                `;
-                
-                item.onclick = () => showSchedule(fav.routeId, fav.stopId, fav.destinationId);
-                list.appendChild(item);
-            }
-        }
 
         function hideAllViews() {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1164,7 +1084,6 @@
                 linesList.appendChild(item);
             });
 
-            updateFavoritesSection();
         }
 
         async function showDestinations(routeId) {
@@ -1256,7 +1175,6 @@
             document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
             document.getElementById('header-subtitle').textContent = route.route_long_name;
 
-            updateFavoriteButton();
             setupTabHandlers();
             
             const today = new Date().toISOString().split('T')[0];
