@@ -6,64 +6,109 @@
     <title>MBS - Powered by MyBusFinder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <style>
+        /* ===== VARIABLES CSS LIQUID GLASS ===== */
         :root {
-            --primary: #8b5cf6;
-            --primary-light: #a78bfa;
-            --primary-dark: #7c3aed;
-            --secondary: #3b82f6;
-            --bg-start: #1e1b4b;
-            --bg-end: #312e81;
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.8);
-            --shadow-sm: 0 2px 8px rgba(139, 92, 246, 0.15);
-            --shadow-md: 0 4px 16px rgba(139, 92, 246, 0.25);
-            --shadow-lg: 0 8px 32px rgba(139, 92, 246, 0.35);
-            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Couleurs principales */
+            --accent-primary: #0A84FF;
+            --accent-secondary: #5E5CE6;
+            --accent-gradient: linear-gradient(135deg, #0A84FF 0%, #5E5CE6 100%);
+            
+            /* Backgrounds Liquid Glass - Light Mode */
+            --glass-bg-light: rgba(255, 255, 255, 0.72);
+            --glass-bg-light-hover: rgba(255, 255, 255, 0.85);
+            --glass-bg-card: rgba(255, 255, 255, 0.65);
+            --glass-bg-nav: rgba(255, 255, 255, 0.75);
+            --glass-bg-button: rgba(255, 255, 255, 0.8);
+            
+            /* Backgrounds Liquid Glass - Dark Mode */
+            --glass-bg-dark: rgba(28, 28, 30, 0.78);
+            --glass-bg-dark-hover: rgba(28, 28, 30, 0.88);
+            --glass-bg-card-dark: rgba(40, 40, 42, 0.72);
+            --glass-bg-nav-dark: rgba(28, 28, 30, 0.82);
+            --glass-bg-button-dark: rgba(60, 60, 62, 0.75);
+            
+            /* Blur */
+            --glass-blur-mobile: blur(24px);
+            --glass-blur-desktop: blur(40px);
+            --glass-saturate: saturate(180%);
+            
+            /* Borders */
+            --glass-border-light: rgba(0, 0, 0, 0.08);
+            --glass-border-dark: rgba(255, 255, 255, 0.12);
+            --glass-border-highlight: rgba(255, 255, 255, 0.3);
+            
+            /* Shadows */
+            --glass-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            
+            /* Text */
+            --text-primary-light: rgba(0, 0, 0, 0.92);
+            --text-secondary-light: rgba(0, 0, 0, 0.65);
+            --text-primary-dark: rgba(255, 255, 255, 0.95);
+            --text-secondary-dark: rgba(255, 255, 255, 0.7);
+            
+            /* Spacing augmenté (Liquid Glass nécessite plus d'air) */
+            --spacing-xs: 8px;
+            --spacing-sm: 12px;
+            --spacing-md: 20px;
+            --spacing-lg: 28px;
+            --spacing-xl: 40px;
+            
+            /* Border radius */
+            --radius-sm: 12px;
+            --radius-md: 16px;
+            --radius-lg: 20px;
+            --radius-xl: 24px;
+            --radius-pill: 50px;
+            
+            /* Transitions fluides */
+            --transition-quick: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            
+            /* Background de la page */
+            --page-bg-light: linear-gradient(135deg, #F0F4FF 0%, #E8EEFF 50%, #F5F0FF 100%);
+            --page-bg-dark: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
         }
 
+        /* ===== RESET & BASE ===== */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'League Spartan', sans-serif;
-            background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-end) 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--page-bg-light);
             min-height: 100vh;
-            color: var(--text-primary);
+            color: var(--text-primary-light);
             overflow-x: hidden;
             position: relative;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-            opacity: 0;
-            animation: gradient-shift 15s ease infinite;
-            z-index: -1;
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: var(--page-bg-dark);
+                color: var(--text-primary-dark);
+            }
         }
 
-        @keyframes gradient-shift {
-            0%, 100% { opacity: 0; }
-            50% { opacity: 0.3; }
-        }
-
+        /* ===== ANIMATIONS LIQUID GLASS ===== */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(24px);
             }
             to {
                 opacity: 1;
@@ -71,68 +116,202 @@
             }
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+        @keyframes slideInFromLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(10, 132, 255, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(10, 132, 255, 0);
+            }
+        }
+
+        /* ===== CONTAINER ===== */
         .container {
-            max-width: 800px;
+            max-width: 680px;
             margin: 0 auto;
-            padding: 20px;
+            padding: var(--spacing-md);
+            animation: fadeInUp 0.6s ease-out;
         }
 
+        /* ===== HEADER LIQUID GLASS ===== */
         .header {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow-md);
+            background: var(--glass-bg-nav);
+            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md) var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--glass-shadow-md);
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: var(--spacing-sm);
+            transform: translateZ(0);
+            will-change: transform;
+            position: sticky;
+            top: var(--spacing-sm);
+            z-index: 100;
+            transition: all var(--transition-smooth);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header {
+                background: var(--glass-bg-nav-dark);
+                border-color: var(--glass-border-dark);
+            }
+        }
+
+        .header.scrolled {
+            background: var(--glass-bg-light-hover);
+            backdrop-filter: blur(32px) var(--glass-saturate);
+            -webkit-backdrop-filter: blur(32px) var(--glass-saturate);
+            box-shadow: var(--glass-shadow-lg);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .header.scrolled {
+                background: var(--glass-bg-dark-hover);
+            }
         }
 
         .back-btn {
-            background: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
+            background: var(--glass-bg-button);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border-light);
+            color: var(--text-primary-light);
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: var(--transition);
-            font-size: 20px;
+            transition: all var(--transition-smooth);
+            font-size: 22px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transform: translateZ(0);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .back-btn {
+                background: var(--glass-bg-button-dark);
+                border-color: var(--glass-border-dark);
+                color: var(--text-primary-dark);
+            }
         }
 
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateX(-3px);
+            transform: scale(1.05) translateX(-2px);
+            box-shadow: 0 4px 16px rgba(10, 132, 255, 0.2);
+            background: var(--glass-bg-light-hover);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .back-btn:hover {
+                background: var(--glass-bg-dark-hover);
+            }
+        }
+
+        .back-btn:active {
+            transform: scale(0.95);
+        }
+
+        .header-content {
+            flex: 1;
+            min-width: 0;
         }
 
         .header-title {
-            flex: 1;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .header-subtitle {
-            font-size: 14px;
-            opacity: 0.8;
+            font-size: 13px;
+            color: var(--text-secondary-light);
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .header-subtitle {
+                color: var(--text-secondary-dark);
+            }
+        }
+
+        /* ===== LOADING STATE ===== */
         .loading {
             text-align: center;
-            padding: 40px;
-            font-size: 18px;
-            animation: pulse 1.5s ease-in-out infinite;
+            padding: var(--spacing-xl);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-secondary-light);
+            animation: shimmer 2s linear infinite;
+            background: linear-gradient(90deg, 
+                var(--text-secondary-light) 0%, 
+                var(--text-primary-light) 50%, 
+                var(--text-secondary-light) 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .loading {
+                background: linear-gradient(90deg, 
+                    var(--text-secondary-dark) 0%, 
+                    var(--text-primary-dark) 50%, 
+                    var(--text-secondary-dark) 100%);
+                background-size: 200% auto;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+        }
+
+        /* ===== VIEWS ===== */
         .view {
             display: none;
             animation: fadeInUp 0.5s ease-out;
@@ -142,312 +321,786 @@
             display: block;
         }
 
+        /* ===== SECTION TITLES ===== */
         .section-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 20px 0 15px;
-            padding-left: 5px;
-            opacity: 0.9;
+            font-size: 16px;
+            font-weight: 700;
+            margin: var(--spacing-lg) 0 var(--spacing-md);
+            padding-left: 4px;
+            color: var(--text-secondary-light);
+            letter-spacing: -0.01em;
+            text-transform: uppercase;
+            font-size: 12px;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .section-title {
+                color: var(--text-secondary-dark);
+            }
+        }
+
+        /* ===== GLASS ITEMS (Bus, Destination, Stop) ===== */
         .bus-item, .favorite-item, .destination-item, .stop-item {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 12px;
+            background: var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
             cursor: pointer;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-smooth);
+            box-shadow: var(--glass-shadow-sm);
             position: relative;
             overflow: hidden;
+            transform: translateZ(0);
+            animation: fadeInUp 0.4s ease-out backwards;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .bus-item, .favorite-item, .destination-item, .stop-item {
+                background: var(--glass-bg-card-dark);
+                border-color: var(--glass-border-dark);
+            }
+        }
+
+        /* Animation stagger pour les listes */
+        .bus-item:nth-child(1) { animation-delay: 0.05s; }
+        .bus-item:nth-child(2) { animation-delay: 0.1s; }
+        .bus-item:nth-child(3) { animation-delay: 0.15s; }
+        .bus-item:nth-child(4) { animation-delay: 0.2s; }
+        .bus-item:nth-child(5) { animation-delay: 0.25s; }
+        .destination-item:nth-child(1) { animation-delay: 0.05s; }
+        .destination-item:nth-child(2) { animation-delay: 0.1s; }
+        .destination-item:nth-child(3) { animation-delay: 0.15s; }
+        .stop-item:nth-child(1) { animation-delay: 0.05s; }
+        .stop-item:nth-child(2) { animation-delay: 0.1s; }
+        .stop-item:nth-child(3) { animation-delay: 0.15s; }
+
+        /* Barre de couleur à gauche (accent subtil) */
         .bus-item::before, .destination-item::before, .stop-item::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 4px;
+            width: 3px;
             height: 100%;
-            background: linear-gradient(180deg, var(--primary), var(--secondary));
-            transition: var(--transition);
+            background: var(--accent-gradient);
+            transition: all var(--transition-smooth);
+            opacity: 0;
         }
 
         .bus-item:hover, .destination-item:hover, .stop-item:hover {
-            transform: translateX(8px);
-            box-shadow: var(--shadow-md);
-            border-color: rgba(139, 92, 246, 0.4);
+            transform: scale(1.02) translateY(-2px);
+            box-shadow: var(--glass-shadow-md);
+            border-color: rgba(10, 132, 255, 0.3);
+            background: var(--glass-bg-light-hover);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .bus-item:hover, .destination-item:hover, .stop-item:hover {
+                background: var(--glass-bg-dark-hover);
+                border-color: rgba(10, 132, 255, 0.4);
+            }
         }
 
         .bus-item:hover::before, .destination-item:hover::before, .stop-item:hover::before {
-            width: 100%;
-            opacity: 0.1;
+            opacity: 1;
+            width: 4px;
         }
 
+        .bus-item:active, .destination-item:active, .stop-item:active {
+            transform: scale(0.98);
+        }
+
+        /* Effet de highlight au top */
+        .bus-item::after, .destination-item::after, .stop-item::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--glass-border-highlight);
+            opacity: 0.6;
+        }
+
+        /* ===== BUS ITEM ===== */
         .bus-number {
-            display: inline-block;
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 18px;
-            margin-right: 12px;
-            box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 800;
+            font-size: 17px;
+            margin-right: var(--spacing-sm);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            min-width: 52px;
+            letter-spacing: -0.02em;
         }
 
         .bus-name {
-            font-size: 16px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary-light);
         }
 
+        @media (prefers-color-scheme: dark) {
+            .bus-name {
+                color: var(--text-primary-dark);
+            }
+        }
+
+        /* ===== FAVORITE ITEM ===== */
         .favorite-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.15));
+            gap: var(--spacing-md);
+            background: linear-gradient(135deg, 
+                rgba(10, 132, 255, 0.12), 
+                rgba(94, 92, 230, 0.08));
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .favorite-item {
+                background: linear-gradient(135deg, 
+                    rgba(10, 132, 255, 0.18), 
+                    rgba(94, 92, 230, 0.12));
+            }
         }
 
         .favorite-info {
             flex: 1;
+            min-width: 0;
         }
 
         .favorite-route {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 16px;
             margin-bottom: 4px;
         }
 
         .favorite-details {
             font-size: 13px;
-            opacity: 0.8;
+            color: var(--text-secondary-light);
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .favorite-details {
+                color: var(--text-secondary-dark);
+            }
         }
 
         .favorite-times {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--primary-light);
-            min-width: 100px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            min-width: 80px;
             text-align: right;
         }
 
+        /* ===== TABS LIQUID GLASS ===== */
         .tabs {
             display: flex;
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 6px;
-            border-radius: 14px;
-            margin-bottom: 20px;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.08);
+            padding: 5px;
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-lg);
             position: relative;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tabs {
+                background: rgba(255, 255, 255, 0.08);
+            }
         }
 
         .tab {
             flex: 1;
-            padding: 12px;
+            padding: 12px 16px;
             border: none;
             background: transparent;
-            color: var(--text-secondary);
-            border-radius: 10px;
+            color: var(--text-secondary-light);
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            transition: var(--transition);
+            transition: color var(--transition-smooth);
             font-weight: 600;
             font-size: 14px;
             position: relative;
             z-index: 1;
+            letter-spacing: -0.01em;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab {
+                color: var(--text-secondary-dark);
+            }
         }
 
         .tab.active {
-            color: var(--text-primary);
+            color: var(--text-primary-light);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .tab.active {
+                color: var(--text-primary-dark);
+            }
         }
 
         .tab-indicator {
             position: absolute;
-            top: 6px;
-            left: 6px;
-            height: calc(100% - 12px);
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
+            top: 5px;
+            left: 5px;
+            height: calc(100% - 10px);
+            background: var(--glass-bg-light);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-smooth);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            z-index: 0;
         }
 
-        .date-picker {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 12px 16px;
-            color: white;
+        @media (prefers-color-scheme: dark) {
+            .tab-indicator {
+                background: var(--glass-bg-dark);
+                border-color: var(--glass-border-dark);
+            }
+        }
+
+        /* ===== DATE PICKER & SELECT ===== */
+        .date-picker, .destination-select {
+            background: var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            color: var(--text-primary-light);
             width: 100%;
-            font-family: 'League Spartan', sans-serif;
-            font-size: 16px;
-            font-weight: 500;
-            margin-bottom: 20px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-lg);
             cursor: pointer;
-            transition: var(--transition);
+            transition: all var(--transition-smooth);
+            box-shadow: var(--glass-shadow-sm);
         }
 
-        .date-picker:focus {
+        @media (prefers-color-scheme: dark) {
+            .date-picker, .destination-select {
+                background: var(--glass-bg-card-dark);
+                border-color: var(--glass-border-dark);
+                color: var(--text-primary-dark);
+            }
+        }
+
+        .date-picker:focus, .destination-select:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15),
+                        var(--glass-shadow-sm);
+            transform: scale(1.01);
         }
 
-        .destination-select {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 12px 16px;
-            color: white;
-            width: 100%;
-            font-family: 'League Spartan', sans-serif;
-            font-size: 16px;
-            font-weight: 500;
-            margin-bottom: 20px;
-            cursor: pointer;
-            transition: var(--transition);
+        .date-picker:hover, .destination-select:hover {
+            background: var(--glass-bg-light-hover);
+            transform: scale(1.005);
         }
 
-        .destination-select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+        @media (prefers-color-scheme: dark) {
+            .date-picker:hover, .destination-select:hover {
+                background: var(--glass-bg-dark-hover);
+            }
         }
 
         .destination-select option {
-            background: var(--bg-end);
-            color: white;
+            background: #FFFFFF;
+            color: #000000;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .destination-select option {
+                background: #2C2C2E;
+                color: #FFFFFF;
+            }
+        }
+
+        /* ===== SCHEDULE CONTENT ===== */
         .schedule-content {
             display: none;
         }
 
         .schedule-content.active {
             display: block;
+            animation: fadeInUp 0.4s ease-out;
         }
 
         .schedule-group {
-            margin-bottom: 24px;
+            margin-bottom: var(--spacing-lg);
+            animation: fadeInUp 0.5s ease-out backwards;
         }
 
+        .schedule-group:nth-child(1) { animation-delay: 0.05s; }
+        .schedule-group:nth-child(2) { animation-delay: 0.1s; }
+        .schedule-group:nth-child(3) { animation-delay: 0.15s; }
+        .schedule-group:nth-child(4) { animation-delay: 0.2s; }
+
         .schedule-hour {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            padding-left: 5px;
-            color: var(--primary-light);
+            font-size: 18px;
+            font-weight: 800;
+            margin-bottom: var(--spacing-sm);
+            padding-left: 4px;
+            color: var(--accent-primary);
+            letter-spacing: -0.02em;
         }
 
         .schedule-times {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            gap: var(--spacing-xs);
         }
 
         .schedule-time {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
-            padding: 10px 16px;
-            font-weight: 600;
+            background: var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-sm);
+            padding: 12px 8px;
+            font-weight: 700;
             font-size: 15px;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-smooth);
+            box-shadow: var(--glass-shadow-sm);
+            text-align: center;
+            cursor: pointer;
+            transform: translateZ(0);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .schedule-time {
+                background: var(--glass-bg-card-dark);
+                border-color: var(--glass-border-dark);
+            }
         }
 
         .schedule-time:hover {
-            background: rgba(139, 92, 246, 0.2);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
+            background: var(--glass-bg-light-hover);
+            transform: scale(1.08) translateY(-2px);
+            box-shadow: var(--glass-shadow-md);
+            border-color: var(--accent-primary);
         }
 
+        @media (prefers-color-scheme: dark) {
+            .schedule-time:hover {
+                background: var(--glass-bg-dark-hover);
+            }
+        }
+
+        .schedule-time:active {
+            transform: scale(0.95);
+        }
+
+        /* ===== FLOATING ACTION BUTTON ===== */
         .favorite-btn {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            min-width: 56px;
+            min-height: 56px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: var(--accent-gradient);
             border: none;
             color: white;
-            font-size: 28px;
+            font-size: 26px;
             cursor: pointer;
-            box-shadow: var(--shadow-lg);
-            transition: var(--transition);
+            box-shadow: 0 8px 24px rgba(10, 132, 255, 0.35),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all var(--transition-smooth);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100;
+            z-index: 1000;
+            transform: translateZ(0);
+            animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         .favorite-btn:hover {
-            transform: scale(1.1);
+            transform: scale(1.12) translateY(-2px);
+            box-shadow: 0 12px 32px rgba(10, 132, 255, 0.45),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .favorite-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
         }
 
         .favorite-btn.active {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            background: linear-gradient(135deg, #FF9500 0%, #FF6B00 100%);
+            animation: pulse-glow 1.5s ease-in-out infinite;
         }
 
+        /* ===== REALTIME ITEMS ===== */
         .realtime-item {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 12px;
+            background: var(--glass-bg-card);
+            backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            -webkit-backdrop-filter: var(--glass-blur-mobile) var(--glass-saturate);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md) var(--spacing-lg);
+            margin-bottom: var(--spacing-sm);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: var(--transition);
+            transition: all var(--transition-smooth);
+            cursor: pointer;
+            box-shadow: var(--glass-shadow-sm);
+            transform: translateZ(0);
+            animation: fadeInUp 0.4s ease-out backwards;
         }
 
+        @media (prefers-color-scheme: dark) {
+            .realtime-item {
+                background: var(--glass-bg-card-dark);
+                border-color: var(--glass-border-dark);
+            }
+        }
+
+        .realtime-item:nth-child(1) { animation-delay: 0.05s; }
+        .realtime-item:nth-child(2) { animation-delay: 0.1s; }
+        .realtime-item:nth-child(3) { animation-delay: 0.15s; }
+        .realtime-item:nth-child(4) { animation-delay: 0.2s; }
+
         .realtime-item:hover {
-            background: rgba(139, 92, 246, 0.15);
-            transform: translateX(5px);
+            background: var(--glass-bg-light-hover);
+            transform: scale(1.02) translateY(-2px);
+            box-shadow: var(--glass-shadow-md);
+            border-color: rgba(10, 132, 255, 0.3);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .realtime-item:hover {
+                background: var(--glass-bg-dark-hover);
+            }
+        }
+
+        .realtime-item:active {
+            transform: scale(0.98);
         }
 
         .realtime-destination {
-            font-weight: 600;
-            font-size: 16px;
+            font-weight: 700;
+            font-size: 15px;
         }
 
         .realtime-time {
             font-size: 18px;
-            font-weight: 700;
-            color: var(--primary-light);
+            font-weight: 800;
+            color: var(--accent-primary);
+            letter-spacing: -0.02em;
         }
 
+        /* ===== EMPTY STATE ===== */
         .empty-state {
             text-align: center;
-            padding: 60px 20px;
-            opacity: 0.7;
+            padding: var(--spacing-xl) var(--spacing-md);
+            color: var(--text-secondary-light);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .empty-state {
+                color: var(--text-secondary-dark);
+            }
         }
 
         .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+            font-size: 56px;
+            margin-bottom: var(--spacing-md);
+            opacity: 0.6;
         }
 
+        /* ===== REALTIME PANEL (MODAL) ===== */
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 9998;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #rt-panel {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(600px, calc(100vw - 32px));
+            max-height: calc(100vh - 120px);
+            background: var(--glass-bg-light);
+            backdrop-filter: var(--glass-blur-desktop) var(--glass-saturate);
+            -webkit-backdrop-filter: var(--glass-blur-desktop) var(--glass-saturate);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            z-index: 9999;
+            overflow: hidden;
+            color: var(--text-primary-light);
+            animation: modalSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            #rt-panel {
+                background: var(--glass-bg-dark);
+                border-color: var(--glass-border-dark);
+                color: var(--text-primary-dark);
+            }
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .rt-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-bottom: 1px solid var(--glass-border-light);
+            gap: var(--spacing-sm);
+            background: linear-gradient(to bottom, 
+                rgba(255, 255, 255, 0.1) 0%,
+                rgba(255, 255, 255, 0) 100%);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .rt-panel-header {
+                border-bottom-color: var(--glass-border-dark);
+                background: linear-gradient(to bottom, 
+                    rgba(255, 255, 255, 0.05) 0%,
+                    rgba(255, 255, 255, 0) 100%);
+            }
+        }
+
+        #rt-panel-title {
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+        }
+
+        #rt-panel-close {
+            cursor: pointer;
+            border: none;
+            background: var(--glass-bg-button);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: var(--text-primary-light);
+            border: 1px solid var(--glass-border-light);
+            border-radius: var(--radius-sm);
+            width: 36px;
+            height: 36px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-smooth);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            #rt-panel-close {
+                background: var(--glass-bg-button-dark);
+                border-color: var(--glass-border-dark);
+                color: var(--text-primary-dark);
+            }
+        }
+
+        #rt-panel-close:hover {
+            transform: scale(1.1);
+            background: var(--glass-bg-light-hover);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            #rt-panel-close:hover {
+                background: var(--glass-bg-dark-hover);
+            }
+        }
+
+        #rt-panel-close:active {
+            transform: scale(0.95);
+        }
+
+        #rt-panel-content {
+            padding: var(--spacing-lg);
+            overflow: auto;
+            max-height: calc(100vh - 220px);
+        }
+
+        .rt-stop-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-bottom: 1px solid var(--glass-border-light);
+            transition: all var(--transition-smooth);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .rt-stop-row {
+                border-bottom-color: var(--glass-border-dark);
+            }
+        }
+
+        .rt-stop-row:hover {
+            background: rgba(10, 132, 255, 0.08);
+        }
+
+        .rt-stop-indicator {
+            width: 10px;
+            height: 10px;
+            min-width: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.35);
+            transition: all var(--transition-smooth);
+        }
+
+        .rt-stop-row.next .rt-stop-indicator {
+            width: 12px;
+            height: 12px;
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.25);
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        #rt-show-map-btn {
+            cursor: pointer;
+            border: none;
+            color: white;
+            background: var(--accent-gradient);
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 15px;
+            box-shadow: 0 4px 16px rgba(10, 132, 255, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            transition: all var(--transition-smooth);
+            font-family: 'Inter', sans-serif;
+        }
+
+        #rt-show-map-btn:hover {
+            transform: scale(1.05) translateY(-1px);
+            box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        #rt-show-map-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* ===== RESPONSIVE MOBILE ===== */
         @media (max-width: 768px) {
             .container {
-                padding: 15px;
+                padding: var(--spacing-sm);
+            }
+            
+            .header {
+                padding: var(--spacing-sm) var(--spacing-md);
+                top: var(--spacing-xs);
             }
             
             .header-title {
-                font-size: 20px;
+                font-size: 18px;
+            }
+
+            .header-subtitle {
+                font-size: 12px;
             }
             
             .favorite-btn {
-                width: 56px;
-                height: 56px;
+                width: 52px;
+                height: 52px;
+                min-width: 52px;
+                min-height: 52px;
                 bottom: 20px;
                 right: 20px;
+                font-size: 24px;
+            }
+
+            .bus-number {
+                font-size: 16px;
+                padding: 6px 12px;
+                min-width: 48px;
+            }
+
+            .bus-name {
+                font-size: 14px;
+            }
+
+            .schedule-times {
+                grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+            }
+
+            #rt-panel {
+                width: calc(100vw - 24px);
+                max-height: calc(100vh - 80px);
+            }
+
+            #rt-panel-content {
+                padding: var(--spacing-md);
+            }
+        }
+
+        /* ===== ACCESSIBILITY ===== */
+        @media (prefers-reduced-transparency: reduce) {
+            .header,
+            .bus-item, .favorite-item, .destination-item, .stop-item,
+            .date-picker, .destination-select,
+            .schedule-time,
+            .realtime-item,
+            #rt-panel {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                background: rgba(255, 255, 255, 0.95);
+            }
+
+            @media (prefers-color-scheme: dark) {
+                .header,
+                .bus-item, .favorite-item, .destination-item, .stop-item,
+                .date-picker, .destination-select,
+                .schedule-time,
+                .realtime-item,
+                #rt-panel {
+                    background: rgba(28, 28, 30, 0.95);
+                }
             }
         }
 
@@ -457,19 +1110,21 @@
                 animation-iteration-count: 1 !important;
                 transition-duration: 0.01ms !important;
             }
-            
-            body::before {
-                animation: none;
-            }
+        }
+
+        /* ===== FOCUS STATES ===== */
+        *:focus-visible {
+            outline: 3px solid var(--accent-primary);
+            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <button class="back-btn" id="back-btn" style="display: none;">←</button>
-            <div>
-                <div class="header-title" id="header-title">Horaires de Bus</div>
+            <button class="back-btn" id="back-btn" style="display: none;" aria-label="Retour">←</button>
+            <div class="header-content">
+                <div class="header-title" id="header-title">My Bus Schedule</div>
                 <div class="header-subtitle" id="header-subtitle"></div>
             </div>
         </div>
@@ -478,23 +1133,23 @@
 
         <div id="lines-view" class="view">
             <div id="favorites-section" style="display: none;">
-                <div class="section-title">⭐ Favoris</div>
+                <div class="section-title">⭐ FAVORIS</div>
                 <div id="favorites-list"></div>
             </div>
-            <div class="section-title">Lignes de bus</div>
+            <div class="section-title">LIGNES DE BUS</div>
             <div id="lines-list"></div>
         </div>
 
         <div id="destinations-view" class="view">
-            <div class="section-title">Sélectionnez une destination</div>
+            <div class="section-title">DESTINATIONS</div>
             <div id="destinations-list"></div>
         </div>
 
         <div id="stops-view" class="view">
-            <select class="destination-select" id="destination-select">
+            <select class="destination-select" id="destination-select" aria-label="Sélectionner une destination">
                 <option value="">Choisir une destination</option>
             </select>
-            <div class="section-title">Arrêts</div>
+            <div class="section-title">ARRÊTS</div>
             <div id="stops-list"></div>
         </div>
 
@@ -505,14 +1160,23 @@
                 <button class="tab" data-tab="realtime">Temps réel</button>
             </div>
 
-            <input type="date" class="date-picker" id="date-picker">
+            <input type="date" class="date-picker" id="date-picker" aria-label="Sélectionner une date">
 
             <div id="theoretical-content" class="schedule-content active"></div>
             <div id="realtime-content" class="schedule-content"></div>
         </div>
     </div>
 
-    <button class="favorite-btn" id="favorite-btn" style="display: none;">★</button>
+    <button class="favorite-btn" id="favorite-btn" style="display: none;" aria-label="Ajouter aux favoris">★</button>
+
+    <div id="overlay"></div>
+    <div id="rt-panel">
+        <div class="rt-panel-header">
+            <div id="rt-panel-title">Détails</div>
+            <button id="rt-panel-close" aria-label="Fermer">✕</button>
+        </div>
+        <div id="rt-panel-content"></div>
+    </div>
 
     <script>
         const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
@@ -547,6 +1211,21 @@
         };
 
         document.addEventListener('DOMContentLoaded', init);
+
+        // Effet de scroll sur le header
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('.header');
+            const currentScroll = window.pageYOffset;
+            
+            if (currentScroll > 20) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+            
+            lastScroll = currentScroll;
+        });
 
         async function init() {
             loadFavorites();
@@ -643,13 +1322,10 @@
             } catch (error) {
                 console.error('Erreur chargement GTFS:', error);
                 document.getElementById('loading').innerHTML = `
-                    <div style="color: #ff6b6b; text-align: center;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-                        <div style="font-weight: 600; margin-bottom: 8px;">Erreur de chargement des données</div>
-                        <div style="font-size: 14px; opacity: 0.8;">${error.message}</div>
-                        <div style="margin-top: 20px; font-size: 13px; opacity: 0.7;">
-                            Vérifiez que le fichier <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${GTFS_ZIP_URL}</code> existe et contient les fichiers GTFS requis.
-                        </div>
+                    <div style="text-align: center; color: #FF3B30;">
+                        <div style="font-size: 56px; margin-bottom: 16px; opacity: 0.6;">⚠️</div>
+                        <div style="font-weight: 700; margin-bottom: 8px; font-size: 18px;">Erreur de chargement</div>
+                        <div style="font-size: 14px; opacity: 0.7;">${error.message}</div>
                     </div>
                 `;
             }
@@ -916,7 +1592,7 @@
                 const item = document.createElement('div');
                 item.className = 'bus-item';
                 item.innerHTML = `
-                    <span class="bus-number" style="background: #${route.route_color || '8b5cf6'}; color: #${route.route_text_color || 'ffffff'}">
+                    <span class="bus-number" style="background: #${route.route_color || '0A84FF'}; color: #${route.route_text_color || 'ffffff'}">
                         ${route.route_short_name}
                     </span>
                     <span class="bus-name">${route.route_long_name}</span>
@@ -1103,7 +1779,7 @@
             });
 
             if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun horaire disponible pour cette combinaison</div></div>';
                 return;
             }
 
@@ -1301,40 +1977,8 @@
 
         function ensureRtUi() {
             let overlay = document.getElementById('overlay');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = 'overlay';
-                overlay.style.cssText = `
-                    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
-                    z-index:9998;
-                `;
-                document.body.appendChild(overlay);
-            }
-
             let panel = document.getElementById('rt-panel');
-            if (!panel) {
-                panel = document.createElement('div');
-                panel.id = 'rt-panel';
-                panel.style.cssText = `
-                    display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
-                    width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
-                    background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
-                    border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
-                    z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
-                    color:#fff;
-                `;
-                panel.innerHTML = `
-                    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
-                        border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
-                        <div style="font-weight:800" id="rt-panel-title">Détails</div>
-                        <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
-                        color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
-                    </div>
-                    <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
-                `;
-                document.body.appendChild(panel);
-            }
-
+            
             const close = () => closeRtPanel();
             overlay.onclick = close;
             const closeBtn = document.getElementById('rt-panel-close');
@@ -1391,7 +2035,7 @@
 
             const route = state.routes?.[routeId];
             const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
-            const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
+            const routeColor = route?.route_color ? `#${route.route_color}` : '#0A84FF';
 
             const tripStops = state.stopTimes?.[routeId]?.[tripId];
             if (!tripStops || tripStops.length === 0) {
@@ -1420,18 +2064,9 @@
                 const isPast = idx < nextIndex;
 
                 return `
-                    <div style="
-                        display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
-                        border-bottom:1px solid rgba(255,255,255,.08);
-                        background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
-                        opacity:${isPast ? '.55' : '1'};
-                    ">
+                    <div class="rt-stop-row ${isNext ? 'next' : ''}" style="opacity:${isPast ? '.55' : '1'};">
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="
-                                width:10px; height:10px; border-radius:999px;
-                                background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
-                                box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
-                            "></div>
+                            <div class="rt-stop-indicator" style="background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};"></div>
                             <div>${stopName}</div>
                         </div>
                         <div style="font-weight:800;">${time}</div>
@@ -1440,24 +2075,21 @@
             }).join('');
 
             const html = `
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-                    <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
-                    <div style="font-weight:800;">${routeLabel}</div>
-                    <div style="opacity:.85;">• Trajet ${tripId}</div>
-                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+                    <div style="width:12px; height:12px; border-radius:50%; background:${routeColor}; box-shadow:0 0 0 4px rgba(10,132,255,.25)"></div>
+                    <div style="font-weight:800; font-size: 16px;">${routeLabel}</div>
+                    <div style="opacity:.75; font-size: 14px;">• Trajet ${tripId}</div>
+                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800; font-size: 15px;">Bus ${vehicleId}</div>` : ''}
                 </div>
 
-                <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
+                <div style="border:1px solid var(--glass-border-light); border-radius:${
+                    getComputedStyle(document.documentElement).getPropertyValue('--radius-md')
+                }; overflow:hidden; margin-bottom: 16px;">
                     ${rows}
                 </div>
 
-                <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
-                    <button id="rt-show-map-btn" style="
-                        cursor:pointer; border:none; color:#fff;
-                        background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
-                        padding:10px 14px; border-radius:12px; font-weight:800;
-                        box-shadow:0 8px 24px rgba(0,0,0,.25);
-                    ">
+                <div style="display:flex; gap:10px; justify-content:flex-end;">
+                    <button id="rt-show-map-btn">
                         Afficher dans la carte
                     </button>
                 </div>
@@ -1533,7 +2165,6 @@
 
                 const item = document.createElement('div');
                 item.className = 'realtime-item';
-                item.style.cursor = 'pointer';
 
                 const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
 
@@ -1541,9 +2172,9 @@
                     <div>
                         <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
                             <span>${arr.headsign || 'Destination'}</span>
-                            ${busLabel ? `<span style="font-size:12px; opacity:.75;">${busLabel}</span>` : ''}
+                            ${busLabel ? `<span style="font-size:12px; opacity:.65; font-weight: 600;">${busLabel}</span>` : ''}
                         </div>
-                        ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
+                        ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.8;">${arr.delayText}</div>` : ''}
                     </div>
                     <div class="realtime-time">${hh}h${mm}</div>
                 `;
