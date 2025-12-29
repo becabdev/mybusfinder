@@ -764,6 +764,23 @@
             stops: new Map()
         };
 
+        const scrollState = {
+            positions: {}
+        };
+
+        function saveScrollPosition(view) {
+            scrollState.positions[view] = window.scrollY;
+        }
+
+        function restoreScrollPosition(view) {
+            const position = scrollState.positions[view] || 0;
+            window.scrollTo({ top: position, behavior: 'instant' });
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         document.addEventListener('DOMContentLoaded', init);
 
         async function init() {
@@ -1066,6 +1083,12 @@
             document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
             state.viewHistory = [];
 
+            if (state.viewHistory.length > 0) {
+                restoreScrollPosition('lines');
+            } else {
+                scrollToTop();
+            }
+
             const linesList = document.getElementById('lines-list');
             linesList.innerHTML = '';
 
@@ -1098,6 +1121,9 @@
             
             state.viewHistory.push('lines');
 
+            saveScrollPosition('lines');
+            scrollToTop();
+
             const list = document.getElementById('destinations-list');
             list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Récupération des destinations...</div></div>';
 
@@ -1121,6 +1147,8 @@
             document.getElementById('stops-view').classList.add('active');
             document.getElementById('back-btn').style.display = 'flex';
             state.viewHistory.push('destinations');
+            saveScrollPosition('destinations');
+            scrollToTop();
 
             const destinations = getDestinations(routeId);
             const select = document.getElementById('destination-select');
@@ -1168,6 +1196,9 @@
             document.getElementById('schedule-view').classList.add('active');
             document.getElementById('back-btn').style.display = 'flex';
             state.viewHistory.push('stops');
+
+            saveScrollPosition('stops');
+            scrollToTop();
 
             const route = state.routes[routeId];
             const stop = state.stops[stopId];
@@ -1511,12 +1542,15 @@
             switch (previous) {
                 case 'lines':
                     showLines();
+                    restoreScrollPosition('lines');
                     break;
                 case 'destinations':
                     showDestinations(state.currentRoute);
+                    restoreScrollPosition('destinations');
                     break;
                 case 'stops':
                     showStops(state.currentRoute, state.currentDestination);
+                    restoreScrollPosition('stops');
                     break;
             }
         }
