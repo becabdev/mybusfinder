@@ -558,29 +558,6 @@
             box-shadow: var(--glass-shadow-pressed);
         }
 
-        .favorite-btn {
-            position: fixed;
-            bottom: var(--spacing-lg);
-            right: var(--spacing-lg);
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent-blue) 0%, #0051D5 100%);
-            border: none;
-            color: white;
-            font-size: 28px;
-            cursor: pointer;
-            box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4),
-                        0 4px 12px rgba(0, 0, 0, 0.15),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            transition: var(--transition-smooth);
-            z-index: 999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            animation: fabPulse 2s ease-in-out infinite;
-        }
-
         @keyframes fabPulse {
             0%, 100% {
                 box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4),
@@ -592,19 +569,6 @@
                             0 6px 16px rgba(0, 0, 0, 0.2),
                             inset 0 1px 0 rgba(255, 255, 255, 0.4);
             }
-        }
-
-        .favorite-btn:active {
-            transform: scale(0.88);
-            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.3),
-                        inset 0 3px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .favorite-btn.active {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            box-shadow: 0 12px 40px rgba(251, 191, 36, 0.4),
-                        0 4px 12px rgba(0, 0, 0, 0.15),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .realtime-item {
@@ -697,9 +661,6 @@
                 box-shadow: var(--glass-shadow-hover);
             }
             
-            .favorite-btn:hover {
-                transform: scale(1.08);
-            }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -772,10 +733,6 @@
             <div id="realtime-content" class="schedule-content"></div>
         </div>
     </main>
-
-    <button class="favorite-btn gpu-accelerated" id="favorite-btn">
-        <i class="fas fa-star"></i>
-    </button>
 
     <script>
         const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
@@ -1139,16 +1096,6 @@
             return state.favorites.some(f => 
                 f.routeId === routeId && f.stopId === stopId && f.destinationId === destinationId
             );
-        }
-
-        function updateFavoriteButton() {
-            const btn = document.getElementById('favorite-btn');
-            if (state.currentRoute && state.currentStop && state.currentDestination) {
-                btn.style.display = 'flex';
-                btn.classList.toggle('active', isFavorite(state.currentRoute, state.currentStop, state.currentDestination));
-            } else {
-                btn.style.display = 'none';
-            }
         }
 
         async function updateFavoritesSection() {
@@ -1658,51 +1605,12 @@
         }
 
         document.getElementById('back-btn').onclick = goBack;
-        
-        document.getElementById('favorite-btn').onclick = () => {
-            if (isFavorite(state.currentRoute, state.currentStop, state.currentDestination)) {
-                removeFromFavorites(state.currentRoute, state.currentStop, state.currentDestination);
-            } else {
-                addToFavorites(state.currentRoute, state.currentStop, state.currentDestination);
-            }
-            updateFavoritesSection();
-        };
 
         window.addEventListener('beforeunload', () => {
             if (state.realtimeInterval) {
                 clearInterval(state.realtimeInterval);
             }
         });
-
-        // Pull to refresh on mobile
-        let touchStartY = 0;
-        let touchEndY = 0;
-        
-        document.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
-        }, { passive: true });
-        
-        document.addEventListener('touchmove', (e) => {
-            touchEndY = e.touches[0].clientY;
-        }, { passive: true });
-        
-        document.addEventListener('touchend', () => {
-            if (window.scrollY === 0 && touchEndY > touchStartY + 100) {
-                if (state.viewHistory.length === 0) {
-                    // On est sur la page d'accueil, on recharge
-                    const loading = document.getElementById('loading');
-                    loading.style.display = 'block';
-                    hideAllViews();
-                    
-                    setTimeout(() => {
-                        showLines();
-                        if ('vibrate' in navigator) {
-                            navigator.vibrate(20);
-                        }
-                    }, 500);
-                }
-            }
-        }, { passive: true });
 
         // Smooth page load
         window.addEventListener('load', () => {
