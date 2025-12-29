@@ -1266,53 +1266,216 @@
             }
         }
 
-        function processRealtimeDataForStop(message, routeId, stopId) {
-            const arrivals = [];
-            const now = Date.now() / 1000;
+        // ---------- Helpers temps / retard ----------
+        function pad2(n) { return String(n).padStart(2, '0'); }
 
-            message.entity.forEach(entity => {
-                if (entity.tripUpdate) {
-                    const trip = entity.tripUpdate;
-                    
-                    trip.stopTimeUpdate.forEach(update => {
-                        if (update.stopId === stopId) {
-                            const arrivalTime = update.arrival?.time || update.departure?.time;
-                            if (arrivalTime && arrivalTime > now) {
-                                arrivals.push({
-                                    time: arrivalTime,
-                                    headsign: trip.trip.tripHeadsign || 'Destination'
-                                });
-                            }
-                        }
-                    });
-                }
-            });
-
-            return arrivals.sort((a, b) => a.time - b.time).slice(0, 5);
+        function parseTimeHHhMM(timeStr) {
+        // "8h05" -> {h:8, m:5}
+        const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
+        return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
         }
 
-        function displayRealtimeArrivals(arrivals, container) {
-            container.innerHTML = '';
+        function buildDateFromPicker(timeHHhMM, dateString) {
+        // dateString = "YYYY-MM-DD"
+        const { h, m } = parseTimeHHhMM(timeHHhMM);
+        // midi pour éviter soucis timezone, puis on set heure/min
+        const d = new Date(dateString + 'T12:00:00');
+        d.setHours(h, m, 0, 0);
+        return d;
+        }
 
-            if (arrivals.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
-                return;
+        function getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString) {
+        const stopTimesByRoute = state.stopTimes[routeId];
+        const tripStops = stopTimesByRoute?.[tripId];
+        if (!tripStops) return null;
+
+        const st = tripStops.find(x => x.stop_id === stopId);
+        if (!st?.arrival_time) return null;
+
+        return buildDateFromPicker(st.arrival_time, dateString);
+        }
+
+        function minutesDiff(a, b) {
+        return Math.round((a.getTime() - b.getTime()) / 60000);
+        }
+
+        // ---------- Filtre route pour GTFS-RT ----------
+        function matchesCurrentRouteRt(tripDescriptor, routeId) {
+        // 1) si GTFS-RT donne routeId
+        const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
+        if (rtRouteId) return String(rtRouteId) === String(routeId);
+
+        // 2) sinon on matche via tripId dans tes trips GTFS
+        const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
+        if (!rtTripId) return false;
+
+        const routeTrips = state.trips?.[routeId] || [];
+        return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
+        }
+
+        // ---------- Panel (timeline) ----------
+        function openRtPanel(title, html) {
+        const overlay = document.getElementById('overlay');
+        const panel = document.getElementById('rt-panel');
+        document.getElementById('rt-panel-title').textContent = title;
+        document.getElementById('rt-panel-content').innerHTML = html;
+
+        overlay.style.display = 'block';
+        panel.style.display = 'block';
+        }
+
+        function closeRtPanel() {
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('rt-panel').style.display = 'none';
+        }
+
+        document.getElementById('overlay').onclick = closeRtPanel;
+        document.getElementById('rt-panel-close').onclick = closeRtPanel;
+
+        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
+        const tripStops = state.stopTimes?.[routeId]?.[tripId];
+        if (!tripStops || tripStops.length === 0) {
+            openRtPanel(`Bus ${vehicleId || '—'}`, `<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucun détail d’arrêts pour ce trajet</div></div>`);
+            return;
+        }
+
+        const route = state.routes?.[routeId];
+        const color = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
+
+        const rows = tripStops.map(st => {
+            const name = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
+            const time = st.arrival_time || '--h--';
+            return `
+            <div style="display:flex; justify-content:space-between; gap:12px; padding:10px 8px; border-bottom:1px solid rgba(255,255,255,.08);">
+                <div style="opacity:.95">${name}</div>
+                <div style="font-weight:700; color:rgba(255,255,255,.9)">${time}</div>
+            </div>
+            `;
+        }).join('');
+
+        const html = `
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <div style="width:10px; height:10px; border-radius:999px; background:${color}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
+            <div style="font-weight:600">Trajet : ${tripId}</div>
+            ${vehicleId ? `<div style="margin-left:auto; opacity:.85">Bus ${vehicleId}</div>` : ''}
+            </div>
+            <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
+            ${rows}
+            </div>
+        `;
+
+        openRtPanel(`Détails — ${route?.route_short_name || ''}`, html);
+        }
+
+        // ------------------------------------------------------------------
+        // ✅ REMPLACE COMPLETEMENT ta fonction processRealtimeDataForStop
+        // ------------------------------------------------------------------
+        function processRealtimeDataForStop(message, routeId, stopId) {
+        const arrivals = [];
+        const nowSec = Date.now() / 1000;
+        const dateString = document.getElementById('date-picker')?.value || new Date().toISOString().slice(0, 10);
+
+        message.entity.forEach(entity => {
+            if (!entity.tripUpdate) return;
+
+            const tu = entity.tripUpdate;
+            const td = tu.trip;
+
+            if (!matchesCurrentRouteRt(td, routeId)) return;
+
+            const tripId = td.tripId || td.trip_id;
+            if (!tripId) return;
+
+            const vehicleId =
+            tu.vehicle?.id || tu.vehicle?.label || entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label || null;
+
+            tu.stopTimeUpdate?.forEach(update => {
+            if (update.stopId !== stopId) return;
+
+            const arrivalSec = update.arrival?.time || update.departure?.time;
+            if (!arrivalSec || arrivalSec <= nowSec) return;
+
+            const rtDate = new Date(arrivalSec * 1000);
+
+            // Théorique + retard
+            const theoDate = getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString);
+            const delayMin = theoDate ? minutesDiff(rtDate, theoDate) : null;
+
+            arrivals.push({
+                timeSec: arrivalSec,
+                rtDate,
+                theoDate,
+                delayMin,
+                tripId,
+                vehicleId,
+                headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
+            });
+            });
+        });
+
+        return arrivals.sort((a, b) => a.timeSec - b.timeSec).slice(0, 8);
+        }
+
+        // ------------------------------------------------------------------
+        // ✅ REMPLACE COMPLETEMENT ta fonction displayRealtimeArrivals
+        // ------------------------------------------------------------------
+        function displayRealtimeArrivals(arrivals, container) {
+        container.innerHTML = '';
+
+        if (!arrivals || arrivals.length === 0) {
+            container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
+            return;
+        }
+
+        arrivals.forEach(arr => {
+            const hh = pad2(arr.rtDate.getHours());
+            const mm = pad2(arr.rtDate.getMinutes());
+
+            let delayLabel = '';
+            let delayStyle = 'opacity:.85;';
+            if (arr.delayMin !== null) {
+            if (arr.delayMin > 2) {
+                delayLabel = `+${arr.delayMin} min (retard)`;
+                delayStyle = 'color:#fbbf24; font-weight:700;';
+            } else if (arr.delayMin < -2) {
+                delayLabel = `${arr.delayMin} min (avance)`;
+                delayStyle = 'color:#60a5fa; font-weight:700;';
+            } else {
+                delayLabel = `à l’heure`;
+                delayStyle = 'color:#a78bfa; font-weight:700;';
+            }
+            } else {
+            delayLabel = 'théorique indisponible';
             }
 
-            arrivals.forEach(arrival => {
-                const item = document.createElement('div');
-                item.className = 'realtime-item';
-                
-                const date = new Date(arrival.time * 1000);
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                
-                item.innerHTML = `
-                    <div class="realtime-destination">${arrival.headsign}</div>
-                    <div class="realtime-time">${hours}h${minutes}</div>
-                `;
-                container.appendChild(item);
+            const theoText = arr.theoDate
+            ? `${pad2(arr.theoDate.getHours())}h${pad2(arr.theoDate.getMinutes())}`
+            : null;
+
+            const item = document.createElement('div');
+            item.className = 'realtime-item';
+            item.style.cursor = 'pointer';
+
+            item.innerHTML = `
+            <div>
+                <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+                <span>${arr.headsign}</span>
+                ${arr.vehicleId ? `<span style="font-size:12px; opacity:.75;">Bus ${arr.vehicleId}</span>` : ''}
+                </div>
+                <div style="font-size:13px; margin-top:4px; ${delayStyle}">
+                ${delayLabel}${theoText ? ` • théorique ${theoText}` : ''}
+                </div>
+            </div>
+            <div class="realtime-time">${hh}h${mm}</div>
+            `;
+
+            // ✅ Clique : affiche la timeline des arrêts du trip (comme avant)
+            item.addEventListener('click', () => {
+            showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
             });
+
+            container.appendChild(item);
+        });
         }
 
         // ==================== NAVIGATION ====================
