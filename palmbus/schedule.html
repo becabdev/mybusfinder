@@ -621,29 +621,9 @@
                     });
                 }
 
-                // Si calendar.txt manque, créer des services par défaut basés sur calendar_dates.txt
                 if (!calendarText && calendarDatesText) {
-                    console.warn('calendar.txt manquant, utilisation de calendar_dates.txt uniquement');
-                    const serviceIds = new Set();
-                    Object.values(state.calendarDates).forEach(dateInfo => {
-                        dateInfo.added.forEach(id => serviceIds.add(id));
-                    });
-                    
-                    // Créer des entrées calendar par défaut pour tous les services
-                    serviceIds.forEach(serviceId => {
-                        state.calendar[serviceId] = {
-                            service_id: serviceId,
-                            monday: '1',
-                            tuesday: '1',
-                            wednesday: '1',
-                            thursday: '1',
-                            friday: '1',
-                            saturday: '1',
-                            sunday: '1',
-                            start_date: '20200101',
-                            end_date: '20991231'
-                        };
-                    });
+                console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
+                state.calendar = {}; // important : ne pas créer de faux services "tous les jours"
                 }
 
                 setCachedData('gtfs_core', {
@@ -1086,13 +1066,19 @@
                 updateScheduleByDate(state.currentRoute, state.currentStop, state.currentDestination, e.target.value);
             };
         }
+        
+        function computeGtfsDateAndDow(dateString) {
+            const gtfsDate = dateString.replace(/-/g, ''); // exact jour choisi
+            const safe = new Date(dateString + 'T12:00:00'); // midi local => pas de décalage
+            const dayOfWeek = safe.getDay(); // 0..6
+            return { gtfsDate, dayOfWeek };
+        }
+
 
         function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
-            const selectedDate = new Date(dateString);
-            const gtfsDate = selectedDate.toISOString().split('T')[0].replace(/-/g, '');
-            const dayOfWeek = selectedDate.getDay();
-
+            const { gtfsDate, dayOfWeek } = computeGtfsDateAndDow(dateString);
             const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
+
             
             if (activeServiceIds.length === 0) {
                 const container = document.getElementById('theoretical-content');
@@ -1173,45 +1159,47 @@
 
 
         function getActiveServiceIds(dayOfWeek, gtfsDate) {
-            const cacheKey = `${dayOfWeek}_${gtfsDate}`;
-            if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
+        const cacheKey = `${dayOfWeek}_${gtfsDate}`;
+        if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
 
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const dayName = dayNames[dayOfWeek];
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[dayOfWeek];
 
-            let serviceIds = [];
+        let serviceIds = [];
 
-            // Parcourir calendar pour trouver les services actifs
-            Object.entries(state.calendar).forEach(([serviceId, cal]) => {
-                // Vérifier la plage de dates
-                const isInDateRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
-                
-                if (isInDateRange) {
-                    // Vérifier le jour de la semaine
-                    if (cal[dayName] === '1') {
-                        serviceIds.push(serviceId);
-                    }
-                }
-            });
+        const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
 
-            // Appliquer les exceptions de calendar_dates
-            if (state.calendarDates[gtfsDate]) {
-                // Ajouter les services activés pour cette date
-                state.calendarDates[gtfsDate].added.forEach(id => {
-                    if (!serviceIds.includes(id)) {
-                        serviceIds.push(id);
-                    }
-                });
-                
-                // Retirer les services désactivés pour cette date
-                state.calendarDates[gtfsDate].removed.forEach(id => {
-                    serviceIds = serviceIds.filter(sid => sid !== id);
-                });
+        if (hasCalendar) {
+            // 1) Services venant de calendar.txt
+            for (const [serviceId, cal] of Object.entries(state.calendar)) {
+            const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
+            if (!inRange) continue;
+
+            // cal[dayName] vaut "1"/"0" dans ta nouvelle version
+            if (String(cal[dayName]).trim() === '1') {
+                serviceIds.push(serviceId);
             }
-
-            cache.serviceIds.set(cacheKey, serviceIds);
-            return serviceIds;
+            }
+        } else {
+            // 2) Pas de calendar.txt => on part de rien et on s'appuie sur calendar_dates pour CE JOUR
+            serviceIds = [];
         }
+
+        // 3) Exceptions calendar_dates : ajout/suppression pour CE JOUR (prioritaire)
+        const ex = state.calendarDates?.[gtfsDate];
+        if (ex) {
+            for (const id of ex.added || []) {
+            if (!serviceIds.includes(id)) serviceIds.push(id);
+            }
+            for (const id of ex.removed || []) {
+            serviceIds = serviceIds.filter(sid => sid !== id);
+            }
+        }
+
+        cache.serviceIds.set(cacheKey, serviceIds);
+        return serviceIds;
+        }
+
 
         function getDestinations(routeId) {
             const trips = state.trips[routeId];
