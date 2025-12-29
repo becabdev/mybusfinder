@@ -1416,9 +1416,203 @@
         return arrivals.sort((a, b) => a.timeSec - b.timeSec).slice(0, 8);
         }
 
-        // ------------------------------------------------------------------
-        // ✅ REMPLACE COMPLETEMENT ta fonction displayRealtimeArrivals
-        // ------------------------------------------------------------------
+        // ============================================================
+        //  RT PANEL + TIMELINE (adapté de l’ancienne version)
+        //  - Pas de null : crée overlay/panel si manquant
+        //  - Click sur un item RT => timeline + "Afficher dans la carte"
+        //  - Envoi postMessage identique à l’ancienne version
+        // ============================================================
+
+        function ensureRtUi() {
+        // Overlay
+        let overlay = document.getElementById('overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'overlay';
+            overlay.style.cssText = `
+            display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+            z-index:9998;
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        // Panel
+        let panel = document.getElementById('rt-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'rt-panel';
+            panel.style.cssText = `
+            display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
+            width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
+            background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
+            border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
+            z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
+            color:#fff;
+            `;
+            panel.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+                border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
+                <div style="font-weight:800" id="rt-panel-title">Détails</div>
+                <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
+                color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
+            </div>
+            <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
+            `;
+            document.body.appendChild(panel);
+        }
+
+        // Close handlers (idempotent)
+        const close = () => closeRtPanel();
+        overlay.onclick = close;
+        const closeBtn = document.getElementById('rt-panel-close');
+        if (closeBtn) closeBtn.onclick = close;
+        }
+
+        function openRtPanel(title, html) {
+        ensureRtUi();
+        const overlay = document.getElementById('overlay');
+        const panel = document.getElementById('rt-panel');
+        const titleEl = document.getElementById('rt-panel-title');
+        const contentEl = document.getElementById('rt-panel-content');
+
+        if (titleEl) titleEl.textContent = title || 'Détails';
+        if (contentEl) contentEl.innerHTML = html || '';
+
+        overlay.style.display = 'block';
+        panel.style.display = 'block';
+        }
+
+        function closeRtPanel() {
+        const overlay = document.getElementById('overlay');
+        const panel = document.getElementById('rt-panel');
+        if (overlay) overlay.style.display = 'none';
+        if (panel) panel.style.display = 'none';
+        }
+
+        // --------- Helpers temps / affichage ----------
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function getMinutesFromHHhMM(timeStr) {
+        // "8h05" -> 485
+        const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
+        return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+        }
+
+        // --------- Map button: postMessage identique à l’ancienne version ----------
+        function sendVehicleToParent(vehicleId, tripId) {
+        const message = {
+            type: 'vehicleSelected',
+            vehicleId: vehicleId || null,
+            tripId: tripId || null,
+            stopId: state.currentStop || null,
+            routeId: state.currentRoute || null,
+            timestamp: new Date().getTime()
+        };
+
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(message, '*');
+        } else if (window.opener) {
+            window.opener.postMessage(message, '*');
+        } else {
+            console.warn('Aucun parent/opener pour recevoir le message:', message);
+        }
+        }
+
+        // --------- Timeline "comme ancienne version" (arrêts + prochains) ----------
+        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
+        ensureRtUi();
+
+        const route = state.routes?.[routeId];
+        const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
+        const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
+
+        const tripStops = state.stopTimes?.[routeId]?.[tripId];
+        if (!tripStops || tripStops.length === 0) {
+            openRtPanel(
+            `Bus ${vehicleId || '—'} • ${routeLabel}`,
+            `<div style="opacity:.8">Aucun détail d’arrêts pour ce trajet.</div>`
+            );
+            return;
+        }
+
+        // Calcule position "prochain arrêt" basé sur l’heure théorique (comme ton ancienne version)
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+
+        let nextIndex = 0;
+        for (let i = 0; i < tripStops.length; i++) {
+            const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
+            if (tMin >= nowMin) { nextIndex = i; break; }
+            nextIndex = i;
+        }
+
+        const rows = tripStops.map((st, idx) => {
+            const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
+            const time = st.arrival_time || '--h--';
+
+            const isNext = idx === nextIndex;
+            const isPast = idx < nextIndex;
+
+            return `
+            <div style="
+                display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
+                border-bottom:1px solid rgba(255,255,255,.08);
+                background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
+                opacity:${isPast ? '.55' : '1'};
+            ">
+                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="
+                    width:10px; height:10px; border-radius:999px;
+                    background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
+                    box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
+                "></div>
+                <div>${stopName}</div>
+                </div>
+                <div style="font-weight:800;">${time}</div>
+            </div>
+            `;
+        }).join('');
+
+        const html = `
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+            <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
+            <div style="font-weight:800;">${routeLabel}</div>
+            <div style="opacity:.85;">• Trajet ${tripId}</div>
+            ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
+            </div>
+
+            <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
+            ${rows}
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
+            <button id="rt-show-map-btn" style="
+                cursor:pointer; border:none; color:#fff;
+                background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
+                padding:10px 14px; border-radius:12px; font-weight:800;
+                box-shadow:0 8px 24px rgba(0,0,0,.25);
+            ">
+                Afficher dans la carte
+            </button>
+            </div>
+        `;
+
+        openRtPanel(`Détails • ${routeLabel}`, html);
+
+        // Bind bouton map
+        const btn = document.getElementById('rt-show-map-btn');
+        if (btn) {
+            btn.onclick = () => {
+            sendVehicleToParent(vehicleId, tripId);
+            closeRtPanel();
+            };
+        }
+        }
+
+        // ============================================================
+        //  RT LIST : afficher vehicleId + click => timeline
+        //  -> Remplace ta displayRealtimeArrivals si besoin
+        // ============================================================
         function displayRealtimeArrivals(arrivals, container) {
         container.innerHTML = '';
 
@@ -1428,48 +1622,29 @@
         }
 
         arrivals.forEach(arr => {
-            const hh = pad2(arr.rtDate.getHours());
-            const mm = pad2(arr.rtDate.getMinutes());
-
-            let delayLabel = '';
-            let delayStyle = 'opacity:.85;';
-            if (arr.delayMin !== null) {
-            if (arr.delayMin > 2) {
-                delayLabel = `+${arr.delayMin} min (retard)`;
-                delayStyle = 'color:#fbbf24; font-weight:700;';
-            } else if (arr.delayMin < -2) {
-                delayLabel = `${arr.delayMin} min (avance)`;
-                delayStyle = 'color:#60a5fa; font-weight:700;';
-            } else {
-                delayLabel = `à l’heure`;
-                delayStyle = 'color:#a78bfa; font-weight:700;';
-            }
-            } else {
-            delayLabel = 'théorique indisponible';
-            }
-
-            const theoText = arr.theoDate
-            ? `${pad2(arr.theoDate.getHours())}h${pad2(arr.theoDate.getMinutes())}`
-            : null;
+            const date = new Date(arr.time * 1000);
+            const hh = pad2(date.getHours());
+            const mm = pad2(date.getMinutes());
 
             const item = document.createElement('div');
             item.className = 'realtime-item';
             item.style.cursor = 'pointer';
 
+            // ✅ ID bus affiché
+            const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
+
             item.innerHTML = `
             <div>
                 <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
-                <span>${arr.headsign}</span>
-                ${arr.vehicleId ? `<span style="font-size:12px; opacity:.75;">Bus ${arr.vehicleId}</span>` : ''}
+                <span>${arr.headsign || 'Destination'}</span>
+                ${busLabel ? `<span style="font-size:12px; opacity:.75;">${busLabel}</span>` : ''}
                 </div>
-                <div style="font-size:13px; margin-top:4px; ${delayStyle}">
-                ${delayLabel}${theoText ? ` • théorique ${theoText}` : ''}
-                </div>
+                ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
             </div>
             <div class="realtime-time">${hh}h${mm}</div>
             `;
 
-            // ✅ Clique : affiche la timeline des arrêts du trip (comme avant)
+            // ✅ Clique : timeline + bouton "Afficher dans la carte"
             item.addEventListener('click', () => {
             showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
             });
