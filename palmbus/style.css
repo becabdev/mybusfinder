@@ -1370,17 +1370,7 @@
         left: 50%;
         transform: translateX(-50%);
     }
-    .logo-bottom.logoscr {
-        transform: translateX(-50%);
-        opacity: 0;
-        filter: blur(10px);
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
-    }
-    .logo-bottom.logoscrapp {
-        transform: translateX(-50%);
-        opacity: 1;
-        filter: blur(0);
-    }
+
     @media (max-width: 600px) {
         #logoscr,
         .logo-bottom {
@@ -1990,7 +1980,7 @@
             .logoscrapp {
                 transform: scale(1);
                 opacity: 1;
-                filter: blur(0);
+                filter: blur(0) invert(0);
             }
             .logoscrappp {
                 transform: scale(0.8);
@@ -1999,12 +1989,16 @@
             .logoscrapppp {
                 opacity: 0;
             }
-            .logoscr.logoscrapp.logoscrappp {
-                filter: invert(0);
+            .logo-bottom.logoscr {
+                transform: translateX(-50%);
+                opacity: 0;
+                filter: blur(10px) invert(0);
+                transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
             }
-
-            .logo-bottom {
-                filter: invert(0);
+            .logo-bottom.logoscrapp {
+                transform: translateX(-50%);
+                opacity: 1;
+                filter: blur(0) invert(0);
             }
         }
 
@@ -2067,7 +2061,7 @@
             .logoscrapp {
                 transform: scale(1);
                 opacity: 1;
-                filter: blur(0);
+                filter: blur(0) invert(1);
             }
             .logoscrappp {
                 transform: scale(0.8);
@@ -2076,12 +2070,15 @@
             .logoscrapppp {
                 opacity: 0;
             }
-
-            .logoscr.logoscrapp.logoscrappp {
-                filter: invert(1);
+            .logo-bottom.logoscr {
+                transform: translateX(-50%);
+                opacity: 0;
+                filter: blur(10px) invert(1);
+                transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
             }
-
-            .logo-bottom {
-                filter: invert(1);
+            .logo-bottom.logoscrapp {
+                transform: translateX(-50%);
+                opacity: 1;
+                filter: blur(0) invert(1);
             }
         }
