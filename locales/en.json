@@ -285,6 +285,10 @@
     "enservice": "In service",
     "pleasewait": "Please wait...",
     "unavailabletrip": "Real-time trip information unavailable",
+      "yes": "Yes",
+  "no": "No",
+  "threetimestitle": "Stop showing the home menu?",
+  "threetimesinfo": "We noticed that you usually access the My Bus Finder map. Would you like to permanently disable the home page when the application starts? You can always re-enable it in the settings if needed.",
 
     "lines": "lines in service",
     "vehicles": "vehicles",
