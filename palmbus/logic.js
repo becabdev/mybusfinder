@@ -7725,7 +7725,7 @@ window.addEventListener('message', function(event) {
 
         const accueil = document.getElementById('accueil');
 
-        if (timespressed === '3') {
+        if (timespressed = '3') {
             showFluentPopup({
                 title: t('threetimestitle'),
                 message: t('threetimesinfo'),
