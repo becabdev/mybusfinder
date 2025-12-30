@@ -1586,10 +1586,6 @@ function showLoadingScreen() {
 }
 		
 
-
-var audio = new Audio("src/sounds/musique.mp3"); 
-
-
 let globalStopSpinner = null;
 let HorairesCharges = false;
 
@@ -1738,7 +1734,6 @@ function showUpdatePopupmusic(link) {
     }
     
     popup.style.display = 'flex'; 
-    musique();
     const menubottom1 = document.getElementById('menubtm');
     const menu = document.getElementById('menu');
     const menubotom = document.getElementById('menubottom');
@@ -1883,13 +1878,6 @@ function closeUpdatePopup() {
     if (!audio.paused) {
         audio.pause();
         audio.currentTime = 0;
-    }
-}
-
-
-function musique() {
-    if (audio.paused) {
-        audio.play();
     }
 }
 
