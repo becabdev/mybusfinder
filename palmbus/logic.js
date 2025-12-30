@@ -4059,21 +4059,19 @@ function getVehicleBrandHtmlLight(parkNumber) {
     return ``;
 }
 
-
 async function initializeApp() {
     try {
+        
         for (const key in vehicleTypes) {
             vehicleTypes[key] = new Set();
         }
+        
+        await loadVehicleModels();
+        
         await fetchVehiclePositions();
-        requestIdleCallback(() => {
-            loadVehicleModels().catch(error => {
-                console.warn('Erreur chargement véhicules (non-bloquant):', error);
-            });
-        });
     } catch (error) {
         console.error('BECAB Launcher : erreur lors de l\'initialisation :', error);
-        toastBottomRight.error('Erreur lors de l\'initialisation');
+        toastBottomRight.error('BECAB Launcher : erreur lors de l\'initialisation :', error);
         soundsUX('MBF_NotificationError');
     }
 }
