@@ -3480,25 +3480,23 @@ async function loadVehicleModels() {
     try {
         const { nomdureseau } = await getSetvar();
         let VEHICULES_CACHE = nomdureseau;
-        const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000;
+        const vehicleModelsCache = new Map();
+        const CACHE_KEY = VEHICULES_CACHE;
+        const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000; 
         const cachedData = await getCachedData();
-        
         if (cachedData) {
             Object.assign(vehicleModels, cachedData.models);
             Object.assign(vehicleTypes, cachedData.types);
             console.log('Données chargées depuis le cache');
-            
-            // Vérifier si mise à jour nécessaire en arrière-plan
-            requestIdleCallback(() => checkForVehicleUpdates());
             return;
         }
 
         const response = await fetch('setvar/vehicules/index.php');
         const fileList = await response.json();
+        
         const txtFiles = fileList.filter(file => file.endsWith('.txt'));
         
-        // Charger par priorité
-        await loadVehiclesByPriority(txtFiles);
+        await loadVehicleFilesInBatches(txtFiles, 10); // Limite à 10 requêtes simultanées
         
         await saveCacheData({
             models: vehicleModels,
@@ -3514,82 +3512,6 @@ async function loadVehicleModels() {
         soundsUX('MBF_NotificationError');
     }
 }
-
-// ==================== LAZY LOADING VÉHICULES ====================
-async function loadVehiclesByPriority(fileList) {
-    const visibleVehicles = new Set();
-    
-    // Identifier les véhicules visibles
-    Object.values(markerPool.active).forEach(marker => {
-        if (map.getBounds().contains(marker.getLatLng())) {
-            visibleVehicles.add(marker.id);
-        }
-    });
-    
-    const priorityFiles = [];
-    const normalFiles = [];
-    
-    // Trier les fichiers par priorité
-    fileList.forEach(file => {
-        const vehicleId = file.replace('.txt', '');
-        if (visibleVehicles.has(vehicleId)) {
-            priorityFiles.push(file);
-        } else {
-            normalFiles.push(file);
-        }
-    });
-    
-    console.log(`Chargement prioritaire: ${priorityFiles.length} véhicules visibles`);
-    
-    // Charger d'abord les véhicules visibles
-    if (priorityFiles.length > 0) {
-        await loadVehicleFilesInBatches(priorityFiles, 5);
-    }
-    
-    // Charger le reste en arrière-plan
-    if (normalFiles.length > 0) {
-        requestIdleCallback(async () => {
-            await loadVehicleFilesInBatches(normalFiles, 10);
-            console.log('Chargement complet des véhicules terminé');
-            
-            // Sauvegarder en cache
-            await saveCacheData({
-                models: vehicleModels,
-                types: vehicleTypes,
-                timestamp: Date.now()
-            });
-        });
-    } else {
-        // Tout est chargé, sauvegarder immédiatement
-        await saveCacheData({
-            models: vehicleModels,
-            types: vehicleTypes,
-            timestamp: Date.now()
-        });
-    }
-}
-
-async function checkForVehicleUpdates() {
-    try {
-        const response = await fetch('setvar/vehicules/index.php');
-        const fileList = await response.json();
-        const txtFiles = fileList.filter(file => file.endsWith('.txt'));
-        
-        // Comparer avec le cache actuel
-        const cachedCount = Object.keys(vehicleModels).length;
-        
-        if (txtFiles.length !== cachedCount) {
-            console.log('Mise à jour des véhicules détectée, rechargement...');
-            Object.keys(vehicleModels).forEach(key => delete vehicleModels[key]);
-            Object.keys(vehicleTypes).forEach(key => vehicleTypes[key].clear());
-            
-            await loadVehiclesByPriority(txtFiles);
-        }
-    } catch (error) {
-        console.warn('Erreur vérification mises à jour véhicules:', error);
-    }
-}
-// ==================== FIN LAZY LOADING VÉHICULES ====================
 
 async function loadVehicleFilesInBatches(fileList, batchSize = 10) {
     const results = [];
