@@ -1153,7 +1153,7 @@
             scrollToTop();
 
             const list = document.getElementById('destinations-list');
-            list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Récupération des destinations...</div></div>';
+            list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
 
             await loadTripsAndStopTimesForRoute(routeId);
 
