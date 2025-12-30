@@ -7546,54 +7546,10 @@ function afficherMenu() {
 
 
 
-// ==================== FETCH ADAPTATIF ====================
 let lastTripUpdateTimestamp = 0;
 let worker;
 let fetchInProgress = false;
-
-const FetchManager = {
-    baseInterval: 4000,
-    currentInterval: 4000,
-    minInterval: 4000,
-    maxInterval: 30000,
-    consecutiveErrors: 0,
-    consecutiveSuccess: 0,
-    
-    onSuccess() {
-        this.consecutiveErrors = 0;
-        this.consecutiveSuccess++;
-        
-        if (this.consecutiveSuccess > 3) {
-            this.currentInterval = Math.max(
-                this.minInterval, 
-                this.currentInterval - 500
-            );
-        }
-    },
-    
-    onError() {
-        this.consecutiveSuccess = 0;
-        this.consecutiveErrors++;
-        
-        this.currentInterval = Math.min(
-            this.maxInterval,
-            this.currentInterval * 1.5
-        );
-        
-        console.warn(`Fetch error, new interval: ${this.currentInterval}ms`);
-    },
-    
-    getInterval() {
-        return this.currentInterval;
-    },
-    
-    reset() {
-        this.currentInterval = this.baseInterval;
-        this.consecutiveErrors = 0;
-        this.consecutiveSuccess = 0;
-    }
-};
-// ==================== FIN FETCH ADAPTATIF ====================
+const FETCH_INTERVAL = 4000; 
 
 function initWorker() {
     worker = new Worker('worker.js');
@@ -7663,26 +7619,14 @@ let fetchTimerId = null;
 function startFetchUpdates() {
     if (fetchTimerId) return;
 
-    function scheduleFetch() {
+    fetchTimerId = setInterval(() => {
         Promise.all([
-            fetchTripUpdates().catch(err => {
-                FetchManager.onError();
-                return null;
-            }),
-            fetchVehiclePositions().catch(err => {
-                FetchManager.onError();
-                return null;
-            })
-        ]).then(() => {
-            FetchManager.onSuccess();
-        }).catch(error => {
-            console.warn('Erreur lors des mises à jour', error);
-        }).finally(() => {
-            fetchTimerId = setTimeout(scheduleFetch, FetchManager.getInterval());
+            fetchTripUpdates().catch(() => null),
+            fetchVehiclePositions().catch(() => null)
+        ]).catch(error => {
+            console.warn('Erreur lors des mises … jour', error);
         });
-    }
-
-    scheduleFetch();
+    }, FETCH_INTERVAL);
 }
 
 
