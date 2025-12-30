@@ -1922,6 +1922,9 @@
 
 
             @media (prefers-color-scheme: dark) {
+            #loading-text {
+                color: #ffffff;
+            }
             #loading-screen {
                 position: fixed;
                 top: 0;
@@ -2003,6 +2006,9 @@
         }
 
         @media (prefers-color-scheme: light) {
+            #loading-text {
+                color: #000000;
+            }
             #loading-screen {
                 position: fixed;
                 top: 0;
