@@ -877,7 +877,7 @@
 
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "fluentdesign", {
                 icon: "🖌️",
-                label: "BecabDev Design System",
+                label: "BecabDev Liquid UI Design System",
                 description: "v1.0.0",
             });
 
