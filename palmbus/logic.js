@@ -7886,37 +7886,12 @@ const FetchManager = {
 // ==================== FIN FETCH ADAPTATIF ====================
 
 function initWorker() {
-    if (worker) {
-        worker.terminate();
-    }
-    
     worker = new Worker('worker.js');
-    
-    worker.onmessage = (e) => {
-        const data = e.data;
-        
-        if (data.type === 'progress') {
-            // Optionnel : afficher progression
-            console.log(`Worker progress: ${data.processed}/${data.total}`);
-        } else if (data.type === 'complete') {
-            tripUpdates = data.tripUpdates;
-            
-            if (!data.hasChanges) {
-                console.log('Aucun changement détecté dans les trip updates');
-            }
-            
-            fetchInProgress = false;
-        } else if (data.type === 'error') {
-            console.error('Worker error:', data.error);
-            fetchInProgress = false;
-        }
-    };
     
     worker.onerror = (error) => {
         console.error('Erreur worker', error);
-        fetchInProgress = false;
-        
         setTimeout(() => {
+            worker.terminate();
             initWorker();
         }, 1000);
     };
@@ -7951,22 +7926,19 @@ async function fetchTripUpdates() {
         return new Promise((resolve, reject) => {
             const workerTimeoutId = setTimeout(() => {
                 reject(new Error('Worker timeout'));
-                fetchInProgress = false;
-            }, 5000);
+            }, 3000);
             
-            const messageHandler = (e) => {
-                if (e.data.type === 'complete') {
-                    clearTimeout(workerTimeoutId);
-                    worker.removeEventListener('message', messageHandler);
-                    resolve(e.data.tripUpdates);
-                } else if (e.data.type === 'error') {
-                    clearTimeout(workerTimeoutId);
-                    worker.removeEventListener('message', messageHandler);
-                    reject(new Error(e.data.error));
-                }
+            worker.onmessage = (e) => {
+                clearTimeout(workerTimeoutId);
+                const processTime = performance.now() - fetchStartTime;
+                
+                tripUpdates = e.data.tripUpdates;
+                
+                
+                resolve(e.data.tripUpdates);
+                fetchInProgress = false;
             };
             
-            worker.addEventListener('message', messageHandler);
             worker.postMessage(data);
         });
     } catch (error) {
@@ -7975,6 +7947,7 @@ async function fetchTripUpdates() {
         throw error;
     }
 }
+
 
 let fetchTimerId = null;
 
