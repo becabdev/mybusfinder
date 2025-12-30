@@ -2819,7 +2819,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         }
     });
 
-    marker.on('popupclose', async function(e) {
+marker.on('popupclose', async function(e) {
     const menubtm = document.getElementById('menubtm');
     safeVibrate([50]);
     soundsUX('MBF_VehicleClose');
@@ -2840,7 +2840,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                                 : 'background-color 0.5s ease';
                         }
                         
-                        
                         menubtm.style.backgroundColor = `${window.colorbkg9c}`;
                         
                         document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
@@ -2848,22 +2847,15 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         styleSheet.id = styleId;
                         styleSheet.classList.add('menu-color-style');
                         
-
-                        const textColor = TextColorUtils.getOptimal(color);
-
-                        document
-                            .querySelectorAll('#menubtm img')
-                            .forEach(img => {
-                                img.style.filter = 'invert(0)';
-                            });
-                        
-
-                        
                         styleSheet.textContent = `
-                        #menubtm * {
-                            color: ${textColor};
-                        }
+                            #menubtm * {
+                                color: white !important;
+                            }
                         `;
+                        
+                        document.querySelectorAll('#menubtm img').forEach(img => {
+                            img.style.filter = 'invert(0)';
+                        });
                         
                         document.head.appendChild(styleSheet);
                         
@@ -2878,7 +2870,7 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         }
                     }
                 }
-            }, 50); 
+            }, 50);
         } catch (error) {
             return false;
         }
