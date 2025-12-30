@@ -874,12 +874,7 @@
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
     }
-    .logoscr {
-        transform: scale(1.2);
-        opacity: 0;
-        filter: blur(15px);
-        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
-    }
+
     .popup-slide {
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
         transform: translateX(0);
@@ -912,6 +907,12 @@
         font-weight: 700;
         color: #333;
     }
+    .logoscr {
+        transform: scale(1.2);
+        opacity: 0;
+        filter: blur(15px);
+        transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
+    }
     .logoscrapp {
         transform: scale(1);
         opacity: 1;
@@ -923,7 +924,6 @@
     }
     .logoscrapppp {
         opacity: 0;
-        filter: invert(1);
     }
     .slide-up {
         transform: translateY(-100%);
@@ -1381,7 +1381,6 @@
         bottom: 50px;
         left: 50%;
         transform: translateX(-50%);
-        filter: invert(1);
     }
     .logo-bottom.logoscr {
         transform: translateX(-50%);
@@ -1994,6 +1993,26 @@
                 animation: pulseOverlay 6s ease-in-out infinite alternate;
             }
 
+            .logoscr {
+                transform: scale(1.2);
+                opacity: 0;
+                filter: blur(15px);
+                transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
+            }
+            .logoscrapp {
+                transform: scale(1);
+                opacity: 1;
+                filter: blur(0);
+            }
+            .logoscrappp {
+                transform: scale(0.8);
+                filter: blur(0);
+            }
+            .logoscrapppp {
+                opacity: 0;
+            }
+
+
             .logoscr.logoscrapp.logoscrappp {
                 filter: invert(0);
             }
@@ -2053,6 +2072,24 @@
                 animation: pulseOverlay 6s ease-in-out infinite alternate;
             }
 
+                       .logoscr {
+                transform: scale(1.2);
+                opacity: 0;
+                filter: blur(15px);
+                transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
+            }
+            .logoscrapp {
+                transform: scale(1);
+                opacity: 1;
+                filter: blur(0);
+            }
+            .logoscrappp {
+                transform: scale(0.8);
+                filter: blur(0);
+            }
+            .logoscrapppp {
+                opacity: 0;
+            }
 
             .logoscr.logoscrapp.logoscrappp {
                 filter: invert(1);
