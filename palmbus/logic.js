@@ -5214,8 +5214,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                         const showMinimal = currentZoom >= 17 && currentZoom < 20;
                         
                         if (!showMinimal) {
-
+                            markerPool.active.forEach((marker, id) => {
                                 if (marker) createOrUpdateMinimalTooltip(id, false);
+                            });
                             return;
                         }
                         
