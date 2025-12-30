@@ -6122,9 +6122,7 @@ function updateMenu() {
             if (lineVehicleCount > 0) activeLines++;
         });
 
-        if (activeLines === totalLines) {
-            memeNombre = true;
-        }
+        let memeNombre = (activeLines === totalLines); // Déclaration manquante
         
         const titleElement = document.querySelector('.menu-top-bar .menu-title');
         if (titleElement) {
@@ -6145,7 +6143,6 @@ function updateMenu() {
             }
         }
     }
-
 
     
     const spacer = document.createElement('div');
