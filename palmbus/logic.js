@@ -51,8 +51,6 @@
                 document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
                 document.addEventListener('touchcancel', this.handlePointerUp.bind(this), { passive: true });
                 
-                document.addEventListener('click', this.handleClick.bind(this), { passive: true });
-
             }
 
             handlePointerDown(e) {
@@ -7857,12 +7855,12 @@ function afficherMenu() {
 // Source - https://stackoverflow.com/a
 // Posted by Mark Szabo, modified by community. See post 'Timeline' for change history
 // Retrieved 2025-12-30, License - CC BY-SA 4.0
-
-if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    const mapPane = map.getPanes().tilePane;
-    mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-}
-
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        const mapPane = map.getPanes().tilePane;
+        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+    }
+});
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
     const mapPane = map.getPanes().tilePane;
