@@ -185,7 +185,7 @@
         });
 
 
-        VERSION_NAME = '3.1 Stable';
+        VERSION_NAME = '3.2';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -814,9 +814,9 @@
             FluentSettingsMenu.addSubmenu("about", "instagram", {
                 icon: "📸",
                 label: "Instagram",
-                description: "@mybusfinder",
+                description: "@becabtransit",
                 onclick: function () {
-                    window.open('https://www.instagram.com/mybusfinder/', '_blank');
+                    window.open('https://www.instagram.com/becabtransit/', '_blank');
                 }
             });
 
@@ -1896,7 +1896,7 @@ function hideLoadingScreen() {
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             disparaitrelelogo();
             const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'MàJ vers ' + window.VERSION_NAME;
+            loadingtext.textContent = 'Merci de patienter, une mise à jour est en cours ' + window.VERSION_NAME;
             soundsUX('MBF_NotificationInfo');
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
@@ -2095,7 +2095,7 @@ async function extractGTFSFiles() {
     try {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
-        loadingtext.textContent = 'Chargement des données dynamiques en cours... 😊';
+        loadingtext.textContent = 'Chargement des données dyna en cours - async... 😊';
         soundsUX('MBF_Popup');
 
 
