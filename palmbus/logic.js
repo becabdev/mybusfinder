@@ -807,43 +807,6 @@
                 }
             });
 
-            FluentSettingsMenu.addToggle("advanced", "darkmap", {
-                icon: "🎴",
-                label: darkmap,
-                description: darkmaptext,
-                value: localStorage.getItem('darkmap') === 'true',
-                onChange: function (value) {
-                    if (value) {
-                        showFluentPopup({
-                            title: betasetting,
-                            message: betasettingdarkmap,
-                            buttons: {
-                                primary: understood,
-                                primaryAction: () => {
-                                    localStorage.setItem('darkmap', 'true');
-                                    const mapPane = map.getPanes().tilePane;
-                                    mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-                                    fluentPopupManager.close();
-                                },
-                                secondary: cancel,
-                                secondaryAction: () => {
-                                    const toggle = document.querySelector('[data-setting="darkmap"]');
-                                    if (toggle) {
-                                        toggle.querySelector('input[type="checkbox"]').checked = false;
-                                    }
-                                    localStorage.setItem('darkmap', 'false');
-                                    fluentPopupManager.close();
-                                }
-                            }
-                        });
-                    } else {
-                        localStorage.setItem('darkmap', value);
-                        const mapPane = map.getPanes().tilePane;
-                        mapPane.style.filter = 'none';
-                    }
-                }
-            });
-
             FluentSettingsMenu.addSubmenu("about", "aboutsub", {
                 icon: "",
                 label: "My Bus Finder - by BecabTransit",
@@ -7887,6 +7850,19 @@ function afficherMenu() {
 
     
 }
+
+// Source - https://stackoverflow.com/a
+// Posted by Mark Szabo, modified by community. See post 'Timeline' for change history
+// Retrieved 2025-12-30, License - CC BY-SA 4.0
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+    const mapPane = map.getPanes().tilePane;
+    if (event.matches) {
+        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+    } else {
+        mapPane.style.filter = 'none';
+    }
+});
 
 
 
