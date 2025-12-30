@@ -1514,39 +1514,6 @@ class MarkerPool {
 const markerPool = new MarkerPool();
 // ==================== FIN MARKER POOL ====================
 
-// ==================== EVENT MANAGER ====================
-class EventManager {
-    constructor() {
-        this.listeners = new Map();
-    }
-    
-    on(target, event, handler, id) {
-        const key = `${id}-${event}`;
-        this.off(target, event, id);
-        target.on(event, handler);
-        this.listeners.set(key, { target, event, handler });
-    }
-    
-    off(target, event, id) {
-        const key = `${id}-${event}`;
-        const listener = this.listeners.get(key);
-        if (listener) {
-            listener.target.off(event, listener.handler);
-            this.listeners.delete(key);
-        }
-    }
-    
-    clear() {
-        this.listeners.forEach(({ target, event, handler }) => {
-            target.off(event, handler);
-        });
-        this.listeners.clear();
-    }
-}
-
-const eventManager = new EventManager();
-// ==================== FIN EVENT MANAGER ====================
-
 
 function showLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
@@ -5394,85 +5361,85 @@ async function fetchVehiclePositions() {
                 }
 
 
-            if (markerPool.has(id)) {
-                const marker = markerPool.get(id);
-                animateMarker(marker, [latitude, longitude]);
-                
-                if (marker.minimalPopup) {
-                    createOrUpdateMinimalTooltip(id, true);
-                    animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
-                }
-                
-                const hasChanges = (
-                    marker.line !== line ||
-                    marker.destination !== lastStopName ||
-                    marker._lastNextStopsHTML !== nextStopsHTML
-                );
-                
-                if (hasChanges) {
-                    marker.vehicleData = vehicle;
-                    marker.destination = lastStopName;
-                    
-                    if (marker.line !== line) {
-                        marker.line = line;
-                        marker._lastNextStopsHTML = nextStopsHTML;
-                        markerPool.updateMarkerStyle(marker, line, bearing);
-                        
-                        if (marker.isPopupOpen()) {
-                            const menubtm = document.getElementById('menubtm');
-                            if (menubtm) {
-                                const color = lineColors[line] || '#000000';
-                                lastActiveColor = color;
-                                menubtm.style.backgroundColor = `${color}9c`;
-                                
-                                const textColor = TextColorUtils.getOptimal(color);
-                                StyleManager.applyMenuStyle(textColor);
-                            }
-                        }
-                    }
-                    
-                    updateLinesDisplay();
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                }
-                
-                if (marker._icon) {
-                    const arrowElement = marker._icon.querySelector('.marker-arrow');
-                    if (arrowElement) {
-                        arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
-                    }
-                }
-                
-                if (selectedLine && marker.line !== selectedLine) {
-                    if (map.hasLayer(marker)) {
-                        map.removeLayer(marker);
-                    }
-                } else {
-                    if (!map.hasLayer(marker)) {
-                        map.addLayer(marker);
-                    }
-                }
-                
-                updateMinimalPopups();
-                
-            } else {
-                const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
-                marker.line = line;
+        if (markerPool.has(id)) {
+            const marker = markerPool.get(id);
+            animateMarker(marker, [latitude, longitude]);
+            
+            if (marker.minimalPopup) {
+                createOrUpdateMinimalTooltip(id, true);
+                animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
+            }
+            
+            const hasChanges = (
+                marker.line !== line ||
+                marker.destination !== lastStopName ||
+                marker._lastNextStopsHTML !== nextStopsHTML
+            );
+            
+            if (hasChanges) {
                 marker.vehicleData = vehicle;
                 marker.destination = lastStopName;
                 
-                if (!selectedLine || selectedLine === line) {
-                    marker.addTo(map);
+                if (marker.line !== line) {
+                    marker.line = line;
+                    marker._lastNextStopsHTML = nextStopsHTML;
+                    markerPool.updateMarkerStyle(marker, line, bearing);
+                    
+                    if (marker.isPopupOpen()) {
+                        const menubtm = document.getElementById('menubtm');
+                        if (menubtm) {
+                            const color = lineColors[line] || '#000000';
+                            lastActiveColor = color;
+                            menubtm.style.backgroundColor = `${color}9c`;
+                            
+                            const textColor = TextColorUtils.getOptimal(color);
+                            StyleManager.applyMenuStyle(textColor);
+                        }
+                    }
                 }
                 
+                updateLinesDisplay();
                 const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
                     vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                marker.bindPopup(popupContent);
-                marker._lastNextStopsHTML = nextStopsHTML;
-                
-            eventManager.on(marker, 'popupopen', function (e) {
+                updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
+                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+            }
+            
+            if (marker._icon) {
+                const arrowElement = marker._icon.querySelector('.marker-arrow');
+                if (arrowElement) {
+                    arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
+                }
+            }
+            
+            if (selectedLine && marker.line !== selectedLine) {
+                if (map.hasLayer(marker)) {
+                    map.removeLayer(marker);
+                }
+            } else {
+                if (!map.hasLayer(marker)) {
+                    map.addLayer(marker);
+                }
+            }
+            
+            updateMinimalPopups();
+            
+        } else {
+            const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
+            marker.line = line;
+            marker.vehicleData = vehicle;
+            marker.destination = lastStopName;
+            
+            if (!selectedLine || selectedLine === line) {
+                marker.addTo(map);
+            }
+            
+            const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
+                vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+            marker.bindPopup(popupContent);
+            marker._lastNextStopsHTML = nextStopsHTML;
+            
+            marker.on('popupopen', function (e) {
                 if (marker.minimalPopup) {
                     createOrUpdateMinimalTooltip(id, false);
                 }
@@ -5484,27 +5451,29 @@ async function fetchVehiclePositions() {
                         popupElement.classList.add('show');
                     }
                 }
-            }, id);
-
-            eventManager.on(marker, 'popupclose', function (e) {
+            });
+            
+            marker.on('popupclose', function (e) {
                 if (e.popup && e.popup._contentNode) {
                     const popupElement = e.popup._contentNode.parentElement;
                     if (popupElement) {
                         popupElement.classList.remove('show');
                         popupElement.classList.add('hide');
-                        setTimeout(() => updateMinimalPopups(), 10);
+                        setTimeout(() => {
+                            updateMinimalPopups();
+                        }, 10);
                     }
                 }
-            }, id);
-
-            eventManager.on(marker, 'click', function() {
+            });
+            
+            marker.on('click', function() {
                 if (marker.minimalPopup) {
                     createOrUpdateMinimalTooltip(id, false);
                 }
-            }, id);
-                
-                updateMinimalPopups();
-            }
+            });
+            
+            updateMinimalPopups();
+        }
 
 
             map.on('zoomend', debounce(updateMinimalPopups, 100));
@@ -5515,12 +5484,21 @@ async function fetchVehiclePositions() {
 
 
 
-const activeIds = Array.from(markerPool.active.keys());
-activeIds.forEach(id => {
+const markersToRemove = [];
+Object.keys(markers).forEach(id => {
     if (!activeVehicleIds.has(id)) {
-        delete window.minimalTooltipStates[id];
-        markerPool.release(id);
+        markersToRemove.push(id);
     }
+});
+
+markersToRemove.forEach(id => {
+    if (markers[id].minimalPopup) {
+        returnToPool(markers[id].minimalPopup);
+        markers[id].minimalPopup = null;
+    }
+    delete window.minimalTooltipStates[id];
+    map.removeLayer(markers[id]);
+    delete markers[id];
 });
 
 setInterval(() => {
