@@ -877,7 +877,7 @@
 
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "fluentdesign", {
                 icon: "🖌️",
-                label: "BecabDev Liquid UI Design System",
+                label: "BecabDev Design System",
                 description: "v1.0.0",
             });
 
@@ -2904,72 +2904,37 @@ const additionalCSS = `
 }
 `;
 
-const AnimationManager = {
-    activeAnimations: new Map(),
-    
-    easeInOutQuad(t) {
-        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    },
-    
-    animateMarker(marker, newPosition, duration = 1000) {
-        const markerId = marker.id;
-        
-        // Annuler l'animation existante
-        if (this.activeAnimations.has(markerId)) {
-            cancelAnimationFrame(this.activeAnimations.get(markerId).frameId);
-        }
-        
-        const startLatLng = marker.getLatLng();
-        const endLatLng = L.latLng(newPosition[0], newPosition[1]);
-        
-        // Si distance trop courte, pas d'animation
-        const distance = startLatLng.distanceTo(endLatLng);
-        if (distance < 5) {
-            marker.setLatLng(endLatLng);
-            return;
-        }
-        
-        const startTime = performance.now();
-        
-        const animate = (time) => {
-            const elapsed = time - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const easedProgress = this.easeInOutQuad(progress);
-            
-            const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
-            const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
-            
-            marker.setLatLng([lat, lng]);
-
-            if (progress < 1) {
-                const frameId = requestAnimationFrame(animate);
-                this.activeAnimations.set(markerId, { frameId });
-            } else {
-                this.activeAnimations.delete(markerId);
-            }
-        };
-        
-        const frameId = requestAnimationFrame(animate);
-        this.activeAnimations.set(markerId, { frameId });
-    },
-    
-    cancelAnimation(markerId) {
-        if (this.activeAnimations.has(markerId)) {
-            cancelAnimationFrame(this.activeAnimations.get(markerId).frameId);
-            this.activeAnimations.delete(markerId);
-        }
-    },
-    
-    cancelAll() {
-        this.activeAnimations.forEach(({ frameId }) => {
-            cancelAnimationFrame(frameId);
-        });
-        this.activeAnimations.clear();
-    }
-};
-
 function animateMarker(marker, newPosition) {
-    AnimationManager.animateMarker(marker, newPosition);
+    const startLatLng = marker.getLatLng();
+    const endLatLng = L.latLng(newPosition[0], newPosition[1]);
+    const duration = 1000; 
+    const startTime = performance.now();
+
+    if (marker.animationFrame) {
+        cancelAnimationFrame(marker.animationFrame);
+    }
+
+    function easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    function animate(time) {
+        const elapsed = time - startTime;
+        const linearProgress = Math.min(elapsed / duration, 1);
+        
+        const easedProgress = easeInOutQuad(linearProgress);
+        
+        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
+        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
+        
+        marker.setLatLng([lat, lng]);
+
+        if (linearProgress < 1) {
+            marker.animationFrame = requestAnimationFrame(animate);
+        }
+    }
+
+    marker.animationFrame = requestAnimationFrame(animate);
 }
 
 let busStopLayers = [];
@@ -4402,15 +4367,9 @@ function debounce(func, wait) {
 }
 
 async function fetchVehiclePositions() {
-    if (!gtfsInitialized) {
-        return;
-    }
-    
-    // Throttling basé sur la visibilité
-    if (document.hidden) {
-        console.log('Page cachée, skip fetch');
-        return;
-    }
+        if (!gtfsInitialized) {
+            return;
+        }
 
         if (!window.timeAnimationStyleAdded) {
         const timeAnimationStyle = `
@@ -5020,178 +4979,145 @@ async function fetchVehiclePositions() {
                 }
 
 
-const TooltipManager = {
-    pool: [],
-    maxPoolSize: 50,
-    active: new Map(),
-    
-    acquire() {
-        let tooltip = this.pool.pop();
-        if (!tooltip) {
-            tooltip = L.tooltip({
-                permanent: true,
-                direction: 'center',
-                className: 'minimal-tooltip-container',
-                offset: [0, 0],
-                opacity: 1
-            });
-        }
-        return tooltip;
-    },
-    
-    release(tooltip) {
-        if (!tooltip) return;
-        
-        if (tooltip._container) {
-            const handlers = tooltip._container._eventHandlers;
-            if (handlers) {
-                handlers.forEach(handler => {
-                    tooltip._container.removeEventListener(handler.event, handler.fn);
-                });
-            }
-        }
-        
-        if (this.pool.length < this.maxPoolSize) {
-            this.pool.push(tooltip);
-        }
-    },
-    
-    clear() {
-        this.active.forEach((tooltip) => {
-            map.removeLayer(tooltip);
-        });
-        this.active.clear();
-        this.pool = [];
-    }
-};
-
-function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
-    const marker = markerPool.get(markerId);
-    if (!marker) return;
-    
-    if (shouldShow && !marker.isPopupOpen()) {
-        if (!marker.minimalPopup) {
-            const minimalTooltip = TooltipManager.acquire();
-            
-            const color = lineColors[marker.line] || '#000000';
-            const textColor = TextColorUtils.getOptimal(color);
-            
-            const minimalContent = `
-                <div class="minimal-popup minimal-popup-appear" style="
-                    position: relative;
-                    font-family: 'League Spartan', sans-serif;
-                    font-size: 11px;
-                    color: ${textColor};
-                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
-                    backdrop-filter: blur(12px);
-                    -webkit-backdrop-filter: blur(12px);
-                    border-radius: 12px;
-                    padding: 6px 10px;
-                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
-                    min-width: 80px;
-                    max-width: 140px;
-                    cursor: pointer;
-                    border: 1px solid ${color}60;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    transform: translateY(0);
-                ">
-                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                        <div style="
-                            background: rgba(255,255,255,0.2);
-                            border-radius: 6px;
-                            padding: 2px 6px;
-                            font-weight: 600;
-                            font-size: 10px;
-                            line-height: 1.2;
-                        ">
-                            ${lineName[marker.line] || t("unknownline")}
-                        </div>
-                        <div style="
-                            background: rgba(0,0,0,0.3);
-                            border-radius: 4px;
-                            padding: 1px 4px;
-                            font-size: 9px;
-                            font-weight: 500;
-                        ">
-                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
-                        </div>
-                    </div>
-                    <div style="
-                        font-size: 9px; 
-                        opacity: 0.85; 
-                        margin-top: 2px;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                        font-weight: 400;
-                    ">
-                        ➜ ${marker.destination || t("unknowndestination")}
-                    </div>
-                </div>
-            `;
-
-            minimalTooltip
-                .setLatLng(marker.getLatLng())
-                .setContent(minimalContent)
-                .addTo(map);
-
-            setTimeout(() => {
-                if (minimalTooltip._container) {
-                    const clickHandler = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const m = markerPool.get(markerId);
-                        if (m) m.openPopup();
-                    };
+                function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
+                    const marker = markers[markerId];
+                    if (!marker) return;
                     
-                    minimalTooltip._container.addEventListener('mousedown', clickHandler);
-                    
-                    if (!minimalTooltip._container._eventHandlers) {
-                        minimalTooltip._container._eventHandlers = [];
+                    if (shouldShow && !marker.isPopupOpen()) {
+                        if (!marker.minimalPopup) {
+                            // essayons de reutiliser un tooltip existant du pool
+                            let minimalTooltip = getFromPool();
+                            
+                            if (!minimalTooltip) {
+                                minimalTooltip = L.tooltip({
+                                    permanent: true,
+                                    direction: 'center',
+                                    className: 'minimal-tooltip-container',
+                                    offset: [0, 0],
+                                    opacity: 1
+                                });
+                            }
+                            
+                            const color = lineColors[marker.line] || '#000000';
+                            const textColor = TextColorUtils.getOptimal(color);
+                            
+                            const minimalContent = `
+                                <div class="minimal-popup minimal-popup-appear" style="
+                                    position: relative;
+                                    font-family: 'League Spartan', sans-serif;
+                                    font-size: 11px;
+                                    color: ${textColor};
+                                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
+                                    backdrop-filter: blur(12px);
+                                    -webkit-backdrop-filter: blur(12px);
+                                    border-radius: 12px;
+                                    padding: 6px 10px;
+                                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
+                                    min-width: 80px;
+                                    max-width: 140px;
+                                    cursor: pointer;
+                                    border: 1px solid ${color}60;
+                                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                                    transform: translateY(0);
+                                ">
+                                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                        <div style="
+                                            background: rgba(255,255,255,0.2);
+                                            border-radius: 6px;
+                                            padding: 2px 6px;
+                                            font-weight: 600;
+                                            font-size: 10px;
+                                            line-height: 1.2;
+                                        ">
+                                            ${lineName[marker.line] || t("unknownline")}
+                                        </div>
+                                        <div style="
+                                            background: rgba(0,0,0,0.3);
+                                            border-radius: 4px;
+                                            padding: 1px 4px;
+                                            font-size: 9px;
+                                            font-weight: 500;
+                                        ">
+                                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
+                                        </div>
+                                    </div>
+                                    <div style="
+                                        font-size: 9px; 
+                                        opacity: 0.85; 
+                                        margin-top: 2px;
+                                        overflow: hidden;
+                                        text-overflow: ellipsis;
+                                        white-space: nowrap;
+                                        font-weight: 400;
+                                    ">
+                                        ➜ ${marker.destination || t("unknowndestination")}
+                                    </div>
+                                </div>
+                            `;
+
+
+                            minimalTooltip
+                                .setLatLng(marker.getLatLng())
+                                .setContent(minimalContent)
+                                .addTo(map);
+
+                            setTimeout(() => {
+                                if (minimalTooltip._container) {
+                                    minimalTooltip._container.addEventListener('mousedown', function(e) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (window.markers && window.markers[markerId]) {
+                                            window.markers[markerId].openPopup();
+                                        }
+                                    });
+                                    
+                                    const allElements = minimalTooltip._container.querySelectorAll('*');
+                                    allElements.forEach(element => {
+                                        element.addEventListener('mousedown', function(e) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (window.markers && window.markers[markerId]) {
+                                                window.markers[markerId].openPopup();
+                                            }
+                                        });
+                                    });
+                                }
+                            }, 100);
+
+                                                        
+                            marker.minimalPopup = minimalTooltip;
+                            window.minimalTooltipStates[markerId] = 'visible';
+                            }
+                    } else if (!shouldShow && marker.minimalPopup) {
+                        const tooltipContainer = marker.minimalPopup._container;
+                        if (tooltipContainer) {
+                            const popupElement = tooltipContainer.querySelector('.minimal-popup');
+                            if (popupElement) {
+                                popupElement.classList.remove('minimal-popup-appear');
+                                popupElement.classList.add('minimal-popup-disappear');
+                                
+                                setTimeout(() => {
+                                    const tooltipToRemove = marker.minimalPopup;
+                                    marker.minimalPopup = null;
+                                    delete window.minimalTooltipStates[markerId];
+                                    
+                                    if (tooltipToRemove) {
+                                        map.removeLayer(tooltipToRemove);
+                                        returnToPool(tooltipToRemove);
+                                    }
+                                }, 200);
+                            }
+                        } else {
+                            // Fallback si pas de container
+                            const tooltipToRemove = marker.minimalPopup;
+                            marker.minimalPopup = null;
+                            delete window.minimalTooltipStates[markerId];
+                            
+                            map.removeLayer(tooltipToRemove);
+                            returnToPool(tooltipToRemove);
+                        }
                     }
-                    minimalTooltip._container._eventHandlers.push({
-                        event: 'mousedown',
-                        fn: clickHandler
-                    });
                 }
-            }, 100);
-            
-            marker.minimalPopup = minimalTooltip;
-            TooltipManager.active.set(markerId, minimalTooltip);
-            window.minimalTooltipStates[markerId] = 'visible';
-        }
-    } else if (!shouldShow && marker.minimalPopup) {
-        const tooltipContainer = marker.minimalPopup._container;
-        if (tooltipContainer) {
-            const popupElement = tooltipContainer.querySelector('.minimal-popup');
-            if (popupElement) {
-                popupElement.classList.remove('minimal-popup-appear');
-                popupElement.classList.add('minimal-popup-disappear');
-                
-                setTimeout(() => {
-                    const tooltipToRemove = marker.minimalPopup;
-                    marker.minimalPopup = null;
-                    delete window.minimalTooltipStates[markerId];
-                    
-                    if (tooltipToRemove) {
-                        map.removeLayer(tooltipToRemove);
-                        TooltipManager.release(tooltipToRemove);
-                        TooltipManager.active.delete(markerId);
-                    }
-                }, 200);
-            }
-        } else {
-            const tooltipToRemove = marker.minimalPopup;
-            marker.minimalPopup = null;
-            delete window.minimalTooltipStates[markerId];
-            
-            map.removeLayer(tooltipToRemove);
-            TooltipManager.release(tooltipToRemove);
-            TooltipManager.active.delete(markerId);
-        }
-    }
-}
-
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup) return false;
@@ -6007,47 +5933,6 @@ function closeMenu() {
         menubottom1.classList.add('slide-downb');
     }, 10);
 }
-
-// ==================== VIRTUAL SCROLLING ====================
-class VirtualScroller {
-    constructor(container, itemHeight = 80) {
-        this.container = container;
-        this.itemHeight = itemHeight;
-        this.visibleItems = [];
-        this.allItems = [];
-        this.scrollTop = 0;
-        this.containerHeight = 0;
-    }
-    
-    setItems(items) {
-        this.allItems = items;
-        this.updateVisibleItems();
-    }
-    
-    updateVisibleItems() {
-        this.containerHeight = this.container.clientHeight;
-        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
-        const endIndex = Math.ceil((this.scrollTop + this.containerHeight) / this.itemHeight);
-        
-        this.visibleItems = this.allItems.slice(
-            Math.max(0, startIndex - 2),
-            Math.min(this.allItems.length, endIndex + 2)
-        );
-        
-        return {
-            items: this.visibleItems,
-            offsetTop: Math.max(0, (startIndex - 2) * this.itemHeight)
-        };
-    }
-    
-    onScroll(scrollTop) {
-        this.scrollTop = scrollTop;
-        return this.updateVisibleItems();
-    }
-}
-
-let menuScroller = null;
-// ==================== FIN VIRTUAL SCROLLING ====================
 
 function updateMenu() {
     const menu = document.getElementById('menu');
@@ -7948,7 +7833,6 @@ async function fetchTripUpdates() {
     }
 }
 
-
 let fetchTimerId = null;
 
 function startFetchUpdates() {
@@ -8000,80 +7884,6 @@ async function main() {
         soundsUX('MBF_NotificationError');
     }
 }
-
-// ==================== NETTOYAGE GLOBAL ====================
-window.addEventListener('beforeunload', () => {
-    // Nettoyer tous les managers
-    if (markerPool) markerPool.clear();
-    if (eventManager) eventManager.clear();
-    if (TooltipManager) TooltipManager.clear();
-    if (StyleManager) StyleManager.clearAll();
-    if (AnimationManager) AnimationManager.cancelAll();
-    
-    // Nettoyer le worker
-    if (worker) {
-        worker.terminate();
-        worker = null;
-    }
-    
-    // Nettoyer les timers
-    if (fetchTimerId) {
-        clearTimeout(fetchTimerId);
-        fetchTimerId = null;
-    }
-    
-    // Nettoyer la carte
-    if (map) {
-        map.remove();
-        map = null;
-    }
-    
-    console.log('Nettoyage global effectué');
-});
-
-// Nettoyage périodique de la mémoire
-setInterval(() => {
-    if (TextColorUtils) {
-        if (TextColorUtils.cache.size > 50) {
-            const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
-            keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
-        }
-    }
-    
-    if (contentCache && contentCache.size > 50) {
-        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
-        keysToDelete.forEach(key => contentCache.delete(key));
-    }
-    
-    // Forcer le garbage collection si disponible
-    if (window.gc) {
-        window.gc();
-    }
-}, 300000); // Toutes les 5 minutes
-
-// Monitoring des performances
-if (performance && performance.memory) {
-    setInterval(() => {
-        const memory = performance.memory;
-        const usedMB = (memory.usedJSHeapSize / 1048576).toFixed(2);
-        const totalMB = (memory.totalJSHeapSize / 1048576).toFixed(2);
-        const limitMB = (memory.jsHeapSizeLimit / 1048576).toFixed(2);
-        
-        console.log(`Memory: ${usedMB}MB / ${totalMB}MB (limit: ${limitMB}MB)`);
-        
-        // Alerte si mémoire > 80%
-        if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
-            console.warn('⚠️ Mémoire élevée, nettoyage recommandé');
-            
-            // Nettoyage agressif
-            if (TextColorUtils) TextColorUtils.cache.clear();
-            if (contentCache) contentCache.clear();
-            if (colorCache) colorCache.clear();
-            if (textColorCache) textColorCache.clear();
-        }
-    }, 60000); // Toutes les minutes
-}
-// ==================== FIN NETTOYAGE GLOBAL ====================
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', main);
