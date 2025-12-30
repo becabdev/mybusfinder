@@ -4016,17 +4016,18 @@ function getVehicleBrandHtmlLight(parkNumber) {
 
 async function initializeApp() {
     try {
-        
         for (const key in vehicleTypes) {
             vehicleTypes[key] = new Set();
         }
-        
-        await loadVehicleModels();
-        
         await fetchVehiclePositions();
+        requestIdleCallback(() => {
+            loadVehicleModels().catch(error => {
+                console.warn('Erreur chargement véhicules (non-bloquant):', error);
+            });
+        });
     } catch (error) {
         console.error('BECAB Launcher : erreur lors de l\'initialisation :', error);
-        toastBottomRight.error('BECAB Launcher : erreur lors de l\'initialisation :', error);
+        toastBottomRight.error('Erreur lors de l\'initialisation');
         soundsUX('MBF_NotificationError');
     }
 }
@@ -5221,12 +5222,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                         }
                         
                         const bounds = map.getBounds();
-                        const markerIds = Object.keys(markers);
                         
-                        for (let i = 0; i < markerIds.length; i++) {
-                            const markerId = markerIds[i];
-                            const marker = markers[markerId];
-                            if (!marker) continue;
+                        markerPool.active.forEach((marker, markerId) => {
+                            if (!marker) return;
                             
                             const markerLatLng = marker.getLatLng();
                             const isInBounds = bounds.contains(markerLatLng);
@@ -5240,7 +5238,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             } else {
                                 createOrUpdateMinimalTooltip(markerId, false);
                             }
-                        }
+                        });
                     });
                 }
 
