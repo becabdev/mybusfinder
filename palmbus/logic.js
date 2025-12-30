@@ -4478,13 +4478,6 @@ async function fetchVehiclePositions() {
         const data = await decodeProtobuf(buffer);
 
         const activeVehicleIds = new Set();
-
-                const tempElement = document.createElement('div');
-        tempElement.style.font = getComputedStyle(document.body).font;
-        tempElement.style.visibility = 'hidden';
-        tempElement.style.position = 'absolute';
-        tempElement.style.whiteSpace = 'nowrap';
-        document.body.appendChild(tempElement);
         
         function isInViewport(lat, lng) {
             const bounds = map.getBounds();
@@ -4578,9 +4571,7 @@ async function fetchVehiclePositions() {
                             : '';
                         
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                        
-                        tempElement.textContent = stopName;
-                        
+                                                
                         return `
                         <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
                             <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
