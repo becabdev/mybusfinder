@@ -1547,56 +1547,6 @@ class EventManager {
 const eventManager = new EventManager();
 // ==================== FIN EVENT MANAGER ====================
 
-// ==================== STYLE MANAGER ====================
-const StyleManager = {
-    styles: new Map(),
-    maxStyles: 10,
-    
-    applyMenuStyle(textColor) {
-        document.querySelectorAll('.menu-color-style').forEach(style => {
-            if (!this.styles.has(style.id)) {
-                style.remove();
-            }
-        });
-        
-        if (this.styles.size >= this.maxStyles) {
-            const oldestId = this.styles.keys().next().value;
-            const oldStyle = document.getElementById(oldestId);
-            if (oldStyle) oldStyle.remove();
-            this.styles.delete(oldestId);
-        }
-        
-        const styleId = `style-${Date.now()}`;
-        const styleSheet = document.createElement('style');
-        styleSheet.id = styleId;
-        styleSheet.classList.add('menu-color-style');
-        
-        styleSheet.textContent = `
-            #menubtm * {
-                color: ${textColor};
-            }
-        `;
-        
-        document.head.appendChild(styleSheet);
-        this.styles.set(styleId, Date.now());
-        
-        return styleId;
-    },
-    
-    removeStyle(styleId) {
-        const style = document.getElementById(styleId);
-        if (style) {
-            style.remove();
-            this.styles.delete(styleId);
-        }
-    },
-    
-    clearAll() {
-        this.styles.forEach((_, id) => this.removeStyle(id));
-    }
-};
-// ==================== FIN STYLE MANAGER ====================
-
 
 function showLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
@@ -2770,7 +2720,19 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
 
                 
-                const styleId = StyleManager.applyMenuStyle(textColor);
+                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.id = styleId;
+                styleSheet.classList.add('menu-color-style');
+                
+                styleSheet.textContent = `
+                    #menubtm * {
+                        color: ${textColor};
+                    }
+                `;
+                
+                document.head.appendChild(styleSheet);
                 marker.styleId = styleId;
             } else {
                 const currentColor = window.getComputedStyle(menubtm).backgroundColor;
@@ -2788,9 +2750,26 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             img.style.filter = 'invert(0)';
                         });
                 }
+
+                
+                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
                 menubtm.style.backgroundColor = `${color}9c`;
-                const styleId = StyleManager.applyMenuStyle(textColor);
+
+                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                
+                const styleSheet = document.createElement('style');
+                styleSheet.id = styleId;
+                styleSheet.classList.add('menu-color-style');
+                
+                styleSheet.textContent = `
+                    #menubtm * {
+                        color: ${textColor};
+                    }
+
+                `;
+                
+                document.head.appendChild(styleSheet);
                 marker.styleId = styleId;
             }
             
@@ -3483,7 +3462,7 @@ async function loadVehicleModels() {
         const vehicleModelsCache = new Map();
         const CACHE_KEY = VEHICULES_CACHE;
         const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000; 
-        const cachedData = await getCachedData();
+        const cachedData = getCachedData();
         if (cachedData) {
             Object.assign(vehicleModels, cachedData.models);
             Object.assign(vehicleTypes, cachedData.types);
@@ -3498,7 +3477,8 @@ async function loadVehicleModels() {
         
         await loadVehicleFilesInBatches(txtFiles, 10); // Limite à 10 requêtes simultanées
         
-        await saveCacheData({
+        // Sauvegarder en cache
+        saveCacheData({
             models: vehicleModels,
             types: vehicleTypes,
             timestamp: Date.now()
@@ -3610,93 +3590,15 @@ function updateVehicleTypes(vehicleIds, params) {
     }
 }
 
-// ==================== CACHE OPTIMISÉ ====================
-const CacheManager = {
-    dbName: 'MyBusFinderCache',
-    version: 1,
-    
-    async openDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.version);
-            
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
-            
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('vehicles')) {
-                    db.createObjectStore('vehicles');
-                }
-            };
-        });
-    },
-    
-    async get(key) {
-        try {
-            const db = await this.openDB();
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['vehicles'], 'readonly');
-                const store = transaction.objectStore('vehicles');
-                const request = store.get(key);
-                
-                request.onsuccess = () => {
-                    const result = request.result;
-                    if (result && Date.now() - result.timestamp < 24 * 60 * 60 * 1000) {
-                        resolve(this.deserialize(result.data));
-                    } else {
-                        resolve(null);
-                    }
-                };
-                request.onerror = () => reject(request.error);
-            });
-        } catch (error) {
-            console.warn('Cache read error:', error);
+// Système de cache optimisé
+function getCachedData() {
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+        if (!cached || Date.now() - cached.timestamp > CACHE_DURATION_VEHICLES) {
             return null;
         }
-    },
-    
-    async set(key, data) {
-        try {
-            const db = await this.openDB();
-            const serialized = this.serialize(data);
-            
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['vehicles'], 'readwrite');
-                const store = transaction.objectStore('vehicles');
-                const request = store.put({
-                    data: serialized,
-                    timestamp: Date.now()
-                }, key);
-                
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
-        } catch (error) {
-            console.warn('Cache write error:', error);
-        }
-    },
-    
-    serialize(data) {
-        const result = {
-            models: {},
-            types: {}
-        };
         
-        for (const [key, model] of Object.entries(data.models)) {
-            result.models[key] = {
-                ...model,
-                vehicles: Array.from(model.vehicles)
-            };
-        }
-        
-        for (const [type, vehicles] of Object.entries(data.types)) {
-            result.types[type] = Array.from(vehicles);
-        }
-        
-        return result;
-    },
-    
-    deserialize(data) {
+        // Reconstituer les Sets depuis le cache
         const models = {};
         const types = {
             elec: new Set(),
@@ -3706,48 +3608,49 @@ const CacheManager = {
             clim: new Set()
         };
         
-        for (const [key, model] of Object.entries(data.models)) {
+        for (const [key, model] of Object.entries(cached.models)) {
             models[key] = {
                 ...model,
                 vehicles: new Set(model.vehicles)
             };
         }
         
-        for (const [type, vehicles] of Object.entries(data.types)) {
+        for (const [type, vehicles] of Object.entries(cached.types)) {
             types[type] = new Set(vehicles);
         }
         
         return { models, types };
-    },
-    
-    async clear() {
-        const db = await this.openDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(['vehicles'], 'readwrite');
-            const store = transaction.objectStore('vehicles');
-            const request = store.clear();
-            
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
+    } catch (error) {
+        console.warn('Erreur lors de la lecture du cache:', error);
+        return null;
     }
-};
-
-async function getCachedData() {
-    return await CacheManager.get('vehicleData');
 }
 
-async function saveCacheData(data) {
-    await CacheManager.set('vehicleData', data);
+function saveCacheData(data) {
+    try {
+        // Convertir les Sets en Arrays pour le stockage JSON
+        const cacheData = {
+            models: {},
+            types: {},
+            timestamp: data.timestamp
+        };
+        
+        for (const [key, model] of Object.entries(data.models)) {
+            cacheData.models[key] = {
+                ...model,
+                vehicles: Array.from(model.vehicles)
+            };
+        }
+        
+        for (const [type, vehicles] of Object.entries(data.types)) {
+            cacheData.types[type] = Array.from(vehicles);
+        }
+        
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    } catch (error) {
+        console.warn('Impossible de sauvegarder en cache:', error);
+    }
 }
-
-async function clearVehicleCache() {
-    await CacheManager.clear();
-    vehicleModelLookupCache.clear();
-    console.log('Cache des véhicules vidé');
-}
-// ==================== FIN CACHE OPTIMISÉ ====================
-
 
 const vehicleModelLookupCache = new Map();
 
