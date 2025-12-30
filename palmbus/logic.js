@@ -6350,26 +6350,25 @@ function getNextStopInfo(vehicleId) {
 
 const busesByLineAndDestination = {};
 
-    markerPool.active.forEach((marker, id) => {
-        const marker = markers[id];
-        const line = marker.line;
-        const destination = marker.destination || "Inconnue";
-        
-        if (!busesByLineAndDestination[line]) {
-            busesByLineAndDestination[line] = {};
-        }
+for (const [id, marker] of markerPool.active.entries()) {
+    const line = marker.line;
+    const destination = marker.destination || "Inconnue";
+    
+    if (!busesByLineAndDestination[line]) {
+        busesByLineAndDestination[line] = {};
+    }
 
-        if (!busesByLineAndDestination[line][destination]) {
-            busesByLineAndDestination[line][destination] = [];
-        }
+    if (!busesByLineAndDestination[line][destination]) {
+        busesByLineAndDestination[line][destination] = [];
+    }
 
-        busesByLineAndDestination[line][destination].push({
-            parkNumber: marker.id,
-            vehicle: marker,
-            vehicleData: marker.vehicleData,
-            nextStops: marker.rawData?.nextStops || []
-        });
+    busesByLineAndDestination[line][destination].push({
+        parkNumber: marker.id,
+        vehicle: marker,
+        vehicleData: marker.vehicleData,
+        nextStops: marker.rawData?.nextStops || []
     });
+}
 
 updateMenuStatistics();
 
