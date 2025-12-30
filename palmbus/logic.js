@@ -1,3 +1,49 @@
+        const isChromium = !!window.chrome;
+        const isGecko = typeof InstallTrigger !== 'undefined';
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+        // Ajuster les performances selon le navigateur
+        if (isSafari) {
+            // Safari : Intervalles plus longs
+            FetchManager.baseInterval = 6000;
+            FetchManager.currentInterval = 6000;
+            FetchManager.minInterval = 6000;
+            
+            console.log('Safari détecté : Mode performance optimisé');
+        } else if (isChromium) {
+            // Chromium : Intervalles moyens
+            FetchManager.baseInterval = 5000;
+            FetchManager.currentInterval = 5000;
+            FetchManager.minInterval = 4000;
+            
+            console.log('Chromium détecté : Mode standard');
+        } else if (isGecko) {
+            // Gecko : Intervalles normaux (les plus rapides)
+            FetchManager.baseInterval = 4000;
+            FetchManager.currentInterval = 4000;
+            FetchManager.minInterval = 4000;
+            
+            console.log('Gecko détecté : Mode performance maximale');
+        }
+
+        if (!window.requestIdleCallback) {
+            window.requestIdleCallback = function(callback, options) {
+                const start = Date.now();
+                return setTimeout(function() {
+                    callback({
+                        didTimeout: false,
+                        timeRemaining: function() {
+                            return Math.max(0, 50 - (Date.now() - start));
+                        }
+                    });
+                }, 1);
+            };
+            
+            window.cancelIdleCallback = function(id) {
+                clearTimeout(id);
+            };
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('nepasafficheraccueil') === 'true') {
                 const accueil = document.getElementById('accueil');
@@ -5070,6 +5116,12 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
     const marker = markerPool.get(markerId);
     if (!marker) return;
     
+    // Safari : Vérifier le support des tooltips
+    if (typeof L.tooltip !== 'function') {
+        console.warn('Tooltips non supportés');
+        return;
+    }
+    
     if (shouldShow && !marker.isPopupOpen()) {
         if (!marker.minimalPopup) {
             const minimalTooltip = TooltipManager.acquire();
@@ -5084,8 +5136,8 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     font-size: 11px;
                     color: ${textColor};
                     background: linear-gradient(135deg, ${color}f0, ${color}d0);
-                    backdrop-filter: blur(12px);
                     -webkit-backdrop-filter: blur(12px);
+                    backdrop-filter: blur(12px);
                     border-radius: 12px;
                     padding: 6px 10px;
                     box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
@@ -5094,7 +5146,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     cursor: pointer;
                     border: 1px solid ${color}60;
                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    -webkit-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                     transform: translateY(0);
+                    -webkit-transform: translateY(0) translateZ(0);
                 ">
                     <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
                         <div style="
@@ -5131,35 +5185,40 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 </div>
             `;
 
-            minimalTooltip
-                .setLatLng(marker.getLatLng())
-                .setContent(minimalContent)
-                .addTo(map);
+            try {
+                minimalTooltip
+                    .setLatLng(marker.getLatLng())
+                    .setContent(minimalContent)
+                    .addTo(map);
 
-            setTimeout(() => {
-                if (minimalTooltip._container) {
-                    const clickHandler = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const m = markerPool.get(markerId);
-                        if (m) m.openPopup();
-                    };
-                    
-                    minimalTooltip._container.addEventListener('mousedown', clickHandler);
-                    
-                    if (!minimalTooltip._container._eventHandlers) {
-                        minimalTooltip._container._eventHandlers = [];
+                setTimeout(() => {
+                    if (minimalTooltip._container) {
+                        const clickHandler = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const m = markerPool.get(markerId);
+                            if (m) m.openPopup();
+                        };
+                        
+                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
+                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
+                        
+                        if (!minimalTooltip._container._eventHandlers) {
+                            minimalTooltip._container._eventHandlers = [];
+                        }
+                        minimalTooltip._container._eventHandlers.push({
+                            event: 'mousedown',
+                            fn: clickHandler
+                        });
                     }
-                    minimalTooltip._container._eventHandlers.push({
-                        event: 'mousedown',
-                        fn: clickHandler
-                    });
-                }
-            }, 100);
-            
-            marker.minimalPopup = minimalTooltip;
-            TooltipManager.active.set(markerId, minimalTooltip);
-            window.minimalTooltipStates[markerId] = 'visible';
+                }, 150); 
+                
+                marker.minimalPopup = minimalTooltip;
+                TooltipManager.active.set(markerId, minimalTooltip);
+                window.minimalTooltipStates[markerId] = 'visible';
+            } catch (error) {
+                console.error('Erreur création tooltip Safari', error);
+            }
         }
     } else if (!shouldShow && marker.minimalPopup) {
         const tooltipContainer = marker.minimalPopup._container;
@@ -5175,20 +5234,28 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     delete window.minimalTooltipStates[markerId];
                     
                     if (tooltipToRemove) {
-                        map.removeLayer(tooltipToRemove);
-                        TooltipManager.release(tooltipToRemove);
-                        TooltipManager.active.delete(markerId);
+                        try {
+                            map.removeLayer(tooltipToRemove);
+                            TooltipManager.release(tooltipToRemove);
+                            TooltipManager.active.delete(markerId);
+                        } catch (error) {
+                            console.error('Erreur suppression tooltip Safari:', error);
+                        }
                     }
-                }, 200);
+                }, 300); // Délai plus long pour Safari
             }
         } else {
             const tooltipToRemove = marker.minimalPopup;
             marker.minimalPopup = null;
             delete window.minimalTooltipStates[markerId];
             
-            map.removeLayer(tooltipToRemove);
-            TooltipManager.release(tooltipToRemove);
-            TooltipManager.active.delete(markerId);
+            try {
+                map.removeLayer(tooltipToRemove);
+                TooltipManager.release(tooltipToRemove);
+                TooltipManager.active.delete(markerId);
+            } catch (error) {
+                console.error('Erreur suppression tooltip Safari:', error);
+            }
         }
     }
 }
@@ -7879,15 +7946,23 @@ const FetchManager = {
 // ==================== FIN FETCH ADAPTATIF ====================
 
 function initWorker() {
-    worker = new Worker('worker.js');
-    
-    worker.onerror = (error) => {
-        console.error('Erreur worker', error);
-        setTimeout(() => {
-            worker.terminate();
-            initWorker();
-        }, 1000);
-    };
+    try {
+        worker = new Worker('worker.js');
+        
+        worker.onerror = (error) => {
+            console.error('Erreur worker', error);
+            setTimeout(() => {
+                if (worker) {
+                    worker.terminate();
+                    worker = null;
+                }
+                initWorker();
+            }, 2000); 
+        };
+    } catch (error) {
+        console.error('Worker non supporté', error);
+        worker = null;
+    }
 }
 
 async function fetchTripUpdates() {
@@ -7897,15 +7972,28 @@ async function fetchTripUpdates() {
     const fetchStartTime = performance.now();
     
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // timeout après 5s
+        // Safari : AbortController peut poser problème
+        let timeoutId;
+        const controller = typeof AbortController !== 'undefined' 
+            ? new AbortController() 
+            : null;
         
-        const response = await fetch('proxy-cors/proxy_tripupdate.php', {
-            signal: controller.signal,
-            cache: 'no-store' 
-        });
+        const fetchOptions = {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache', // Safari a besoin de ça
+                'Pragma': 'no-cache'
+            }
+        };
         
-        clearTimeout(timeoutId);
+        if (controller) {
+            fetchOptions.signal = controller.signal;
+            timeoutId = setTimeout(() => controller.abort(), 8000); // 8s pour Safari
+        }
+        
+        const response = await fetch('proxy-cors/proxy_tripupdate.php', fetchOptions);
+        
+        if (timeoutId) clearTimeout(timeoutId);
         
         if (!response.ok) {
             throw new Error(`Erreur HTTP: ${response.status}`);
@@ -7914,21 +8002,32 @@ async function fetchTripUpdates() {
         const buffer = await response.arrayBuffer();
         const data = await decodeProtobuf(buffer);
         
-        const fetchTime = performance.now() - fetchStartTime;
+        // Safari : Vérifier si le worker existe
+        if (!worker) {
+            // Traitement synchrone en fallback
+            const processedData = processTripsSync(data);
+            tripUpdates = processedData;
+            fetchInProgress = false;
+            return tripUpdates;
+        }
         
         return new Promise((resolve, reject) => {
             const workerTimeoutId = setTimeout(() => {
                 reject(new Error('Worker timeout'));
-            }, 3000);
+                fetchInProgress = false;
+            }, 5000); // 5s pour Safari
             
             worker.onmessage = (e) => {
                 clearTimeout(workerTimeoutId);
-                const processTime = performance.now() - fetchStartTime;
-                
                 tripUpdates = e.data.tripUpdates;
-                
-                
                 resolve(e.data.tripUpdates);
+                fetchInProgress = false;
+            };
+            
+            worker.onerror = (error) => {
+                clearTimeout(workerTimeoutId);
+                console.error('Worker error:', error);
+                reject(error);
                 fetchInProgress = false;
             };
             
@@ -7941,6 +8040,38 @@ async function fetchTripUpdates() {
     }
 }
 
+function processTripsSync(data) {
+    const updates = {};
+    
+    if (!data.entity) return updates;
+    
+    data.entity.forEach(entity => {
+        if (entity.tripUpdate) {
+            const tripId = entity.tripUpdate.trip.tripId;
+            const stopUpdates = [];
+            
+            if (entity.tripUpdate.stopTimeUpdate) {
+                entity.tripUpdate.stopTimeUpdate.forEach(stopUpdate => {
+                    const stopId = stopUpdate.stopId || '';
+                    const arrivalDelay = stopUpdate.arrival ? stopUpdate.arrival.delay : 0;
+                    const departureDelay = stopUpdate.departure ? stopUpdate.departure.delay : 0;
+                    
+                    stopUpdates.push({
+                        stopId: stopId,
+                        arrivalDelay: arrivalDelay,
+                        departureDelay: departureDelay
+                    });
+                });
+            }
+            
+            updates[tripId] = {
+                stopUpdates: stopUpdates
+            };
+        }
+    });
+    
+    return updates;
+}
 
 let fetchTimerId = null;
 
