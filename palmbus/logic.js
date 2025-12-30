@@ -877,7 +877,7 @@
 
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "fluentdesign", {
                 icon: "🖌️",
-                label: "BecabDev Design System",
+                label: "BecabDev Liquid UI Design System",
                 description: "v1.0.0",
             });
 
@@ -1427,9 +1427,6 @@ function toggleSunOrientation(forceState) {
 }
 
 
-
-
-
 const markers = {};
 let lineColors = {};
 let lineName = {};
@@ -1439,6 +1436,166 @@ let selectedLine = null;
 let geoJsonLines = []; 
 let tripUpdates = {};
 let loadingInterval;
+
+// ==================== MARKER POOL ====================
+class MarkerPool {
+    constructor(maxSize = 200) {
+        this.pool = [];
+        this.active = new Map();
+        this.maxSize = maxSize;
+    }
+    
+    acquire(id, lat, lon, routeId, bearing) {
+        let marker = this.pool.pop();
+        
+        if (!marker) {
+            marker = createColoredMarker(lat, lon, routeId, bearing);
+        } else {
+            marker.setLatLng([lat, lon]);
+            this.updateMarkerStyle(marker, routeId, bearing);
+        }
+        
+        marker.id = id;
+        this.active.set(id, marker);
+        return marker;
+    }
+    
+    release(id) {
+        const marker = this.active.get(id);
+        if (!marker) return;
+        
+        if (marker.isPopupOpen()) {
+            marker.closePopup();
+        }
+        
+        if (marker.minimalPopup) {
+            map.removeLayer(marker.minimalPopup);
+            marker.minimalPopup = null;
+        }
+        
+        map.removeLayer(marker);
+        this.active.delete(id);
+        
+        if (this.pool.length < this.maxSize) {
+            this.pool.push(marker);
+        }
+    }
+    
+    updateMarkerStyle(marker, routeId, bearing) {
+        const color = lineColors[routeId] || '#000000';
+        
+        if (marker._icon) {
+            const markerIcon = marker._icon.querySelector('.marker-icon');
+            if (markerIcon) {
+                markerIcon.style.backgroundColor = color;
+            }
+            
+            const arrowElement = marker._icon.querySelector('.marker-arrow');
+            if (arrowElement) {
+                arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
+            }
+        }
+    }
+    
+    get(id) {
+        return this.active.get(id);
+    }
+    
+    has(id) {
+        return this.active.has(id);
+    }
+    
+    clear() {
+        this.active.forEach((marker, id) => this.release(id));
+        this.pool = [];
+    }
+}
+
+const markerPool = new MarkerPool();
+// ==================== FIN MARKER POOL ====================
+
+// ==================== EVENT MANAGER ====================
+class EventManager {
+    constructor() {
+        this.listeners = new Map();
+    }
+    
+    on(target, event, handler, id) {
+        const key = `${id}-${event}`;
+        this.off(target, event, id);
+        target.on(event, handler);
+        this.listeners.set(key, { target, event, handler });
+    }
+    
+    off(target, event, id) {
+        const key = `${id}-${event}`;
+        const listener = this.listeners.get(key);
+        if (listener) {
+            listener.target.off(event, listener.handler);
+            this.listeners.delete(key);
+        }
+    }
+    
+    clear() {
+        this.listeners.forEach(({ target, event, handler }) => {
+            target.off(event, handler);
+        });
+        this.listeners.clear();
+    }
+}
+
+const eventManager = new EventManager();
+// ==================== FIN EVENT MANAGER ====================
+
+// ==================== STYLE MANAGER ====================
+const StyleManager = {
+    styles: new Map(),
+    maxStyles: 10,
+    
+    applyMenuStyle(textColor) {
+        document.querySelectorAll('.menu-color-style').forEach(style => {
+            if (!this.styles.has(style.id)) {
+                style.remove();
+            }
+        });
+        
+        if (this.styles.size >= this.maxStyles) {
+            const oldestId = this.styles.keys().next().value;
+            const oldStyle = document.getElementById(oldestId);
+            if (oldStyle) oldStyle.remove();
+            this.styles.delete(oldestId);
+        }
+        
+        const styleId = `style-${Date.now()}`;
+        const styleSheet = document.createElement('style');
+        styleSheet.id = styleId;
+        styleSheet.classList.add('menu-color-style');
+        
+        styleSheet.textContent = `
+            #menubtm * {
+                color: ${textColor};
+            }
+        `;
+        
+        document.head.appendChild(styleSheet);
+        this.styles.set(styleId, Date.now());
+        
+        return styleId;
+    },
+    
+    removeStyle(styleId) {
+        const style = document.getElementById(styleId);
+        if (style) {
+            style.remove();
+            this.styles.delete(styleId);
+        }
+    },
+    
+    clearAll() {
+        this.styles.forEach((_, id) => this.removeStyle(id));
+    }
+};
+// ==================== FIN STYLE MANAGER ====================
 
 
 function showLoadingScreen() {
@@ -2342,6 +2499,123 @@ let lastActiveMarkerId = null;
 let lastActiveColor = null;
 window.isMenuShowed = false;
 
+// ==================== TEXT COLOR UTILS ====================
+const TextColorUtils = {
+    cache: new Map(),
+    maxCacheSize: 100,
+    
+    getOptimal(bgColor, options = {}) {
+        const cacheKey = `${bgColor}-${JSON.stringify(options)}`;
+        
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
+        }
+        
+        const result = this._calculate(bgColor, options);
+        
+        if (this.cache.size >= this.maxCacheSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        
+        this.cache.set(cacheKey, result);
+        return result;
+    },
+    
+    _calculate(bgColor, options = {}) {
+        const {
+            contrastRatio = 4.5,
+            darkColor = '#1a1a1a',
+            lightColor = '#f8f9fa'
+        } = options;
+
+        let r, g, b, a = 1;
+
+        if (!bgColor) return darkColor;
+        bgColor = bgColor.trim();
+
+        if (bgColor.startsWith('rgb')) {
+            const values = bgColor.match(/\d+(\.\d+)?/g);
+            if (values) {
+                r = parseInt(values[0]);
+                g = parseInt(values[1]);
+                b = parseInt(values[2]);
+                a = values[3] ? parseFloat(values[3]) : 1;
+            } else {
+                return darkColor;
+            }
+        } else {
+            if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                    (_, r, g, b) => '#' + r + r + g + g + b + b);
+            }
+
+            if (bgColor.length === 7) {
+                r = parseInt(bgColor.slice(1, 3), 16);
+                g = parseInt(bgColor.slice(3, 5), 16);
+                b = parseInt(bgColor.slice(5, 7), 16);
+            } else if (bgColor.length === 9) {
+                r = parseInt(bgColor.slice(1, 3), 16);
+                g = parseInt(bgColor.slice(3, 5), 16);
+                b = parseInt(bgColor.slice(5, 7), 16);
+                a = parseInt(bgColor.slice(7, 9), 16) / 255;
+            } else {
+                return darkColor;
+            }
+        }
+
+        r = Math.max(0, Math.min(255, r));
+        g = Math.max(0, Math.min(255, g));
+        b = Math.max(0, Math.min(255, b));
+
+        const srgb = [r, g, b].map(c => {
+            const val = c / 255;
+            return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+        });
+        const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+        const getLuminance = (color) => {
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16) / 255;
+            const g = parseInt(hex.substr(2, 2), 16) / 255;
+            const b = parseInt(hex.substr(4, 2), 16) / 255;
+            const srgb = [r, g, b].map(c => 
+                c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+            );
+            return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+        };
+
+        const darkLuminance = getLuminance(darkColor);
+        const lightLuminance = getLuminance(lightColor);
+
+        const contrastWithDark = luminance > darkLuminance 
+            ? (luminance + 0.05) / (darkLuminance + 0.05)
+            : (darkLuminance + 0.05) / (luminance + 0.05);
+        
+        const contrastWithLight = luminance > lightLuminance 
+            ? (luminance + 0.05) / (lightLuminance + 0.05)
+            : (lightLuminance + 0.05) / (luminance + 0.05);
+
+        const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+        if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+            return isMediumDark ? lightColor : (luminance > 0.18 ? darkColor : lightColor);
+        } else if (contrastWithDark >= contrastRatio) {
+            return isMediumDark ? lightColor : darkColor;
+        } else if (contrastWithLight >= contrastRatio) {
+            return lightColor;
+        } else {
+            if (isMediumDark || luminance < 0.15) return lightColor;
+            return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+        }
+    },
+    
+    clearCache() {
+        this.cache.clear();
+    }
+};
+// ==================== FIN TEXT COLOR UTILS ====================
+
 
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
@@ -2478,136 +2752,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
                 menubtm.style.backgroundColor = `${color}9c`;
 
-                function getOptimalTextColor(bgColor, options = {}) {
-                    const {
-                        contrastRatio = 4.5,
-                        darkColor = '#1a1a1a',
-                        lightColor = '#f8f9fa',
-                        useGradient = false 
-                    } = options;
-
-                    let r, g, b, a = 1;
-
-                    if (!bgColor) return darkColor;
-
-                    bgColor = bgColor.trim();
-
-                    if (bgColor.startsWith('rgb')) {
-                        const values = bgColor.match(/\d+(\.\d+)?/g);
-                        if (values) {
-                            r = parseInt(values[0]);
-                            g = parseInt(values[1]);
-                            b = parseInt(values[2]);
-                            a = values[3] ? parseFloat(values[3]) : 1;
-                        } else {
-                            return darkColor;
-                        }
-                    } else {
-                        // Parse hex colors
-                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
-                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                                (_, r, g, b) => '#' + r + r + g + g + b + b);
-                        }
-
-                        if (bgColor.length === 7) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                        } else if (bgColor.length === 9) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else {
-                            return darkColor;
-                        }
-                    }
-
-                    // Clamp values
-                    r = Math.max(0, Math.min(255, r));
-                    g = Math.max(0, Math.min(255, g));
-                    b = Math.max(0, Math.min(255, b));
-
-                    // Calculate luminance of background
-                    const srgb = [r, g, b].map(c => {
-                        const val = c / 255;
-                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-                    });
-                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-                    // Helper function to calculate luminance from hex
-                    const getLuminance = (color) => {
-                        const hex = color.replace('#', '');
-                        const r = parseInt(hex.substr(0, 2), 16) / 255;
-                        const g = parseInt(hex.substr(2, 2), 16) / 255;
-                        const b = parseInt(hex.substr(4, 2), 16) / 255;
-                        const srgb = [r, g, b].map(c => 
-                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-                        );
-                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-                    };
-
-                    // Calculate contrast ratios
-                    const darkLuminance = getLuminance(darkColor);
-                    const lightLuminance = getLuminance(lightColor);
-
-                    const contrastWithDark = luminance > darkLuminance 
-                        ? (luminance + 0.05) / (darkLuminance + 0.05)
-                        : (darkLuminance + 0.05) / (luminance + 0.05);
-                    
-                    const contrastWithLight = luminance > lightLuminance 
-                        ? (luminance + 0.05) / (lightLuminance + 0.05)
-                        : (lightLuminance + 0.05) / (luminance + 0.05);
-
-                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
-                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
-                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
-
-                    // Si les deux couleurs passent le test de contraste
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } 
-                    // Si seule la couleur foncée passe
-                    else if (contrastWithDark >= contrastRatio) {
-                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        return darkColor;
-                    } 
-                    // Si seule la couleur claire passe
-                    else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } 
-                    // Aucune ne passe vraiment le test
-                    else {
-                        // Pour les couleurs moyennes-foncées, forcer le clair
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        
-                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
-                        if (luminance < 0.15) {
-                            return lightColor; 
-                        }
-                        
-                        // Sinon prendre le meilleur contraste disponible
-                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
-                    }
-                }
-
-                const textColor = getOptimalTextColor(color);
-                if (getOptimalTextColor(color) === '#1a1a1a') {
+                const textColor = TextColorUtils.getOptimal(color);
+                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
                     document
                         .querySelectorAll('#menubtm img')
                         .forEach(img => {
@@ -2624,154 +2770,12 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
 
 
                 
-                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
-                
-                const styleSheet = document.createElement('style');
-                styleSheet.id = styleId;
-                styleSheet.classList.add('menu-color-style');
-                
-                styleSheet.textContent = `
-                    #menubtm * {
-                        color: ${textColor};
-                    }
-                `;
-                
-                document.head.appendChild(styleSheet);
+                const styleId = StyleManager.applyMenuStyle(textColor);
                 marker.styleId = styleId;
             } else {
                 const currentColor = window.getComputedStyle(menubtm).backgroundColor;
-                
-                function getOptimalTextColor(bgColor, options = {}) {
-                    const {
-                        contrastRatio = 4.5,
-                        darkColor = '#1a1a1a',
-                        lightColor = '#f8f9fa',
-                        useGradient = false 
-                    } = options;
-
-                    let r, g, b, a = 1;
-
-                    if (!bgColor) return darkColor;
-
-                    bgColor = bgColor.trim();
-
-                    if (bgColor.startsWith('rgb')) {
-                        const values = bgColor.match(/\d+(\.\d+)?/g);
-                        if (values) {
-                            r = parseInt(values[0]);
-                            g = parseInt(values[1]);
-                            b = parseInt(values[2]);
-                            a = values[3] ? parseFloat(values[3]) : 1;
-                        } else {
-                            return darkColor;
-                        }
-                    } else {
-                        // Parse hex colors
-                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
-                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                                (_, r, g, b) => '#' + r + r + g + g + b + b);
-                        }
-
-                        if (bgColor.length === 7) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                        } else if (bgColor.length === 9) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else {
-                            return darkColor;
-                        }
-                    }
-
-                    // Clamp values
-                    r = Math.max(0, Math.min(255, r));
-                    g = Math.max(0, Math.min(255, g));
-                    b = Math.max(0, Math.min(255, b));
-
-                    // Calculate luminance of background
-                    const srgb = [r, g, b].map(c => {
-                        const val = c / 255;
-                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-                    });
-                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-                    // Helper function to calculate luminance from hex
-                    const getLuminance = (color) => {
-                        const hex = color.replace('#', '');
-                        const r = parseInt(hex.substr(0, 2), 16) / 255;
-                        const g = parseInt(hex.substr(2, 2), 16) / 255;
-                        const b = parseInt(hex.substr(4, 2), 16) / 255;
-                        const srgb = [r, g, b].map(c => 
-                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-                        );
-                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-                    };
-
-                    // Calculate contrast ratios
-                    const darkLuminance = getLuminance(darkColor);
-                    const lightLuminance = getLuminance(lightColor);
-
-                    const contrastWithDark = luminance > darkLuminance 
-                        ? (luminance + 0.05) / (darkLuminance + 0.05)
-                        : (darkLuminance + 0.05) / (luminance + 0.05);
-                    
-                    const contrastWithLight = luminance > lightLuminance 
-                        ? (luminance + 0.05) / (lightLuminance + 0.05)
-                        : (lightLuminance + 0.05) / (luminance + 0.05);
-
-                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
-                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
-                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
-
-                    // Si les deux couleurs passent le test de contraste
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } 
-                    // Si seule la couleur foncée passe
-                    else if (contrastWithDark >= contrastRatio) {
-                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        return darkColor;
-                    } 
-                    // Si seule la couleur claire passe
-                    else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } 
-                    // Aucune ne passe vraiment le test
-                    else {
-                        // Pour les couleurs moyennes-foncées, forcer le clair
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        
-                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
-                        if (luminance < 0.15) {
-                            return lightColor; 
-                        }
-                        
-                        // Sinon prendre le meilleur contraste disponible
-                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
-                    }
-                }
-
-
-                const textColor = getOptimalTextColor(color);
-                if (getOptimalTextColor(color) === '#1a1a1a') {
+                const textColor = TextColorUtils.getOptimal(color);
+                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
                     document
                         .querySelectorAll('#menubtm img')
                         .forEach(img => {
@@ -2784,26 +2788,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                             img.style.filter = 'invert(0)';
                         });
                 }
-
-                
-                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
                 
                 menubtm.style.backgroundColor = `${color}9c`;
-
-                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
-                
-                const styleSheet = document.createElement('style');
-                styleSheet.id = styleId;
-                styleSheet.classList.add('menu-color-style');
-                
-                styleSheet.textContent = `
-                    #menubtm * {
-                        color: ${textColor};
-                    }
-
-                `;
-                
-                document.head.appendChild(styleSheet);
+                const styleId = StyleManager.applyMenuStyle(textColor);
                 marker.styleId = styleId;
             }
             
@@ -2841,136 +2828,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         styleSheet.id = styleId;
                         styleSheet.classList.add('menu-color-style');
                         
-                        function getOptimalTextColor(bgColor, options = {}) {
-                            const {
-                                contrastRatio = 4.5,
-                                darkColor = '#1a1a1a',
-                                lightColor = '#f8f9fa',
-                                useGradient = false 
-                            } = options;
 
-                            let r, g, b, a = 1;
-
-                            if (!bgColor) return darkColor;
-
-                            bgColor = bgColor.trim();
-
-                            if (bgColor.startsWith('rgb')) {
-                                const values = bgColor.match(/\d+(\.\d+)?/g);
-                                if (values) {
-                                    r = parseInt(values[0]);
-                                    g = parseInt(values[1]);
-                                    b = parseInt(values[2]);
-                                    a = values[3] ? parseFloat(values[3]) : 1;
-                                } else {
-                                    return darkColor;
-                                }
-                            } else {
-                                // Parse hex colors
-                                if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
-                                    bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                                        (_, r, g, b) => '#' + r + r + g + g + b + b);
-                                }
-
-                                if (bgColor.length === 7) {
-                                    r = parseInt(bgColor.slice(1, 3), 16);
-                                    g = parseInt(bgColor.slice(3, 5), 16);
-                                    b = parseInt(bgColor.slice(5, 7), 16);
-                                } else if (bgColor.length === 9) {
-                                    r = parseInt(bgColor.slice(1, 3), 16);
-                                    g = parseInt(bgColor.slice(3, 5), 16);
-                                    b = parseInt(bgColor.slice(5, 7), 16);
-                                    a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                                } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
-                                    r = parseInt(bgColor.slice(1, 3), 16);
-                                    g = parseInt(bgColor.slice(3, 5), 16);
-                                    b = parseInt(bgColor.slice(5, 7), 16);
-                                    a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                                } else {
-                                    return darkColor;
-                                }
-                            }
-
-                            // Clamp values
-                            r = Math.max(0, Math.min(255, r));
-                            g = Math.max(0, Math.min(255, g));
-                            b = Math.max(0, Math.min(255, b));
-
-                            // Calculate luminance of background
-                            const srgb = [r, g, b].map(c => {
-                                const val = c / 255;
-                                return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-                            });
-                            const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-                            // Helper function to calculate luminance from hex
-                            const getLuminance = (color) => {
-                                const hex = color.replace('#', '');
-                                const r = parseInt(hex.substr(0, 2), 16) / 255;
-                                const g = parseInt(hex.substr(2, 2), 16) / 255;
-                                const b = parseInt(hex.substr(4, 2), 16) / 255;
-                                const srgb = [r, g, b].map(c => 
-                                    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-                                );
-                                return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-                            };
-
-                            // Calculate contrast ratios
-                            const darkLuminance = getLuminance(darkColor);
-                            const lightLuminance = getLuminance(lightColor);
-
-                            const contrastWithDark = luminance > darkLuminance 
-                                ? (luminance + 0.05) / (darkLuminance + 0.05)
-                                : (darkLuminance + 0.05) / (luminance + 0.05);
-                            
-                            const contrastWithLight = luminance > lightLuminance 
-                                ? (luminance + 0.05) / (lightLuminance + 0.05)
-                                : (lightLuminance + 0.05) / (luminance + 0.05);
-
-                            // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
-                            // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
-                            const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
-
-                            // Si les deux couleurs passent le test de contraste
-                            if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                                // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
-                                if (isMediumDark) {
-                                    return lightColor;
-                                }
-                                // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
-                                return luminance > 0.18 ? darkColor : lightColor;
-                            } 
-                            // Si seule la couleur foncée passe
-                            else if (contrastWithDark >= contrastRatio) {
-                                // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
-                                if (isMediumDark) {
-                                    return lightColor;
-                                }
-                                return darkColor;
-                            } 
-                            // Si seule la couleur claire passe
-                            else if (contrastWithLight >= contrastRatio) {
-                                return lightColor;
-                            } 
-                            // Aucune ne passe vraiment le test
-                            else {
-                                // Pour les couleurs moyennes-foncées, forcer le clair
-                                if (isMediumDark) {
-                                    return lightColor;
-                                }
-                                
-                                // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
-                                if (luminance < 0.15) {
-                                    return lightColor; 
-                                }
-                                
-                                // Sinon prendre le meilleur contraste disponible
-                                return contrastWithDark > contrastWithLight ? darkColor : lightColor;
-                            }
-                        }
-
-
-                        const textColor = getOptimalTextColor(color);
+                        const textColor = TextColorUtils.getOptimal(color);
 
                         document
                             .querySelectorAll('#menubtm img')
@@ -3045,37 +2904,72 @@ const additionalCSS = `
 }
 `;
 
-function animateMarker(marker, newPosition) {
-    const startLatLng = marker.getLatLng();
-    const endLatLng = L.latLng(newPosition[0], newPosition[1]);
-    const duration = 1000; 
-    const startTime = performance.now();
-
-    if (marker.animationFrame) {
-        cancelAnimationFrame(marker.animationFrame);
-    }
-
-    function easeInOutQuad(t) {
+const AnimationManager = {
+    activeAnimations: new Map(),
+    
+    easeInOutQuad(t) {
         return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    }
-
-    function animate(time) {
-        const elapsed = time - startTime;
-        const linearProgress = Math.min(elapsed / duration, 1);
+    },
+    
+    animateMarker(marker, newPosition, duration = 1000) {
+        const markerId = marker.id;
         
-        const easedProgress = easeInOutQuad(linearProgress);
-        
-        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
-        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
-        
-        marker.setLatLng([lat, lng]);
-
-        if (linearProgress < 1) {
-            marker.animationFrame = requestAnimationFrame(animate);
+        // Annuler l'animation existante
+        if (this.activeAnimations.has(markerId)) {
+            cancelAnimationFrame(this.activeAnimations.get(markerId).frameId);
         }
-    }
+        
+        const startLatLng = marker.getLatLng();
+        const endLatLng = L.latLng(newPosition[0], newPosition[1]);
+        
+        // Si distance trop courte, pas d'animation
+        const distance = startLatLng.distanceTo(endLatLng);
+        if (distance < 5) {
+            marker.setLatLng(endLatLng);
+            return;
+        }
+        
+        const startTime = performance.now();
+        
+        const animate = (time) => {
+            const elapsed = time - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easedProgress = this.easeInOutQuad(progress);
+            
+            const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * easedProgress;
+            const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * easedProgress;
+            
+            marker.setLatLng([lat, lng]);
 
-    marker.animationFrame = requestAnimationFrame(animate);
+            if (progress < 1) {
+                const frameId = requestAnimationFrame(animate);
+                this.activeAnimations.set(markerId, { frameId });
+            } else {
+                this.activeAnimations.delete(markerId);
+            }
+        };
+        
+        const frameId = requestAnimationFrame(animate);
+        this.activeAnimations.set(markerId, { frameId });
+    },
+    
+    cancelAnimation(markerId) {
+        if (this.activeAnimations.has(markerId)) {
+            cancelAnimationFrame(this.activeAnimations.get(markerId).frameId);
+            this.activeAnimations.delete(markerId);
+        }
+    },
+    
+    cancelAll() {
+        this.activeAnimations.forEach(({ frameId }) => {
+            cancelAnimationFrame(frameId);
+        });
+        this.activeAnimations.clear();
+    }
+};
+
+function animateMarker(marker, newPosition) {
+    AnimationManager.animateMarker(marker, newPosition);
 }
 
 let busStopLayers = [];
@@ -3621,26 +3515,27 @@ async function loadVehicleModels() {
     try {
         const { nomdureseau } = await getSetvar();
         let VEHICULES_CACHE = nomdureseau;
-        const vehicleModelsCache = new Map();
-        const CACHE_KEY = VEHICULES_CACHE;
-        const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000; 
-        const cachedData = getCachedData();
+        const CACHE_DURATION_VEHICLES = 24 * 60 * 60 * 1000;
+        const cachedData = await getCachedData();
+        
         if (cachedData) {
             Object.assign(vehicleModels, cachedData.models);
             Object.assign(vehicleTypes, cachedData.types);
             console.log('Données chargées depuis le cache');
+            
+            // Vérifier si mise à jour nécessaire en arrière-plan
+            requestIdleCallback(() => checkForVehicleUpdates());
             return;
         }
 
         const response = await fetch('setvar/vehicules/index.php');
         const fileList = await response.json();
-        
         const txtFiles = fileList.filter(file => file.endsWith('.txt'));
         
-        await loadVehicleFilesInBatches(txtFiles, 10); // Limite à 10 requêtes simultanées
+        // Charger par priorité
+        await loadVehiclesByPriority(txtFiles);
         
-        // Sauvegarder en cache
-        saveCacheData({
+        await saveCacheData({
             models: vehicleModels,
             types: vehicleTypes,
             timestamp: Date.now()
@@ -3654,6 +3549,82 @@ async function loadVehicleModels() {
         soundsUX('MBF_NotificationError');
     }
 }
+
+// ==================== LAZY LOADING VÉHICULES ====================
+async function loadVehiclesByPriority(fileList) {
+    const visibleVehicles = new Set();
+    
+    // Identifier les véhicules visibles
+    Object.values(markerPool.active).forEach(marker => {
+        if (map.getBounds().contains(marker.getLatLng())) {
+            visibleVehicles.add(marker.id);
+        }
+    });
+    
+    const priorityFiles = [];
+    const normalFiles = [];
+    
+    // Trier les fichiers par priorité
+    fileList.forEach(file => {
+        const vehicleId = file.replace('.txt', '');
+        if (visibleVehicles.has(vehicleId)) {
+            priorityFiles.push(file);
+        } else {
+            normalFiles.push(file);
+        }
+    });
+    
+    console.log(`Chargement prioritaire: ${priorityFiles.length} véhicules visibles`);
+    
+    // Charger d'abord les véhicules visibles
+    if (priorityFiles.length > 0) {
+        await loadVehicleFilesInBatches(priorityFiles, 5);
+    }
+    
+    // Charger le reste en arrière-plan
+    if (normalFiles.length > 0) {
+        requestIdleCallback(async () => {
+            await loadVehicleFilesInBatches(normalFiles, 10);
+            console.log('Chargement complet des véhicules terminé');
+            
+            // Sauvegarder en cache
+            await saveCacheData({
+                models: vehicleModels,
+                types: vehicleTypes,
+                timestamp: Date.now()
+            });
+        });
+    } else {
+        // Tout est chargé, sauvegarder immédiatement
+        await saveCacheData({
+            models: vehicleModels,
+            types: vehicleTypes,
+            timestamp: Date.now()
+        });
+    }
+}
+
+async function checkForVehicleUpdates() {
+    try {
+        const response = await fetch('setvar/vehicules/index.php');
+        const fileList = await response.json();
+        const txtFiles = fileList.filter(file => file.endsWith('.txt'));
+        
+        // Comparer avec le cache actuel
+        const cachedCount = Object.keys(vehicleModels).length;
+        
+        if (txtFiles.length !== cachedCount) {
+            console.log('Mise à jour des véhicules détectée, rechargement...');
+            Object.keys(vehicleModels).forEach(key => delete vehicleModels[key]);
+            Object.keys(vehicleTypes).forEach(key => vehicleTypes[key].clear());
+            
+            await loadVehiclesByPriority(txtFiles);
+        }
+    } catch (error) {
+        console.warn('Erreur vérification mises à jour véhicules:', error);
+    }
+}
+// ==================== FIN LAZY LOADING VÉHICULES ====================
 
 async function loadVehicleFilesInBatches(fileList, batchSize = 10) {
     const results = [];
@@ -3752,15 +3723,93 @@ function updateVehicleTypes(vehicleIds, params) {
     }
 }
 
-// Système de cache optimisé
-function getCachedData() {
-    try {
-        const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
-        if (!cached || Date.now() - cached.timestamp > CACHE_DURATION_VEHICLES) {
+// ==================== CACHE OPTIMISÉ ====================
+const CacheManager = {
+    dbName: 'MyBusFinderCache',
+    version: 1,
+    
+    async openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, this.version);
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('vehicles')) {
+                    db.createObjectStore('vehicles');
+                }
+            };
+        });
+    },
+    
+    async get(key) {
+        try {
+            const db = await this.openDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['vehicles'], 'readonly');
+                const store = transaction.objectStore('vehicles');
+                const request = store.get(key);
+                
+                request.onsuccess = () => {
+                    const result = request.result;
+                    if (result && Date.now() - result.timestamp < 24 * 60 * 60 * 1000) {
+                        resolve(this.deserialize(result.data));
+                    } else {
+                        resolve(null);
+                    }
+                };
+                request.onerror = () => reject(request.error);
+            });
+        } catch (error) {
+            console.warn('Cache read error:', error);
             return null;
         }
+    },
+    
+    async set(key, data) {
+        try {
+            const db = await this.openDB();
+            const serialized = this.serialize(data);
+            
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(['vehicles'], 'readwrite');
+                const store = transaction.objectStore('vehicles');
+                const request = store.put({
+                    data: serialized,
+                    timestamp: Date.now()
+                }, key);
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        } catch (error) {
+            console.warn('Cache write error:', error);
+        }
+    },
+    
+    serialize(data) {
+        const result = {
+            models: {},
+            types: {}
+        };
         
-        // Reconstituer les Sets depuis le cache
+        for (const [key, model] of Object.entries(data.models)) {
+            result.models[key] = {
+                ...model,
+                vehicles: Array.from(model.vehicles)
+            };
+        }
+        
+        for (const [type, vehicles] of Object.entries(data.types)) {
+            result.types[type] = Array.from(vehicles);
+        }
+        
+        return result;
+    },
+    
+    deserialize(data) {
         const models = {};
         const types = {
             elec: new Set(),
@@ -3770,49 +3819,48 @@ function getCachedData() {
             clim: new Set()
         };
         
-        for (const [key, model] of Object.entries(cached.models)) {
+        for (const [key, model] of Object.entries(data.models)) {
             models[key] = {
                 ...model,
                 vehicles: new Set(model.vehicles)
             };
         }
         
-        for (const [type, vehicles] of Object.entries(cached.types)) {
+        for (const [type, vehicles] of Object.entries(data.types)) {
             types[type] = new Set(vehicles);
         }
         
         return { models, types };
-    } catch (error) {
-        console.warn('Erreur lors de la lecture du cache:', error);
-        return null;
+    },
+    
+    async clear() {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(['vehicles'], 'readwrite');
+            const store = transaction.objectStore('vehicles');
+            const request = store.clear();
+            
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
     }
+};
+
+async function getCachedData() {
+    return await CacheManager.get('vehicleData');
 }
 
-function saveCacheData(data) {
-    try {
-        // Convertir les Sets en Arrays pour le stockage JSON
-        const cacheData = {
-            models: {},
-            types: {},
-            timestamp: data.timestamp
-        };
-        
-        for (const [key, model] of Object.entries(data.models)) {
-            cacheData.models[key] = {
-                ...model,
-                vehicles: Array.from(model.vehicles)
-            };
-        }
-        
-        for (const [type, vehicles] of Object.entries(data.types)) {
-            cacheData.types[type] = Array.from(vehicles);
-        }
-        
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    } catch (error) {
-        console.warn('Impossible de sauvegarder en cache:', error);
-    }
+async function saveCacheData(data) {
+    await CacheManager.set('vehicleData', data);
 }
+
+async function clearVehicleCache() {
+    await CacheManager.clear();
+    vehicleModelLookupCache.clear();
+    console.log('Cache des véhicules vidé');
+}
+// ==================== FIN CACHE OPTIMISÉ ====================
+
 
 const vehicleModelLookupCache = new Map();
 
@@ -4354,9 +4402,15 @@ function debounce(func, wait) {
 }
 
 async function fetchVehiclePositions() {
-        if (!gtfsInitialized) {
-            return;
-        }
+    if (!gtfsInitialized) {
+        return;
+    }
+    
+    // Throttling basé sur la visibilité
+    if (document.hidden) {
+        console.log('Page cachée, skip fetch');
+        return;
+    }
 
         if (!window.timeAnimationStyleAdded) {
         const timeAnimationStyle = `
@@ -4966,145 +5020,178 @@ async function fetchVehiclePositions() {
                 }
 
 
-                function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
-                    const marker = markers[markerId];
-                    if (!marker) return;
+const TooltipManager = {
+    pool: [],
+    maxPoolSize: 50,
+    active: new Map(),
+    
+    acquire() {
+        let tooltip = this.pool.pop();
+        if (!tooltip) {
+            tooltip = L.tooltip({
+                permanent: true,
+                direction: 'center',
+                className: 'minimal-tooltip-container',
+                offset: [0, 0],
+                opacity: 1
+            });
+        }
+        return tooltip;
+    },
+    
+    release(tooltip) {
+        if (!tooltip) return;
+        
+        if (tooltip._container) {
+            const handlers = tooltip._container._eventHandlers;
+            if (handlers) {
+                handlers.forEach(handler => {
+                    tooltip._container.removeEventListener(handler.event, handler.fn);
+                });
+            }
+        }
+        
+        if (this.pool.length < this.maxPoolSize) {
+            this.pool.push(tooltip);
+        }
+    },
+    
+    clear() {
+        this.active.forEach((tooltip) => {
+            map.removeLayer(tooltip);
+        });
+        this.active.clear();
+        this.pool = [];
+    }
+};
+
+function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
+    const marker = markerPool.get(markerId);
+    if (!marker) return;
+    
+    if (shouldShow && !marker.isPopupOpen()) {
+        if (!marker.minimalPopup) {
+            const minimalTooltip = TooltipManager.acquire();
+            
+            const color = lineColors[marker.line] || '#000000';
+            const textColor = TextColorUtils.getOptimal(color);
+            
+            const minimalContent = `
+                <div class="minimal-popup minimal-popup-appear" style="
+                    position: relative;
+                    font-family: 'League Spartan', sans-serif;
+                    font-size: 11px;
+                    color: ${textColor};
+                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
+                    backdrop-filter: blur(12px);
+                    -webkit-backdrop-filter: blur(12px);
+                    border-radius: 12px;
+                    padding: 6px 10px;
+                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
+                    min-width: 80px;
+                    max-width: 140px;
+                    cursor: pointer;
+                    border: 1px solid ${color}60;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    transform: translateY(0);
+                ">
+                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                        <div style="
+                            background: rgba(255,255,255,0.2);
+                            border-radius: 6px;
+                            padding: 2px 6px;
+                            font-weight: 600;
+                            font-size: 10px;
+                            line-height: 1.2;
+                        ">
+                            ${lineName[marker.line] || t("unknownline")}
+                        </div>
+                        <div style="
+                            background: rgba(0,0,0,0.3);
+                            border-radius: 4px;
+                            padding: 1px 4px;
+                            font-size: 9px;
+                            font-weight: 500;
+                        ">
+                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
+                        </div>
+                    </div>
+                    <div style="
+                        font-size: 9px; 
+                        opacity: 0.85; 
+                        margin-top: 2px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        font-weight: 400;
+                    ">
+                        ➜ ${marker.destination || t("unknowndestination")}
+                    </div>
+                </div>
+            `;
+
+            minimalTooltip
+                .setLatLng(marker.getLatLng())
+                .setContent(minimalContent)
+                .addTo(map);
+
+            setTimeout(() => {
+                if (minimalTooltip._container) {
+                    const clickHandler = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const m = markerPool.get(markerId);
+                        if (m) m.openPopup();
+                    };
                     
-                    if (shouldShow && !marker.isPopupOpen()) {
-                        if (!marker.minimalPopup) {
-                            // essayons de reutiliser un tooltip existant du pool
-                            let minimalTooltip = getFromPool();
-                            
-                            if (!minimalTooltip) {
-                                minimalTooltip = L.tooltip({
-                                    permanent: true,
-                                    direction: 'center',
-                                    className: 'minimal-tooltip-container',
-                                    offset: [0, 0],
-                                    opacity: 1
-                                });
-                            }
-                            
-                            const color = lineColors[marker.line] || '#000000';
-                            const textColor = getOptimalTextColor(color);
-                            
-                            const minimalContent = `
-                                <div class="minimal-popup minimal-popup-appear" style="
-                                    position: relative;
-                                    font-family: 'League Spartan', sans-serif;
-                                    font-size: 11px;
-                                    color: ${textColor};
-                                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
-                                    backdrop-filter: blur(12px);
-                                    -webkit-backdrop-filter: blur(12px);
-                                    border-radius: 12px;
-                                    padding: 6px 10px;
-                                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
-                                    min-width: 80px;
-                                    max-width: 140px;
-                                    cursor: pointer;
-                                    border: 1px solid ${color}60;
-                                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                                    transform: translateY(0);
-                                ">
-                                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                                        <div style="
-                                            background: rgba(255,255,255,0.2);
-                                            border-radius: 6px;
-                                            padding: 2px 6px;
-                                            font-weight: 600;
-                                            font-size: 10px;
-                                            line-height: 1.2;
-                                        ">
-                                            ${lineName[marker.line] || t("unknownline")}
-                                        </div>
-                                        <div style="
-                                            background: rgba(0,0,0,0.3);
-                                            border-radius: 4px;
-                                            padding: 1px 4px;
-                                            font-size: 9px;
-                                            font-weight: 500;
-                                        ">
-                                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
-                                        </div>
-                                    </div>
-                                    <div style="
-                                        font-size: 9px; 
-                                        opacity: 0.85; 
-                                        margin-top: 2px;
-                                        overflow: hidden;
-                                        text-overflow: ellipsis;
-                                        white-space: nowrap;
-                                        font-weight: 400;
-                                    ">
-                                        ➜ ${marker.destination || t("unknowndestination")}
-                                    </div>
-                                </div>
-                            `;
-
-
-                            minimalTooltip
-                                .setLatLng(marker.getLatLng())
-                                .setContent(minimalContent)
-                                .addTo(map);
-
-                            setTimeout(() => {
-                                if (minimalTooltip._container) {
-                                    minimalTooltip._container.addEventListener('mousedown', function(e) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (window.markers && window.markers[markerId]) {
-                                            window.markers[markerId].openPopup();
-                                        }
-                                    });
-                                    
-                                    const allElements = minimalTooltip._container.querySelectorAll('*');
-                                    allElements.forEach(element => {
-                                        element.addEventListener('mousedown', function(e) {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            if (window.markers && window.markers[markerId]) {
-                                                window.markers[markerId].openPopup();
-                                            }
-                                        });
-                                    });
-                                }
-                            }, 100);
-
-                                                        
-                            marker.minimalPopup = minimalTooltip;
-                            window.minimalTooltipStates[markerId] = 'visible';
-                            }
-                    } else if (!shouldShow && marker.minimalPopup) {
-                        const tooltipContainer = marker.minimalPopup._container;
-                        if (tooltipContainer) {
-                            const popupElement = tooltipContainer.querySelector('.minimal-popup');
-                            if (popupElement) {
-                                popupElement.classList.remove('minimal-popup-appear');
-                                popupElement.classList.add('minimal-popup-disappear');
-                                
-                                setTimeout(() => {
-                                    const tooltipToRemove = marker.minimalPopup;
-                                    marker.minimalPopup = null;
-                                    delete window.minimalTooltipStates[markerId];
-                                    
-                                    if (tooltipToRemove) {
-                                        map.removeLayer(tooltipToRemove);
-                                        returnToPool(tooltipToRemove);
-                                    }
-                                }, 200);
-                            }
-                        } else {
-                            // Fallback si pas de container
-                            const tooltipToRemove = marker.minimalPopup;
-                            marker.minimalPopup = null;
-                            delete window.minimalTooltipStates[markerId];
-                            
-                            map.removeLayer(tooltipToRemove);
-                            returnToPool(tooltipToRemove);
-                        }
+                    minimalTooltip._container.addEventListener('mousedown', clickHandler);
+                    
+                    if (!minimalTooltip._container._eventHandlers) {
+                        minimalTooltip._container._eventHandlers = [];
                     }
+                    minimalTooltip._container._eventHandlers.push({
+                        event: 'mousedown',
+                        fn: clickHandler
+                    });
                 }
+            }, 100);
+            
+            marker.minimalPopup = minimalTooltip;
+            TooltipManager.active.set(markerId, minimalTooltip);
+            window.minimalTooltipStates[markerId] = 'visible';
+        }
+    } else if (!shouldShow && marker.minimalPopup) {
+        const tooltipContainer = marker.minimalPopup._container;
+        if (tooltipContainer) {
+            const popupElement = tooltipContainer.querySelector('.minimal-popup');
+            if (popupElement) {
+                popupElement.classList.remove('minimal-popup-appear');
+                popupElement.classList.add('minimal-popup-disappear');
+                
+                setTimeout(() => {
+                    const tooltipToRemove = marker.minimalPopup;
+                    marker.minimalPopup = null;
+                    delete window.minimalTooltipStates[markerId];
+                    
+                    if (tooltipToRemove) {
+                        map.removeLayer(tooltipToRemove);
+                        TooltipManager.release(tooltipToRemove);
+                        TooltipManager.active.delete(markerId);
+                    }
+                }, 200);
+            }
+        } else {
+            const tooltipToRemove = marker.minimalPopup;
+            marker.minimalPopup = null;
+            delete window.minimalTooltipStates[markerId];
+            
+            map.removeLayer(tooltipToRemove);
+            TooltipManager.release(tooltipToRemove);
+            TooltipManager.active.delete(markerId);
+        }
+    }
+}
+
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup) return false;
@@ -5158,332 +5245,134 @@ async function fetchVehiclePositions() {
                     });
                 }
 
-                function getOptimalTextColor(bgColor, options = {}) {
-                    const {
-                        contrastRatio = 4.5,
-                        darkColor = '#1a1a1a',
-                        lightColor = '#f8f9fa',
-                        useGradient = false 
-                    } = options;
 
-                    let r, g, b, a = 1;
-
-                    if (!bgColor) return darkColor;
-
-                    bgColor = bgColor.trim();
-
-                    if (bgColor.startsWith('rgb')) {
-                        const values = bgColor.match(/\d+(\.\d+)?/g);
-                        if (values) {
-                            r = parseInt(values[0]);
-                            g = parseInt(values[1]);
-                            b = parseInt(values[2]);
-                            a = values[3] ? parseFloat(values[3]) : 1;
-                        } else {
-                            return darkColor;
-                        }
-                    } else {
-                        // Parse hex colors
-                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
-                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                                (_, r, g, b) => '#' + r + r + g + g + b + b);
-                        }
-
-                        if (bgColor.length === 7) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                        } else if (bgColor.length === 9) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
-                            r = parseInt(bgColor.slice(1, 3), 16);
-                            g = parseInt(bgColor.slice(3, 5), 16);
-                            b = parseInt(bgColor.slice(5, 7), 16);
-                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
-                        } else {
-                            return darkColor;
-                        }
-                    }
-
-                    // Clamp values
-                    r = Math.max(0, Math.min(255, r));
-                    g = Math.max(0, Math.min(255, g));
-                    b = Math.max(0, Math.min(255, b));
-
-                    // Calculate luminance of background
-                    const srgb = [r, g, b].map(c => {
-                        const val = c / 255;
-                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-                    });
-                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-                    // Helper function to calculate luminance from hex
-                    const getLuminance = (color) => {
-                        const hex = color.replace('#', '');
-                        const r = parseInt(hex.substr(0, 2), 16) / 255;
-                        const g = parseInt(hex.substr(2, 2), 16) / 255;
-                        const b = parseInt(hex.substr(4, 2), 16) / 255;
-                        const srgb = [r, g, b].map(c => 
-                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-                        );
-                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-                    };
-
-                    // Calculate contrast ratios
-                    const darkLuminance = getLuminance(darkColor);
-                    const lightLuminance = getLuminance(lightColor);
-
-                    const contrastWithDark = luminance > darkLuminance 
-                        ? (luminance + 0.05) / (darkLuminance + 0.05)
-                        : (darkLuminance + 0.05) / (luminance + 0.05);
-                    
-                    const contrastWithLight = luminance > lightLuminance 
-                        ? (luminance + 0.05) / (lightLuminance + 0.05)
-                        : (lightLuminance + 0.05) / (luminance + 0.05);
-
-                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
-                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
-                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
-
-                    // Si les deux couleurs passent le test de contraste
-                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
-                        return luminance > 0.18 ? darkColor : lightColor;
-                    } 
-                    // Si seule la couleur foncée passe
-                    else if (contrastWithDark >= contrastRatio) {
-                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        return darkColor;
-                    } 
-                    // Si seule la couleur claire passe
-                    else if (contrastWithLight >= contrastRatio) {
-                        return lightColor;
-                    } 
-                    // Aucune ne passe vraiment le test
-                    else {
-                        // Pour les couleurs moyennes-foncées, forcer le clair
-                        if (isMediumDark) {
-                            return lightColor;
-                        }
-                        
-                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
-                        if (luminance < 0.15) {
-                            return lightColor; 
-                        }
-                        
-                        // Sinon prendre le meilleur contraste disponible
-                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
-                    }
-                }
-
-
-            if (markers[id]) {
-
-            animateMarker(markers[id], [latitude, longitude]);
-            if (markers[id].minimalPopup) {
+            if (markerPool.has(id)) {
+                const marker = markerPool.get(id);
+                animateMarker(marker, [latitude, longitude]);
+                
+                if (marker.minimalPopup) {
                     createOrUpdateMinimalTooltip(id, true);
-                    animateTooltip(markers[id].minimalPopup, L.latLng(latitude, longitude));
-            }
-
-            if (!markers[id].id) {
-                markers[id].id = id;
-            }
-            
-            const hasChanges = (
-                markers[id].line !== line ||
-                markers[id].destination !== lastStopName ||
-                markers[id]._lastNextStopsHTML !== nextStopsHTML
-        
-        );
-            
-            if (hasChanges) {
-                markers[id].vehicleData = vehicle;
-                markers[id].destination = lastStopName;
+                    animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
+                }
                 
-                if (markers[id].line !== line) {
-                    const oldLine = markers[id].line;
-                    markers[id].line = line;
-                    markers[id]._lastNextStopsHTML = nextStopsHTML;
+                const hasChanges = (
+                    marker.line !== line ||
+                    marker.destination !== lastStopName ||
+                    marker._lastNextStopsHTML !== nextStopsHTML
+                );
+                
+                if (hasChanges) {
+                    marker.vehicleData = vehicle;
+                    marker.destination = lastStopName;
                     
-                    const color = lineColors[line] || '#000000';
-                    if (markers[id]._icon) {
-                        const markerIcon = markers[id]._icon.querySelector('.marker-icon');
-                        if (markerIcon) {
-                            markerIcon.style.transition = 'background-color 0.5s ease';
-                            markerIcon.style.backgroundColor = color;
-                        }
+                    if (marker.line !== line) {
+                        marker.line = line;
+                        marker._lastNextStopsHTML = nextStopsHTML;
+                        markerPool.updateMarkerStyle(marker, line, bearing);
                         
-                        const arrowElement = markers[id]._icon.querySelector('.marker-arrow-path');
-                        if (arrowElement) {
-                            arrowElement.style.transition = 'stroke 0.5s ease';
-                            arrowElement.setAttribute('stroke', color);
+                        if (marker.isPopupOpen()) {
+                            const menubtm = document.getElementById('menubtm');
+                            if (menubtm) {
+                                const color = lineColors[line] || '#000000';
+                                lastActiveColor = color;
+                                menubtm.style.backgroundColor = `${color}9c`;
+                                
+                                const textColor = TextColorUtils.getOptimal(color);
+                                StyleManager.applyMenuStyle(textColor);
+                            }
                         }
                     }
                     
-                    if (markers[id].isPopupOpen()) {
-                        const menubtm = document.getElementById('menubtm');
-                        if (menubtm) {
-                            lastActiveColor = color;
-                            
-                            menubtm.style.backgroundColor = `${color}9c`;
-
-                            const textColor = getOptimalTextColor(color);
-                            
-                            const styleId = `popup-style-${Math.random().toString(36).substr(2, 9)}`;
-                            const styleSheet = document.createElement('style');
-                            styleSheet.id = styleId;
-                            styleSheet.classList.add('menu-color-style');
-                            
-                            styleSheet.textContent = `
-                                #menubtm * {
-                                    color: ${textColor};
-                                }
-
-                            `;
-                            
-                            document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
-                            document.head.appendChild(styleSheet);
-                            markers[id].styleId = styleId;
-                        }
-                    }
-                }
-                
-                updateLinesDisplay();
-
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                if (markers[id].isPopupOpen() && contentUpdated) {
-                    const popup = markers[id]._popup;
-                    if (popup && popup._contentNode) {
-                        const popupElement = popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('hide'); 
-                            popupElement.classList.add('show'); 
-                            markers[id].openPopup();
-                        }
-                    }
-                }
-            }
-            
-            if (markers[id]._icon) {
-                const arrowElement = markers[id]._icon.querySelector('.marker-arrow');
-                
-                if (arrowElement) {
-                    const targetRotation = bearing - 90;
-                    arrowElement.style.transition = 'transform 0.5s ease';
-                    arrowElement.style.transform = `rotate(${targetRotation}deg)`;
-                    arrowElement._currentRotation = targetRotation;
-                }
-            }
-
-            animateMarker(markers[id], [latitude, longitude]);
-            if (markers[id].minimalPopup) {
-                createOrUpdateMinimalTooltip(id, true);
-                animateTooltip(markers[id].minimalPopup, L.latLng(latitude, longitude));
-            }
-
-            if (selectedLine && markers[id].line !== selectedLine) {
-                if (map.hasLayer(markers[id])) {
-                    map.removeLayer(markers[id]);
-                }
-            } else {
-                if (!map.hasLayer(markers[id])) {
-                    map.addLayer(markers[id]);
-                }
-            }
-                updateMinimalPopups();
-            } else {
-                    const marker = createColoredMarker(latitude, longitude, line, bearing);
                     updateLinesDisplay();
-                    markers[id] = marker;
-                    markers[id].line = line;
-                    markers[id].id = id;
-                    markers[id].vehicleData = vehicle;
-                    markers[id].destination = lastStopName;
-
-                    if (!selectedLine || selectedLine === line) {
-                        marker.addTo(map);
+                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
+                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
+                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                }
+                
+                if (marker._icon) {
+                    const arrowElement = marker._icon.querySelector('.marker-arrow');
+                    if (arrowElement) {
+                        arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
+                    }
+                }
+                
+                if (selectedLine && marker.line !== selectedLine) {
+                    if (map.hasLayer(marker)) {
+                        map.removeLayer(marker);
+                    }
+                } else {
+                    if (!map.hasLayer(marker)) {
+                        map.addLayer(marker);
+                    }
+                }
+                
+                updateMinimalPopups();
+                
+            } else {
+                const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
+                marker.line = line;
+                marker.vehicleData = vehicle;
+                marker.destination = lastStopName;
+                
+                if (!selectedLine || selectedLine === line) {
+                    marker.addTo(map);
+                }
+                
+                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
+                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                marker.bindPopup(popupContent);
+                marker._lastNextStopsHTML = nextStopsHTML;
+                
+                eventManager.on(marker, 'popupopen', function (e) {
+                    if (marker.minimalPopup) {
+                        createOrUpdateMinimalTooltip(id, false);
                     }
                     
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    marker.bindPopup(popupContent);
-                    markers[id]._lastNextStopsHTML = nextStopsHTML;
-
-                    marker.on('popupopen', function (e) {
-                        if (markers[id].minimalPopup) {
-                            createOrUpdateMinimalTooltip(id, false);
+                    if (e.popup && e.popup._contentNode) {
+                        const popupElement = e.popup._contentNode.parentElement;
+                        if (popupElement) {
+                            popupElement.classList.remove('hide');
+                            popupElement.classList.add('show');
                         }
-                        
-                        if (e.popup && e.popup._contentNode) {
-                            const popupElement = e.popup._contentNode.parentElement;
-                            if (popupElement) {
-                                popupElement.classList.remove('hide'); 
-                                popupElement.classList.add('show');  
-                            }
-                        }
-                    });
-
-                    marker.on('popupclose', function (e) {
-                        if (e.popup && e.popup._contentNode) {
-                            const popupElement = e.popup._contentNode.parentElement;
-                            if (popupElement) {
-                                popupElement.classList.remove('show');
-                                popupElement.classList.add('hide');
-                                setTimeout(() => {
-                                    updateMinimalPopups();
-                                }, 10); 
-                            }
-                        }
-                    });
-
-                    marker.on('click', function() {
-                        if (markers[id].minimalPopup) {
-                            createOrUpdateMinimalTooltip(id, false);
-                        }
-                    });
-                        animateMarker(markers[id], [latitude, longitude]);
-                        // Mettre à jour la position du tooltip minimal s'il existe
-                        if (markers[id].minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, true);
-                        animateTooltip(markers[id].minimalPopup, L.latLng(latitude, longitude));
-                        }
-
                     }
+                }, id);
+
+                eventManager.on(marker, 'popupclose', function (e) {
+                    if (e.popup && e.popup._contentNode) {
+                        const popupElement = e.popup._contentNode.parentElement;
+                        if (popupElement) {
+                            popupElement.classList.remove('show');
+                            popupElement.classList.add('hide');
+                            setTimeout(() => updateMinimalPopups(), 10);
+                        }
+                    }
+                }, id);
+
+                eventManager.on(marker, 'click', function() {
+                    if (marker.minimalPopup) {
+                        createOrUpdateMinimalTooltip(id, false);
+                    }
+                }, id);
+                
+                updateMinimalPopups();
+            }
 
 
-                    map.on('zoomend', debounce(updateMinimalPopups, 100));
-                    map.on('moveend', debounce(updateMinimalPopups, 150));
+            map.on('zoomend', debounce(updateMinimalPopups, 100));
+            map.on('moveend', debounce(updateMinimalPopups, 150));
 
-                }
-        });
-
-
-
-const markersToRemove = [];
-Object.keys(markers).forEach(id => {
-    if (!activeVehicleIds.has(id)) {
-        markersToRemove.push(id);
-    }
+        }
 });
 
-markersToRemove.forEach(id => {
-    if (markers[id].minimalPopup) {
-        returnToPool(markers[id].minimalPopup);
-        markers[id].minimalPopup = null;
+
+
+const activeIds = Array.from(markerPool.active.keys());
+activeIds.forEach(id => {
+    if (!activeVehicleIds.has(id)) {
+        delete window.minimalTooltipStates[id];
+        markerPool.release(id);
     }
-    delete window.minimalTooltipStates[id];
-    map.removeLayer(markers[id]);
-    delete markers[id];
 });
 
 setInterval(() => {
@@ -6118,6 +6007,47 @@ function closeMenu() {
         menubottom1.classList.add('slide-downb');
     }, 10);
 }
+
+// ==================== VIRTUAL SCROLLING ====================
+class VirtualScroller {
+    constructor(container, itemHeight = 80) {
+        this.container = container;
+        this.itemHeight = itemHeight;
+        this.visibleItems = [];
+        this.allItems = [];
+        this.scrollTop = 0;
+        this.containerHeight = 0;
+    }
+    
+    setItems(items) {
+        this.allItems = items;
+        this.updateVisibleItems();
+    }
+    
+    updateVisibleItems() {
+        this.containerHeight = this.container.clientHeight;
+        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
+        const endIndex = Math.ceil((this.scrollTop + this.containerHeight) / this.itemHeight);
+        
+        this.visibleItems = this.allItems.slice(
+            Math.max(0, startIndex - 2),
+            Math.min(this.allItems.length, endIndex + 2)
+        );
+        
+        return {
+            items: this.visibleItems,
+            offsetTop: Math.max(0, (startIndex - 2) * this.itemHeight)
+        };
+    }
+    
+    onScroll(scrollTop) {
+        this.scrollTop = scrollTop;
+        return this.updateVisibleItems();
+    }
+}
+
+let menuScroller = null;
+// ==================== FIN VIRTUAL SCROLLING ====================
 
 function updateMenu() {
     const menu = document.getElementById('menu');
@@ -7906,10 +7836,54 @@ function afficherMenu() {
 
 
 
+// ==================== FETCH ADAPTATIF ====================
 let lastTripUpdateTimestamp = 0;
 let worker;
 let fetchInProgress = false;
-const FETCH_INTERVAL = 4000; 
+
+const FetchManager = {
+    baseInterval: 4000,
+    currentInterval: 4000,
+    minInterval: 4000,
+    maxInterval: 30000,
+    consecutiveErrors: 0,
+    consecutiveSuccess: 0,
+    
+    onSuccess() {
+        this.consecutiveErrors = 0;
+        this.consecutiveSuccess++;
+        
+        if (this.consecutiveSuccess > 3) {
+            this.currentInterval = Math.max(
+                this.minInterval, 
+                this.currentInterval - 500
+            );
+        }
+    },
+    
+    onError() {
+        this.consecutiveSuccess = 0;
+        this.consecutiveErrors++;
+        
+        this.currentInterval = Math.min(
+            this.maxInterval,
+            this.currentInterval * 1.5
+        );
+        
+        console.warn(`Fetch error, new interval: ${this.currentInterval}ms`);
+    },
+    
+    getInterval() {
+        return this.currentInterval;
+    },
+    
+    reset() {
+        this.currentInterval = this.baseInterval;
+        this.consecutiveErrors = 0;
+        this.consecutiveSuccess = 0;
+    }
+};
+// ==================== FIN FETCH ADAPTATIF ====================
 
 function initWorker() {
     worker = new Worker('worker.js');
@@ -7974,19 +7948,32 @@ async function fetchTripUpdates() {
     }
 }
 
+
 let fetchTimerId = null;
 
 function startFetchUpdates() {
     if (fetchTimerId) return;
 
-    fetchTimerId = setInterval(() => {
+    function scheduleFetch() {
         Promise.all([
-            fetchTripUpdates().catch(() => null),
-            fetchVehiclePositions().catch(() => null)
-        ]).catch(error => {
-            console.warn('Erreur lors des mises … jour', error);
+            fetchTripUpdates().catch(err => {
+                FetchManager.onError();
+                return null;
+            }),
+            fetchVehiclePositions().catch(err => {
+                FetchManager.onError();
+                return null;
+            })
+        ]).then(() => {
+            FetchManager.onSuccess();
+        }).catch(error => {
+            console.warn('Erreur lors des mises à jour', error);
+        }).finally(() => {
+            fetchTimerId = setTimeout(scheduleFetch, FetchManager.getInterval());
         });
-    }, FETCH_INTERVAL);
+    }
+
+    scheduleFetch();
 }
 
 
@@ -8013,6 +8000,80 @@ async function main() {
         soundsUX('MBF_NotificationError');
     }
 }
+
+// ==================== NETTOYAGE GLOBAL ====================
+window.addEventListener('beforeunload', () => {
+    // Nettoyer tous les managers
+    if (markerPool) markerPool.clear();
+    if (eventManager) eventManager.clear();
+    if (TooltipManager) TooltipManager.clear();
+    if (StyleManager) StyleManager.clearAll();
+    if (AnimationManager) AnimationManager.cancelAll();
+    
+    // Nettoyer le worker
+    if (worker) {
+        worker.terminate();
+        worker = null;
+    }
+    
+    // Nettoyer les timers
+    if (fetchTimerId) {
+        clearTimeout(fetchTimerId);
+        fetchTimerId = null;
+    }
+    
+    // Nettoyer la carte
+    if (map) {
+        map.remove();
+        map = null;
+    }
+    
+    console.log('Nettoyage global effectué');
+});
+
+// Nettoyage périodique de la mémoire
+setInterval(() => {
+    if (TextColorUtils) {
+        if (TextColorUtils.cache.size > 50) {
+            const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
+            keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
+        }
+    }
+    
+    if (contentCache && contentCache.size > 50) {
+        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
+        keysToDelete.forEach(key => contentCache.delete(key));
+    }
+    
+    // Forcer le garbage collection si disponible
+    if (window.gc) {
+        window.gc();
+    }
+}, 300000); // Toutes les 5 minutes
+
+// Monitoring des performances
+if (performance && performance.memory) {
+    setInterval(() => {
+        const memory = performance.memory;
+        const usedMB = (memory.usedJSHeapSize / 1048576).toFixed(2);
+        const totalMB = (memory.totalJSHeapSize / 1048576).toFixed(2);
+        const limitMB = (memory.jsHeapSizeLimit / 1048576).toFixed(2);
+        
+        console.log(`Memory: ${usedMB}MB / ${totalMB}MB (limit: ${limitMB}MB)`);
+        
+        // Alerte si mémoire > 80%
+        if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
+            console.warn('⚠️ Mémoire élevée, nettoyage recommandé');
+            
+            // Nettoyage agressif
+            if (TextColorUtils) TextColorUtils.cache.clear();
+            if (contentCache) contentCache.clear();
+            if (colorCache) colorCache.clear();
+            if (textColorCache) textColorCache.clear();
+        }
+    }, 60000); // Toutes les minutes
+}
+// ==================== FIN NETTOYAGE GLOBAL ====================
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', main);
