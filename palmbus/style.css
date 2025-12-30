@@ -1,3 +1,62 @@
+        @media (prefers-color-scheme: dark) {
+            #loading-screen {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(
+                    135deg,
+                    #0a0a0a 0%,
+                    #1a1a2e 25%,
+                    #16213e 50%,
+                    #2d1b69 75%,
+                    #0f3460 100%
+                );
+                background-size: 300% 300%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+                z-index: 10000;
+                animation: gradientFlow 8s ease-in-out infinite;
+                overflow: hidden;
+            }
+
+            #loading-screen::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: radial-gradient(
+                    circle at 30% 70%,
+                    rgba(138, 43, 226, 0.15) 0%,
+                    transparent 50%
+                ),
+                radial-gradient(
+                    circle at 70% 30%,
+                    rgba(0, 100, 148, 0.12) 0%,
+                    transparent 50%
+                ),
+                radial-gradient(
+                    circle at 50% 50%,
+                    rgba(25, 25, 112, 0.08) 0%,
+                    transparent 70%
+                );
+                animation: pulseOverlay 6s ease-in-out infinite alternate;
+            }
+
+            .logoscrapppp {
+                filter: invert(0);
+            }
+
+            .logo-bottom {
+                filter: invert(0);
+            }
+        }
+
     :root {
         -webkit-transform: translateZ(0);
         transform: translateZ(0);
@@ -632,11 +691,11 @@
     height: 100%;
     background: linear-gradient(
         135deg,
-        #0a0a0a 0%,
-        #1a1a2e 25%,
-        #16213e 50%,
-        #2d1b69 75%,
-        #0f3460 100%
+        #ffffff 0%,
+        #fff9fb 25%,
+        #fff2f6 50%,
+        #fdebf1 75%,
+        #f9e3ea 100%
     );
     background-size: 300% 300%;
     display: flex;
@@ -657,17 +716,17 @@
     bottom: 0;
     background: radial-gradient(
         circle at 30% 70%,
-        rgba(138, 43, 226, 0.15) 0%,
+        rgba(255, 241, 255, 0.192) 0%,
         transparent 50%
     ),
     radial-gradient(
         circle at 70% 30%,
-        rgba(0, 100, 148, 0.12) 0%,
+        rgba(255, 255, 255, 0.12) 0%,
         transparent 50%
     ),
     radial-gradient(
         circle at 50% 50%,
-        rgba(25, 25, 112, 0.08) 0%,
+        rgba(255, 165, 255, 0.08) 0%,
         transparent 70%
     );
     animation: pulseOverlay 6s ease-in-out infinite alternate;
@@ -970,6 +1029,7 @@
     }
     .logoscrapppp {
         opacity: 0;
+        filter: invert(1);
     }
     .slide-up {
         transform: translateY(-100%);
@@ -1427,6 +1487,7 @@
         bottom: 50px;
         left: 50%;
         transform: translateX(-50%);
+        filter: invert(1);
     }
     .logo-bottom.logoscr {
         transform: translateX(-50%);
