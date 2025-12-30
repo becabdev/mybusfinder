@@ -5930,45 +5930,6 @@ async function cleanup(menu, button) {
     isAnimating = false;
 }
 
-const animationStyle = document.createElement('style');
-animationStyle.textContent = `
-    .linesection {
-        transition: transform 0.2s  cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
-    }
-    
-    .linesection.removing {
-        animation: remove-favorite 0.3s ease-out forwards;
-    }
-    
-    @keyframes remove-favorite {
-        0% {
-            transform: scale(1);
-            opacity: 1;
-        }
-        50% {
-            transform: scale(1.05);
-            opacity: 0.8;
-        }
-        100% {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-    
-    .favorite-button {
-        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-    }
-    
-    .favorite-button:hover {
-        transform: scale(1.1);
-    }
-    
-    .favorite-button:active {
-        transform: scale(0.9);
-    }
-`;
-document.head.appendChild(animationStyle);
-
 function closeMenu() {
     safeVibrate([30], true);
     soundsUX('MBF_SelectedVehicle_DoorClose');
