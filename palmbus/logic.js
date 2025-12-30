@@ -7719,9 +7719,10 @@ window.addEventListener('message', function(event) {
     }
 
     if (event.data.type === 'openmap') {
-        const timespressed = localStorage.getItem('threetimespress') || '0';
+        let timespressed = parseInt(localStorage.getItem('threetimespress') || '0', 10);
         timespressed++;
         localStorage.setItem('threetimespress', timespressed.toString());
+
         const accueil = document.getElementById('accueil');
 
         if (timespressed === '3') {
