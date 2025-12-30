@@ -913,18 +913,6 @@
         filter: blur(15px);
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
     }
-    .logoscrapp {
-        transform: scale(1);
-        opacity: 1;
-        filter: blur(0);
-    }
-    .logoscrappp {
-        transform: scale(0.8);
-        filter: blur(0);
-    }
-    .logoscrapppp {
-        opacity: 0;
-    }
     .slide-up {
         transform: translateY(-100%);
         opacity: 0;
@@ -2011,8 +1999,6 @@
             .logoscrapppp {
                 opacity: 0;
             }
-
-
             .logoscr.logoscrapp.logoscrappp {
                 filter: invert(0);
             }
