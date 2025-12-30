@@ -1427,6 +1427,9 @@ function toggleSunOrientation(forceState) {
 }
 
 
+
+
+
 const markers = {};
 let lineColors = {};
 let lineName = {};
@@ -1436,83 +1439,6 @@ let selectedLine = null;
 let geoJsonLines = []; 
 let tripUpdates = {};
 let loadingInterval;
-
-// ==================== MARKER POOL ====================
-class MarkerPool {
-    constructor(maxSize = 200) {
-        this.pool = [];
-        this.active = new Map();
-        this.maxSize = maxSize;
-    }
-    
-    acquire(id, lat, lon, routeId, bearing) {
-        let marker = this.pool.pop();
-        
-        if (!marker) {
-            marker = createColoredMarker(lat, lon, routeId, bearing);
-        } else {
-            marker.setLatLng([lat, lon]);
-            this.updateMarkerStyle(marker, routeId, bearing);
-        }
-        
-        marker.id = id;
-        this.active.set(id, marker);
-        return marker;
-    }
-    
-    release(id) {
-        const marker = this.active.get(id);
-        if (!marker) return;
-        
-        if (marker.isPopupOpen()) {
-            marker.closePopup();
-        }
-        
-        if (marker.minimalPopup) {
-            map.removeLayer(marker.minimalPopup);
-            marker.minimalPopup = null;
-        }
-        
-        map.removeLayer(marker);
-        this.active.delete(id);
-        
-        if (this.pool.length < this.maxSize) {
-            this.pool.push(marker);
-        }
-    }
-    
-    updateMarkerStyle(marker, routeId, bearing) {
-        const color = lineColors[routeId] || '#000000';
-        
-        if (marker._icon) {
-            const markerIcon = marker._icon.querySelector('.marker-icon');
-            if (markerIcon) {
-                markerIcon.style.backgroundColor = color;
-            }
-            
-            const arrowElement = marker._icon.querySelector('.marker-arrow');
-            if (arrowElement) {
-                arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
-            }
-        }
-    }
-    
-    get(id) {
-        return this.active.get(id);
-    }
-    
-    has(id) {
-        return this.active.has(id);
-    }
-    
-    clear() {
-        this.active.forEach((marker, id) => this.release(id));
-        this.pool = [];
-    }
-}
-
-const markerPool = new MarkerPool();
-// ==================== FIN MARKER POOL ====================
 
 
 function showLoadingScreen() {
