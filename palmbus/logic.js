@@ -5361,126 +5361,185 @@ async function fetchVehiclePositions() {
                 }
 
 
-        if (markerPool.has(id)) {
-            const marker = markerPool.get(id);
-            animateMarker(marker, [latitude, longitude]);
-            
-            if (marker.minimalPopup) {
-                createOrUpdateMinimalTooltip(id, true);
-                animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
+            if (markers[id]) {
+
+            animateMarker(markers[id], [latitude, longitude]);
+            if (markers[id].minimalPopup) {
+                    createOrUpdateMinimalTooltip(id, true);
+                    animateTooltip(markers[id].minimalPopup, L.latLng(latitude, longitude));
+            }
+
+            if (!markers[id].id) {
+                markers[id].id = id;
             }
             
             const hasChanges = (
-                marker.line !== line ||
-                marker.destination !== lastStopName ||
-                marker._lastNextStopsHTML !== nextStopsHTML
-            );
+                markers[id].line !== line ||
+                markers[id].destination !== lastStopName ||
+                markers[id]._lastNextStopsHTML !== nextStopsHTML
+        
+        );
             
             if (hasChanges) {
-                marker.vehicleData = vehicle;
-                marker.destination = lastStopName;
+                markers[id].vehicleData = vehicle;
+                markers[id].destination = lastStopName;
                 
-                if (marker.line !== line) {
-                    marker.line = line;
-                    marker._lastNextStopsHTML = nextStopsHTML;
-                    markerPool.updateMarkerStyle(marker, line, bearing);
+                if (markers[id].line !== line) {
+                    const oldLine = markers[id].line;
+                    markers[id].line = line;
+                    markers[id]._lastNextStopsHTML = nextStopsHTML;
                     
-                    if (marker.isPopupOpen()) {
+                    const color = lineColors[line] || '#000000';
+                    if (markers[id]._icon) {
+                        const markerIcon = markers[id]._icon.querySelector('.marker-icon');
+                        if (markerIcon) {
+                            markerIcon.style.transition = 'background-color 0.5s ease';
+                            markerIcon.style.backgroundColor = color;
+                        }
+                        
+                        const arrowElement = markers[id]._icon.querySelector('.marker-arrow-path');
+                        if (arrowElement) {
+                            arrowElement.style.transition = 'stroke 0.5s ease';
+                            arrowElement.setAttribute('stroke', color);
+                        }
+                    }
+                    
+                    if (markers[id].isPopupOpen()) {
                         const menubtm = document.getElementById('menubtm');
                         if (menubtm) {
-                            const color = lineColors[line] || '#000000';
                             lastActiveColor = color;
-                            menubtm.style.backgroundColor = `${color}9c`;
                             
-                            const textColor = TextColorUtils.getOptimal(color);
-                            StyleManager.applyMenuStyle(textColor);
+                            menubtm.style.backgroundColor = `${color}9c`;
+
+                            const textColor = getOptimalTextColor(color);
+                            
+                            const styleId = `popup-style-${Math.random().toString(36).substr(2, 9)}`;
+                            const styleSheet = document.createElement('style');
+                            styleSheet.id = styleId;
+                            styleSheet.classList.add('menu-color-style');
+                            
+                            styleSheet.textContent = `
+                                #menubtm * {
+                                    color: ${textColor};
+                                }
+
+                            `;
+                            
+                            document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                            document.head.appendChild(styleSheet);
+                            markers[id].styleId = styleId;
                         }
                     }
                 }
                 
                 updateLinesDisplay();
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-            }
-            
-            if (marker._icon) {
-                const arrowElement = marker._icon.querySelector('.marker-arrow');
-                if (arrowElement) {
-                    arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
+
+                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                updatePopupContent(markers[id], vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                if (markers[id].isPopupOpen() && contentUpdated) {
+                    const popup = markers[id]._popup;
+                    if (popup && popup._contentNode) {
+                        const popupElement = popup._contentNode.parentElement;
+                        if (popupElement) {
+                            popupElement.classList.remove('hide'); 
+                            popupElement.classList.add('show'); 
+                            markers[id].openPopup();
+                        }
+                    }
                 }
             }
             
-            if (selectedLine && marker.line !== selectedLine) {
-                if (map.hasLayer(marker)) {
-                    map.removeLayer(marker);
+            if (markers[id]._icon) {
+                const arrowElement = markers[id]._icon.querySelector('.marker-arrow');
+                
+                if (arrowElement) {
+                    const targetRotation = bearing - 90;
+                    arrowElement.style.transition = 'transform 0.5s ease';
+                    arrowElement.style.transform = `rotate(${targetRotation}deg)`;
+                    arrowElement._currentRotation = targetRotation;
+                }
+            }
+
+            animateMarker(markers[id], [latitude, longitude]);
+            if (markers[id].minimalPopup) {
+                createOrUpdateMinimalTooltip(id, true);
+                animateTooltip(markers[id].minimalPopup, L.latLng(latitude, longitude));
+            }
+
+            if (selectedLine && markers[id].line !== selectedLine) {
+                if (map.hasLayer(markers[id])) {
+                    map.removeLayer(markers[id]);
                 }
             } else {
-                if (!map.hasLayer(marker)) {
-                    map.addLayer(marker);
+                if (!map.hasLayer(markers[id])) {
+                    map.addLayer(markers[id]);
                 }
             }
-            
-            updateMinimalPopups();
-            
-        } else {
-            const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
-            marker.line = line;
-            marker.vehicleData = vehicle;
-            marker.destination = lastStopName;
-            
-            if (!selectedLine || selectedLine === line) {
-                marker.addTo(map);
-            }
-            
-            const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-            marker.bindPopup(popupContent);
-            marker._lastNextStopsHTML = nextStopsHTML;
-            
-            marker.on('popupopen', function (e) {
-                if (marker.minimalPopup) {
-                    createOrUpdateMinimalTooltip(id, false);
-                }
-                
-                if (e.popup && e.popup._contentNode) {
-                    const popupElement = e.popup._contentNode.parentElement;
-                    if (popupElement) {
-                        popupElement.classList.remove('hide');
-                        popupElement.classList.add('show');
+                updateMinimalPopups();
+            } else {
+                    const marker = createColoredMarker(latitude, longitude, line, bearing);
+                    updateLinesDisplay();
+                    markers[id] = marker;
+                    markers[id].line = line;
+                    markers[id].id = id;
+                    markers[id].vehicleData = vehicle;
+                    markers[id].destination = lastStopName;
+
+                    if (!selectedLine || selectedLine === line) {
+                        marker.addTo(map);
                     }
-                }
-            });
-            
-            marker.on('popupclose', function (e) {
-                if (e.popup && e.popup._contentNode) {
-                    const popupElement = e.popup._contentNode.parentElement;
-                    if (popupElement) {
-                        popupElement.classList.remove('show');
-                        popupElement.classList.add('hide');
-                        setTimeout(() => {
-                            updateMinimalPopups();
-                        }, 10);
+                    
+                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    marker.bindPopup(popupContent);
+                    markers[id]._lastNextStopsHTML = nextStopsHTML;
+
+                    marker.on('popupopen', function (e) {
+                        if (markers[id].minimalPopup) {
+                            createOrUpdateMinimalTooltip(id, false);
+                        }
+                        
+                        if (e.popup && e.popup._contentNode) {
+                            const popupElement = e.popup._contentNode.parentElement;
+                            if (popupElement) {
+                                popupElement.classList.remove('hide'); 
+                                popupElement.classList.add('show');  
+                            }
+                        }
+                    });
+
+                    marker.on('popupclose', function (e) {
+                        if (e.popup && e.popup._contentNode) {
+                            const popupElement = e.popup._contentNode.parentElement;
+                            if (popupElement) {
+                                popupElement.classList.remove('show');
+                                popupElement.classList.add('hide');
+                                setTimeout(() => {
+                                    updateMinimalPopups();
+                                }, 10); 
+                            }
+                        }
+                    });
+
+                    marker.on('click', function() {
+                        if (markers[id].minimalPopup) {
+                            createOrUpdateMinimalTooltip(id, false);
+                        }
+                    });
+                        animateMarker(markers[id], [latitude, longitude]);
+                        // Mettre à jour la position du tooltip minimal s'il existe
+                        if (markers[id].minimalPopup) {
+                        createOrUpdateMinimalTooltip(id, true);
+                        animateTooltip(markers[id].minimalPopup, L.latLng(latitude, longitude));
+                        }
+
                     }
+
+
+                    map.on('zoomend', debounce(updateMinimalPopups, 100));
+                    map.on('moveend', debounce(updateMinimalPopups, 150));
+
                 }
-            });
-            
-            marker.on('click', function() {
-                if (marker.minimalPopup) {
-                    createOrUpdateMinimalTooltip(id, false);
-                }
-            });
-            
-            updateMinimalPopups();
-        }
-
-
-            map.on('zoomend', debounce(updateMinimalPopups, 100));
-            map.on('moveend', debounce(updateMinimalPopups, 150));
-
-        }
-});
+        });
 
 
 
