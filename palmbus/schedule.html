@@ -1764,8 +1764,7 @@
                 item.innerHTML = `
                     <div>
                         <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
-                            <span>${arr.headsign || 'Destination'}</span>
-                            ${busLabel ? `<span style="font-size:12px; opacity:.75;">${busLabel}</span>` : ''}
+                            ${busLabel ? `<span>${busLabel}</span>` : ''}
                         </div>
                         ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
                     </div>
