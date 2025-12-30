@@ -7718,64 +7718,66 @@ window.addEventListener('message', function(event) {
         safeVibrate([30], true);
     }
 
-            if (event.data.type === 'openmap') {
-            let timespressed = parseInt(localStorage.getItem('threetimespress'), 10);
-            if (Number.isNaN(timespressed)) timespressed = 0;
+    if (event.data.type === 'openmap') {
+    let timespressed = parseInt(localStorage.getItem('threetimespress'), 10);
+    if (Number.isNaN(timespressed)) timespressed = 0;
 
-            timespressed++;
-            localStorage.setItem('threetimespress', String(timespressed));
+    timespressed++;
+    localStorage.setItem('threetimespress', String(timespressed));
 
-            const accueil = document.getElementById('accueil');
+    const accueil = document.getElementById('accueil');
 
-            if (timespressed === 3) {
-                showFluentPopup({
-                title: t('threetimestitle'),
-                message: t('threetimesinfo'),
-                buttons: {
-                    primary: t('yes'),
-                    primaryAction: () => {
-                    localStorage.setItem('nepasafficheraccueil', 'true');
-                    safeVibrate([30], true);
-                    accueil.classList.add('hide');
-                    accueil.classList.remove('affiche');
-                    const menubottom1 = document.getElementById('menubtm');
-                    menubottom1.style.display = 'flex';
-                    window.isMenuShowed = false;
+    if (timespressed !== 3) {
+        safeVibrate([30], true);
+        accueil.classList.add('hide');
+        accueil.classList.remove("affiche")
+        const menubottom1 = document.getElementById('menubtm');
+        menubottom1.style.display = 'flex';
+        window.isMenuShowed = false;
+    
+        setTimeout(() => {
+            menubottom1.classList.remove('slide-upb');
+            menubottom1.classList.add('slide-downb');
+            setTimeout(() => {
+                accueil.style.display = 'none';
+            }, 500);
+        }, 10);
 
-                    setTimeout(() => {
-                        menubottom1.classList.remove('slide-upb');
-                        menubottom1.classList.add('slide-downb');
-                        setTimeout(() => (accueil.style.display = 'none'), 500);
-                    }, 10);
+    } else {
 
-                    fluentPopupManager.close();
-                    },
-                    secondary: t('no'),
-                    secondaryAction: () => {
-                        timespressed++;
-                        localStorage.setItem('threetimespress', timespressed.toString());
-                        fluentPopupManager.close();
-                    }
-
-                }
-            });
-        } else {
+        showFluentPopup({
+        title: t('threetimestitle'),
+        message: t('threetimesinfo'),
+        buttons: {
+            primary: t('yes'),
+            primaryAction: () => {
+            localStorage.setItem('nepasafficheraccueil', 'true');
             safeVibrate([30], true);
             accueil.classList.add('hide');
-            accueil.classList.remove("affiche")
+            accueil.classList.remove('affiche');
             const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'flex';
             window.isMenuShowed = false;
-        
+
             setTimeout(() => {
                 menubottom1.classList.remove('slide-upb');
                 menubottom1.classList.add('slide-downb');
-                setTimeout(() => {
-                    accueil.style.display = 'none';
-                }, 500);
+                setTimeout(() => (accueil.style.display = 'none'), 500);
             }, 10);
+
+            fluentPopupManager.close();
+            },
+            secondary: t('no'),
+            secondaryAction: () => {
+                timespressed++;
+                localStorage.setItem('threetimespress', timespressed.toString());
+                fluentPopupManager.close();
+            }
+
         }
-    }
+    });
+}
+}
 
     if (event.data.type === 'settingUpdate') {
         const { setting, value } = event.data;
