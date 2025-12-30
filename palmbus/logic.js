@@ -1,30 +1,4 @@
-        const isChromium = !!window.chrome;
-        const isGecko = typeof InstallTrigger !== 'undefined';
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
-        // Ajuster les performances selon le navigateur
-        if (isSafari) {
-            // Safari : Intervalles plus longs
-            FetchManager.baseInterval = 6000;
-            FetchManager.currentInterval = 6000;
-            FetchManager.minInterval = 6000;
-            
-            console.log('Safari détecté : Mode performance optimisé');
-        } else if (isChromium) {
-            // Chromium : Intervalles moyens
-            FetchManager.baseInterval = 5000;
-            FetchManager.currentInterval = 5000;
-            FetchManager.minInterval = 4000;
-            
-            console.log('Chromium détecté : Mode standard');
-        } else if (isGecko) {
-            // Gecko : Intervalles normaux (les plus rapides)
-            FetchManager.baseInterval = 4000;
-            FetchManager.currentInterval = 4000;
-            FetchManager.minInterval = 4000;
-            
-            console.log('Gecko détecté : Mode performance maximale');
-        }
 
         if (!window.requestIdleCallback) {
             window.requestIdleCallback = function(callback, options) {
