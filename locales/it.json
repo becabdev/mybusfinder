@@ -287,6 +287,10 @@
 
   "lines": "linee in servizio",
   "vehicles": "veicoli",
+  "yes": "Sì",
+  "no": "No",
+  "threetimestitle": "Non mostrare più il menu iniziale?",
+  "threetimesinfo": "Abbiamo notato che accedi generalmente alla mappa My Bus Finder. Desideri disattivare definitivamente la pagina iniziale all’avvio dell’applicazione? Potrai sempre riattivarla nelle impostazioni se necessario.",
 
   "langversion": "1.0.7.4"
 
