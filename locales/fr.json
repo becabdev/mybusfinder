@@ -287,6 +287,11 @@
     "vehicles": "véhicules",
     "nepasafficheraccueil": "Ne plus afficher l'écran d'accueil au démarrage",
     "nepasafficheraccueiltext": "Afficher directement la vue My Bus Finder à la place du menu principal.",
+    "yes": "Oui",
+    "no": "Non",
+    "threetimestitle": "Ne plus afficher le menu d'accueil ?",
+    "threetimesinfo": "Nous avons remarqué que vous accédez généralement à la carte My Bus Finder. Souhaitez-vous désactiver définitivement la page d'accueil au démarrage de l'application ? Vous pourrez toujours le réactiver dans les paramètres si besoin.",
+
 
     "langversion": "1.0.7.4"
   }

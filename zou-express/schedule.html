@@ -1,4110 +1,1955 @@
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.X.X/dist/protobuf.min.js"></script>
-    <title>MyBusSchedule</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MBS - My Bus Schedule</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/protobufjs/6.11.2/protobuf.min.js"></script>
     <style>
-@import url('https://fonts.googleapis.com/css?family=League+Spartan:400,700');
-
-@font-face {
-    font-family: 'SegoeUIBoot';
-    src: url('src/fonts/SegoeUIBoot.woff2') format('woff2'),
-        url('src/fonts/SegoeUIBoot.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
+:root {
+    --glass-bg-light: rgba(255, 255, 255, 0.72);
+    --glass-bg-light-strong: rgba(255, 255, 255, 0.88);
+    --glass-bg-dark: rgba(28, 28, 30, 0.78);
+    --glass-bg-dark-strong: rgba(28, 28, 30, 0.9);
+    
+    --glass-blur-mobile: blur(20px);
+    --glass-blur-tablet: blur(32px);
+    --glass-blur-strong: blur(40px);
+    
+    --glass-border-light: rgba(255, 255, 255, 0.18);
+    --glass-border-dark: rgba(0, 0, 0, 0.08);
+    --glass-border-highlight: rgba(255, 255, 255, 0.35);
+    
+    --glass-shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.08), 
+                          0 2px 8px rgba(0, 0, 0, 0.04),
+                          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    --glass-shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.12), 
+                           0 4px 12px rgba(0, 0, 0, 0.08),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    --glass-shadow-pressed: 0 4px 16px rgba(0, 0, 0, 0.08),
+                             inset 0 2px 6px rgba(0, 0, 0, 0.1);
+    
+    --accent-blue: #007AFF;
+    --accent-blue-glow: rgba(0, 122, 255, 0.3);
+    --accent-purple: #8b5cf6;
+    --accent-red: #FF3B30;
+    --accent-orange: #FF9500;
+    --accent-yellow: #FFCC00;
+    --accent-green: #34C759;
+    --accent-gray: #8E8E93;
+    
+    --text-primary: rgba(0, 0, 0, 0.92);
+    --text-secondary: rgba(0, 0, 0, 0.68);
+    --text-tertiary: rgba(0, 0, 0, 0.48);
+    
+    --bg-gradient-start: rgba(0, 122, 255, 0.08);
+    --bg-gradient-mid: rgba(168, 85, 247, 0.05);
+    --bg-gradient-end: rgba(255, 149, 0, 0.06);
+    
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+    --radius-pill: 50px;
+    
+    --transition-smooth: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-:root {
-    height: 100%;
-    --primary-purple: #6B46C1;
-    --dark-purple: #4C1D95;
-    --light-purple: #8B5CF6;
-    --accent-purple: #A855F7;
-    --glass-surface: rgba(139, 92, 246, 0.08);
-    --glass-surface-hover: rgba(139, 92, 246, 0.15);
-    --glass-surface-pressed: rgba(139, 92, 246, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-border-strong: rgba(255, 255, 255, 0.2);
-    --text-primary: rgba(255, 255, 255, 0.95);
-    --text-secondary: rgba(255, 255, 255, 0.7);
-    --text-muted: rgba(255, 255, 255, 0.5);
-    --glow-color: rgba(139, 92, 246, 0.4);
-    --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
-    --shadow-glass-hover: 0 12px 48px rgba(0, 0, 0, 0.2);
-    --shadow-glass-strong: 0 16px 64px rgba(0, 0, 0, 0.3);
-    --radius: 16px;
-    --radius-large: 24px;
-    --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    --transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+@media (prefers-color-scheme: dark) {
+    :root {
+        --glass-bg-light: rgba(44, 44, 46, 0.82);
+        --glass-bg-light-strong: rgba(44, 44, 46, 0.95);
+        --glass-bg-dark: rgba(28, 28, 30, 0.88);
+        --glass-bg-dark-strong: rgba(28, 28, 30, 0.96);
+        
+        --glass-border-light: rgba(255, 255, 255, 0.15);
+        --glass-border-dark: rgba(255, 255, 255, 0.08);
+        --glass-border-highlight: rgba(255, 255, 255, 0.25);
+        
+        --glass-shadow-soft: 0 8px 32px rgba(0, 0, 0, 0.4), 
+                              0 2px 8px rgba(0, 0, 0, 0.3),
+                              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        --glass-shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.5), 
+                               0 4px 12px rgba(0, 0, 0, 0.35),
+                               inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        --glass-shadow-pressed: 0 4px 16px rgba(0, 0, 0, 0.5),
+                                 inset 0 2px 6px rgba(0, 0, 0, 0.4);
+        
+        --text-primary: rgba(255, 255, 255, 0.95);
+        --text-secondary: rgba(255, 255, 255, 0.72);
+        --text-tertiary: rgba(255, 255, 255, 0.52);
+        
+        --accent-blue: #0A84FF;
+        --accent-blue-glow: rgba(10, 132, 255, 0.4);
+        --accent-purple: #a78bfa;
+        --accent-red: #FF453A;
+        --accent-orange: #FF9F0A;
+        --accent-yellow: #FFD60A;
+        --accent-green: #32D74B;
+        
+        --bg-gradient-start: rgba(10, 132, 255, 0.12);
+        --bg-gradient-mid: rgba(167, 139, 250, 0.08);
+        --bg-gradient-end: rgba(255, 159, 10, 0.1);
+    }
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    height: 100vh;
-    font-family: 'League Spartan', sans-serif;
-    margin: 0;
-    padding: 0;
-    color: var(--text-primary);
-    background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #533483);
-    animation: gradient-shift 15s ease infinite;
-    background-size: 400% 400%;
-    overflow-x: hidden;
-    position: relative;
-}
-
-
-@keyframes gradient-shift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-@keyframes aurora {
-    0% {
-        transform: rotate(0deg) scale(1);
-        filter: hue-rotate(0deg) brightness(1);
-    }
-    100% {
-        transform: rotate(360deg) scale(1.1);
-        filter: hue-rotate(90deg) brightness(1.2);
-    }
-}
-
-@keyframes float-dots {
-    0% { transform: translateY(0px) rotate(0deg); }
-    100% { transform: translateY(-100vh) rotate(360deg); }
-}
-
-h1, h2, h3, h4 {
-    margin: 0.5em 0;
-    color: var(--text-primary);
-    font-weight: 700;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: var(--transition);
-}
-
-.container {
-    margin: 0 auto;
-    padding: 24px;
-    transition: var(--transition);
-    position: relative;
-}
-
-.bus-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.bus-item {
-    padding: 20px 24px;
-    cursor: pointer;
-    display: block;
-    justify-content: space-between;
-    align-items: center;
-    transition: var(--transition);
-    border-radius: var(--radius-large);
-    margin-bottom: 12px;
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-glass);
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-.favorites-section {
-    margin-bottom: 40px;
-    position: relative;
-}
-
-.favorites-section::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    background: linear-gradient(45deg, 
-        rgba(139, 92, 246, 0.05), 
-        rgba(168, 85, 247, 0.03), 
-        rgba(139, 92, 246, 0.05)
-    );
-    border-radius: var(--radius-large);
-    z-index: -1;
-    opacity: 0;
-    transition: var(--transition);
-}
-
-.favorites-section:hover::before {
-    opacity: 1;
-}
-
-.favorites-section h3, 
-.lines-section h3 {
-    margin: 24px 0 20px 0;
-    color: var(--text-primary);
-    font-size: 1.4em;
-    font-weight: 700;
-    padding: 0 12px;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    position: relative;
-}
-
-.favorites-section h3::after,
-.lines-section h3::after {
-    content: '';
-    position: absolute;
-    bottom: -8px;
-    left: 12px;
-    width: 60px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--accent-purple), transparent);
-    border-radius: 2px;
-}
-
-.favorite-item {
-    padding: 24px 28px;
-    margin-bottom: 16px;
-    border-radius: var(--radius-large);
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-glass);
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    transition: var(--transition);
-    min-height: 70px;
-    position: relative;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    cursor: pointer;
-    overflow: hidden;
-}
-
-.favorite-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.1),
-        transparent
-    );
-    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 1;
-}
-
-.favorite-item::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 2px;
+    font-family: 'League Spartan', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
     background: linear-gradient(135deg, 
-        rgba(139, 92, 246, 0.3),
-        rgba(168, 85, 247, 0.2),
-        rgba(139, 92, 246, 0.3)
-    );
-    border-radius: inherit;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: subtract;
-    opacity: 0;
-    transition: var(--transition);
-}
-
-.favorite-item:hover::before {
-    left: 100%;
-}
-
-.favorite-item:hover::after {
-    opacity: 1;
-}
-
-.favorite-item:hover {
-    background: var(--glass-surface-hover);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 35px var(--glow-color);
-    transform: translateY(-4px) scale(1.02);
-}
-
-.favorite-item:active {
-    transform: translateY(-2px) scale(0.98);
-    transition: var(--transition-fast);
-}
-
-.favorite-info {
-    flex: 1;
-    margin-right: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: relative;
-    z-index: 2;
-}
-
-.favorite-main-info {
-    font-size: 1.2em;
-    font-weight: 700;
-    white-space: normal;
-    line-height: 1.4;
-    margin-right: 50px;
+        var(--bg-gradient-start) 0%, 
+        var(--bg-gradient-mid) 50%,
+        var(--bg-gradient-end) 100%);
+    background-attachment: fixed;
     color: var(--text-primary);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    line-height: 1.5;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
 }
 
-.favorite-button {
-    background: none;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    transition: var(--transition);
-    color: var(--text-secondary);
-    border-radius: 50%;
-    position: absolute;
-    right: 16px;
-    top: 16px;
-    z-index: 3;
-}
-
-.favorite-button:hover {
-    background: rgba(139, 92, 246, 0.15);
-    color: var(--accent-purple);
-    transform: scale(1.2) rotate(15deg);
-    box-shadow: 0 0 15px var(--glow-color);
-}
-
-.favorite-realtime {
-    font-size: 1em;
-    white-space: normal;
-    line-height: 1.4;
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-
-.next-arrivals {
-    color: #86efac;
-    font-weight: 700;
-    text-shadow: 0 0 10px rgba(134, 239, 172, 0.3);
-}
-
-.no-realtime-data {
-    font-size: 0.95em;
-    color: var(--text-muted);
-    font-style: italic;
-    opacity: 0.8;
-}
-
-.favorites-section + .lines-section {
-    border-top: 1px solid var(--glass-border);
-    padding-top: 32px;
-    margin-top: 24px;
-}
-
-.favorite-star {
-    position: absolute;
-    right: 20px;
-    top: 0%;
-    cursor: pointer;
-    padding: 10px;
-    border-radius: 50%;
-    transition: var(--transition);
-    color: var(--text-secondary);
-    z-index: 3;
-}
-
-.favorite-star:hover {
-    background: rgba(139, 92, 246, 0.15);
-    color: var(--accent-purple);
-    transform: scale(1.1) rotate(-15deg);
-    box-shadow: 0 0 15px var(--glow-color);
-}
-
-.stops-timeline-menu {
-    display: none;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.8);
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border-strong);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-glass-strong);
-    backdrop-filter: blur(30px) saturate(200%);
-    -webkit-backdrop-filter: blur(30px) saturate(200%);
-    width: 90%;
-    max-width: 450px;
-    z-index: 1000;
-    max-height: 85vh;
-    flex-direction: column;
-    opacity: 0;
-    filter: blur(12px);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-                opacity 0.4s ease-out,
-                filter 0.4s ease-out;
-    overflow: hidden;
-}
-
-.stops-timeline-menu.visible {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-    filter: blur(0);
-}
-
-.stops-timeline-header {
-    padding: 24px;
-    border-bottom: 1px solid var(--glass-border);
-    position: relative;
-    flex-shrink: 0;
-    background: rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-}
-
-.stops-timeline-header h3 {
-    margin: 0;
-    font-size: 1.4em;
-    font-weight: 700;
-    color: var(--text-primary);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.stops-timeline-close {
-    position: absolute;
-    right: 24px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    padding: 10px;
-    cursor: pointer;
-    color: var(--text-secondary);
-    border-radius: 50%;
-    transition: var(--transition);
-}
-
-.stops-timeline-close:hover {
-    background: rgba(139, 92, 246, 0.15);
-    color: var(--accent-purple);
-    transform: translateY(-50%) scale(1.1) rotate(90deg);
-}
-
-.stops-timeline-wrapper {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-    position: relative;
-}
-
-.stops-timeline-content {
-    padding: 28px;
-    overflow-y: auto;
-    max-height: calc(85vh - 100px);
-    display: flex;
-    flex-direction: column;
-}
-
-.stops-timeline-line {
-    position: relative;
-    padding-left: 60px;
-    margin-bottom: 40px;
-}
-
-.timeline-vertical-line {
-    position: absolute;
-    left: 24px;
-    top: 0;
-    bottom: 0;
-    width: 5px;
-    background: linear-gradient(to bottom, 
-        var(--accent-purple), 
-        rgba(139, 92, 246, 0.4)
-    );
-    border-radius: 3px;
-    box-shadow: 0 0 10px var(--glow-color);
-}
-
-.timeline-progress {
-    position: absolute;
-    left: 24px;
-    top: 0;
-    width: 5px;
-    border-radius: 3px;
-    background: linear-gradient(to bottom,
-        rgba(255, 255, 255, 0.6),
-        rgba(255, 255, 255, 0.2)
-    );
-    transform-origin: top;
-    transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-}
-
-.bus-position-indicator {
-    position: absolute;
-    left: 16px;
-    margin-top: 24px;
-    transform: translateY(-50%);
-    width: 20px;
-    height: 20px;
-    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
-    border: 3px solid white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 
-        0 4px 12px rgba(0, 0, 0, 0.3),
-        0 0 20px var(--glow-color);
-    z-index: 2;
-}
-
-.bus-position-indicator.visible {
-    transform: translateY(-50%) scale(1);
-}
-
-.bus-position-indicator.moving {
-    animation: pulse-glow 2s infinite;
-}
-
-@keyframes pulse-glow {
-    0% { 
-        transform: translateY(-50%) scale(1); 
-        box-shadow: 
-            0 4px 12px rgba(0, 0, 0, 0.3),
-            0 0 20px var(--glow-color);
+@media (prefers-color-scheme: dark) {
+    body {
+        background: linear-gradient(135deg, 
+            #000000 0%,
+            #0a0a0c 50%,
+            #000000 100%);
+        background-attachment: fixed;
     }
-    50% { 
-        transform: translateY(-50%) scale(1.3); 
-        box-shadow: 
-            0 6px 18px rgba(0, 0, 0, 0.4),
-            0 0 35px var(--glow-color);
-    }
-    100% { 
-        transform: translateY(-50%) scale(1); 
-        box-shadow: 
-            0 4px 12px rgba(0, 0, 0, 0.3),
-            0 0 20px var(--glow-color);
+    
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(circle at 20% 30%, var(--bg-gradient-start) 0%, transparent 50%),
+                    radial-gradient(circle at 80% 70%, var(--bg-gradient-end) 0%, transparent 50%),
+                    radial-gradient(circle at 50% 50%, var(--bg-gradient-mid) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
     }
 }
 
-.stop-item-timeline {
-    padding: 16px 0;
-    position: relative;
-    transition: var(--transition);
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
 }
 
-.stop-name {
-    font-weight: 700;
-    margin-bottom: 6px;
-    margin-left: 12px;
-    color: var(--text-primary);
-    font-size: 1.1em;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.stop-time {
-    color: var(--text-secondary);
-    font-size: 0.95em;
-    font-weight: 600;
-    margin-left: 12px;
-}
-
-.current-stop {
-    background: rgba(139, 92, 246, 0.1);
-    border: 1px solid rgba(139, 92, 246, 0.2);
-    border-radius: var(--radius);
-    padding: 12px;
-    margin: 0 -12px;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 0 20px var(--glow-color);
-}
-
-.show-in-map-btn {
-    margin: 24px;
-    padding: 16px 24px;
-    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-family: 'League Spartan', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    width: calc(100% - 48px);
-    position: sticky;
-    bottom: 0;
-    transition: var(--transition);
-    box-shadow: var(--shadow-glass);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.show-in-map-btn:hover {
-    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 25px var(--glow-color);
-    transform: translateY(-2px) scale(1.02);
-}
-
-.show-in-map-btn:active {
-    transform: translateY(0) scale(0.98);
-    transition: var(--transition-fast);
-}
-
-.overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(12px) saturate(120%);
-    -webkit-backdrop-filter: blur(12px) saturate(120%);
-    z-index: 999;
-    display: none;
-    opacity: 0;
-    transition: opacity 0.4s ease-out;
-}
-
-.overlay.visible {
-    opacity: 1;
-}
-
-.destination-select-wrapper {
-    margin: 20px;
-    position: relative;
-}
-
-.destination-select-wrapper::after {
-    content: "▼";
-    position: absolute;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-secondary);
-    pointer-events: none;
-    font-size: 0.9em;
-    transition: var(--transition);
-}
-
-.destination-select-wrapper:hover::after {
-    color: var(--text-primary);
-    transform: translateY(-50%) scale(1.2);
-}
-
-#destination-select {
-    width: 100%;
-    padding: 16px 50px 16px 20px;
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    font-family: 'League Spartan', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    background: var(--glass-surface);
-    color: var(--text-primary);
-    cursor: pointer;
-    appearance: none;
-    transition: var(--transition);
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-#destination-select:hover {
-    border-color: var(--glass-border-strong);
-    background: var(--glass-surface-hover);
-    box-shadow: var(--shadow-glass-hover);
-    transform: translateY(-1px);
-}
-
-#destination-select:focus {
-    outline: none;
-    border-color: var(--accent-purple);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 0 3px rgba(139, 92, 246, 0.3);
-}
-
-.alerts-button {
-    display: flex;
-    align-items: center;
-    background: linear-gradient(135deg, var(--dark-purple), var(--primary-purple));
-    color: white;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-    border-radius: var(--radius-large);
-    border: 1px solid var(--glass-border-strong);
-    box-shadow: var(--shadow-glass);
-    cursor: pointer;
-    transition: var(--transition);
-    position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    animation: slide-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.alerts-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
-    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.alerts-button:hover::before {
-    left: 100%;
-}
-
-.alerts-button:hover {
-    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 30px var(--glow-color);
-    transform: translateY(-3px) scale(1.01);
-}
-
-.alerts-button:active {
-    transform: translateY(-1px) scale(0.98);
-    transition: var(--transition-fast);
-}
-
-.alerts-icon {
-    margin-right: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 2;
-    transition: var(--transition);
-}
-
-.alerts-content {
-    flex-grow: 1;
-    position: relative;
-    z-index: 2;
-}
-
-.alerts-title {
-    font-weight: 700;
-    font-size: 1.2em;
-    margin-bottom: 6px;
-    transition: var(--transition);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.alerts-description {
-    font-size: 0.95em;
-    opacity: 0.9;
-    transition: var(--transition);
-    font-weight: 600;
-}
-
-.update-popup {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 10001;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(15px) saturate(120%);
-    -webkit-backdrop-filter: blur(15px) saturate(120%);
-    overflow-y: hidden;
-}
-
-.popup-content {
-    background: var(--glass-surface);
-    width: 100%;
-    height: 100%;
-    box-shadow: var(--shadow-glass-strong);
-    backdrop-filter: blur(30px) saturate(200%);
-    -webkit-backdrop-filter: blur(30px) saturate(200%);
-    position: relative;
-    border: 1px solid var(--glass-border-strong);
-    animation: zoom-in-blur 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes zoom-in-blur {
+@keyframes slideDown {
     from {
         opacity: 0;
-        transform: scale(0.8);
-        filter: blur(15px);
+        transform: translateY(-40px) scale(0.95);
     }
     to {
         opacity: 1;
-        transform: scale(1);
-        filter: blur(0);
+        transform: translateY(0) scale(1);
     }
 }
 
-.popup-content h2 {
-    font-size: 28px;
-    font-family: 'League Spartan', sans-serif;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 20px;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.popup-content {
-    font-family: 'League Spartan', sans-serif;
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.close-btn {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
-    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
-    color: white;
-    border: none;
-    padding: 16px 24px;
-    border-radius: 30px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: 'League Spartan', sans-serif;
-    font-weight: 700;
-    font-size: 15px;
-    transition: var(--transition);
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.close-btn:hover {
-    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 25px var(--glow-color);
-    transform: translateY(-3px) scale(1.05);
-}
-
-.close-btn:active {
-    transform: translateY(-1px) scale(0.95);
-    transition: var(--transition-fast);
-}
-
-.initial-fade-in {
-    animation: slide-in-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-    transform: translateY(40px);
-}
-
-.hidden {
-    display: none !important;
-}
-
-::-webkit-scrollbar {
-    width: 12px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
-    border-radius: 10px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
-    box-shadow: 0 0 10px var(--glow-color);
-}
-
-.bus-item:nth-child(5) { animation-delay: 0.5s; }
-.bus-item:nth-child(6) { animation-delay: 0.6s; }
-.bus-item:nth-child(7) { animation-delay: 0.7s; }
-.bus-item:nth-child(8) { animation-delay: 0.8s; }
-
-@keyframes float-particles {
-    0% { 
-        transform: translateY(100vh) translateX(0) rotate(0deg);
+@keyframes fadeInUp {
+    from {
         opacity: 0;
+        transform: translateY(30px);
     }
-    10% {
-        opacity: 1;
-    }
-    90% {
-        opacity: 1;
-    }
-    100% { 
-        transform: translateY(-100vh) translateX(50px) rotate(360deg);
-        opacity: 0;
-    }
-}
-
-@media (max-width: 768px) {
-    .container {
-        padding: 16px;
-    }
-    
-    .bus-item, .destination-item, .stop-item, .favorite-item {
-        padding: 16px 20px;
-    }
-    
-    .btn {
-        padding: 12px 20px;
-        font-size: 13px;
-    }
-    
-.stops-timeline-menu {
-    width: 95%;
-    max-width: none;
-    transform: translate(-50%, -50%) scale(0.8);
-    opacity: 0;
-}
-}
-
-.bus-item:nth-child(1) { animation-delay: 0.1s; }
-.bus-item:nth-child(2) { animation-delay: 0.2s; }
-.bus-item:nth-child(3) { animation-delay: 0.3s; }
-.bus-item:nth-child(4) { animation-delay: 0.4s; }
-
-@keyframes slide-in-up {
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-.bus-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.1),
-        transparent
-    );
-    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+@keyframes cardAppear {
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
-.bus-item::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 2px;
+.header {
+    position: sticky;
+    top: var(--spacing-md);
+    z-index: 1000;
+    margin: var(--spacing-md);
+    animation: slideDown 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.header-glass {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    border: 1px solid var(--glass-border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-lg);
+    box-shadow: var(--glass-shadow-soft);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: var(--transition-standard);
+}
+
+@media (prefers-color-scheme: dark) {
+    .header-glass {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+}
+
+.header.scrolled .header-glass {
+    background: var(--glass-bg-light-strong);
+    backdrop-filter: var(--glass-blur-strong) saturate(200%);
+    -webkit-backdrop-filter: var(--glass-blur-strong) saturate(200%);
+    box-shadow: var(--glass-shadow-hover);
+}
+
+@media (prefers-color-scheme: dark) {
+    .header.scrolled .header-glass {
+        background: var(--glass-bg-dark-strong);
+    }
+}
+
+.back-btn {
+    width: 56px;
+    height: 56px;
     background: linear-gradient(135deg, 
-        rgba(139, 92, 246, 0.3),
-        rgba(168, 85, 247, 0.2),
-        rgba(139, 92, 246, 0.3)
-    );
-    border-radius: inherit;
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: subtract;
-    opacity: 0;
-    transition: var(--transition);
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0.25) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.25);
+    border-radius: var(--radius-pill);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    font-size: 20px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    flex-shrink: 0;
 }
 
-.bus-item:hover {
-    background: var(--glass-surface-hover);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 30px var(--glow-color);
-    border-color: var(--glass-border-strong);
-    transform: translateY(-4px) scale(1.02);
+@media (prefers-color-scheme: dark) {
+    .back-btn {
+        background: linear-gradient(135deg, 
+            rgba(255, 255, 255, 0.18) 0%, 
+            rgba(255, 255, 255, 0.1) 100%);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
 }
 
-.bus-item:hover::before {
-    left: 100%;
+.back-btn:active {
+    transform: scale(0.92);
+    box-shadow: var(--glass-shadow-pressed);
 }
 
-.bus-item:hover::after {
+.back-btn.pressing {
+    transform: scale(0.92);
+    box-shadow: var(--glass-shadow-pressed);
+}
+
+.bus-item.pressing, .destination-item.pressing, .stop-item.pressing {
+    transform: scale(0.97);
+    box-shadow: var(--glass-shadow-pressed);
+}
+
+.bus-item.pressing::before, .destination-item.pressing::before, .stop-item.pressing::before {
     opacity: 1;
 }
 
-.bus-item:active {
-    background: var(--glass-surface-pressed);
-    transform: translateY(-2px) scale(0.98);
-    transition: var(--transition-fast);
-}
-
-.bus-item div {
-    position: relative;
-    z-index: 2;
-}
-
-.line-number {
-    font-size: 1.4em;
-    font-weight: 700;
-    color: var(--text-primary);
-    transition: var(--transition);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.line-details {
+.header-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--accent-blue) 0%, #0051D5 100%);
+    border-radius: var(--radius-pill);
     display: flex;
     align-items: center;
-    gap: 16px;
-}
-
-.bus-item:hover .color-box {
-    transform: scale(1.2) rotate(180deg);
-    box-shadow: 0 0 20px var(--glow-color);
-}
-
-.controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-    padding: 0 8px;
-    gap: 20px;
-}
-
-.btn {
-    padding: 14px 24px;
-    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition: var(--transition);
-    font-family: 'League Spartan', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    position: relative;
-    overflow: hidden;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.btn:hover {
-    background: linear-gradient(135deg, var(--accent-purple), var(--light-purple));
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 25px var(--glow-color);
-    transform: translateY(-2px) scale(1.05);
-}
-
-.btn:hover::before {
-    left: 100%;
-}
-
-.btn:active {
-    transform: translateY(0) scale(0.95);
-    transition: var(--transition-fast);
-}
-
-.btn-back {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-back svg {
-    transition: var(--transition);
-}
-
-.btn-back:hover svg {
-    transform: translateX(-4px) rotate(-15deg);
-}
-
-select {
-    padding: 14px 20px;
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    font-family: 'League Spartan', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    background: var(--glass-surface);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: var(--transition);
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-select:hover {
-    border-color: var(--glass-border-strong);
-    background: var(--glass-surface-hover);
-    box-shadow: var(--shadow-glass-hover);
-    transform: translateY(-1px);
-}
-
-select:focus {
-    outline: none;
-    border-color: var(--accent-purple);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 0 3px rgba(139, 92, 246, 0.3);
-}
-
-#loading-indicator {
-    display: flex;
     justify-content: center;
-    align-items: center;
-    height: 150px;
-    flex-direction: column;
-    gap: 20px;
+    color: white;
+    font-size: 28px;
+    box-shadow: 0 8px 24px rgba(0, 122, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+    transition: var(--transition-smooth);
+}
+
+@media (prefers-color-scheme: dark) {
+    .header-icon {
+        background: linear-gradient(135deg, var(--accent-blue) 0%, #0066E5 100%);
+        box-shadow: 0 8px 24px var(--accent-blue-glow),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+}
+
+.header-icon:active {
+    transform: scale(0.92);
+}
+
+.header-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.header-text h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    letter-spacing: -0.5px;
+}
+
+.header-text p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.main-container {
+    padding: 20px var(--spacing-md) var(--spacing-xl);
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+.loading {
+    text-align: center;
+    padding: var(--spacing-xl);
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--glass-border);
-    border-top: 4px solid var(--accent-purple);
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(0, 122, 255, 0.2);
+    border-top-color: var(--accent-blue);
     border-radius: 50%;
-    animation: spin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
-    filter: drop-shadow(0 0 10px var(--glow-color));
+    animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+    margin: 0 auto var(--spacing-md);
+}
+
+@media (prefers-color-scheme: dark) {
+    .loading-spinner {
+        border-color: rgba(10, 132, 255, 0.3);
+        border-top-color: var(--accent-blue);
+    }
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg) scale(1); }
-    50% { transform: rotate(180deg) scale(1.1); }
-    100% { transform: rotate(360deg) scale(1); }
+    to { transform: rotate(360deg); }
 }
 
-#error-message {
-    text-align: center;
-    color: #ff6b6b;
-    padding: 20px 24px;
-    background: rgba(255, 107, 107, 0.1);
-    border: 1px solid rgba(255, 107, 107, 0.3);
-    border-radius: var(--radius-large);
-    margin: 24px 0;
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    animation: error-pulse 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes error-pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); filter: brightness(1.2); }
-}
-
-.page-transition {
-    transition: var(--transition);
-    opacity: 0;
-    filter: blur(12px) brightness(0.8);
-    transform: translateY(30px) scale(0.95);
-}
-
-.page-transition.slide-in {
-    opacity: 1;
-    filter: blur(0) brightness(1);
-    transform: translateY(0) scale(1);
-}
-
-.schedule-row {
-    display: flex;
-    padding: 18px 24px;
-    border-bottom: 1px solid var(--glass-border);
-    transition: var(--transition);
-    background: transparent;
-    position: relative;
-    overflow: hidden;
-}
-
-.schedule-row::before {
-    content: '';
-    position: absolute;
-    left: -100%;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.schedule-row:hover {
-    background: rgba(139, 92, 246, 0.08);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    transform: translateX(8px);
-}
-
-.schedule-row:hover::before {
-    left: 100%;
-}
-
-.schedule-row:last-child {
-    border-bottom: none;
-}
-
-.schedule-row span {
+.state-title {
+    font-size: 20px;
     font-weight: 700;
-    width: 70px;
-    color: var(--text-primary);
-    transition: var(--transition);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    margin-bottom: var(--spacing-xs);
+    letter-spacing: -0.3px;
 }
 
-.schedule-row:hover span {
-    color: var(--accent-purple);
-    transform: scale(1.1) rotate(2deg);
-}
-
-.schedule-row span1 {
-    flex: 1;
+.state-description {
     color: var(--text-secondary);
-}
-
-#schedule-container {
-    overflow-y: auto;
-    padding: 24px;
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    transition: var(--transition);
-}
-
-#schedule-container:hover {
-    box-shadow: var(--shadow-glass-hover);
-    background: var(--glass-surface-hover);
-}
-
-.textpop {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 24px 28px;
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-glass);
-    margin: 20px 0;
-    position: relative;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    transition: var(--transition);
-    overflow: hidden;
-}
-
-.textpop::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: conic-gradient(from 0deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-    animation: rotate 6s linear infinite;
-    opacity: 0;
-    transition: var(--transition);
-}
-
-@keyframes rotate {
-    100% { transform: rotate(360deg); }
-}
-
-.textpop:hover::before {
-    opacity: 1;
-}
-
-.textpop:hover {
-    background: var(--glass-surface-hover);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 40px var(--glow-color);
-    transform: translateY(-4px) scale(1.01);
-}
-
-.textpop h1 {
-    font-size: 1.5em;
-    color: var(--text-primary);
-    margin: 0;
-    font-weight: 700;
-    position: relative;
-    z-index: 2;
-}
-
-.textpop h4 {
-    font-size: 1em;
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin: 0;
-    order: -1;
-    position: relative;
-    z-index: 2;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.5;
 }
 
 .view {
     display: none;
-    transition: var(--transition);
+    animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s backwards;
 }
 
 .view.active {
     display: block;
-    animation: fade-in-scale 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes fade-in-scale {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(20px);
-        filter: blur(8px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-        filter: blur(0);
-    }
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: var(--spacing-lg) 0 var(--spacing-md);
+    padding-left: 5px;
+    letter-spacing: -0.3px;
 }
 
-.destination-item, .stop-item {
-    padding: 24px 28px;
-    margin: 16px 0;
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-glass);
+.bus-item, .favorite-item, .destination-item, .stop-item {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    border: 1px solid var(--glass-border-light);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
     cursor: pointer;
-    transition: var(--transition);
+    transition: var(--transition-smooth);
+    box-shadow: var(--glass-shadow-soft);
     position: relative;
     overflow: hidden;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+    animation: cardAppear 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-.destination-item::before, .stop-item::before {
+@media (prefers-color-scheme: dark) {
+    .bus-item, .favorite-item, .destination-item, .stop-item {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+}
+
+.bus-item::before, .destination-item::before, .stop-item::before {
     content: '';
     position: absolute;
     top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 255, 255, 0.1),
-        transparent
-    );
-    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.destination-item:hover::before, .stop-item:hover::before {
-    left: 100%;
-}
-
-.destination-item:hover, .stop-item:hover {
-    background: var(--glass-surface-hover);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 30px var(--glow-color);
-    transform: translateY(-4px) scale(1.02);
-    border-color: var(--glass-border-strong);
-}
-
-.destination-item:active, .stop-item:active {
-    background: var(--glass-surface-pressed);
-    transform: translateY(-2px) scale(0.98);
-    transition: var(--transition-fast);
-}
-
-.date-input {
-    width: -webkit-fill-available;
-    padding: 14px 20px;
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    font-family: 'League Spartan', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    background: var(--glass-surface);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: var(--transition);
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-}
-
-.date-input:hover {
-    border-color: var(--glass-border-strong);
-    background: var(--glass-surface-hover);
-    box-shadow: var(--shadow-glass-hover);
-    transform: translateY(-1px);
-}
-
-.date-input:focus {
-    outline: none;
-    border-color: var(--accent-purple);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 0 3px rgba(139, 92, 246, 0.3);
-}
-
-.date-header {
-    padding: 20px 0;
-    border-bottom: 1px solid var(--glass-border);
-    margin-bottom: 24px;
-    text-align: center;
-    color: var(--text-primary);
-    font-weight: 700;
-    font-size: 1.2em;
-    transition: var(--transition);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.schedule-tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 32px;
-    padding: 6px;
-    position: relative;
-    background: rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    box-shadow: var(--shadow-glass);
-}
-
-.tab-button, .tab-button-gauche {
-    padding: 14px 24px;
-    background: transparent;
-    border: none;
-    border-radius: calc(var(--radius) - 4px);
-    cursor: pointer;
-    font-family: 'League Spartan', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--text-secondary);
-    flex: 1;
-    position: relative;
-    z-index: 2;
-    transition: var(--transition);
-    user-select: none;
-}
-
-.tab-button.active, .tab-button-gauche.active {
-    color: white;
-    background: linear-gradient(135deg, var(--primary-purple), var(--accent-purple));
-    box-shadow: 
-        var(--shadow-glass),
-        0 0 20px var(--glow-color);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.tab-button:hover:not(.active), .tab-button-gauche:hover:not(.active) {
-    background: var(--glass-surface);
-    color: var(--text-primary);
-    transform: translateY(-1px);
-}
-
-.tab-button.pressed {
-    transform: scale(0.95);
-}
-
-.tab-button-gauche.pressed {
-    transform: scale(0.95);
-}
-
-.tab-content {
-    display: none;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(to bottom,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
     opacity: 0;
-    transform: translateY(20px);
-    transition: var(--transition);
+    transition: var(--transition-standard);
 }
 
-.tab-content.active {
-    display: block;
+@media (prefers-color-scheme: dark) {
+    .bus-item::before, .destination-item::before, .stop-item::before {
+        background: linear-gradient(to bottom,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.03) 50%,
+            rgba(255, 255, 255, 0) 100%);
+    }
+}
+
+.bus-item:active, .destination-item:active, .stop-item:active {
+    transform: scale(0.97);
+    box-shadow: var(--glass-shadow-pressed);
+}
+
+.bus-item:active::before, .destination-item:active::before, .stop-item:active::before {
     opacity: 1;
-    transform: translateY(0);
 }
 
-.realtime-list {
-    padding: 24px;
-    background: rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-large);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    box-shadow: var(--shadow-glass);
+.bus-number {
+    display: block;
+    align-items: center;
+    justify-content: center;
+    min-width: 48px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    padding: 2px 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .bus-number {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+}
+
+.bus-name {
+    font-size: 16px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+
+.favorite-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, 
+        rgba(0, 122, 255, 0.1) 0%, 
+        rgba(168, 85, 247, 0.08) 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+    .favorite-item {
+        background: linear-gradient(135deg, 
+            rgba(10, 132, 255, 0.15) 0%, 
+            rgba(167, 139, 250, 0.12) 100%);
+    }
+}
+
+.favorite-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.favorite-route {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.favorite-details {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.favorite-times {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent-blue);
+    min-width: 100px;
+    text-align: right;
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.05);
+    padding: 6px;
+    border-radius: 14px;
+    margin-bottom: var(--spacing-lg);
+    position: relative;
+}
+
+@media (prefers-color-scheme: dark) {
+    .tabs {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+.tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition-standard);
+    font-weight: 600;
+    font-size: 14px;
+    position: relative;
+    z-index: 1;
+    font-family: 'League Spartan', sans-serif;
+}
+
+.tab.active {
+    color: var(--text-primary);
+}
+
+.tab-indicator {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    height: calc(100% - 12px);
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border-light);
+    border-radius: 10px;
+    transition: var(--transition-standard);
+    box-shadow: var(--glass-shadow-soft);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tab-indicator {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+}
+
+.date-picker, .destination-select {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    color: var(--text-primary);
+    font-family: 'League Spartan', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-lg);
+    cursor: pointer;
+    transition: var(--transition-standard);
+    box-shadow: var(--glass-shadow-soft);
+    width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+    .date-picker, .destination-select {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.1);
+        color-scheme: dark;
+    }
+}
+
+.date-picker:focus, .destination-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px var(--accent-blue-glow);
+    transform: scale(1.01);
+}
+
+.destination-select option {
+    background: white;
+    color: black;
+}
+
+@media (prefers-color-scheme: dark) {
+    .destination-select option {
+        background: #1c1c1e;
+        color: white;
+    }
+}
+
+.schedule-content {
+    display: none;
+}
+
+.schedule-content.active {
+    display: block;
+}
+
+.schedule-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.schedule-hour {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+    padding-left: 5px;
+    color: var(--accent-blue);
+    letter-spacing: -0.3px;
+}
+
+.schedule-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.schedule-time {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    border: 1px solid var(--glass-border-light);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 15px;
+    transition: var(--transition-smooth);
+    box-shadow: var(--glass-shadow-soft);
+    cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+    .schedule-time {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+}
+
+.schedule-time:active {
+    transform: scale(0.94);
+    box-shadow: var(--glass-shadow-pressed);
+}
+
+@keyframes fabPulse {
+    0%, 100% {
+        box-shadow: 0 12px 40px rgba(0, 122, 255, 0.4),
+                    0 4px 12px rgba(0, 0, 0, 0.15),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    }
+    50% {
+        box-shadow: 0 16px 56px rgba(0, 122, 255, 0.5),
+                    0 6px 16px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
 }
 
 .realtime-item {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 20px;
-    padding: 20px 24px;
-    margin-bottom: 12px;
-    background: var(--glass-surface);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-large);
-    box-shadow: var(--shadow-glass);
-    transition: var(--transition);
-    cursor: default;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    position: relative;
-    overflow: hidden;
-}
-
-.realtime-item::before {
-    content: '';
-    position: absolute;
-    left: -100%;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.1), transparent);
-    transition: left 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.realtime-item:hover::before {
-    left: 100%;
-}
-
-.realtime-item:hover {
-    background: var(--glass-surface-hover);
-    box-shadow: 
-        var(--shadow-glass-hover),
-        0 0 25px var(--glow-color);
-    transform: translateY(-2px) scale(1.01);
-}
-
-.realtime-item:last-child {
-    margin-bottom: 0;
-}
-
-.arrival-info {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    border: 1px solid var(--glass-border-light);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: relative;
-    z-index: 2;
-}
-
-.arrival-time {
-    font-size: 1.3em;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: var(--transition-smooth);
+    box-shadow: var(--glass-shadow-soft);
+    cursor: pointer;
 }
 
-.delay-indicator {
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 0.9em;
+@media (prefers-color-scheme: dark) {
+    .realtime-item {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+}
+
+.realtime-item:active {
+    transform: scale(0.97);
+    box-shadow: var(--glass-shadow-pressed);
+}
+
+.realtime-destination {
     font-weight: 700;
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    transition: var(--transition);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    font-size: 16px;
 }
 
-.delay-late {
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+.realtime-time {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent-blue);
 }
 
-.delay-early {
-    background: rgba(34, 197, 94, 0.15);
-    color: #86efac;
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
-}
-
-.delay-ontime {
-    background: rgba(139, 92, 246, 0.15);
-    color: #c4b5fd;
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    box-shadow: 0 0 15px var(--glow-color);
-}
-
-.theoretical-time {
-    font-size: 0.95em;
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-
-.vehicle-id {
-    font-size: 0.85em;
-    color: var(--text-muted);
-    margin-left: 12px;
-    padding: 6px 12px;
-    background: rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    display: inline-block;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-}
-
-.update-time {
+.empty-state {
+    background: var(--glass-bg-light);
+    backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur-mobile) saturate(180%);
+    border: 1px solid var(--glass-border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl) var(--spacing-lg);
+    box-shadow: var(--glass-shadow-soft);
     text-align: center;
-    padding: 16px 20px;
-    margin-bottom: 20px;
-    color: var(--text-secondary);
-    font-size: 0.95em;
-    font-weight: 600;
-    background: rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    animation: fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-    </style>
+@media (prefers-color-scheme: dark) {
+    .empty-state {
+        background: var(--glass-bg-dark);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto var(--spacing-md);
+    background: linear-gradient(135deg, 
+        rgba(0, 122, 255, 0.12) 0%, 
+        rgba(168, 85, 247, 0.08) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .empty-state-icon {
+        background: linear-gradient(135deg, 
+            rgba(10, 132, 255, 0.18) 0%, 
+            rgba(167, 139, 250, 0.12) 100%);
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .header {
+        top: var(--spacing-lg);
+        margin: var(--spacing-lg) var(--spacing-lg) 0;
+    }
+}
+
+@media (min-width: 1025px) {
+    .header {
+        top: var(--spacing-xl);
+        margin: var(--spacing-xl) var(--spacing-xl) 0;
+    }
+    
+    .bus-item:hover, .destination-item:hover, .stop-item:hover, .realtime-item:hover {
+        transform: translateY(-4px) scale(1.01);
+        box-shadow: var(--glass-shadow-hover);
+    }
+    
+    .back-btn:hover {
+        transform: scale(1.05);
+        box-shadow: var(--glass-shadow-hover);
+    }
+    
+    .schedule-time:hover {
+        transform: scale(1.05);
+        box-shadow: var(--glass-shadow-hover);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+.hidden {
+    display: none;
+}
+
+</style>
 </head>
 <body>
-
-    <div id="update-popup" class="update-popup">
-        <div class="popup-content">
-            <button id="close-popup" class="close-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+    <div class="header gpu-accelerated">
+        <div class="header-glass">
+            <button class="back-btn" id="back-btn">
+                <i class="fas fa-arrow-left"></i>
             </button>
-            <iframe id="webview-frame" src="" frameborder="0"></iframe>
+            <div class="header-icon">
+                <i class="fas fa-bus"></i>
+            </div>
+            <div class="header-text">
+                <h1 id="header-title">My Bus Schedule</h1>
+                <p id="header-subtitle">Sélectionnez une ligne</p>
+            </div>
         </div>
     </div>
-               
-    <div class="container">
-        <div id="loading-view" class="view active">
-            <div id="loading-indicator">
-            </div>
-        </div>
-        
-        <div id="error-view" class="view">
-            <div id="error-message" data-i18n="errorfetchingdata">
-                Erreur lors du chargement des données
-            </div>
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="btn" data-i18n="retry" onclick="loadData()">Réessayer</button>
-            </div>
-        </div>
-        
-        <div id="lines-view" class="view page-transition">
-            <h2 data-i18n="selectalinee">Sélectionnez une ligne</h2>
-            <div id="lines-container" class="bus-list"></div>
-        </div>
-        
-        <div id="destinations-view" class="view page-transition">
-            <div class="controls">
-                <button class="btn btn-back" data-i18n="back" onclick="showLines()">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Retour
-                </button>
-            </div>
-            <div class="textpop">
-                <h4 data-i18n="selectdestination">Sélectionnez une destination</h4>
-                <h1 id="route-title"></h1>
-            </div>
-            <div id="destinations-container"></div>
-        </div>
-        
-        <div id="stops-view" class="view page-transition">
-            <div class="controls">
-                <button class="btn btn-back" data-i18n="back" onclick="goBack()">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Retour
-                </button>
-            </div>
-            <div class="textpop">
-                <h4 data-i18n="selectstopanddestination">Sélectionnez un arrêt et une destination</h4>
-                <h1 id="destination-title"></h1>
-            </div>
-            <div class="destination-select-wrapper">
-                <select id="destination-select" class="custom-select">
-                    <option data-i18n="selectdestination" value="">Sélectionnez une destination</option>
-                </select>
-            </div>
-            <div id="stops-container"></div>
-        </div>
-        
-        <div id="schedule-view" class="view page-transition">
-            <div id="controls" class="controls">
-                <button class="btn btn-back" data-i18n="back" onclick="goBack()">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Retour
-                </button>
-            </div>
-            <div class="textpop">
-                <h4 id="route-info"></h4>
-                <h1 id="stop-title"></h1>
-                <input type="date" id="date-select" class="date-input">
 
+    <main class="main-container">
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <div class="state-title">Chargement</div>
+            <div class="state-description">Récupération des données...</div>
+        </div>
+
+        <div id="lines-view" class="view">
+            <div id="favorites-section" style="display: none;">
+                <div class="section-title"><i class="fas fa-star"></i> Favoris</div>
+                <div id="favorites-list"></div>
             </div>
-            
-            <div class="schedule-tabs">
+            <div id="lines-list"></div>
+        </div>
+
+        <div id="destinations-view" class="view">
+            <div class="section-title">Sélectionnez une destination</div>
+            <div id="destinations-list"></div>
+        </div>
+
+        <div id="stops-view" class="view">
+            <select class="destination-select" id="destination-select">
+                <option value="">Choisir une destination</option>
+            </select>
+            <div class="section-title">Arrêts</div>
+            <div id="stops-list"></div>
+        </div>
+
+        <div id="schedule-view" class="view">
+            <div class="tabs">
                 <div class="tab-indicator"></div>
-                <button class="tab-button-gauche active" data-tab="theoretical" data-i18n="timetable">Planche horaire</button>
-                <button class="tab-button" data-tab="realtime" data-i18n="nextarrivals">Prochains passages prévus</button>
+                <button class="tab active" data-tab="theoretical">Horaires théoriques</button>
+                <button class="tab" data-tab="realtime">Temps réel</button>
             </div>
-        
-            <div id="theoretical-view" class="tab-content active">
 
-                <div id="schedule-container"></div>
-            </div>
-        
-            <div id="realtime-view" class="tab-content">
+            <input type="date" class="date-picker" id="date-picker">
 
-                <div id="realtime-container" class="realtime-list"></div>
-            </div>
+            <div id="theoretical-content" class="schedule-content active"></div>
+            <div id="realtime-content" class="schedule-content"></div>
         </div>
-        <div id="home-view" class="view page-transition">
-            <div class="favorites-header">
-                <h2 data-i18n="favoritestops">Mes arrêts favoris</h2>
-            </div>
-            <div id="favorites-container" class="favorites-container"></div>
-            <div style="text-align: center; margin-top: 20px;">
-                <button class="btn" data-i18n="addstop" onclick="showLines()">Ajouter un arrêt</button>
-            </div>
-        </div>
-    </div>
-    <div class="overlay" id="overlay"></div>
-    <div class="stops-timeline-menu" id="stops-timeline-menu">
-        <div class="stops-timeline-header">
-            <h3 data-i18n="stopsdesservis"></h3>
-            <button class="stops-timeline-close" onclick="closeStopsTimeline()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-            <div class="stops-timeline-content" id="stops-timeline-content"></div>
-        <div class="stops-timeline-footer">
-            <button class="show-in-map-btn" data-i18n="displayonmap" onclick="showInMap()">Afficher dans la carte</button>
-        </div>
-    </div>
-
-    <script src="src/js/favorites.js"></script>
-    <script src="src/js/toastjs.js"></script>       
+    </main>
 
     <script>
-        const i18n = {
-        translations: {},
-        currentLang: 'fr',
-        
-        getLanguageFromUrl() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const lang = urlParams.get('lang');
-            return lang || localStorage.getItem('preferredLanguage') || 'fr';
-        },
-        
-        async loadTranslations() {
-            this.currentLang = this.getLanguageFromUrl();
-            localStorage.setItem('preferredLanguage', this.currentLang);
-            
-            try {
-            const response = await fetch(`../locales/${this.currentLang}.json`);
-            this.translations = await response.json();
-            document.dispatchEvent(new CustomEvent('translationsLoaded'));
-            return this.translations;
-            } catch (error) {
-            console.error("Erreur lors du chargement des traductions:", error);
-            return {};
-            }
-        },
-        
-        t(key, params = {}) {
-            let text = this.translations[key] || key;
-            
-            Object.keys(params).forEach(param => {
-            text = text.replace(`{${param}}`, params[param]);
-            });
-            
-            return text;
-        },
-        
-        applyTranslations() {
-            document.querySelectorAll('[data-i18n]').forEach(element => {
-            const key = element.getAttribute('data-i18n');
-            if (this.translations[key]) {
-                element.innerHTML = this.translations[key];
-            }
-            });
-        }
+        const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
+        const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
+        const CACHE_TTL = 24 * 60 * 60 * 1000;
+        const CACHE_VERSION = '1.0';
+
+        const state = {
+            routes: {},
+            stops: {},
+            trips: {},
+            stopTimes: {},
+            calendar: {},
+            calendarDates: {},
+            viewHistory: [],
+            currentRoute: null,
+            currentStop: null,
+            currentDestination: null,
+            coreLoaded: false,
+            realtimeInterval: null,
+            loadedRoutes: new Set(),
+            zipCache: null,
+            zipFiles: {}
         };
 
-        window.t = (key, params) => i18n.t(key, params);
+        const cache = {
+            serviceIds: new Map(),
+            scheduleData: new Map(),
+            destinations: new Map(),
+            stops: new Map()
+        };
 
-        document.addEventListener('DOMContentLoaded', async () => {
-        await i18n.loadTranslations();
-        i18n.applyTranslations();
-        });
+        const scrollState = {
+            positions: {}
+        };
 
-        window.i18n = i18n;
-    </script>
-
-
-    <script>
-        let routes = {};
-        let trips = {};
-        let stopTimes = {};
-        let stops = {};
-        let calendar = {};
-        let calendarDates = {};
-
-        
-        let navigationHistory = [];
-        let currentRouteId = null;
-        let currentStopId = null;
-        let currentDestinationId = null;
-
-        function controlParentSpinner(show, message) {
-            try {
-                window.parent.postMessage({
-                    action: show ? 'showSpinner' : 'hideSpinner',
-                    message: message || (show ? '' : '')
-                }, '*'); 
-            } catch (e) {
-                console.error("Impossible d'envoyer un message à la page parente", e);
-            }
+        function saveScrollPosition(view) {
+            scrollState.positions[view] = window.scrollY;
         }
 
-        controlParentSpinner(true, '');
-
-        async function getSetvar() {
-            try {
-                const response1 = await fetch('setvar/settings/networkname.txt');
-                const setvar1 = await response1.text();
-                const nomdureseau = setvar1.trim();  
-
-                return {nomdureseau};
-
-            } catch (error) {
-                console.error('Erreur chargement setvar ! ', error);
-            }
+        function restoreScrollPosition(view) {
+            const position = scrollState.positions[view] || 0;
+            window.scrollTo({ top: position, behavior: 'instant' });
         }
 
-        
-    document.addEventListener('DOMContentLoaded', function() {
-    loadData();
-    const tabs = document.querySelectorAll('.tab-button');
-    const tabsl = document.querySelectorAll('.tab-button-gauche');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetTab = tab.dataset.tab;
-            
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(`${targetTab}-view`).classList.add('active');
-            
-            if (targetTab === 'realtime') {
-                isShowingRealtime = true;
-                startRealtimeUpdates();
-            } else {
-                isShowingRealtime = false;
-                stopRealtimeUpdates();
-            }
-        });
-    });
-});
-
-
-function startRealtimeUpdates() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-    }
-    
-    fetchRealtimeData();
-    
-    updateInterval = setInterval(fetchRealtimeData, 30000);
-}
-
-function stopRealtimeUpdates() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-        updateInterval = null;
-    }
-}
-
-        
-        function loadData() {
-            showView('loading-view');
-            
-
-                loadGtfsData().then(() => {
-                    controlParentSpinner(false);
-                    showLines();
-                }).catch(error => {
-                    console.error('Erreur lors du chargement des données:', error);
-                    showView('error-view');
-                });
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-let realtimeData = null;
-let updateInterval = null;
-
-async function fetchRealtimeData() {
-    try {
-        const response = await fetch('proxy-cors/proxy_tripupdate.php');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        function addTouchFeedback(element) {
+            element.addEventListener('touchstart', function() {
+                this.classList.add('pressing');
+            }, { passive: true });
+            
+            element.addEventListener('touchend', function() {
+                this.classList.remove('pressing');
+            }, { passive: true });
+            
+            element.addEventListener('touchcancel', function() {
+                this.classList.remove('pressing');
+            }, { passive: true });
         }
-        const buffer = await response.arrayBuffer();
-        
-        const root = await protobuf.load('gtfs-realtime.proto');
-        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
-        const message = FeedMessage.decode(new Uint8Array(buffer));
-        
-        updateLastUpdateTime(message.header.timestamp);
-        
-        const processedData = processRealtimeData(message);
-        displayRealtimeSchedule(processedData);
-        
-    } catch (error) {
-        displayRealtimeError();
-    }
-}
 
-function displayRealtimeError() {
-    const container = document.getElementById('realtime-container');
-    container.innerHTML = `
-        <div class="error-message">
-            Impossible de récupérer les horaires en temps réel.
-            <button class="retry-button" onclick="fetchRealtimeData()">Réessayer</button>
-        </div>
-    `;
-}
+        document.addEventListener('DOMContentLoaded', init);
 
-function updateLastUpdateTime(timestamp) {
-    const lastUpdate = new Date(timestamp * 1000);
-    const timeString = lastUpdate.toLocaleTimeString();
+        async function init() {
+            await loadGtfsCore();
+            showLines();
+            initScrollEffects();
+        }
 
-}
-
-function processRealtimeData(message) {
-    if (!currentRouteId || !currentStopId) {
-        return [];
-    }
-
-    const currentTime = new Date();
-    const selectedDate = document.getElementById('date-select').value;
-    const arrivals = [];
-
-    message.entity.forEach(entity => {
-        if (entity.tripUpdate && matchesCurrentRoute(entity.tripUpdate.trip)) {
-            const vehicleId = entity.tripUpdate.vehicle ? 
-                            entity.tripUpdate.vehicle.id || 
-                            entity.tripUpdate.vehicle.label || 
-                            'inconnu' : 'inconnu';
-
-            entity.tripUpdate.stopTimeUpdate.forEach(update => {
-                if (update.stopId === currentStopId) {
-                    const arrivalTime = new Date(update.arrival?.time * 1000 || update.time * 1000);
-                    
-                    if (arrivalTime > currentTime && 
-                        arrivalTime < new Date(currentTime.getTime() + 24 * 60 * 60 * 1000)) {
+        function initScrollEffects() {
+            const header = document.querySelector('.header');
+            let lastScroll = 0;
+            let ticking = false;
+            
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    requestAnimationFrame(() => {
+                        const currentScroll = window.scrollY;
                         
-                        const theoreticalTime = getTheoreticalTime(
-                            entity.tripUpdate.trip.tripId, 
-                            currentStopId, 
-                            selectedDate
-                        );
-                        
-                        const delay = theoreticalTime ? 
-                            Math.round((arrivalTime - theoreticalTime) / 60000) : 0;
-
-                        arrivals.push({
-                            time: arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                            delay: delay,
-                            tripId: entity.tripUpdate.trip.tripId,
-                            vehicleId: vehicleId, 
-                            theoretical: theoreticalTime ? 
-                                theoreticalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
-                                null
-                        });
-                    }
-                }
-            });
-        }
-    });
-
-    return arrivals.sort((a, b) => {
-        const timeA = parseTime(a.time);
-        const timeB = parseTime(b.time);
-        return timeA - timeB;
-    });
-}
-
-function getRouteIdFromTripId(tripId) {
-    for (const [routeId, routeTrips] of Object.entries(trips)) {
-        if (routeTrips.some(trip => trip.trip_id === tripId)) {
-            return routeId;
-        }
-    }
-    return null;
-}
-
-function matchesCurrentRoute(trip) {
-    const routeTrips = trips[currentRouteId] || [];
-    return routeTrips.some(rt => rt.trip_id === trip.tripId);
-}
-
-function getTheoreticalTime(tripId, stopId) {
-    const tripStopTimes = stopTimes[tripId];
-    if (!tripStopTimes) return null;
-
-    const stopTime = tripStopTimes.find(st => st.stop_id === stopId);
-    if (!stopTime) return null;
-
-    const [hours, minutes] = stopTime.arrival_time.split('h').map(Number);
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-}
-
-function getScheduledTime(tripId, stopId) {
-    if (!stopTimes[tripId]) return null;
-    
-    const stopTime = stopTimes[tripId].find(st => st.stop_id === stopId);
-    if (!stopTime) return null;
-    
-    const [hours, minutes] = stopTime.arrival_time.split('h').map(n => parseInt(n, 10));
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-}
-
-function displayRealtimeSchedule(arrivals) {
-    const container = document.getElementById('realtime-container');
-    container.innerHTML = '';
-
-    if (!arrivals || arrivals.length === 0) {
-        container.innerHTML = `
-            <div class="no-data-message">
-                ${t("nodeparture")}
-            </div>
-        `;
-        return;
-    }
-
-    arrivals.forEach(arrival => {
-        const item = document.createElement('div');
-        item.className = 'realtime-item';
-        
-        let delayClass = 'delay-ontime';
-        let delayText = `${t("ontime")}`;
-        let delayTextTheo = arrival.theoretical ? 
-            `${t("delayed")} ${arrival.theoretical}` : '';
-
-        if (arrival.delay > 5) {
-            delayClass = 'delay-late';
-            delayText = `${arrival.delay} ${t("delayed2")}`;
-        } else if (arrival.delay < -2) {
-            delayClass = 'delay-early';
-            delayText = `${Math.abs(arrival.delay)} ${t("avance")}`;
-        }
-
-        item.innerHTML = `
-            <div class="arrival-info">
-                <div class="arrival-time">
-                    ${arrival.time}
-                    <span class="vehicle-id">${t("bus")} ${arrival.vehicleId}</span>
-                </div>
-                <div class="theoretical-time">${delayTextTheo}</div>
-                <div class="delay-indicator ${delayClass}">${delayText}</div>
-            </div>
-        `;
-
-        item.addEventListener('click', () => {
-            showStopsTimeline(arrival.vehicleId, arrival.tripId);
-        });
-        
-        container.appendChild(item);
-    });
-}
-
-function sendVehicleIdToParent(vehicleId, tripId) {
-    console.log('Tentative d\'envoi du vehicleId:', vehicleId);
-    
-    if (window.parent !== window) {
-        const message = {
-            type: 'vehicleSelected',
-            vehicleId: vehicleId,
-            tripId: tripId,
-            stopId: currentStopId,
-            routeId: currentRouteId,
-            timestamp: new Date().getTime()
-        };
-        
-        window.parent.postMessage(message, '*');
-        console.log('Message envoyé à la page parente:', message);
-    }
-}
-
-function getRealtimeArrival(tripId, stopId) {
-    if (!realtimeData || !realtimeData[tripId]) {
-        return null;
-    }
-    
-    const stopUpdate = realtimeData[tripId].stopTimeUpdates
-        .find(update => update.stopId === stopId);
-    
-    if (!stopUpdate || !stopUpdate.arrival) {
-        return null;
-    }
-    
-    return new Date(stopUpdate.arrival);
-}
-
-let DB_NAME;
-let STORE_NAME;
-const DB_VERSION = 4;
-
-async function initConstants() {
-    try {
-        const { nomdureseau } = await getSetvar();
-        DB_NAME = `MyBusFinder${nomdureseau}`;
-        STORE_NAME = `gtfsStore${nomdureseau}`;
-        return { DB_NAME, STORE_NAME };
-    } catch (error) {
-        console.error('Erreur lors de l\'initialisation des constantes', error);
-        DB_NAME = 'MyBusFinderDefault';
-        STORE_NAME = 'gtfsStoreDefault';
-        return { DB_NAME, STORE_NAME };
-    }
-}
-
-async function initDB() {
-    if (!DB_NAME || !STORE_NAME) {
-        await initConstants();
-    }
-    
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME);
-            }
-        };
-    });
-}
-
-async function calculateSHA256(data) {
-    let buffer;
-    if (data instanceof ArrayBuffer) {
-        buffer = data;
-    } else if (typeof data === 'string') {
-        const encoder = new TextEncoder();
-        buffer = encoder.encode(data).buffer;
-    } else if (data instanceof Blob) {
-        buffer = await data.arrayBuffer();
-    } else {
-        const jsonString = JSON.stringify(data);
-        const encoder = new TextEncoder();
-        buffer = encoder.encode(jsonString).buffer;
-    }
-
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    return hashHex;
-}
-
-async function getFileHash() {
-    try {
-        const response = await fetch('proxy-cors/proxy_gtfs.php', {
-            method: 'GET',
-            headers: {
-                'X-Content-Only-Header': 'true'  
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Échec de la vérif ${response.status}`);
-        }
-        
-        const buffer = await response.arrayBuffer();
-        const partialData = buffer.slice(0, Math.min(buffer.byteLength, 1024 * 50)); // 50KB max
-        
-        const fileHash = await calculateSHA256(partialData);
-        
-        return { fileHash, needsFullDownload: true };
-    } catch (error) {
-        console.error('Erreur lors de la vérif du hash:', error);
-        return { needsFullDownload: true };
-    }
-}
-
-async function checkGTFSUpdate() {
-    try {
-        const db = await initDB();
-        const transaction = db.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        
-        const storedMetadata = await new Promise((resolve, reject) => {
-            const request = store.get('gtfsMetadata');
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-        
-        if (!storedMetadata || !storedMetadata.fileHash) {
-            return { needsUpdate: true };
-        }
-        
-        const { fileHash, needsFullDownload } = await getFileHash();
-        
-        if (fileHash !== storedMetadata.fileHash) {
-            return { needsUpdate: true, fileHash };
-        }
-        
-        return { needsUpdate: false, metadata: storedMetadata };
-    } catch (error) {
-        console.error('Erreur vérif de maj GTFS', error);
-        return { needsUpdate: true };
-    }
-}
-
-async function saveToCache(data, metadata) {
-    try {
-        const db = await initDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-
-            store.put(data, 'gtfsData');
-            
-            if (!metadata) {
-                metadata = {};
-            }
-            metadata.lastUpdate = new Date().toISOString();
-            store.put(metadata, 'gtfsMetadata');
-
-            transaction.oncomplete = () => resolve();
-            transaction.onerror = () => reject(transaction.error);
-        });
-    } catch (error) {
-        console.error('Erreur sauvegarde cache', error);
-        throw error;
-    }
-}
-
-async function getFromCache() {
-    try {
-        const db = await initDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.get('gtfsData');
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    } catch (error) {
-        console.error('Erreur lors de récup cache', error);
-        return null;
-    }
-}
-
-async function extractGTFSFiles() {
-    try {
-        toastBottomRight.info(t("updatingdynamicdata"));
-        
-        const response = await fetch('proxy-cors/proxy_gtfs.php');
-        if (!response.ok) {
-            throw new Error(`Échec du téléchargement: ${response.status} ${response.statusText}`);
-            toastBottomRight.warning(t("errordynamicdata"));
-
-        }
-        
-        const zipData = await response.arrayBuffer();
-        
-        const fileHash = await calculateSHA256(zipData.slice(0, Math.min(zipData.byteLength, 1024 * 50))); // j'utilise les 50 premiers KB
-        
-        const zip = await JSZip.loadAsync(zipData);
-        
-        const extractedFiles = {};
-        
-        const filePromises = [];
-        zip.forEach((relativePath, zipEntry) => {
-            if (!zipEntry.dir) {
-                const promise = zipEntry.async("string").then(content => {
-                    extractedFiles[relativePath] = content;
-                });
-                filePromises.push(promise);
-            }
-        });
-        
-        await Promise.all(filePromises);
-        
-        const metadata = {
-            fileHash,
-            lastUpdate: new Date().toISOString()
-        };
-        
-        return { extractedFiles, metadata };
-    } catch (error) {
-        console.error('Erreur extract', error);
-        throw error;
-    }
-}
-
-function startWindowsSpinnerAnimation(elementId, interval = 30) {
-    const frames = [
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','','','','','','','','',
-    '','','','','','','','','',''
-  ];
-
-
-  const el = document.getElementById(elementId);
-  if (!el) {
-    return () => {};
-  }
-
-  let i = 0;
-  const timer = setInterval(() => {
-    el.textContent = frames[i];
-    i = (i + 1) % frames.length;
-  }, interval);
-  return () => clearInterval(timer);
-}
-
-
-async function loadGtfsData() {
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.id = 'loading-overlay';
-    loadingOverlay.style.cssText = `
-        position: fixed; 
-        top: 0; 
-        left: 0; 
-        width: 100%; 
-        height: 100%; 
-        background-color: rgba(255, 255, 255, 0.7); 
-        display: flex; 
-        justify-content: center; 
-        align-items: center; 
-        z-index: 9999;
-    `;
-    
-    const loadingContainer = document.createElement('div');
-    loadingContainer.style.cssText = `
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    `;
-    
-    const spinnerElement = document.createElement('span');
-    spinnerElement.id = 'gtfs-loading-spinner';
-    spinnerElement.style.cssText = `
-        font-family: 'SegoeUIBoot'; 
-        font-size: 2rem; 
-        margin-bottom: 10px;
-    `;
-    
-    const loadingText = document.createElement('div');
-    loadingText.id = 'gtfs-loading-text';
-    loadingText.textContent = 'Chargement des données GTFS...';
-    loadingText.style.cssText = `
-        font-family: 'League Spartan', sans-serif;
-        font-size: 16px;
-        color: #333;
-    `;
-    
-    loadingContainer.appendChild(spinnerElement);
-    loadingContainer.appendChild(loadingText);
-    loadingOverlay.appendChild(loadingContainer);
-    document.body.appendChild(loadingOverlay);
-    
-    const stopSpinner = startWindowsSpinnerAnimation('gtfs-loading-spinner', 30);
-    
-    try {
-        let extractedFiles;
-        
-        const updateLoadingText = (text) => {
-            const textElement = document.getElementById('gtfs-loading-text');
-            if (textElement) textElement.textContent = text;
-        };
-        
-        updateLoadingText('Vérification des mises à jour GTFS...');
-        const { needsUpdate, fileHash, metadata } = await checkGTFSUpdate();
-        
-        if (needsUpdate) {
-            updateLoadingText('Extraction des fichiers GTFS...');
-            const result = await extractGTFSFiles();
-            extractedFiles = result.extractedFiles;
-            
-            updateLoadingText('Sauvegarde des données dans le cache...');
-            await saveToCache(extractedFiles, result.metadata);
-            
-        } else {
-            updateLoadingText('Récupération des données depuis le cache...');
-            extractedFiles = await getFromCache();
-            if (!extractedFiles) {
-                updateLoadingText('Extraction des fichiers GTFS...');
-                const result = await extractGTFSFiles();
-                extractedFiles = result.extractedFiles;
-                updateLoadingText('Sauvegarde des données dans le cache...');
-                await saveToCache(extractedFiles, result.metadata);
-                toastBottomRight.success(t("downloadsuccess"));
-            } 
-        }
-        
-        routes = {};
-        trips = {};
-        stopTimes = {};
-        stops = {};
-        calendar = {};
-        calendarDates = {};
-        
-        const loadPromises = [];
-        
-        updateLoadingText('Chargement des routes...');
-        if (extractedFiles['routes.txt']) loadPromises.push(loadRoutes(extractedFiles['routes.txt']));
-        
-        updateLoadingText('Chargement des trajets...');
-        if (extractedFiles['trips.txt']) loadPromises.push(loadTrips(extractedFiles['trips.txt']));
-        
-        updateLoadingText('Chargement des horaires...');
-        if (extractedFiles['stop_times.txt']) loadPromises.push((async () => {
-            stopTimes = await loadStopTimes(extractedFiles['stop_times.txt']);
-        })());
-        
-        updateLoadingText('Chargement des arrêts...');
-        if (extractedFiles['stops.txt']) loadPromises.push(loadStops(extractedFiles['stops.txt']));
-        
-        updateLoadingText('Chargement du calendrier...');
-        if (extractedFiles['calendar.txt']) loadPromises.push(loadCalendar(extractedFiles['calendar.txt']));
-        
-        updateLoadingText('Chargement des dates calendrier...');
-        if (extractedFiles['calendar_dates.txt']) loadPromises.push(loadCalendarDates(extractedFiles['calendar_dates.txt']));
-        
-        updateLoadingText('Finalisation du chargement...');
-        await Promise.all(loadPromises);
-        
-        stopSpinner();
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) overlay.remove();
-        
-        return true;
-    } catch (error) {
-        console.error('Erreur lors du chargement des données GTFS', error);
-        
-        const textElement = document.getElementById('gtfs-loading-text');
-        if (textElement) {
-            textElement.textContent = "Erreur lors du chargement des données";
-            textElement.style.color = "red";
-        }
-        
-        stopSpinner();
-        setTimeout(() => {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.remove();
-        }, 3000);
-        
-        toastBottomRight.error("errorfetchingdata");
-        throw error;
-    }
-}
-
-async function clearGTFSCache() {
-    try {
-        const db = await initDB();
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.clear();
-
-            request.onsuccess = () => {
-                console.log('Cache GTFS effacé avec succès');
-                resolve();
-            };
-            request.onerror = () => reject(request.error);
-        });
-    } catch (error) {
-        console.error('Erreur lors de l\'effacement du cache:', error);
-        throw error;
-    }
-}
-
-
-
-
-
-
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}${month}${day}`;
-}
-
-
-
-
-
-async function loadRoutes(fileContent) {
-    try {
-        if (!fileContent) {
-            console.warn('Aucun contenu de fichier routes fourni');
-            return;
-        }
-        
-        const lines = fileContent.split(/\r\n|\n/);
-        
-        const headers = parseCSVLine(lines[0]);
-        const routeIdIndex = headers.indexOf('route_id');
-        const shortNameIndex = headers.indexOf('route_short_name');
-        const longNameIndex = headers.indexOf('route_long_name');
-        const routeTypeIndex = headers.indexOf('route_type');
-        const routeColorIndex = headers.indexOf('route_color');
-        const routeTextColorIndex = headers.indexOf('route_text_color');
-        const agencyIdIndex = headers.indexOf('agency_id');
-        
-        if (routeIdIndex === -1) {
-            console.error('Format de fichier routes.txt invalide , colonne route_id manquante');
-            return;
-        }
-        
-        lines.slice(1).forEach(line => {
-            if (!line.trim()) return;
-            
-            const values = parseCSVLine(line);
-            if (values.length <= routeIdIndex) {
-                console.warn('Ligne ignorée dans routes.txt, données incompletes', line);
-                return;
-            }
-            
-            const routeId = values[routeIdIndex];
-            if (routeId) {
-                routes[routeId] = {
-                    short_name: shortNameIndex !== -1 && values[shortNameIndex] ? values[shortNameIndex] : '',
-                    long_name: longNameIndex !== -1 && values[longNameIndex] ? values[longNameIndex] : '',
-                    route_type: routeTypeIndex !== -1 ? parseInt(values[routeTypeIndex] || '0', 10) : 0,
-                    route_color: routeColorIndex !== -1 && values[routeColorIndex] ? `#${values[routeColorIndex]}` : '#FFFFFF',
-                    route_text_color: routeTextColorIndex !== -1 && values[routeTextColorIndex] ? `#${values[routeTextColorIndex]}` : '#000000',
-                    agency_id: agencyIdIndex !== -1 ? values[agencyIdIndex] : null
-                };
-            }
-        });
-        
-        console.log(`Routes chargées ${Object.keys(routes).length} itinéraires`);
-    } catch (error) {
-        console.error('Erreur lors du chargement des itinéraires', error);
-    }
-}
-
-
-async function loadTrips(fileContent) {
-    try {
-        if (!fileContent) {
-            console.warn('Aucun contenu de fichier trips fourni');
-            return;
-        }
-        
-        const lines = fileContent.split(/\r\n|\n/);
-        
-        const headers = parseCSVLine(lines[0]);
-        const tripRouteIdIndex = headers.indexOf('route_id');
-        const tripIdIndex = headers.indexOf('trip_id');
-        const tripServiceIdIndex = headers.indexOf('service_id');
-        const tripHeadsignIndex = headers.indexOf('trip_headsign');
-        const directionIdIndex = headers.indexOf('direction_id');
-        const shapeIdIndex = headers.indexOf('shape_id');
-        
-        if (tripRouteIdIndex === -1 || tripIdIndex === -1) {
-            console.error('Format de fichier trips.txt invalide, colonnes requises manquantes');
-            return;
-        }
-        
-        lines.slice(1).forEach(line => {
-            if (!line.trim()) return;
-            
-            const values = parseCSVLine(line);
-            if (values.length <= Math.max(tripRouteIdIndex, tripIdIndex)) {
-                console.warn('Ligne ignorée dans trips.txt, données incomplètes', line);
-                return;
-            }
-            
-            const routeId = values[tripRouteIdIndex];
-            const tripId = values[tripIdIndex];
-            
-            if (routeId && tripId) {
-                if (!trips[routeId]) {
-                    trips[routeId] = [];
-                }
-                
-                trips[routeId].push({
-                    trip_id: tripId,
-                    service_id: tripServiceIdIndex !== -1 ? values[tripServiceIdIndex] : null,
-                    trip_headsign: tripHeadsignIndex !== -1 ? values[tripHeadsignIndex] : null,
-                    direction_id: directionIdIndex !== -1 ? parseInt(values[directionIdIndex] || '0', 10) : null,
-                    shape_id: shapeIdIndex !== -1 ? values[shapeIdIndex] : null
-                });
-            }
-        });
-        
-        console.log(`Trips charger ${Object.keys(trips).length} routes avec trajets`);
-    } catch (error) {
-        console.error('Erreur lors du chargement des trajets', error);
-    }
-}
-
-
-
-function parseCSVLine(csvLine) {
-    const result = [];
-    let currentValue = '';
-    let insideQuotes = false;
-
-    for (let i = 0; i < csvLine.length; i++) {
-        const char = csvLine[i];
-        
-        if (char === '"') {
-            insideQuotes = !insideQuotes;
-        } else if (char === ',' && !insideQuotes) {
-            result.push(currentValue);
-            currentValue = '';
-        } else {
-            currentValue += char;
-        }
-    }
-    
-    result.push(currentValue);
-    
-    return result.map(value => {
-        if (value.startsWith('"') && value.endsWith('"')) {
-            return value.slice(1, -1);
-        }
-        return value;
-    });
-}
-
-function formatDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}${month}${day}`;
-}
-
-
-
-async function loadCalendarDates(fileContent) {
-    try {
-        if (!fileContent) {
-            console.warn('Aucun contenu de fichier calendar_dates fourni');
-            return;
-        }
-        
-        const lines = fileContent.split(/\r\n|\n/);
-        
-        const headers = parseCSVLine(lines[0]);
-        const serviceIdIndex = headers.indexOf('service_id');
-        const dateIndex = headers.indexOf('date');
-        const exceptionTypeIndex = headers.indexOf('exception_type');
-        
-        if (serviceIdIndex === -1 || dateIndex === -1 || exceptionTypeIndex === -1) {
-            console.error('Format de fichier calendar_dates.txt invalide colonnes manquantes');
-            return;
-        }
-        
-        lines.slice(1).forEach(line => {
-            if (!line.trim()) return;
-            
-            const values = parseCSVLine(line);
-            if (values.length <= Math.max(serviceIdIndex, dateIndex, exceptionTypeIndex)) {
-                console.warn('Ligne ignorée dans calendar_dates.txt - données incomplètes:', line);
-                return;
-            }
-            
-            const serviceId = values[serviceIdIndex];
-            const date = values[dateIndex]; 
-            const exceptionType = parseInt(values[exceptionTypeIndex], 10);
-            
-            if (serviceId && date && !isNaN(exceptionType)) {
-                if (!calendarDates[date]) {
-                    calendarDates[date] = { added: [], removed: [] };
-                }
-                
-                if (exceptionType === 1) {  
-                    calendarDates[date].added.push(serviceId);
-                } else if (exceptionType === 2) {  
-                    calendarDates[date].removed.push(serviceId);
-                }
-            }
-        });
-        
-        console.log(`Calendar dates chargé ${Object.keys(calendarDates).length} dates avec exceptions`);
-    } catch (error) {
-        console.error('Erreur lors du chargement des exceptions de calendrier', error);
-    }
-}
-
-function isServiceActive(serviceId, dateObj) {
-    const formattedDate = formatDate(dateObj);
-    
-    if (calendarDates[formattedDate]) {
-        if (calendarDates[formattedDate].added.includes(serviceId)) {
-            return true;
-        }
-        if (calendarDates[formattedDate].removed.includes(serviceId)) {
-            return false; 
-        }
-    }
-    
-    if (!calendar[serviceId]) {
-        console.warn(`Service id ${serviceId} non trouvé dans le calendrier`);
-        return false;
-    }
-    
-    const day = dateObj.getDay(); 
-    const dateNumber = parseInt(formattedDate, 10);
-    
-    const calendarEntry = calendar[serviceId];
-    const startDate = parseInt(calendarEntry.start_date, 10);
-    const endDate = parseInt(calendarEntry.end_date, 10);
-    
-    if (dateNumber < startDate || dateNumber > endDate) {
-        return false;
-    }
-    
-    const weekdayFields = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    return calendarEntry[weekdayFields[day]] === true;
-}
-
-
-
-async function loadStopTimes(fileContent) {
-    const localStopTimes = {}; 
-    
-    try {
-        if (!fileContent) {
-            console.warn('Aucun contenu de fichier stop_times fourni');
-            return localStopTimes;
-        }
-        
-        console.time('Chargement stop_times');
-        console.log('Début du chargement des stop_times (fichier volumineux ~20Mo)...');
-        
-        // Optimisation 1: Détection plus rapide du caractère de fin de ligne
-        const newlineChar = fileContent.includes('\r\n') ? '\r\n' : '\n';
-        
-        // Optimisation 2: Parsing des headers plus efficace
-        const headerEndPos = fileContent.indexOf(newlineChar);
-        const headerLine = fileContent.substring(0, headerEndPos);
-        const headers = headerLine.split(',').map(h => h.trim().replace(/"/g, ''));
-        
-        const indices = {
-            tripId: headers.indexOf('trip_id'),
-            stopId: headers.indexOf('stop_id'),
-            arrivalTime: headers.indexOf('arrival_time'),
-            departureTime: headers.indexOf('departure_time'),
-            stopSequence: headers.indexOf('stop_sequence'),
-            pickupType: headers.indexOf('pickup_type'),
-            dropOffType: headers.indexOf('drop_off_type')
-        };
-        
-        if (indices.tripId === -1 || indices.stopId === -1 || indices.arrivalTime === -1) {
-            console.error('Format de fichier stop_times.txt invalide, colonnes requises manquantes');
-            return localStopTimes;
-        }
-        
-        // Optimisation 3: Chunks plus grands et moins de flushes
-        const CHUNK_SIZE = 500000; // Augmenté de 100k à 500k
-        const FLUSH_THRESHOLD = 500000; // Augmenté de 100k à 500k
-        
-        let entryCount = 0;
-        let warningCount = 0;
-        const MAX_WARNINGS = 5;
-        let lastProgressReport = Date.now();
-        const PROGRESS_INTERVAL = 5000; // Réduit la fréquence des rapports
-        
-        let tempTrips = {};
-        let tripCount = 0;
-        
-        // Optimisation 4: Split en une seule fois puis traitement par chunks
-        const lines = fileContent.substring(headerEndPos + newlineChar.length).split(newlineChar);
-        const totalLines = lines.length;
-        
-        for (let i = 0; i < totalLines; i += CHUNK_SIZE) {
-            const chunk = lines.slice(i, i + CHUNK_SIZE);
-            
-            for (let j = 0; j < chunk.length; j++) {
-                const line = chunk[j];
-                if (!line.trim()) continue;
-                
-                let values;
-                try {
-                    // Optimisation 5: Parsing CSV plus rapide pour les cas simples
-                    if (line.indexOf('"') === -1 && line.indexOf(',') !== -1) {
-                        values = line.split(',');
-                    } else {
-                        values = parseCSVLine(line);
-                    }
-                    
-                    if (values.length <= Math.max(indices.tripId, indices.stopId, indices.arrivalTime)) {
-                        if (warningCount < MAX_WARNINGS) {
-                            warningCount++;
-                            console.warn(`Ligne ignorée - données incomplètes (${warningCount}/${MAX_WARNINGS} avertissements max)`);
+                        if (currentScroll > 50) {
+                            header.classList.add('scrolled');
+                        } else {
+                            header.classList.remove('scrolled');
                         }
-                        continue;
-                    }
-                    
-                    const tripId = values[indices.tripId];
-                    if (!tripId) continue;
-                    
-                    // Optimisation 6: Création d'objets plus efficace
-                    if (!tempTrips[tripId]) {
-                        tempTrips[tripId] = [];
-                        tripCount++;
-                    }
-                    
-                    // Optimisation 7: Construction d'objet optimisée
-                    const stopEntry = {
-                        stop_id: values[indices.stopId],
-                        stop_sequence: indices.stopSequence !== -1 && values[indices.stopSequence] ? 
-                            parseInt(values[indices.stopSequence], 10) : 0
-                    };
-                    
-                    const arrivalTime = values[indices.arrivalTime];
-                    if (arrivalTime) {
-                        stopEntry.arrival_time = formatTimeString(arrivalTime);
-                    }
-                    
-                    const departureTime = indices.departureTime !== -1 ? values[indices.departureTime] : null;
-                    if (departureTime && departureTime !== arrivalTime) {
-                        stopEntry.departure_time = formatTimeString(departureTime);
-                    } else {
-                        stopEntry.departure_time = stopEntry.arrival_time;
-                    }
-                    
-                    const pickupType = indices.pickupType !== -1 ? values[indices.pickupType] : null;
-                    if (pickupType && pickupType !== '0') {
-                        stopEntry.pickup_type = parseInt(pickupType, 10);
-                    }
-                    
-                    const dropOffType = indices.dropOffType !== -1 ? values[indices.dropOffType] : null;
-                    if (dropOffType && dropOffType !== '0') {
-                        stopEntry.drop_off_type = parseInt(dropOffType, 10);
-                    }
-                    
-                    tempTrips[tripId].push(stopEntry);
-                    entryCount++;
-                    
-                } catch (error) {
-                    if (warningCount < MAX_WARNINGS) {
-                        warningCount++;
-                        console.warn(`Erreur lors du traitement de la ligne: ${error.message} (${warningCount}/${MAX_WARNINGS} avertissements max)`);
-                    }
+                        
+                        lastScroll = currentScroll;
+                        ticking = false;
+                    });
+                    ticking = true;
                 }
-            }
-            
-            // Optimisation 8: Rapports de progression moins fréquents
-            const now = Date.now();
-            if (now - lastProgressReport > PROGRESS_INTERVAL) {
-                const percentComplete = Math.floor(((i + CHUNK_SIZE) / totalLines) * 100);
-                console.log(`Chargement en cours : ${Math.min(percentComplete, 100)}% (${entryCount} arrêts, ${tripCount} trajets)`);
-                lastProgressReport = now;
-                
-                // Optimisation 9: Yield moins fréquent
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
-            
-            // Optimisation 10: Flush moins fréquent
-            if (entryCount > FLUSH_THRESHOLD) {
-                await flushTempTrips(tempTrips, localStopTimes);
-                
-                tempTrips = {};
-                tripCount = 0;
-                
-                // Optimisation 11: GC forcé moins fréquent
-                if (i % (CHUNK_SIZE * 4) === 0) {
-                    await forceGarbageCollection();
-                }
-            }
-        }
-        
-        // Flush final
-        if (Object.keys(tempTrips).length > 0) {
-            await flushTempTrips(tempTrips, localStopTimes);
-            tempTrips = null;
-        }
-        
-        console.timeEnd('Chargement stop_times');
-        console.log(`Stop times chargés: ${Object.keys(localStopTimes).length} trajets, ${entryCount} arrêts au total`);
-        
-        // Nettoyage final
-        fileContent = null;
-        await forceGarbageCollection();
-        
-        return localStopTimes;
-
-    } catch (error) {
-        console.error('Erreur lors du chargement des horaires', error.message, error.stack);
-        return localStopTimes;
-    }
-}
-
-// Fonction helper optimisée pour le parsing CSV simple
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        
-        if (char === '"') {
-            if (inQuotes && line[i + 1] === '"') {
-                current += '"';
-                i++; // Skip next quote
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = '';
-        } else {
-            current += char;
-        }
-    }
-    
-    result.push(current);
-    return result;
-}
-
-async function flushTempTrips(tempTrips, destination) {
-    const tripIds = Object.keys(tempTrips);
-    const totalTrips = tripIds.length;
-    
-    console.log(`Traitement de ${totalTrips} trajets temporaires...`);
-    
-    const BATCH_SIZE = 1000;
-    
-    for (let i = 0; i < totalTrips; i += BATCH_SIZE) {
-        const batchIds = tripIds.slice(i, i + BATCH_SIZE);
-        
-        for (const tripId of batchIds) {
-            tempTrips[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
-            destination[tripId] = tempTrips[tripId];
-            
-            delete tempTrips[tripId];
-        }
-        
-        if (i % (BATCH_SIZE * 5) === 0 && i > 0) {
-            console.log(`Flush progression: ${Math.round((i/totalTrips)*100)}%`);
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
-    
-    console.log('Flush terminé');
-}
-
-async function minimalGC() {
-    await new Promise(resolve => setTimeout(resolve, 1));
-    
-    if (typeof global !== 'undefined' && global.gc) {
-        // node.js avec --expose-gc
-        global.gc();
-    }
-}
-
-async function forceGarbageCollection() {
-    if (typeof global !== 'undefined' && global.gc) {
-        // node.js --expose-gc flag
-        global.gc();
-        return true;
-    } else if (typeof window !== 'undefined') {
-        console.log('Tentative de libération mémoire dans environnement navigateur...');
-        
-        const smallBuffer = new ArrayBuffer(1024 * 1024); 
-        
-        setTimeout(() => {
-        }, 0);
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 5));
-    
-    return false;
-}
-
-async function processBatch(batch, tempStopTimes) {
-    try {
-        const batchSize = batch.length;
-        const CHUNK_SIZE = 1000; 
-        
-        for (let i = 0; i < batchSize; i += CHUNK_SIZE) {
-            const end = Math.min(i + CHUNK_SIZE, batchSize);
-            
-            for (let j = i; j < end; j++) {
-                const item = batch[j];
-                
-                if (!item || !item.tripId) continue;
-                
-                if (!tempStopTimes[item.tripId]) {
-                    tempStopTimes[item.tripId] = [];
-                }
-                
-                const stopEntry = {
-                    stop_id: item.stopId,
-                    stop_sequence: item.stopSequence || 0
-                };
-                
-                if (item.arrivalTime) {
-                    stopEntry.arrival_time = formatTimeString(item.arrivalTime);
-                }
-                
-                if (item.departureTime && item.departureTime !== item.arrivalTime) {
-                    stopEntry.departure_time = formatTimeString(item.departureTime);
-                } else {
-                    stopEntry.departure_time = stopEntry.arrival_time;
-                }
-                
-                if (item.pickupType && item.pickupType !== '0') {
-                    stopEntry.pickup_type = parseInt(item.pickupType, 10);
-                }
-                
-                if (item.dropOffType && item.dropOffType !== '0') {
-                    stopEntry.drop_off_type = parseInt(item.dropOffType, 10);
-                }
-                
-                tempStopTimes[item.tripId].push(stopEntry);
-                
-                batch[j] = null;
-            }
-            
-            if (end < batchSize) {
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
-        }
-        
-        batch.length = 0;
-        
-    } catch (error) {
-        console.error('Erreur durant le traitement du batch', error);
-    }
-    
-    return null;
-}
-
-async function flushTempStopTimes(tempStopTimes, stopTimes, flushCallback) {
-    let count = 0;
-    const totalItems = tempStopTimes.size;
-    
-    for (const [tripId, stops] of tempStopTimes) {
-        stops.sort((a, b) => a.stop_sequence - b.stop_sequence);
-        
-        if (typeof flushCallback === 'function') {
-            flushCallback(tripId, stops);
-        } else {
-            stopTimes[tripId] = stops;
-        }
-        
-        count++;
-        
-        if (count % 10000 === 0) {
-            console.log(`Flush progression ${Math.round((count/totalItems)*100)}%`);
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
-}
-
-
-function formatTimeString(timeStr) {
-    const colonPos = timeStr.indexOf(':');
-    if (colonPos !== -1) {
-        const hour = timeStr.substring(0, colonPos);
-        const minute = timeStr.substring(colonPos + 1, colonPos + 3);
-        return `${hour}h${minute}`;
-    }
-    return timeStr;
-}
-
-async function loadStops(fileContent) {
-    try {
-        if (!fileContent) {
-            console.warn('Aucun contenu de fichier stops fourni');
-            return;
-        }
-        
-        const lines = fileContent.split(/\r\n|\n/);
-        
-        const headers = parseCSVLine(lines[0]);
-        const stopsIdIndex = headers.indexOf('stop_id');
-        const stopsNameIndex = headers.indexOf('stop_name');
-        const stopsLatIndex = headers.indexOf('stop_lat');
-        const stopsLonIndex = headers.indexOf('stop_lon');
-        const stopsCodeIndex = headers.indexOf('stop_code');
-        const parentStationIndex = headers.indexOf('parent_station');
-        const locationType = headers.indexOf('location_type');
-        
-        if (stopsIdIndex === -1 || stopsNameIndex === -1) {
-            console.error('Format de fichier stops.txt invalide colonnes requises manquantes..');
-            return;
-        }
-        
-        lines.slice(1).forEach(line => {
-            if (!line.trim()) return;
-            
-            const values = parseCSVLine(line);
-            if (values.length <= Math.max(stopsIdIndex, stopsNameIndex)) {
-                console.warn('Ligne ignorée dans stops.txt, données incomplètes:', line);
-                return;
-            }
-            
-            const stopId = values[stopsIdIndex];
-            if (stopId) {
-
-                stops[stopId] = values[stopsNameIndex];
-                
-            }
-        });
-        
-        console.log(`Stops chargés ${Object.keys(stops).length} arrets`);
-    } catch (error) {
-        console.error('Erreur lors du chargement des arrêts', error);
-    }
-}
-
-
-async function loadCalendar(fileContent) {
-    try {
-        if (!fileContent) {
-            console.warn('Aucun contenu de fichier calendar fourni');
-            return;
-        }
-        
-        const lines = fileContent.split(/\r\n|\n/);
-        
-        const headers = parseCSVLine(lines[0]);
-        const serviceIdIndex = headers.indexOf('service_id');
-        const startDateIndex = headers.indexOf('start_date');
-        const endDateIndex = headers.indexOf('end_date');
-        const mondayIndex = headers.indexOf('monday');
-        const tuesdayIndex = headers.indexOf('tuesday');
-        const wednesdayIndex = headers.indexOf('wednesday');
-        const thursdayIndex = headers.indexOf('thursday');
-        const fridayIndex = headers.indexOf('friday');
-        const saturdayIndex = headers.indexOf('saturday');
-        const sundayIndex = headers.indexOf('sunday');
-        
-        if (serviceIdIndex === -1 || startDateIndex === -1 || endDateIndex === -1 ||
-            mondayIndex === -1 || tuesdayIndex === -1 || wednesdayIndex === -1 ||
-            thursdayIndex === -1 || fridayIndex === -1 || saturdayIndex === -1 || 
-            sundayIndex === -1) {
-            console.error('Format de fichier calendar.txt invalide colonnes requises manquantes');
-            return;
-        }
-        
-        lines.slice(1).forEach(line => {
-            if (!line.trim()) return;
-            
-            const values = parseCSVLine(line);
-            if (values.length <= Math.max(serviceIdIndex, startDateIndex, endDateIndex, 
-                                        mondayIndex, tuesdayIndex, wednesdayIndex, 
-                                        thursdayIndex, fridayIndex, saturdayIndex, sundayIndex)) {
-                console.warn('Ligne ignorée dans calendar.txt, données incomplètes:', line);
-                return;
-            }
-            
-            const serviceId = values[serviceIdIndex];
-            if (serviceId) {
-                calendar[serviceId] = {
-                    monday: parseInt(values[mondayIndex], 10) === 1,
-                    tuesday: parseInt(values[tuesdayIndex], 10) === 1,
-                    wednesday: parseInt(values[wednesdayIndex], 10) === 1,
-                    thursday: parseInt(values[thursdayIndex], 10) === 1,
-                    friday: parseInt(values[fridayIndex], 10) === 1,
-                    saturday: parseInt(values[saturdayIndex], 10) === 1,
-                    sunday: parseInt(values[sundayIndex], 10) === 1,
-                    weekdays: [
-                        parseInt(values[mondayIndex], 10),
-                        parseInt(values[tuesdayIndex], 10),
-                        parseInt(values[wednesdayIndex], 10),
-                        parseInt(values[thursdayIndex], 10),
-                        parseInt(values[fridayIndex], 10)
-                    ].includes(1),
-                    start_date: values[startDateIndex],
-                    end_date: values[endDateIndex]
-                };
-            }
-        });
-        
-        console.log(`Calendar chargé ${Object.keys(calendar).length} services`);
-    } catch (error) {
-        console.error('Erreur lors du chargement du calendrier', error);
-    }
-}
-
-
-function getActiveServicesForDate(date) {
-    const activeServices = [];
-    
-    for (const serviceId in calendar) {
-        if (calendar.hasOwnProperty(serviceId) && isServiceActive(serviceId, date)) {
-            activeServices.push(serviceId);
-        }
-    }
-    
-    return activeServices;
-}
-
-
-function getActiveTripsForRoute(routeId, date) {
-    const activeServices = getActiveServicesForDate(date);
-    const activeTrips = [];
-    
-    if (!trips[routeId]) {
-        return activeTrips;
-    }
-    
-    trips[routeId].forEach(trip => {
-        if (activeServices.includes(trip.service_id)) {
-            activeTrips.push(trip);
-        }
-    });
-    
-    return activeTrips;
-}
-
-async function loadAllGTFSData(files) {
-    console.log('Chargement des données GTFS...');
-    
-    if (files.calendar) await loadCalendar(files.calendar);
-    if (files.calendar_dates) await loadCalendarDates(files.calendar_dates);
-    if (files.routes) await loadRoutes(files.routes);
-    if (files.stops) await loadStops(files.stops);
-    if (files.trips) await loadTrips(files.trips);
-    if (files.stop_times) await loadStopTimes(files.stop_times);
-    
-    console.log('Chargement des données GTFS terminé');
-}
-
-function getGTFSData() {
-    return {
-        routes,
-        trips,
-        stopTimes,
-        stops,
-        calendar,
-        calendarDates
-    };
-}
-
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        loadCalendarDates,
-        loadRoutes,
-        loadTrips,
-        loadStopTimes,
-        loadStops,
-        loadCalendar,
-        loadAllGTFSData,
-        isServiceActive,
-        getActiveServicesForDate,
-        getActiveTripsForRoute,
-        getGTFSData,
-        formatDate,
-        parseCSVLine,
-        formatTimeString,
-        minimalGC,
-        flushTempTrips
-    };
-}
-
-let updatePositionInterval;
-let currentVehicleId;
-let currentTripId;
-
-function showStopsTimeline(vehicleId, tripId) {
-    currentVehicleId = vehicleId;
-    currentTripId = tripId;
-    
-    const overlay = document.getElementById('overlay');
-    const menu = document.getElementById('stops-timeline-menu');
-    
-    if (!overlay || !menu) return;
-    
-    overlay.style.display = 'block';
-    menu.style.display = 'flex'; 
-    
-    menu.offsetHeight;
-    
-    overlay.classList.add('visible');
-    menu.classList.add('visible');
-    
-    updateStopsTimeline();
-    
-    if (updatePositionInterval) {
-        clearInterval(updatePositionInterval);
-    }
-    updatePositionInterval = setInterval(updateStopsTimeline, 10000);
-}
-
-function updateStopsTimeline() {
-    const content = document.getElementById('stops-timeline-content');
-    const tripStopsData = stopTimes[currentTripId];
-    if (!tripStopsData) return;
-    
-    content.innerHTML = '';
-    const timelineDiv = document.createElement('div');
-    timelineDiv.className = 'stops-timeline-line';
-    
-    const verticalLine = document.createElement('div');
-    verticalLine.className = 'timeline-vertical-line';
-    verticalLine.style.background = routes[currentRouteId].route_color;
-    timelineDiv.appendChild(verticalLine);
-    
-    const currentPosition = calculateBusPosition(tripStopsData);
-    
-    const busIndicator = document.createElement('div');
-    busIndicator.className = 'bus-position-indicator visible moving';
-    busIndicator.style.top = `${(currentPosition / (tripStopsData.length - 1)) * 100}%`;
-    busIndicator.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="${routes[currentRouteId].route_color}">
-            <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> <path d="M20 13H16M4 13H12" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M15.5 16H17" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M7 16H8.5" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4.5 5H8.25M19.5 5H12" stroke="#1C274C" stroke-width="1.5" stroke-linecap="round"></path> 
-        </svg>
-    `;
-    timelineDiv.appendChild(busIndicator);
-    
-    let currentStopElement = null;
-    
-    tripStopsData.forEach((stopTime, index) => {
-        const stopDiv = document.createElement('div');
-        stopDiv.className = 'stop-item-timeline';
-        
-        const time = stopTime.arrival_time;
-        
-        stopDiv.innerHTML = `
-            <div class="stop-name">${stops[stopTime.stop_id].replace(/"/g, '')}</div>
-            <div class="stop-time">${time}</div>
-        `;
-        
-        timelineDiv.appendChild(stopDiv);
-        
-        if (index === Math.floor(currentPosition)) {
-            currentStopElement = stopDiv;
-            stopDiv.classList.add('current-stop');
-        }
-        
-        setTimeout(() => {
-            stopDiv.classList.add('visible');
-        }, index * 50);
-    });
-    
-    content.appendChild(timelineDiv);
-
-    setTimeout(() => {
-        const wrapper = document.querySelector('.stops-timeline-wrapper');
-        if (currentStopElement && wrapper) {
-            const parentRect = wrapper.getBoundingClientRect();
-            const elementRect = currentStopElement.getBoundingClientRect();
-            const scrollTop = elementRect.top - parentRect.top - (parentRect.height / 2) + wrapper.scrollTop;
-            
-            wrapper.scrollTo({
-                top: scrollTop,
-                behavior: 'smooth'
             });
         }
-    }, 100);
-}
-function formatTime(time) {
-    return time; 
-}
 
-function closeStopsTimeline() {
-    const overlay = document.getElementById('overlay');
-    const menu = document.getElementById('stops-timeline-menu');
-    
-    if (!overlay || !menu) return;
-    
-    overlay.classList.remove('visible');
-    menu.classList.remove('visible');
-    
-    if (updatePositionInterval) {
-        clearInterval(updatePositionInterval);
-        updatePositionInterval = null;
-    }
-    
-    setTimeout(() => {
-        overlay.style.display = 'none';
-        menu.style.display = 'none';
-    }, 500);
-}
-
-
-function getRealtimeUpdatesForTrip(tripId) {
-    const updates = {};
-    try {
-        if (!window.realtimeData || !window.realtimeData.entity) {
-            return updates;
+        async function getZip() {
+            if (state.zipCache) return state.zipCache;
+            
+            const response = await fetch(GTFS_ZIP_URL);
+            if (!response.ok) {
+                throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
+            }
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            
+            state.zipCache = fflate.unzipSync(uint8Array);
+            
+            return state.zipCache;
         }
-        
-        window.realtimeData.entity.forEach(entity => {
-            if (entity.tripUpdate && entity.tripUpdate.trip.tripId === tripId) {
-                entity.tripUpdate.stopTimeUpdate.forEach(update => {
-                    if (update.arrival && update.arrival.time) {
-                        const time = new Date(update.arrival.time * 1000);
-                        updates[update.stopId] = `${time.getHours()}h${String(time.getMinutes()).padStart(2, '0')}`;
+
+        async function getFileFromZip(zip, filename) {
+            if (!zip[filename]) return null;
+            
+            const decoder = new TextDecoder('utf-8');
+            return decoder.decode(zip[filename]);
+        }
+
+        async function loadGtfsCore() {
+            try {
+                const cached = getCachedData('gtfs_core');
+                if (cached) {
+                    Object.assign(state, cached);
+                    state.coreLoaded = true;
+                    return;
+                }
+
+                const zip = await getZip();
+
+                const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
+                const missingFiles = requiredFiles.filter(f => !zip[f]);
+                
+                if (missingFiles.length > 0) {
+                    throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
+                }
+
+                if (!zip['calendar.txt'] && !zip['calendar_dates.txt']) {
+                    throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
+                }
+
+                const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
+                    getFileFromZip(zip, 'routes.txt'),
+                    getFileFromZip(zip, 'stops.txt'),
+                    getFileFromZip(zip, 'calendar.txt'),
+                    getFileFromZip(zip, 'calendar_dates.txt')
+                ]);
+
+                state.routes = parseCSVToObject(routesText, 'route_id');
+                state.stops = parseCSVToObject(stopsText, 'stop_id');
+                
+                if (calendarText) {
+                    state.calendar = parseCSVToObject(calendarText, 'service_id');
+                }
+                
+                if (calendarDatesText) {
+                    const dates = parseCSV(calendarDatesText);
+                    dates.forEach(cd => {
+                        if (!state.calendarDates[cd.date]) {
+                            state.calendarDates[cd.date] = { added: [], removed: [] };
+                        }
+                        if (cd.exception_type === '1') {
+                            state.calendarDates[cd.date].added.push(cd.service_id);
+                        } else if (cd.exception_type === '2') {
+                            state.calendarDates[cd.date].removed.push(cd.service_id);
+                        }
+                    });
+                }
+
+                if (!calendarText && calendarDatesText) {
+                    console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
+                    state.calendar = {};
+                }
+
+                setCachedData('gtfs_core', {
+                    routes: state.routes,
+                    stops: state.stops,
+                    calendar: state.calendar,
+                    calendarDates: state.calendarDates
+                });
+
+                state.coreLoaded = true;
+            } catch (error) {
+                console.error('Erreur chargement GTFS:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="state-title">Erreur de chargement</div>
+                        <div class="state-description">${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadTripsAndStopTimesForRoute(routeId) {
+            if (state.loadedRoutes.has(routeId)) return;
+
+            const cacheKey = `route_${routeId}`;
+            const cached = getCachedData(cacheKey);
+            
+            if (cached) {
+                state.trips[routeId] = cached.trips;
+                state.stopTimes[routeId] = cached.stopTimes;
+                state.loadedRoutes.add(routeId);
+                return;
+            }
+
+            try {
+                const zip = await getZip();
+
+                if (!zip['trips.txt'] || !zip['stop_times.txt']) {
+                    throw new Error('Fichiers trips.txt ou stop_times.txt manquants dans le ZIP');
+                }
+
+                const [tripsText, stopTimesText] = await Promise.all([
+                    getFileFromZip(zip, 'trips.txt'),
+                    getFileFromZip(zip, 'stop_times.txt')
+                ]);
+
+                const allTrips = parseCSV(tripsText);
+                const routeTrips = allTrips.filter(t => t.route_id === routeId);
+                const tripIds = new Set(routeTrips.map(t => t.trip_id));
+
+                const allStopTimes = parseCSV(stopTimesText);
+                const stopTimesByTrip = {};
+                
+                allStopTimes.forEach(st => {
+                    if (tripIds.has(st.trip_id)) {
+                        if (!stopTimesByTrip[st.trip_id]) {
+                            stopTimesByTrip[st.trip_id] = [];
+                        }
+                        stopTimesByTrip[st.trip_id].push({
+                            stop_id: st.stop_id,
+                            arrival_time: formatTimeString(st.arrival_time),
+                            departure_time: formatTimeString(st.departure_time || st.arrival_time),
+                            stop_sequence: parseInt(st.stop_sequence, 10)
+                        });
+                    }
+                });
+
+                Object.values(stopTimesByTrip).forEach(times => {
+                    times.sort((a, b) => a.stop_sequence - b.stop_sequence);
+                });
+
+                state.trips[routeId] = routeTrips;
+                state.stopTimes[routeId] = stopTimesByTrip;
+                state.loadedRoutes.add(routeId);
+
+                setCachedData(cacheKey, {
+                    trips: routeTrips,
+                    stopTimes: stopTimesByTrip
+                });
+            } catch (error) {
+                console.error('Erreur chargement route:', error);
+                alert(`Erreur lors du chargement de la ligne: ${error.message}`);
+            }
+        }
+
+        function parseCSV(text) {
+            const lines = text.trim().split(/\r?\n/);
+            const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+
+            return lines.slice(1).filter(l => l.trim()).map(line => {
+                const values = parseCSVLine(line);
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = (values[i] ?? '').trim().replace(/"/g, ''));
+                return obj;
+            });
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result;
+        }
+
+        function parseCSVToObject(text, keyField) {
+            const items = parseCSV(text);
+            const obj = {};
+            items.forEach(item => {
+                if (item[keyField]) {
+                    obj[item[keyField]] = item;
+                }
+            });
+            return obj;
+        }
+
+        function formatTimeString(timeStr) {
+            if (!timeStr) return '00h00';
+            const parts = timeStr.split(':');
+            let hour = parseInt(parts[0], 10);
+            const minute = parts[1] || '00';
+            if (hour >= 24) hour -= 24;
+            return `${hour}h${minute}`;
+        }
+
+        function getCachedData(key) {
+            try {
+                const item = localStorage.getItem(`gtfs_${key}`);
+                if (!item) return null;
+                
+                const data = JSON.parse(item);
+                if (data.version !== CACHE_VERSION) return null;
+                if (Date.now() - data.timestamp > CACHE_TTL) return null;
+                
+                return data.value;
+            } catch {
+                return null;
+            }
+        }
+
+        function setCachedData(key, value) {
+            try {
+                if (key.startsWith('route_')) {
+                    return;
+                }
+                
+                localStorage.setItem(`gtfs_${key}`, JSON.stringify({
+                    version: CACHE_VERSION,
+                    timestamp: Date.now(),
+                    value
+                }));
+            } catch (error) {
+                console.warn('Cache localStorage plein, nettoyage...', error);
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('gtfs_route_')) {
+                        localStorage.removeItem(key);
                     }
                 });
             }
-        });
-    } catch (error) {
-        console.error('Erreur lors de la récupération des mises à jour en temps réel:', error);
-    }
-    return updates;
-}
-
-function calculateBusPosition(tripStopsData) {
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-    
-    for (let i = 0; i < tripStopsData.length; i++) {
-        const stopTime = tripStopsData[i];
-        const [hours, minutes] = stopTime.arrival_time.split('h').map(Number);
-        const stopTimeInMinutes = hours * 60 + minutes;
-        
-        if (stopTimeInMinutes > currentTime) {
-            return Math.max(0, i - 1);
         }
-    }
-    
-    return tripStopsData.length - 1;
-}
-
-function getTimeInSeconds(timeStr) {
-    const [hours, minutes] = timeStr.split('h').map(Number);
-    return hours * 3600 + minutes * 60;
-}
-
-window.addEventListener('beforeunload', () => {
-    if (updatePositionInterval) {
-        clearInterval(updatePositionInterval);
-    }
-});
 
 
- function showInMap() {
-    const event = {
-        type: 'vehicleSelected',
-        vehicleId: currentVehicleId,
-        tripId: currentTripId,
-        stopId: currentStopId,
-        routeId: currentRouteId,
-        timestamp: new Date().getTime()
-    };
-    
-    if (window.parent !== window) {
-        window.parent.postMessage(event, '*');
-        
-        setTimeout(() => {
-            closeStopsTimeline();
-        }, 100);
-    } else if (window.opener) {
-        window.opener.postMessage(event, '*');
-        
-        setTimeout(() => {
-            window.close();
-            
-            setTimeout(() => {
-                alert("Impossible de fermer automatiquement l'onglet. Les données ont bien été envoyées.");
-            }, 300);
-        }, 100);
-    } else {
-        console.log("Données générées mais pas d'endroit où les envoyer", event);
-        
-        try {
-            window.close();
-            
-            setTimeout(() => {
-                alert("Impossible de fermer automatiquement l'onglet. Veuillez le fermer manuellement.");
-                closeStopsTimeline(); 
-            }, 300);
-        } catch (error) {
-            console.error("Erreur lors de la fermeture:", error);
-            closeStopsTimeline(); 
+        function hideAllViews() {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         }
-    }
-}
 
+        function showLines() {
+            hideAllViews();
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('lines-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'none';
+            document.getElementById('header-title').textContent = 'My Bus Schedule';
+            document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
+            state.viewHistory = [];
 
-function tryCloseTab() {
-    try {
-        const closed = window.close();
-        
-        setTimeout(() => {
-            if (!closed) {
-                alert("Votre navigateur empêche la fermeture automatique. Veuillez fermer cet onglet manuellement (Ctrl+W ou Cmd+W).");
+            if (state.viewHistory.length > 0) {
+                restoreScrollPosition('lines');
+            } else {
+                scrollToTop();
             }
-        }, 200);
-        
-        return closed;
-    } catch (error) {
-        console.error("Erreur lors de la fermeture de l'onglet:", error);
-        return false;
-    }
-}
-        function showView(viewId) {
-            document.querySelectorAll('.view').forEach(view => {
-                view.classList.remove('active');
+
+            const linesList = document.getElementById('lines-list');
+            linesList.innerHTML = '';
+
+            Object.entries(state.routes).forEach(([routeId, route], index) => {
+                const item = document.createElement('div');
+                item.className = 'bus-item';
+                item.style.animationDelay = `${index * 0.05}s`;
+                item.innerHTML = `
+                    <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
+                        Ligne ${route.route_short_name}
+                    </span>
+                    <span class="bus-name">${route.route_long_name}</span>
+                `;
+                item.onclick = () => showDestinations(routeId);
+                addTouchFeedback(item);
+                linesList.appendChild(item);
             });
+
+        }
+
+        async function showDestinations(routeId) {
+            state.currentRoute = routeId;
             
-            const view = document.getElementById(viewId);
-            view.classList.add('active');
+            hideAllViews();
+            document.getElementById('destinations-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'flex';
             
-            if (view.classList.contains('page-transition')) {
-                setTimeout(() => {
-                    view.classList.add('slide-in');
-                }, 50);
+            const route = state.routes[routeId];
+            document.getElementById('header-title').textContent = "Ligne " + route.route_short_name;
+            document.getElementById('header-subtitle').textContent = route.route_long_name;
+            
+            state.viewHistory.push('lines');
+
+            saveScrollPosition('lines');
+            scrollToTop();
+
+            const list = document.getElementById('destinations-list');
+            list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
+
+            await loadTripsAndStopTimesForRoute(routeId);
+
+            const destinations = getDestinations(routeId);
+            list.innerHTML = '';
+
+            destinations.forEach((dest, index) => {
+                const item = document.createElement('div');
+                item.className = 'destination-item';
+                item.style.animationDelay = `${index * 0.05}s`;
+                item.innerHTML = `<strong>${dest.name}</strong>`;
+                item.onclick = () => showStops(routeId, dest.id);
+                addTouchFeedback(item);
+                list.appendChild(item);
+            });
+        }
+
+        function showStops(routeId, destinationId = null) {
+            hideAllViews();
+            document.getElementById('stops-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'flex';
+            state.viewHistory.push('destinations');
+            saveScrollPosition('destinations');
+            scrollToTop();
+
+            const destinations = getDestinations(routeId);
+            const select = document.getElementById('destination-select');
+            select.innerHTML = '<option value="">Choisir une destination</option>';
+            
+            destinations.forEach(dest => {
+                const option = document.createElement('option');
+                option.value = dest.id;
+                option.textContent = dest.name;
+                if (dest.id === destinationId) option.selected = true;
+                select.appendChild(option);
+            });
+
+            select.onchange = () => updateStopsForDestination(routeId, select.value);
+
+            if (destinationId) {
+                updateStopsForDestination(routeId, destinationId);
             }
         }
-        
 
-    
-    function showLines() {
-    navigationHistory = [];
-    currentRouteId = null;
-    currentDestinationId = null;
-    currentStopId = null;
+        function updateStopsForDestination(routeId, destinationId) {
+            const list = document.getElementById('stops-list');
+            list.innerHTML = '';
 
-    
-    const container = document.getElementById('lines-container');
-    container.innerHTML = '';
-    
-    const favorites = getFavorites();
-    if (favorites.length > 0) {
-        const favoritesSection = document.createElement('div');
-        favoritesSection.className = 'favorites-section';
-        favoritesSection.innerHTML = `<h3>${t("favoritestops")}</h3>`;
-        
-        favorites.forEach(favorite => {
-            if (!routes[favorite.routeId]) {
-                console.warn(`Route ${favorite.routeId} not found for favorite ${favorite.id}`);
-                return; 
-            }
+            if (!destinationId) return;
+
+            const stops = getStopsForDestination(routeId, destinationId);
             
-            const favoriteItem = document.createElement('div');
-            favoriteItem.className = 'bus-item favorite-item';
-            favoriteItem.setAttribute('data-favorite-id', favorite.id);
-            favoriteItem.style.backgroundColor = routes[favorite.routeId].route_color;
-            favoriteItem.style.color = routes[favorite.routeId].route_text_color;
+            stops.forEach((stop, index) => {
+                const item = document.createElement('div');
+                item.className = 'stop-item';
+                item.style.animationDelay = `${index * 0.05}s`;
+                item.innerHTML = `<strong>${stop.stop_name}</strong>`;
+                item.onclick = () => showSchedule(routeId, stop.stop_id, destinationId);
+                addTouchFeedback(item);
+                list.appendChild(item);
+            });
+        }
+
+        function showSchedule(routeId, stopId, destinationId) {
+            state.currentRoute = routeId;
+            state.currentStop = stopId;
+            state.currentDestination = destinationId;
+
+            hideAllViews();
+            document.getElementById('schedule-view').classList.add('active');
+            document.getElementById('back-btn').style.display = 'flex';
+            state.viewHistory.push('stops');
+
+            saveScrollPosition('stops');
+            scrollToTop();
+
+            const route = state.routes[routeId];
+            const stop = state.stops[stopId];
+            document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
+            document.getElementById('header-subtitle').textContent = route.route_long_name;
+
+            setupTabHandlers();
             
-            favoriteItem.innerHTML = `
-                <div class="favorite-info">
-                    <div class="favorite-main-info">
-                        ${t("line")} ${favorite.routeName} → ${favorite.destinationName}
-                    </div>            
-                    <div class="favorite-main-info" style="font-style: italic; font-size: 0.8em">
-                        ${t("atthestop")} ${favorite.stopName}
-                    </div>
-                    <div class="realtime-info"></div>
-                </div>
-                <button class="favorite-button" onclick="event.stopPropagation(); removeFromFavorites('${favorite.id}'); showLines();">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 6L6 18M6 6l12 12"/>
-                    </svg>
-                </button>
-            `;
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date-picker').value = today;
             
-            favoriteItem.onclick = () => showSchedule(favorite.routeId, favorite.stopId, favorite.destinationId);
-            favoritesSection.appendChild(favoriteItem);
-        });
+            updateScheduleByDate(routeId, stopId, destinationId, today);
+        }
 
-        container.appendChild(favoritesSection);
-        updateFavoritesRealtimeData();
-        startFavoritesUpdate();
-    }
-    
-    const linesSection = document.createElement('div');
-    linesSection.className = 'lines-section';
-    if (favorites.length > 0) {
-        linesSection.innerHTML = `<h3>${t("alllines")}</h3>`;
-    }
-    
-    Object.entries(routes).forEach(([routeId, route]) => {
-        const lineItem = document.createElement('div');
-        lineItem.className = 'bus-item';
-        lineItem.innerHTML = `
-            <div class="line-details">
-                <span class="line-number">${t("line")} ${route.short_name}</span>
-            </div>
-            <div style="text-align: right;">${route.long_name.replace(/"/g, '')}</div>
-        `;
-        lineItem.style.backgroundColor = `${route.route_color}`;
-        lineItem.style.color = `${route.route_text_color}`;
-        lineItem.onclick = () => showStops(routeId);
-        linesSection.appendChild(lineItem);
-    });
-    
-    container.appendChild(linesSection);
-    
-    showView('lines-view');
-    
-    void document.getElementById('lines-view').offsetWidth;
-    
-    requestAnimationFrame(() => {
-        document.getElementById('lines-view').classList.add('slide-in');
-    });
-}
+        function setupTabHandlers() {
+            const tabs = document.querySelectorAll('.tab');
+            const indicator = document.querySelector('.tab-indicator');
+            const datePicker = document.getElementById('date-picker');
 
-function processRealtimeDataForStop(message, routeId, stopId) {
-    const currentTime = new Date();
-    const arrivals = [];
-
-    message.entity.forEach(entity => {
-        if (entity.tripUpdate && matchesRoute(entity.tripUpdate.trip, routeId)) {
-            entity.tripUpdate.stopTimeUpdate.forEach(update => {
-                if (update.stopId === stopId) {
-                    const arrivalTime = new Date(update.arrival?.time * 1000 || update.time * 1000);
+            tabs.forEach((tab, index) => {
+                tab.onclick = () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
                     
-                    if (arrivalTime > currentTime && 
-                        arrivalTime < new Date(currentTime.getTime() + 24 * 60 * 60 * 1000)) {
-                        
-                        arrivals.push({
-                            time: arrivalTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-                            vehicleId: entity.tripUpdate.vehicle?.id || 'inconnu'
+                    const width = tab.offsetWidth;
+                    const left = tab.offsetLeft - 6;
+                    indicator.style.width = `${width}px`;
+                    indicator.style.transform = `translateX(${left}px)`;
+
+                    document.querySelectorAll('.schedule-content').forEach(c => c.classList.remove('active'));
+                    
+                    if (tab.dataset.tab === 'theoretical') {
+                        document.getElementById('theoretical-content').classList.add('active');
+                        datePicker.style.display = 'block';
+                    } else {
+                        document.getElementById('realtime-content').classList.add('active');
+                        datePicker.style.display = 'none';
+                        loadRealtimeData();
+                    }
+
+                    if ('vibrate' in navigator) {
+                        navigator.vibrate(10);
+                    }
+                };
+            });
+
+            const activeTab = document.querySelector('.tab.active');
+            indicator.style.width = `${activeTab.offsetWidth}px`;
+            indicator.style.transform = `translateX(0px)`;
+
+            datePicker.onchange = (e) => {
+                updateScheduleByDate(state.currentRoute, state.currentStop, state.currentDestination, e.target.value);
+            };
+        }
+        
+        function computeGtfsDateAndDow(dateString) {
+            const gtfsDate = dateString.replace(/-/g, '');
+            const safe = new Date(dateString + 'T12:00:00');
+            const dayOfWeek = safe.getDay();
+            return { gtfsDate, dayOfWeek };
+        }
+
+        function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
+            const { gtfsDate, dayOfWeek } = computeGtfsDateAndDow(dateString);
+            const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
+
+            if (activeServiceIds.length === 0) {
+                const container = document.getElementById('theoretical-content');
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="state-title">Aucun service</div><div class="state-description">Aucun service actif pour cette date</div></div>';
+                return;
+            }
+
+            const validTrips = state.trips[routeId].filter(trip => 
+                activeServiceIds.includes(trip.service_id)
+            );
+
+            displaySchedule(validTrips, stopId, destinationId, document.getElementById('theoretical-content'));
+        }
+
+        function displaySchedule(validTrips, stopId, destinationId, container) {
+            container.innerHTML = '';
+
+            const schedule = [];
+            const stopTimesByRoute = state.stopTimes[state.currentRoute];
+
+            validTrips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops || tripStops.length === 0) return;
+
+                const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+
+                if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
+
+                schedule.push(tripStops[stopIndex].arrival_time);
+            });
+
+            if (schedule.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucun horaire</div><div class="state-description">Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
+                return;
+            }
+
+            const timesByHour = {};
+            schedule.forEach(time => {
+                const [hour, minute] = time.split('h');
+                if (!timesByHour[hour]) timesByHour[hour] = [];
+                timesByHour[hour].push(minute);
+            });
+
+            Object.keys(timesByHour)
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+                .forEach(hour => {
+                    const group = document.createElement('div');
+                    group.className = 'schedule-group';
+
+                    const hourTitle = document.createElement('div');
+                    hourTitle.className = 'schedule-hour';
+                    hourTitle.textContent = `${hour}h`;
+                    group.appendChild(hourTitle);
+
+                    const times = document.createElement('div');
+                    times.className = 'schedule-times';
+
+                    const uniqueMinutes = [...new Set(timesByHour[hour])]
+                        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+                    uniqueMinutes.forEach(minute => {
+                        const timeEl = document.createElement('div');
+                        timeEl.className = 'schedule-time';
+                        timeEl.textContent = minute;
+                        times.appendChild(timeEl);
+                    });
+
+                    group.appendChild(times);
+                    container.appendChild(group);
+                });
+        }
+
+        function getActiveServiceIds(dayOfWeek, gtfsDate) {
+            const cacheKey = `${dayOfWeek}_${gtfsDate}`;
+            if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
+
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayName = dayNames[dayOfWeek];
+
+            let serviceIds = [];
+
+            const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
+
+            if (hasCalendar) {
+                for (const [serviceId, cal] of Object.entries(state.calendar)) {
+                    const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
+                    if (!inRange) continue;
+
+                    if (String(cal[dayName]).trim() === '1') {
+                        serviceIds.push(serviceId);
+                    }
+                }
+            } else {
+                serviceIds = [];
+            }
+
+            const ex = state.calendarDates?.[gtfsDate];
+            if (ex) {
+                for (const id of ex.added || []) {
+                    if (!serviceIds.includes(id)) serviceIds.push(id);
+                }
+                for (const id of ex.removed || []) {
+                    serviceIds = serviceIds.filter(sid => sid !== id);
+                }
+            }
+
+            cache.serviceIds.set(cacheKey, serviceIds);
+            return serviceIds;
+        }
+
+        function getDestinations(routeId) {
+            if (cache.destinations.has(routeId)) {
+                return cache.destinations.get(routeId);
+            }
+
+            const trips = state.trips[routeId];
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const destinations = new Map();
+
+            trips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (tripStops && tripStops.length > 0) {
+                    const lastStop = tripStops[tripStops.length - 1];
+                    const stop = state.stops[lastStop.stop_id];
+                    if (stop && !destinations.has(stop.stop_id)) {
+                        destinations.set(stop.stop_id, { 
+                            id: stop.stop_id, 
+                            name: stop.stop_name 
                         });
                     }
                 }
             });
+
+            const result = Array.from(destinations.values());
+            cache.destinations.set(routeId, result);
+            return result;
         }
-    });
 
-    return arrivals.sort((a, b) => parseTime(a.time) - parseTime(b.time)).slice(0, 2);
-}
+        function getStopsForDestination(routeId, destinationId) {
+            const cacheKey = `${routeId}_${destinationId}`;
+            if (cache.stops.has(cacheKey)) {
+                return cache.stops.get(cacheKey);
+            }
 
-function displayRealtimeDataInFavorite(arrivals, container) {
-    if (arrivals.length === 0) {
-        container.innerHTML = `<div class="favorite-realtime">${t("noscheduledarrival")}</div>`;
-        return;
-    }
+            const trips = state.trips[routeId];
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const stopsMap = new Map();
 
-    container.innerHTML = `
-        <div class="favorite-realtime">
-            ${t("nextarrivals")} : <span>${arrivals.map(a => {
-                const [hours, minutes] = a.time.split(':');
-                return `${hours}h${minutes}`;
-            }).join(' | ')}</span>
-        </div>
-    `;
-}
-        function showDestinations(routeId) {
-            currentRouteId = routeId;
-            navigationHistory.push({ view: 'lines-view' });
-            
-            const container = document.getElementById('destinations-container');
+            trips.forEach(trip => {
+                const tripStops = stopTimesByRoute[trip.trip_id];
+                if (!tripStops) return;
+
+                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+                if (destIndex === -1) return;
+
+                tripStops.slice(0, destIndex).forEach(st => { 
+                    const stop = state.stops[st.stop_id];
+                    if (stop && !stopsMap.has(stop.stop_id)) {
+                        stopsMap.set(stop.stop_id, stop);
+                    }
+                });
+            });
+
+            const result = Array.from(stopsMap.values());
+            cache.stops.set(cacheKey, result);
+            return result;
+        }
+
+        async function loadRealtimeData() {
+            const container = document.getElementById('realtime-content');
+            container.innerHTML = '<div class="loading">Chargement des données temps réel...</div>';
+
+            try {
+                const response = await fetch(GTFS_RT_URL);
+                const buffer = await response.arrayBuffer();
+                
+                const root = await protobuf.load('src/gtfs-realtime.proto');
+                const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+                const message = FeedMessage.decode(new Uint8Array(buffer));
+
+                const arrivals = processRealtimeDataForStop(message, state.currentRoute, state.currentStop);
+                displayRealtimeArrivals(arrivals, container);
+            } catch (error) {
+                console.error('Erreur temps réel:', error);
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div>Données temps réel non disponibles</div></div>';
+            }
+        }
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function parseTimeHHhMM(timeStr) {
+            const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
+            return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
+        }
+
+        function buildDateFromPicker(timeHHhMM, dateString) {
+            const { h, m } = parseTimeHHhMM(timeHHhMM);
+            const d = new Date(dateString + 'T12:00:00');
+            d.setHours(h, m, 0, 0);
+            return d;
+        }
+
+        function getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString) {
+            const stopTimesByRoute = state.stopTimes[routeId];
+            const tripStops = stopTimesByRoute?.[tripId];
+            if (!tripStops) return null;
+
+            const st = tripStops.find(x => x.stop_id === stopId);
+            if (!st?.arrival_time) return null;
+
+            return buildDateFromPicker(st.arrival_time, dateString);
+        }
+
+        function minutesDiff(a, b) {
+            return Math.round((a.getTime() - b.getTime()) / 60000);
+        }
+
+        function matchesCurrentRouteRt(tripDescriptor, routeId) {
+            const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
+            if (rtRouteId) return String(rtRouteId) === String(routeId);
+
+            const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
+            if (!rtTripId) return false;
+
+            const routeTrips = state.trips?.[routeId] || [];
+            return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
+        }
+
+        function ensureRtUi() {
+            let overlay = document.getElementById('overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'overlay';
+                overlay.style.cssText = `
+                    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+                    z-index:9998;
+                `;
+                document.body.appendChild(overlay);
+            }
+
+            let panel = document.getElementById('rt-panel');
+            if (!panel) {
+                panel = document.createElement('div');
+                panel.id = 'rt-panel';
+                panel.style.cssText = `
+                    display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
+                    width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
+                    background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
+                    border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
+                    z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
+                    color:#fff;
+                `;
+                panel.innerHTML = `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+                        border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
+                        <div style="font-weight:800" id="rt-panel-title">Détails</div>
+                        <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
+                        color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
+                    </div>
+                    <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
+                `;
+                document.body.appendChild(panel);
+            }
+
+            const close = () => closeRtPanel();
+            overlay.onclick = close;
+            const closeBtn = document.getElementById('rt-panel-close');
+            if (closeBtn) closeBtn.onclick = close;
+        }
+
+        function openRtPanel(title, html) {
+            ensureRtUi();
+            const overlay = document.getElementById('overlay');
+            const panel = document.getElementById('rt-panel');
+            const titleEl = document.getElementById('rt-panel-title');
+            const contentEl = document.getElementById('rt-panel-content');
+
+            if (titleEl) titleEl.textContent = title || 'Détails';
+            if (contentEl) contentEl.innerHTML = html || '';
+
+            overlay.style.display = 'block';
+            panel.style.display = 'block';
+        }
+
+        function closeRtPanel() {
+            const overlay = document.getElementById('overlay');
+            const panel = document.getElementById('rt-panel');
+            if (overlay) overlay.style.display = 'none';
+            if (panel) panel.style.display = 'none';
+        }
+
+        function getMinutesFromHHhMM(timeStr) {
+            const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
+            return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+        }
+
+        function sendVehicleToParent(vehicleId, tripId) {
+            const message = {
+                type: 'vehicleSelected',
+                vehicleId: vehicleId || null,
+                tripId: tripId || null,
+                stopId: state.currentStop || null,
+                routeId: state.currentRoute || null,
+                timestamp: new Date().getTime()
+            };
+
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(message, '*');
+            } else if (window.opener) {
+                window.opener.postMessage(message, '*');
+            } else {
+                console.warn('Aucun parent/opener pour recevoir le message:', message);
+            }
+        }
+
+        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
+            ensureRtUi();
+
+            const route = state.routes?.[routeId];
+            const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
+            const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
+
+            const tripStops = state.stopTimes?.[routeId]?.[tripId];
+            if (!tripStops || tripStops.length === 0) {
+                openRtPanel(
+                    `Bus ${vehicleId || '—'} • ${routeLabel}`,
+                    `<div style="opacity:.8">Aucun détail d'arrêts pour ce trajet.</div>`
+                );
+                return;
+            }
+
+            const now = new Date();
+            const nowMin = now.getHours() * 60 + now.getMinutes();
+
+            let nextIndex = 0;
+            for (let i = 0; i < tripStops.length; i++) {
+                const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
+                if (tMin >= nowMin) { nextIndex = i; break; }
+                nextIndex = i;
+            }
+
+            const rows = tripStops.map((st, idx) => {
+                const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
+                const time = st.arrival_time || '--h--';
+
+                const isNext = idx === nextIndex;
+                const isPast = idx < nextIndex;
+
+                return `
+                    <div style="
+                        display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
+                        border-bottom:1px solid rgba(255,255,255,.08);
+                        background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
+                        opacity:${isPast ? '.55' : '1'};
+                    ">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="
+                                width:10px; height:10px; border-radius:999px;
+                                background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
+                                box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
+                            "></div>
+                            <div>${stopName}</div>
+                        </div>
+                        <div style="font-weight:800;">${time}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const html = `
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+                    <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
+                    <div style="font-weight:800;">${routeLabel}</div>
+                    <div style="opacity:.85;">• Trajet ${tripId}</div>
+                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
+                </div>
+
+                <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
+                    ${rows}
+                </div>
+
+                <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
+                    <button id="rt-show-map-btn" style="
+                        cursor:pointer; border:none; color:#fff;
+                        background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
+                        padding:10px 14px; border-radius:12px; font-weight:800;
+                        box-shadow:0 8px 24px rgba(0,0,0,.25);
+                    ">
+                        Afficher dans la carte
+                    </button>
+                </div>
+            `;
+
+            openRtPanel(`Détails • ${routeLabel}`, html);
+
+            const btn = document.getElementById('rt-show-map-btn');
+            if (btn) {
+                btn.onclick = () => {
+                    sendVehicleToParent(vehicleId, tripId);
+                    closeRtPanel();
+                };
+            }
+        }
+
+        function processRealtimeDataForStop(message, routeId, stopId) {
+            const arrivals = [];
+            const now = Date.now() / 1000;
+
+            message.entity.forEach(entity => {
+                if (!entity.tripUpdate) return;
+
+                const tu = entity.tripUpdate;
+                const td = tu.trip;
+
+                const tripId = td.tripId || td.trip_id;
+                if (!tripId) return;
+
+                const rtRouteId = td.routeId || td.route_id;
+                if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
+
+                if (!rtRouteId) {
+                    const routeTrips = state.trips?.[routeId] || [];
+                    const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
+                    if (!ok) return;
+                }
+
+                const vehicleId =
+                    entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
+                    entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
+
+                tu.stopTimeUpdate?.forEach(update => {
+                    if (update.stopId !== stopId) return;
+
+                    const arrivalTime = update.arrival?.time || update.departure?.time;
+                    if (!arrivalTime || arrivalTime <= now) return;
+
+                    arrivals.push({
+                        time: arrivalTime,
+                        tripId: tripId,
+                        vehicleId: vehicleId,
+                        headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
+                    });
+                });
+            });
+
+            return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
+        }
+
+        function displayRealtimeArrivals(arrivals, container) {
             container.innerHTML = '';
-            
-            document.getElementById('route-title').textContent = `${t("line")} ${routes[routeId].short_name}`;
-            
-            const destinations = new Set();
-            
-            trips[routeId].forEach(({ trip_id }) => {
-                const tripStops = stopTimes[trip_id];
-                if (tripStops && tripStops.length > 0) {
-                    const lastStop = tripStops[tripStops.length - 1].stop_id;
-                    destinations.add(lastStop);
-                }
-            });
-            
-            Array.from(destinations).forEach(destinationId => {
-                const destinationItem = document.createElement('div');
-                destinationItem.className = 'destination-item';
-                destinationItem.textContent = stops[destinationId].replace(/"/g, '');
-                destinationItem.onclick = () => showStops(routeId, destinationId);
-                destinationItem.style.backgroundColor = `${routes[routeId].route_color}`;
-                destinationItem.style.color = `${routes[routeId].route_text_color}`;
-                container.appendChild(destinationItem);
-            });
-            
-            document.querySelectorAll('.page-transition').forEach(el => el.classList.remove('slide-in'));
-            showView('destinations-view');
-        }
-        
-        function showStops(routeId) {
-    currentRouteId = routeId;
-    navigationHistory.push({ view: 'lines-view' });
-    
-    const container = document.getElementById('stops-container');
-    container.innerHTML = '';
-    
-    document.getElementById('destination-title').textContent = 
-        `${t("line")} ${routes[routeId].short_name}`;
-    
-    const destinationSelect = document.getElementById('destination-select');
-    destinationSelect.innerHTML = `<option value="">${t("selectdestination")}</option>`;
-    
-    const destinations = new Set();
-    trips[routeId].forEach(({ trip_id }) => {
-        const tripStops = stopTimes[trip_id];
-        if (tripStops && tripStops.length > 0) {
-            const lastStop = tripStops[tripStops.length - 1].stop_id;
-            destinations.add(lastStop);
-        }
-    });
-    
-    Array.from(destinations).forEach(destinationId => {
-        const option = document.createElement('option');
-        option.value = destinationId;
-        option.textContent = stops[destinationId].replace(/"/g, '');
-        destinationSelect.appendChild(option);
-    });
-    
-    destinationSelect.onchange = function() {
-        const destinationId = this.value;
-        updateStopsForDestination(routeId, destinationId);
-    };
-    
-    document.querySelectorAll('.page-transition').forEach(el => el.classList.remove('slide-in'));
-    showView('stops-view');
-}   
 
-function updateStopsForDestination(routeId, destinationId) {
-    const container = document.getElementById('stops-container');
-    container.innerHTML = '';
-    
-    if (!destinationId) return;
-    
-    const stopSet = new Set();
-    
-    trips[routeId].forEach(({ trip_id }) => {
-        const tripStops = stopTimes[trip_id];
-        if (tripStops) {
-            const destIndex = tripStops.findIndex(stop => stop.stop_id === destinationId);
-            if (destIndex !== -1) {
-                for (let i = 0; i < destIndex; i++) {
-                    stopSet.add(tripStops[i].stop_id);
-                }
+            if (!arrivals || arrivals.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
+                return;
             }
-        }
-    });
-    
-    Array.from(stopSet).forEach(stopId => {
-        const stopItem = document.createElement('div');
-        stopItem.className = 'stop-item';
-        stopItem.textContent = stops[stopId].replace(/"/g, '');
-        stopItem.onclick = () => showSchedule(routeId, stopId, destinationId);
-        stopItem.style.backgroundColor = `${routes[routeId].route_color}`;
-        stopItem.style.color = `${routes[routeId].route_text_color}`;
-        container.appendChild(stopItem);
-    });
-}
 
+            arrivals.forEach(arr => {
+                const date = new Date(arr.time * 1000);
+                const hh = pad2(date.getHours());
+                const mm = pad2(date.getMinutes());
 
-        let isShowingRealtime = false;
+                const item = document.createElement('div');
+                item.className = 'realtime-item';
+                item.style.cursor = 'pointer';
 
-function showSchedule(routeId, stopId, destinationId) {
-    currentStopId = stopId;
-    currentRouteId = routeId;
-    isShowingRealtime = false; 
-    navigationHistory.push({ view: 'stops-view', routeId, destinationId });
-    
-    scrollToTop();
-    document.getElementById('route-info').textContent = 
-        `${t("line")} ${routes[routeId].short_name} ➜ ${stops[destinationId].replace(/"/g, '')}`;
-    document.getElementById('stop-title').textContent = 
-        `${t("scheduleforstop")} ${stops[stopId].replace(/"/g, '')}`;
+                const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
 
-        const favoriteButton = document.createElement('div');
-favoriteButton.className = `favorite-star ${isFavorite(routeId, stopId, destinationId) ? 'active' : ''}`;
-favoriteButton.innerHTML = `
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="${isFavorite(routeId, stopId, destinationId) ? '#FFD700' : 'none'}" stroke="currentColor" stroke-width="1">
-        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-    </svg>
-`;
-favoriteButton.onclick = () => {
-    const id = `${routeId}-${stopId}-${destinationId}`;
-    if (isFavorite(routeId, stopId, destinationId)) {
-        removeFromFavorites(id);
-        favoriteButton.classList.remove('active');
-        favoriteButton.querySelector('svg').setAttribute('fill', 'none');
-    } else {
-        addToFavorites(routeId, stopId, destinationId);
-        favoriteButton.classList.add('active');
-        favoriteButton.querySelector('svg').setAttribute('fill', '#FFD700');
-    }
-};
-document.querySelector('#controls').parentNode.style.position = 'relative';
-document.querySelector('#controls').parentNode.appendChild(favoriteButton);
-    
-    const dateSelect = document.getElementById('date-select');
-    const today = new Date();
-    dateSelect.value = today.toISOString().split('T')[0];
-    
-    document.querySelectorAll('.tab-button').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.tab === 'theoretical') {
-            tab.classList.add('active');
-        }
-    });
+                item.innerHTML = `
+                    <div>
+                        <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+                            ${busLabel ? `<span>${busLabel}</span>` : ''}
+                        </div>
+                        ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
+                    </div>
+                    <div class="realtime-time">${hh}h${mm}</div>
+                `;
 
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-        if (content.id === 'theoretical-view') {
-            content.classList.add('active');
-        }
-    });
-    
-    const indicator = document.querySelector('.tab-indicator');
-    indicator.style.transform = 'translateX(0)';
+                item.addEventListener('click', () => {
+                    showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
+                });
 
-    updateScheduleByDate(routeId, stopId, destinationId, dateSelect.value);
-
-    const theoreticalTab = document.querySelector('.tab-button-gauche[data-tab="theoretical"]');
-    if (theoreticalTab) {
-        theoreticalTab.click();
-    }
-
-    dateSelect.addEventListener('change', () => {
-    updateScheduleByDate(currentRouteId, currentStopId, destinationId, dateSelect.value);
-});
-    
-    setupTabHandlers();
-    
-    document.querySelectorAll('.page-transition').forEach(el => el.classList.remove('slide-in'));
-    showView('schedule-view');
-}
-
-function scrollToTop() {
-  const currentPosition = window.pageYOffset || document.documentElement.scrollTop;
-  if (currentPosition > 0) {
-    window.requestAnimationFrame(scrollToTop);
-    window.scrollTo(0, currentPosition - currentPosition / 8);
-  }
-}
-
-function setupTabHandlers() {
-    const tabsContainer = document.querySelector('.schedule-tabs');
-    const tabs = tabsContainer.querySelectorAll('.tab-button, .tab-button-gauche');
-    const indicator = tabsContainer.querySelector('.tab-indicator');
-    const dateSelect = document.getElementById('date-select');
-
-    let startX = 0;
-    let isDragging = false;
-    let currentTab = 0;
-
-    function updateIndicatorPosition(position, animate = true) {
-        indicator.style.transition = animate ? 'transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1)' : 'none';
-        indicator.style.transform = `translateX(${position}px)`;
-    }
-
-    function switchTab(index) {
-        const targetTab = tabs[index];
-        if (!targetTab) return;
-
-        tabs.forEach(tab => tab.classList.remove('active'));
-        targetTab.classList.add('active');
-
-        const targetTabName = targetTab.dataset.tab;
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-
-        const targetContent = document.getElementById(`${targetTabName}-view`);
-        if (targetContent) {
-            targetContent.classList.add('active');
-        }
-
-        isShowingRealtime = targetTabName === 'realtime';
-        if (isShowingRealtime) {
-            startRealtimeUpdates();
-        } else {
-            stopRealtimeUpdates();
-            if (currentRouteId && currentStopId && currentDestinationId) {
-                updateScheduleByDate(currentRouteId, currentStopId, currentDestinationId, dateSelect.value);
-            }
-        }
-
-        currentTab = index;
-    }
-
-    tabs.forEach((tab, index) => {
-        tab.addEventListener('click', (e) => {
-            if (!isDragging) {
-                const offset = index * (tabsContainer.offsetWidth / 2);
-                updateIndicatorPosition(offset);
-                switchTab(index);
-            }
-        });
-
-        tab.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            isDragging = true;
-            tab.classList.add('pressed');
-        }, { passive: true });
-
-        tab.addEventListener('mousedown', (e) => {
-            startX = e.clientX;
-            isDragging = true;
-            tab.classList.add('pressed');
-        });
-    });
-
-    document.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const x = e.touches[0].clientX;
-        const delta = x - startX;
-        const tabWidth = tabsContainer.offsetWidth / 2;
-        const maxMove = tabWidth;
-        const move = Math.max(0, Math.min(maxMove, currentTab * tabWidth + delta));
-        updateIndicatorPosition(move, false);
-    }, { passive: true });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const x = e.clientX;
-        const delta = x - startX;
-        const tabWidth = tabsContainer.offsetWidth / 2;
-        const maxMove = tabWidth;
-        const move = Math.max(0, Math.min(maxMove, currentTab * tabWidth + delta));
-        updateIndicatorPosition(move, false);
-    });
-
-    function endDrag(e) {
-        if (!isDragging) return;
-        isDragging = false;
-
-        tabs.forEach(tab => tab.classList.remove('pressed'));
-
-        const tabWidth = tabsContainer.offsetWidth / 2;
-        const currentPosition = parseFloat(indicator.style.transform.replace('translateX(', '')) || 0;
-        const newIndex = Math.round(currentPosition / tabWidth);
-
-        updateIndicatorPosition(newIndex * tabWidth);
-        switchTab(newIndex);
-    }
-
-    document.addEventListener('touchend', endDrag);
-    document.addEventListener('touchcancel', endDrag);
-    document.addEventListener('mouseup', endDrag);
-
-    window.addEventListener('resize', () => {
-        const offset = currentTab * (tabsContainer.offsetWidth / 2);
-        updateIndicatorPosition(offset, false);
-    });
-
-    if (!dateSelect.hasEventListener) {
-        dateSelect.hasEventListener = true;
-        dateSelect.addEventListener('change', (event) => {
-            if (currentRouteId && currentStopId && currentDestinationId) {
-                updateScheduleByDate(currentRouteId, currentStopId, currentDestinationId, event.target.value);
-            }
-        });
-    }
-}
-
-function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
-    const scheduleContainer = document.getElementById('schedule-container');
-    scheduleContainer.innerHTML = '';
-    
-    const selectedDate = new Date(dateString);
-    const gtfsDate = selectedDate.toISOString().split('T')[0].replace(/-/g, '');
-    const dayOfWeek = selectedDate.getDay();
-    
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const formattedDate = selectedDate.toLocaleDateString('fr-FR', dateOptions);
-    
-    const dateHeader = document.createElement('div');
-    dateHeader.className = 'date-header';
-    dateHeader.innerHTML = `<h3>${t("schedulefordate")} ${formattedDate}</h3>`;
-    scheduleContainer.appendChild(dateHeader);
-    
-    const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
-    
-    if (activeServiceIds.length === 0) {
-        scheduleContainer.innerHTML += `<p>${t("noserviceavailable")}</p>`;
-        return;
-    }
-    
-    const validTrips = trips[routeId].filter(({ trip_id, service_id }) => 
-        activeServiceIds.includes(service_id)
-    );
-    
-    if (validTrips.length === 0) {
-        scheduleContainer.innerHTML += `<p>${t("nobusonline")}</p>`;
-        return;
-    }
-    
-    displaySchedule(validTrips, stopId, destinationId, scheduleContainer);
-}
-
-function parseTime(timeStr) {
-    const [hours, minutes] = timeStr.split(':').map(Number);
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-}
-
-function parseTimeString(timeStr) {
-    const [hours, minutes] = timeStr.split('h').map(num => parseInt(num, 10));
-    return { hours, minutes };
-}
-
-function formatMinutes(minutes) {
-    return minutes.toString().padStart(2, '0');
-}
-
-function displaySchedule(validTrips, stopId, destinationId, container) {
-    const schedule = [];
-    validTrips.forEach(trip => {
-        const tripStops = stopTimes[trip.trip_id];
-        let destinationReached = false;
-        
-        if (tripStops) {
-            tripStops.forEach(({ stop_id: currentStopId, arrival_time }) => {
-                if (currentStopId === destinationId) destinationReached = true;
-                if (currentStopId === stopId && !destinationReached) {
-                    schedule.push(arrival_time);
-                }
+                container.appendChild(item);
             });
         }
-    });
-    
-    if (schedule.length === 0) {
-        container.innerHTML += `<p>${t("nobusforthisstop")}</p>`;
-        return;
-    }
-    
-    const hours = {};
-    schedule.forEach(time => {
-        let [hour, minute] = time.split('h').map(num => parseInt(num, 10));
-        
-        if (hour >= 24) {
-            hour -= 24;
-        }
-        
-        if (!hours[hour]) hours[hour] = [];
-        hours[hour].push(minute);
-    });
-    
-    const sortedHours = Object.entries(hours).sort(([a], [b]) => parseInt(a) - parseInt(b));
-    
-    sortedHours.forEach(([hour, minutes]) => {
-        const uniqueSortedMinutes = [...new Set(minutes)]
-            .sort((a, b) => a - b)
-            .map(min => min.toString().padStart(2, '0'))
-            .join('&nbsp;&nbsp;&nbsp;');
-        
-        const row = document.createElement('div');
-        row.className = 'schedule-row';
-        row.innerHTML = `
-            <span>${hour}h</span>
-            <span1>${uniqueSortedMinutes}</span1>
-        `;
-        container.appendChild(row);
-    });
-}
 
+        function goBack() {
+            const previous = state.viewHistory.pop();
+            
+            if (!previous) {
+                showLines();
+                return;
+            }
 
-function getActiveServiceIds(dayOfWeek, gtfsDate) {
-    const activeServiceIds = [];
-    
-    Object.entries(calendar).forEach(([serviceId, service]) => {
-        const isInDateRange = service.start_date && service.end_date && 
-                              gtfsDate >= service.start_date && 
-                              gtfsDate <= service.end_date;
-        
-        if (isInDateRange && 
-            ((dayOfWeek === 0 && service.sunday) ||
-             (dayOfWeek === 6 && service.saturday) ||
-             (dayOfWeek >= 1 && dayOfWeek <= 5 && service.weekdays))) {
-            activeServiceIds.push(serviceId);
+            switch (previous) {
+                case 'lines':
+                    showLines();
+                    restoreScrollPosition('lines');
+                    break;
+                case 'destinations':
+                    showDestinations(state.currentRoute);
+                    restoreScrollPosition('destinations');
+                    break;
+                case 'stops':
+                    showStops(state.currentRoute, state.currentDestination);
+                    restoreScrollPosition('stops');
+                    break;
+            }
         }
-    });
-    
-    if (calendarDates[gtfsDate]) {
-        calendarDates[gtfsDate].added.forEach(serviceId => {
-            if (!activeServiceIds.includes(serviceId)) {
-                activeServiceIds.push(serviceId);
+
+        const backBtn = document.getElementById('back-btn');
+        backBtn.onclick = goBack;
+        addTouchFeedback(backBtn);
+
+        window.addEventListener('beforeunload', () => {
+            if (state.realtimeInterval) {
+                clearInterval(state.realtimeInterval);
             }
         });
-        
-        calendarDates[gtfsDate].removed.forEach(serviceId => {
-            const index = activeServiceIds.indexOf(serviceId);
-            if (index !== -1) {
-                activeServiceIds.splice(index, 1);
+
+        // Smooth page load
+        window.addEventListener('load', () => {
+            document.body.style.opacity = '0';
+            requestAnimationFrame(() => {
+                document.body.style.transition = 'opacity 0.4s ease';
+                document.body.style.opacity = '1';
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && state.viewHistory.length > 0) {
+                goBack();
             }
         });
-    }
-    
-    return activeServiceIds;
-}
-
-function cleanup() {
-    stopRealtimeUpdates();
-    isShowingRealtime = false;
-}
-
-function goBack() {
-    if (navigationHistory.length === 0) {
-        showLines();
-        return;
-    }
-    
-    const previousState = navigationHistory.pop();
-    
-    if (previousState.view === 'lines-view') {
-        showLines();
-    } else if (previousState.view === 'stops-view' && previousState.routeId) {
-        showStops(previousState.routeId);
-        cleanup();
-    }
-}
-
     </script>
 </body>
 </html>
