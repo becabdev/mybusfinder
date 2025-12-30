@@ -5215,7 +5215,6 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                         
                         if (!showMinimal) {
                             markerPool.active.forEach((marker, id) => {
-                                const marker = markers[id];
                                 if (marker) createOrUpdateMinimalTooltip(id, false);
                             });
                             return;
