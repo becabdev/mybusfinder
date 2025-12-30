@@ -1946,3 +1946,39 @@
 .invert-img img {
     filter: invert(1);
 }
+
+
+    .linesection {
+        transition: transform 0.2s  cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
+    }
+    
+    .linesection.removing {
+        animation: remove-favorite 0.3s ease-out forwards;
+    }
+    
+    @keyframes remove-favorite {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.05);
+            opacity: 0.8;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+    
+    .favorite-button {
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    }
+    
+    .favorite-button:hover {
+        transform: scale(1.1);
+    }
+    
+    .favorite-button:active {
+        transform: scale(0.9);
+    }
