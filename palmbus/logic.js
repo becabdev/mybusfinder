@@ -2449,123 +2449,6 @@ let lastActiveMarkerId = null;
 let lastActiveColor = null;
 window.isMenuShowed = false;
 
-// ==================== TEXT COLOR UTILS ====================
-const TextColorUtils = {
-    cache: new Map(),
-    maxCacheSize: 100,
-    
-    getOptimal(bgColor, options = {}) {
-        const cacheKey = `${bgColor}-${JSON.stringify(options)}`;
-        
-        if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey);
-        }
-        
-        const result = this._calculate(bgColor, options);
-        
-        if (this.cache.size >= this.maxCacheSize) {
-            const firstKey = this.cache.keys().next().value;
-            this.cache.delete(firstKey);
-        }
-        
-        this.cache.set(cacheKey, result);
-        return result;
-    },
-    
-    _calculate(bgColor, options = {}) {
-        const {
-            contrastRatio = 4.5,
-            darkColor = '#1a1a1a',
-            lightColor = '#f8f9fa'
-        } = options;
-
-        let r, g, b, a = 1;
-
-        if (!bgColor) return darkColor;
-        bgColor = bgColor.trim();
-
-        if (bgColor.startsWith('rgb')) {
-            const values = bgColor.match(/\d+(\.\d+)?/g);
-            if (values) {
-                r = parseInt(values[0]);
-                g = parseInt(values[1]);
-                b = parseInt(values[2]);
-                a = values[3] ? parseFloat(values[3]) : 1;
-            } else {
-                return darkColor;
-            }
-        } else {
-            if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
-                bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
-                    (_, r, g, b) => '#' + r + r + g + g + b + b);
-            }
-
-            if (bgColor.length === 7) {
-                r = parseInt(bgColor.slice(1, 3), 16);
-                g = parseInt(bgColor.slice(3, 5), 16);
-                b = parseInt(bgColor.slice(5, 7), 16);
-            } else if (bgColor.length === 9) {
-                r = parseInt(bgColor.slice(1, 3), 16);
-                g = parseInt(bgColor.slice(3, 5), 16);
-                b = parseInt(bgColor.slice(5, 7), 16);
-                a = parseInt(bgColor.slice(7, 9), 16) / 255;
-            } else {
-                return darkColor;
-            }
-        }
-
-        r = Math.max(0, Math.min(255, r));
-        g = Math.max(0, Math.min(255, g));
-        b = Math.max(0, Math.min(255, b));
-
-        const srgb = [r, g, b].map(c => {
-            const val = c / 255;
-            return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
-        });
-        const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-
-        const getLuminance = (color) => {
-            const hex = color.replace('#', '');
-            const r = parseInt(hex.substr(0, 2), 16) / 255;
-            const g = parseInt(hex.substr(2, 2), 16) / 255;
-            const b = parseInt(hex.substr(4, 2), 16) / 255;
-            const srgb = [r, g, b].map(c => 
-                c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
-            );
-            return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-        };
-
-        const darkLuminance = getLuminance(darkColor);
-        const lightLuminance = getLuminance(lightColor);
-
-        const contrastWithDark = luminance > darkLuminance 
-            ? (luminance + 0.05) / (darkLuminance + 0.05)
-            : (darkLuminance + 0.05) / (luminance + 0.05);
-        
-        const contrastWithLight = luminance > lightLuminance 
-            ? (luminance + 0.05) / (lightLuminance + 0.05)
-            : (lightLuminance + 0.05) / (luminance + 0.05);
-
-        const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
-
-        if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
-            return isMediumDark ? lightColor : (luminance > 0.18 ? darkColor : lightColor);
-        } else if (contrastWithDark >= contrastRatio) {
-            return isMediumDark ? lightColor : darkColor;
-        } else if (contrastWithLight >= contrastRatio) {
-            return lightColor;
-        } else {
-            if (isMediumDark || luminance < 0.15) return lightColor;
-            return contrastWithDark > contrastWithLight ? darkColor : lightColor;
-        }
-    },
-    
-    clearCache() {
-        this.cache.clear();
-    }
-};
-// ==================== FIN TEXT COLOR UTILS ====================
-
 
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
@@ -2702,8 +2585,136 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
                 menubtm.style.backgroundColor = `${color}9c`;
 
-                const textColor = TextColorUtils.getOptimal(color);
-                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
+                function getOptimalTextColor(bgColor, options = {}) {
+                    const {
+                        contrastRatio = 4.5,
+                        darkColor = '#1a1a1a',
+                        lightColor = '#f8f9fa',
+                        useGradient = false 
+                    } = options;
+
+                    let r, g, b, a = 1;
+
+                    if (!bgColor) return darkColor;
+
+                    bgColor = bgColor.trim();
+
+                    if (bgColor.startsWith('rgb')) {
+                        const values = bgColor.match(/\d+(\.\d+)?/g);
+                        if (values) {
+                            r = parseInt(values[0]);
+                            g = parseInt(values[1]);
+                            b = parseInt(values[2]);
+                            a = values[3] ? parseFloat(values[3]) : 1;
+                        } else {
+                            return darkColor;
+                        }
+                    } else {
+                        // Parse hex colors
+                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                (_, r, g, b) => '#' + r + r + g + g + b + b);
+                        }
+
+                        if (bgColor.length === 7) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                        } else if (bgColor.length === 9) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else {
+                            return darkColor;
+                        }
+                    }
+
+                    // Clamp values
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    // Calculate luminance of background
+                    const srgb = [r, g, b].map(c => {
+                        const val = c / 255;
+                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                    });
+                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                    // Helper function to calculate luminance from hex
+                    const getLuminance = (color) => {
+                        const hex = color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16) / 255;
+                        const g = parseInt(hex.substr(2, 2), 16) / 255;
+                        const b = parseInt(hex.substr(4, 2), 16) / 255;
+                        const srgb = [r, g, b].map(c => 
+                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                        );
+                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                    };
+
+                    // Calculate contrast ratios
+                    const darkLuminance = getLuminance(darkColor);
+                    const lightLuminance = getLuminance(lightColor);
+
+                    const contrastWithDark = luminance > darkLuminance 
+                        ? (luminance + 0.05) / (darkLuminance + 0.05)
+                        : (darkLuminance + 0.05) / (luminance + 0.05);
+                    
+                    const contrastWithLight = luminance > lightLuminance 
+                        ? (luminance + 0.05) / (lightLuminance + 0.05)
+                        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
+                            return lightColor; 
+                        }
+                        
+                        // Sinon prendre le meilleur contraste disponible
+                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                    }
+                }
+
+                const textColor = getOptimalTextColor(color);
+                if (getOptimalTextColor(color) === '#1a1a1a') {
                     document
                         .querySelectorAll('#menubtm img')
                         .forEach(img => {
@@ -2736,8 +2747,138 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                 marker.styleId = styleId;
             } else {
                 const currentColor = window.getComputedStyle(menubtm).backgroundColor;
-                const textColor = TextColorUtils.getOptimal(color);
-                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
+                
+                function getOptimalTextColor(bgColor, options = {}) {
+                    const {
+                        contrastRatio = 4.5,
+                        darkColor = '#1a1a1a',
+                        lightColor = '#f8f9fa',
+                        useGradient = false 
+                    } = options;
+
+                    let r, g, b, a = 1;
+
+                    if (!bgColor) return darkColor;
+
+                    bgColor = bgColor.trim();
+
+                    if (bgColor.startsWith('rgb')) {
+                        const values = bgColor.match(/\d+(\.\d+)?/g);
+                        if (values) {
+                            r = parseInt(values[0]);
+                            g = parseInt(values[1]);
+                            b = parseInt(values[2]);
+                            a = values[3] ? parseFloat(values[3]) : 1;
+                        } else {
+                            return darkColor;
+                        }
+                    } else {
+                        // Parse hex colors
+                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                (_, r, g, b) => '#' + r + r + g + g + b + b);
+                        }
+
+                        if (bgColor.length === 7) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                        } else if (bgColor.length === 9) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else {
+                            return darkColor;
+                        }
+                    }
+
+                    // Clamp values
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    // Calculate luminance of background
+                    const srgb = [r, g, b].map(c => {
+                        const val = c / 255;
+                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                    });
+                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                    // Helper function to calculate luminance from hex
+                    const getLuminance = (color) => {
+                        const hex = color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16) / 255;
+                        const g = parseInt(hex.substr(2, 2), 16) / 255;
+                        const b = parseInt(hex.substr(4, 2), 16) / 255;
+                        const srgb = [r, g, b].map(c => 
+                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                        );
+                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                    };
+
+                    // Calculate contrast ratios
+                    const darkLuminance = getLuminance(darkColor);
+                    const lightLuminance = getLuminance(lightColor);
+
+                    const contrastWithDark = luminance > darkLuminance 
+                        ? (luminance + 0.05) / (darkLuminance + 0.05)
+                        : (darkLuminance + 0.05) / (luminance + 0.05);
+                    
+                    const contrastWithLight = luminance > lightLuminance 
+                        ? (luminance + 0.05) / (lightLuminance + 0.05)
+                        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
+                            return lightColor; 
+                        }
+                        
+                        // Sinon prendre le meilleur contraste disponible
+                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                    }
+                }
+
+
+                const textColor = getOptimalTextColor(color);
+                if (getOptimalTextColor(color) === '#1a1a1a') {
                     document
                         .querySelectorAll('#menubtm img')
                         .forEach(img => {
@@ -2807,8 +2948,136 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         styleSheet.id = styleId;
                         styleSheet.classList.add('menu-color-style');
                         
+                        function getOptimalTextColor(bgColor, options = {}) {
+                            const {
+                                contrastRatio = 4.5,
+                                darkColor = '#1a1a1a',
+                                lightColor = '#f8f9fa',
+                                useGradient = false 
+                            } = options;
 
-                        const textColor = TextColorUtils.getOptimal(color);
+                            let r, g, b, a = 1;
+
+                            if (!bgColor) return darkColor;
+
+                            bgColor = bgColor.trim();
+
+                            if (bgColor.startsWith('rgb')) {
+                                const values = bgColor.match(/\d+(\.\d+)?/g);
+                                if (values) {
+                                    r = parseInt(values[0]);
+                                    g = parseInt(values[1]);
+                                    b = parseInt(values[2]);
+                                    a = values[3] ? parseFloat(values[3]) : 1;
+                                } else {
+                                    return darkColor;
+                                }
+                            } else {
+                                // Parse hex colors
+                                if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                                    bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                        (_, r, g, b) => '#' + r + r + g + g + b + b);
+                                }
+
+                                if (bgColor.length === 7) {
+                                    r = parseInt(bgColor.slice(1, 3), 16);
+                                    g = parseInt(bgColor.slice(3, 5), 16);
+                                    b = parseInt(bgColor.slice(5, 7), 16);
+                                } else if (bgColor.length === 9) {
+                                    r = parseInt(bgColor.slice(1, 3), 16);
+                                    g = parseInt(bgColor.slice(3, 5), 16);
+                                    b = parseInt(bgColor.slice(5, 7), 16);
+                                    a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                                } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                                    r = parseInt(bgColor.slice(1, 3), 16);
+                                    g = parseInt(bgColor.slice(3, 5), 16);
+                                    b = parseInt(bgColor.slice(5, 7), 16);
+                                    a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                                } else {
+                                    return darkColor;
+                                }
+                            }
+
+                            // Clamp values
+                            r = Math.max(0, Math.min(255, r));
+                            g = Math.max(0, Math.min(255, g));
+                            b = Math.max(0, Math.min(255, b));
+
+                            // Calculate luminance of background
+                            const srgb = [r, g, b].map(c => {
+                                const val = c / 255;
+                                return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                            });
+                            const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                            // Helper function to calculate luminance from hex
+                            const getLuminance = (color) => {
+                                const hex = color.replace('#', '');
+                                const r = parseInt(hex.substr(0, 2), 16) / 255;
+                                const g = parseInt(hex.substr(2, 2), 16) / 255;
+                                const b = parseInt(hex.substr(4, 2), 16) / 255;
+                                const srgb = [r, g, b].map(c => 
+                                    c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                                );
+                                return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                            };
+
+                            // Calculate contrast ratios
+                            const darkLuminance = getLuminance(darkColor);
+                            const lightLuminance = getLuminance(lightColor);
+
+                            const contrastWithDark = luminance > darkLuminance 
+                                ? (luminance + 0.05) / (darkLuminance + 0.05)
+                                : (darkLuminance + 0.05) / (luminance + 0.05);
+                            
+                            const contrastWithLight = luminance > lightLuminance 
+                                ? (luminance + 0.05) / (lightLuminance + 0.05)
+                                : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                            // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                            // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                            const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+                            // Si les deux couleurs passent le test de contraste
+                            if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                                // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                                if (isMediumDark) {
+                                    return lightColor;
+                                }
+                                // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                                return luminance > 0.18 ? darkColor : lightColor;
+                            } 
+                            // Si seule la couleur foncée passe
+                            else if (contrastWithDark >= contrastRatio) {
+                                // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                                if (isMediumDark) {
+                                    return lightColor;
+                                }
+                                return darkColor;
+                            } 
+                            // Si seule la couleur claire passe
+                            else if (contrastWithLight >= contrastRatio) {
+                                return lightColor;
+                            } 
+                            // Aucune ne passe vraiment le test
+                            else {
+                                // Pour les couleurs moyennes-foncées, forcer le clair
+                                if (isMediumDark) {
+                                    return lightColor;
+                                }
+                                
+                                // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                                if (luminance < 0.15) {
+                                    return lightColor; 
+                                }
+                                
+                                // Sinon prendre le meilleur contraste disponible
+                                return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                            }
+                        }
+
+
+                        const textColor = getOptimalTextColor(color);
 
                         document
                             .querySelectorAll('#menubtm img')
@@ -4824,7 +5093,7 @@ async function fetchVehiclePositions() {
                             }
                             
                             const color = lineColors[marker.line] || '#000000';
-                            const textColor = TextColorUtils.getOptimal(color);
+                            const textColor = getOptimalTextColor(color);
                             
                             const minimalContent = `
                                 <div class="minimal-popup minimal-popup-appear" style="
@@ -4996,6 +5265,134 @@ async function fetchVehiclePositions() {
                     });
                 }
 
+                function getOptimalTextColor(bgColor, options = {}) {
+                    const {
+                        contrastRatio = 4.5,
+                        darkColor = '#1a1a1a',
+                        lightColor = '#f8f9fa',
+                        useGradient = false 
+                    } = options;
+
+                    let r, g, b, a = 1;
+
+                    if (!bgColor) return darkColor;
+
+                    bgColor = bgColor.trim();
+
+                    if (bgColor.startsWith('rgb')) {
+                        const values = bgColor.match(/\d+(\.\d+)?/g);
+                        if (values) {
+                            r = parseInt(values[0]);
+                            g = parseInt(values[1]);
+                            b = parseInt(values[2]);
+                            a = values[3] ? parseFloat(values[3]) : 1;
+                        } else {
+                            return darkColor;
+                        }
+                    } else {
+                        // Parse hex colors
+                        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+                            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                                (_, r, g, b) => '#' + r + r + g + g + b + b);
+                        }
+
+                        if (bgColor.length === 7) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                        } else if (bgColor.length === 9) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+                            r = parseInt(bgColor.slice(1, 3), 16);
+                            g = parseInt(bgColor.slice(3, 5), 16);
+                            b = parseInt(bgColor.slice(5, 7), 16);
+                            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+                        } else {
+                            return darkColor;
+                        }
+                    }
+
+                    // Clamp values
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    // Calculate luminance of background
+                    const srgb = [r, g, b].map(c => {
+                        const val = c / 255;
+                        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+                    });
+                    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+                    // Helper function to calculate luminance from hex
+                    const getLuminance = (color) => {
+                        const hex = color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16) / 255;
+                        const g = parseInt(hex.substr(2, 2), 16) / 255;
+                        const b = parseInt(hex.substr(4, 2), 16) / 255;
+                        const srgb = [r, g, b].map(c => 
+                            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+                        );
+                        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+                    };
+
+                    // Calculate contrast ratios
+                    const darkLuminance = getLuminance(darkColor);
+                    const lightLuminance = getLuminance(lightColor);
+
+                    const contrastWithDark = luminance > darkLuminance 
+                        ? (luminance + 0.05) / (darkLuminance + 0.05)
+                        : (darkLuminance + 0.05) / (luminance + 0.05);
+                    
+                    const contrastWithLight = luminance > lightLuminance 
+                        ? (luminance + 0.05) / (lightLuminance + 0.05)
+                        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+                    // AMÉLIORATION: Seuil ajusté pour détecter les couleurs moyennes-foncées
+                    // Si luminance entre 0.12 et 0.35 → zone critique où dark-on-dark pose problème
+                    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+                    // Si les deux couleurs passent le test de contraste
+                    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+                        // Pour les couleurs moyennes-foncées, privilégier TOUJOURS le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        // Sinon, choisir selon la luminance (seuil à 0.18 comme avant)
+                        return luminance > 0.18 ? darkColor : lightColor;
+                    } 
+                    // Si seule la couleur foncée passe
+                    else if (contrastWithDark >= contrastRatio) {
+                        // ATTENTION: Ne pas utiliser dark si on est dans la zone critique
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        return darkColor;
+                    } 
+                    // Si seule la couleur claire passe
+                    else if (contrastWithLight >= contrastRatio) {
+                        return lightColor;
+                    } 
+                    // Aucune ne passe vraiment le test
+                    else {
+                        // Pour les couleurs moyennes-foncées, forcer le clair
+                        if (isMediumDark) {
+                            return lightColor;
+                        }
+                        
+                        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+                        if (luminance < 0.15) {
+                            return lightColor; 
+                        }
+                        
+                        // Sinon prendre le meilleur contraste disponible
+                        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+                    }
+                }
+
 
             if (markerPool.has(id)) {
                 const marker = markerPool.get(id);
@@ -5075,36 +5472,36 @@ async function fetchVehiclePositions() {
                 marker.bindPopup(popupContent);
                 marker._lastNextStopsHTML = nextStopsHTML;
                 
-                eventManager.on(marker, 'popupopen', function (e) {
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, false);
+            eventManager.on(marker, 'popupopen', function (e) {
+                if (marker.minimalPopup) {
+                    createOrUpdateMinimalTooltip(id, false);
+                }
+                
+                if (e.popup && e.popup._contentNode) {
+                    const popupElement = e.popup._contentNode.parentElement;
+                    if (popupElement) {
+                        popupElement.classList.remove('hide');
+                        popupElement.classList.add('show');
                     }
-                    
-                    if (e.popup && e.popup._contentNode) {
-                        const popupElement = e.popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('hide');
-                            popupElement.classList.add('show');
-                        }
-                    }
-                }, id);
+                }
+            }, id);
 
-                eventManager.on(marker, 'popupclose', function (e) {
-                    if (e.popup && e.popup._contentNode) {
-                        const popupElement = e.popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('show');
-                            popupElement.classList.add('hide');
-                            setTimeout(() => updateMinimalPopups(), 10);
-                        }
+            eventManager.on(marker, 'popupclose', function (e) {
+                if (e.popup && e.popup._contentNode) {
+                    const popupElement = e.popup._contentNode.parentElement;
+                    if (popupElement) {
+                        popupElement.classList.remove('show');
+                        popupElement.classList.add('hide');
+                        setTimeout(() => updateMinimalPopups(), 10);
                     }
-                }, id);
+                }
+            }, id);
 
-                eventManager.on(marker, 'click', function() {
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, false);
-                    }
-                }, id);
+            eventManager.on(marker, 'click', function() {
+                if (marker.minimalPopup) {
+                    createOrUpdateMinimalTooltip(id, false);
+                }
+            }, id);
                 
                 updateMinimalPopups();
             }
