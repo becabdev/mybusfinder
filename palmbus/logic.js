@@ -7756,22 +7756,61 @@ window.addEventListener('message', function(event) {
     }
 
     if (event.data.type === 'openmap') {
-        safeVibrate([30], true);
+        const timespressed = localStorage.getItem('threetimespress') || '0';
+        timespressed++;
+        localStorage.setItem('threetimespress', timespressed.toString());
         const accueil = document.getElementById('accueil');
-        accueil.classList.add('hide');
-        accueil.classList.remove("affiche")
-        const menubottom1 = document.getElementById('menubtm');
-        menubottom1.style.display = 'flex';
-        window.isMenuShowed = false;
-    
-        setTimeout(() => {
-            menubottom1.classList.remove('slide-upb');
-            menubottom1.classList.add('slide-downb');
-            setTimeout(() => {
-                accueil.style.display = 'none';
-            }, 500);
-        }, 10);
 
+        if (timespressed === '3') {
+            showFluentPopup({
+                title: t('threetimestitle'),
+                message: t('threetimesinfo'),
+                buttons: {
+                    primary: t('yes'),
+                    primaryAction: () => {
+                        localStorage.setItem('nepasafficheraccueil', 'true');
+                        safeVibrate([30], true);
+                        accueil.classList.add('hide');
+                        accueil.classList.remove("affiche")
+                        const menubottom1 = document.getElementById('menubtm');
+                        menubottom1.style.display = 'flex';
+                        window.isMenuShowed = false;
+                    
+                        setTimeout(() => {
+                            menubottom1.classList.remove('slide-upb');
+                            menubottom1.classList.add('slide-downb');
+                            setTimeout(() => {
+                                accueil.style.display = 'none';
+                            }, 500);
+                        }, 10);
+
+                        fluentPopupManager.close();
+                    },
+                    secondary: t('no'),
+                    secondaryAction: () => {
+                        timespressed++;
+                        localStorage.setItem('threetimespress', timespressed.toString());
+                        fluentPopupManager.close();
+                    }
+
+                }
+            });
+        } else {
+            safeVibrate([30], true);
+            accueil.classList.add('hide');
+            accueil.classList.remove("affiche")
+            const menubottom1 = document.getElementById('menubtm');
+            menubottom1.style.display = 'flex';
+            window.isMenuShowed = false;
+        
+            setTimeout(() => {
+                menubottom1.classList.remove('slide-upb');
+                menubottom1.classList.add('slide-downb');
+                setTimeout(() => {
+                    accueil.style.display = 'none';
+                }, 500);
+            }, 10);
+        }
     }
 
     if (event.data.type === 'settingUpdate') {
