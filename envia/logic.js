@@ -5344,9 +5344,6 @@ activeIds.forEach(id => {
 });
 
 setInterval(() => {
-    if (colorCache.size > 20) {
-        colorCache.clear();
-    }
     if (textColorCache.size > 20) {
         textColorCache.clear();
     }
