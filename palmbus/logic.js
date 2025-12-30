@@ -6350,7 +6350,7 @@ function getNextStopInfo(vehicleId) {
 
 const busesByLineAndDestination = {};
 
-for (const [id, marker] of markerPool.active.entries()) {
+markerPool.active.forEach((marker, id) => {
     const line = marker.line;
     const destination = marker.destination || "Inconnue";
     
@@ -6368,7 +6368,7 @@ for (const [id, marker] of markerPool.active.entries()) {
         vehicleData: marker.vehicleData,
         nextStops: marker.rawData?.nextStops || []
     });
-}
+});
 
 updateMenuStatistics();
 
