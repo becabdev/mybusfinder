@@ -1,4 +1,5 @@
 // test syncro macbook git ...
+// ça marche !! 😊
 
         if (!window.requestIdleCallback) {
             window.requestIdleCallback = function(callback, options) {
