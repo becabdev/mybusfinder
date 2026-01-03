@@ -4377,7 +4377,13 @@ const DOMBatcher = {
     }
 };
 
-const contentCache = new Map();
+
+async function fetchVehiclePositions() {
+    if (!gtfsInitialized) {
+        return;
+    }
+
+    const contentCache = new Map();
 const colorCache = new Map();
 const textColorCache = new Map();
 
@@ -4454,10 +4460,6 @@ function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicl
     return popupContent;
 }
 
-async function fetchVehiclePositions() {
-    if (!gtfsInitialized) {
-        return;
-    }
     
     // Throttling basé sur la visibilité
     if (document.hidden) {
