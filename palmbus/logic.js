@@ -4359,22 +4359,17 @@ function debounce(func, wait) {
     };
 }
 
-
-async function fetchVehiclePositions() {
-    if (!gtfsInitialized) {
-        return;
-    }
-
-    const contentCache = new Map();
-const colorCache = new Map();
-const textColorCache = new Map();
-
 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-    const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
-    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
+    // ✅ Cache plus intelligent : inclure plus de données dans la clé
+    const cacheKey = `${id}-${line}-${lastStopName}`;
     
+    // ✅ Vérifier si le contenu existe déjà
     if (contentCache.has(cacheKey)) {
-        return contentCache.get(cacheKey);
+        const cached = contentCache.get(cacheKey);
+        // Retourner le cache seulement si les arrêts n'ont pas changé
+        if (cached.nextStopsHTML === nextStopsHTML && cached.stopsHeaderText === stopsHeaderText) {
+            return cached.content;
+        }
     }
     
     const popupContent = `
@@ -4433,14 +4428,32 @@ function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicl
         </div>
     `;
     
+    // ✅ Nettoyer le cache si trop grand
     if (contentCache.size > 50) {
         const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
         keysToDelete.forEach(key => contentCache.delete(key));
     }
     
-    contentCache.set(cacheKey, popupContent);
+    // ✅ Stocker avec métadonnées
+    contentCache.set(cacheKey, {
+        content: popupContent,
+        nextStopsHTML: nextStopsHTML,
+        stopsHeaderText: stopsHeaderText,
+        timestamp: Date.now()
+    });
+    
     return popupContent;
 }
+
+
+async function fetchVehiclePositions() {
+    if (!gtfsInitialized) {
+        return;
+    }
+
+    const contentCache = new Map();
+const colorCache = new Map();
+const textColorCache = new Map();
 
     
     // Throttling basé sur la visibilité
@@ -4481,7 +4494,7 @@ function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicl
                 90% { transform: translateX(calc(-100% + 70px)); }
                 100% { transform: translateX(0); }
             }
-            
+           
             .stop-name-container:hover .stop-name-wrapper[style*="animation"] {
                 animation-play-state: running !important;
             }
@@ -4964,218 +4977,257 @@ function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicl
                 }
 
 
-const TooltipManager = {
-    pool: [],
-    maxPoolSize: 50,
-    active: new Map(),
-    
-    acquire() {
-        let tooltip = this.pool.pop();
-        if (!tooltip) {
-            tooltip = L.tooltip({
-                permanent: true,
-                direction: 'center',
-                className: 'minimal-tooltip-container',
-                offset: [0, 0],
-                opacity: 1
-            });
-        }
-        return tooltip;
-    },
-    
-    release(tooltip) {
-        if (!tooltip) return;
-        
-        if (tooltip._container) {
-            const handlers = tooltip._container._eventHandlers;
-            if (handlers) {
-                handlers.forEach(handler => {
-                    tooltip._container.removeEventListener(handler.event, handler.fn);
-                });
-            }
-        }
-        
-        if (this.pool.length < this.maxPoolSize) {
-            this.pool.push(tooltip);
-        }
-    },
-    
-    clear() {
-        this.active.forEach((tooltip) => {
-            map.removeLayer(tooltip);
-        });
-        this.active.clear();
-        this.pool = [];
-    }
-};
-
-function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
-    const marker = markerPool.get(markerId);
-    if (!marker) return;
-    
-    // Safari : Vérifier le support des tooltips
-    if (typeof L.tooltip !== 'function') {
-        console.warn('Tooltips non supportés');
-        return;
-    }
-    
-    if (shouldShow && !marker.isPopupOpen()) {
-        if (!marker.minimalPopup) {
-            const minimalTooltip = TooltipManager.acquire();
-            
-            const color = lineColors[marker.line] || '#000000';
-            const textColor = TextColorUtils.getOptimal(color);
-            
-            const minimalContent = `
-                <div class="minimal-popup minimal-popup-appear" style="
-                    position: relative;
-                    font-family: 'League Spartan', sans-serif;
-                    font-size: 11px;
-                    color: ${textColor};
-                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
-                    -webkit-backdrop-filter: blur(12px);
-                    backdrop-filter: blur(12px);
-                    border-radius: 12px;
-                    padding: 6px 10px;
-                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
-                    min-width: 80px;
-                    max-width: 140px;
-                    cursor: pointer;
-                    border: 1px solid ${color}60;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    -webkit-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    transform: translateY(0);
-                    -webkit-transform: translateY(0) translateZ(0);
-                ">
-                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                        <div style="
-                            background: rgba(255,255,255,0.2);
-                            border-radius: 6px;
-                            padding: 2px 6px;
-                            font-weight: 600;
-                            font-size: 10px;
-                            line-height: 1.2;
-                        ">
-                            ${lineName[marker.line] || t("unknownline")}
-                        </div>
-                        <div style="
-                            background: rgba(0,0,0,0.3);
-                            border-radius: 4px;
-                            padding: 1px 4px;
-                            font-size: 9px;
-                            font-weight: 500;
-                        ">
-                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
-                        </div>
-                    </div>
-                    <div style="
-                        font-size: 9px; 
-                        opacity: 0.85; 
-                        margin-top: 2px;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                        font-weight: 400;
-                    ">
-                        ➜ ${marker.destination || t("unknowndestination")}
-                    </div>
-                </div>
-            `;
-
-            try {
-                minimalTooltip
-                    .setLatLng(marker.getLatLng())
-                    .setContent(minimalContent)
-                    .addTo(map);
-
-                const clickHandler = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const m = markerPool.get(markerId);
-                    if (m) m.openPopup();
+                const TooltipManager = {
+                    pool: [],
+                    maxPoolSize: 50,
+                    active: new Map(),
+                    
+                    acquire() {
+                        let tooltip = this.pool.pop();
+                        if (!tooltip) {
+                            tooltip = L.tooltip({
+                                permanent: true,
+                                direction: 'center',
+                                className: 'minimal-tooltip-container',
+                                offset: [0, 0],
+                                opacity: 1
+                            });
+                        }
+                        return tooltip;
+                    },
+                    
+                    release(tooltip) {
+                        if (!tooltip) return;
+                        
+                        if (tooltip._container) {
+                            const handlers = tooltip._container._eventHandlers;
+                            if (handlers) {
+                                handlers.forEach(handler => {
+                                    tooltip._container.removeEventListener(handler.event, handler.fn);
+                                });
+                            }
+                        }
+                        
+                        if (this.pool.length < this.maxPoolSize) {
+                            this.pool.push(tooltip);
+                        }
+                    },
+                    
+                    clear() {
+                        this.active.forEach((tooltip) => {
+                            map.removeLayer(tooltip);
+                        });
+                        this.active.clear();
+                        this.pool = [];
+                    }
                 };
 
-                setTimeout(() => {
-                    if (minimalTooltip._container) {
-                        minimalTooltip._container.addEventListener('click', clickHandler, { passive: false });
-                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
-                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
-
-                        minimalTooltip._clickHandler = clickHandler;
-
-                        
-                        if (!minimalTooltip._container._eventHandlers) {
-                            minimalTooltip._container._eventHandlers = [];
-                        }
-                        minimalTooltip._container._eventHandlers.push({
-                            event: 'mousedown',
-                            fn: clickHandler
-                        });
-                    }
-                }, 0); 
-                
-                marker.minimalPopup = minimalTooltip;
-                TooltipManager.active.set(markerId, minimalTooltip);
-                window.minimalTooltipStates[markerId] = 'visible';
-            } catch (error) {
-                console.error('Erreur création tooltip Safari', error);
-            }
-        }
-    } else if (!shouldShow && marker.minimalPopup) {
-        const tooltipContainer = marker.minimalPopup._container;
-        if (tooltipContainer) {
-            const popupElement = tooltipContainer.querySelector('.minimal-popup');
-            if (popupElement) {
-                popupElement.classList.remove('minimal-popup-appear');
-                popupElement.classList.add('minimal-popup-disappear');
-                
-                const tooltipToRemove = marker.minimalPopup;
-                
-                if (tooltipToRemove._clickHandler && tooltipContainer) {
-                    tooltipContainer.removeEventListener('click', tooltipToRemove._clickHandler);
-                    delete tooltipToRemove._clickHandler;
-                }
-                
-                setTimeout(() => {
-                    marker.minimalPopup = null;
-                    delete window.minimalTooltipStates[markerId];
+                function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
+                    const marker = markerPool.get(markerId);
+                    if (!marker) return;
                     
-                    try {
-                        map.removeLayer(tooltipToRemove);
-                        TooltipManager.release(tooltipToRemove);
-                        TooltipManager.active.delete(markerId);
-                    } catch (error) {
-                        console.error('Erreur suppression tooltip', error);
+                    // Safari : Vérifier le support des tooltips
+                    if (typeof L.tooltip !== 'function') {
+                        console.warn('Tooltips non supportés');
+                        return;
                     }
-                }, 250);
-            }
-        } else {
-            const tooltipToRemove = marker.minimalPopup;
-            marker.minimalPopup = null;
-            delete window.minimalTooltipStates[markerId];
-            
-            try {
-                map.removeLayer(tooltipToRemove);
-                TooltipManager.release(tooltipToRemove);
-                TooltipManager.active.delete(markerId);
-            } catch (error) {
-                console.error('Erreur suppression tooltip:', error);
-            }
-        }
-    }
-}
+                    
+                    if (shouldShow && !marker.isPopupOpen()) {
+                        if (!marker.minimalPopup) {
+                            const minimalTooltip = TooltipManager.acquire();
+                            
+                            const color = lineColors[marker.line] || '#000000';
+                            const textColor = TextColorUtils.getOptimal(color);
+                            
+                            const tooltipCacheKey = `${markerId}-${marker.line}-${marker.destination}`;
+                            
+                            let minimalContent;
+                            if (window.tooltipContentCache && window.tooltipContentCache.has(tooltipCacheKey)) {
+                                minimalContent = window.tooltipContentCache.get(tooltipCacheKey);
+                            } else {
+                                minimalContent = `
+                                    <div class="minimal-popup minimal-popup-appear" style="
+                                        position: relative;
+                                        font-family: 'League Spartan', sans-serif;
+                                        font-size: 11px;
+                                        color: ${textColor};
+                                        background: linear-gradient(135deg, ${color}f0, ${color}d0);
+                                        backdrop-filter: blur(12px);
+                                        border-radius: 12px;
+                                        padding: 6px 10px;
+                                        box-shadow: 0 4px 16px -2px ${color}80;
+                                        min-width: 80px;
+                                        max-width: 140px;
+                                        cursor: pointer;
+                                        border: 1px solid ${color}60;
+                                    ">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <div style="background: rgba(255,255,255,0.2); border-radius: 6px; padding: 2px 6px; font-weight: 600; font-size: 10px;">
+                                                ${lineName[marker.line] || t("unknownline")}
+                                            </div>
+                                            <div style="background: rgba(0,0,0,0.3); border-radius: 4px; padding: 1px 4px; font-size: 9px;">
+                                                ${((marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id) || t("unknownparc")).toString().padStart(3, '0')}
+                                            </div>
+                                        </div>
+                                        <div style="font-size: 9px; opacity: 0.85; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            ➜ ${marker.destination || t("unknowndestination")}
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                if (!window.tooltipContentCache) {
+                                    window.tooltipContentCache = new Map();
+                                }
+                                
+                                if (window.tooltipContentCache.size > 100) {
+                                    const firstKey = window.tooltipContentCache.keys().next().value;
+                                    window.tooltipContentCache.delete(firstKey);
+                                }
+                                window.tooltipContentCache.set(tooltipCacheKey, minimalContent);
+                            }
+
+                            try {
+                                minimalTooltip
+                                    .setLatLng(marker.getLatLng())
+                                    .setContent(minimalContent)
+                                    .addTo(map);
+
+                                const clickHandler = function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const m = markerPool.get(markerId);
+                                    if (m) m.openPopup();
+                                };
+
+                                setTimeout(() => {
+                                    if (minimalTooltip._container) {
+                                        minimalTooltip._container.addEventListener('click', clickHandler, { passive: false });
+                                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
+                                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
+
+                                        minimalTooltip._clickHandler = clickHandler;
+
+                                        
+                                        if (!minimalTooltip._container._eventHandlers) {
+                                            minimalTooltip._container._eventHandlers = [];
+                                        }
+                                        minimalTooltip._container._eventHandlers.push({
+                                            event: 'mousedown',
+                                            fn: clickHandler
+                                        });
+                                    }
+                                }, 0); 
+                                
+                                marker.minimalPopup = minimalTooltip;
+                                TooltipManager.active.set(markerId, minimalTooltip);
+                                window.minimalTooltipStates[markerId] = 'visible';
+                            } catch (error) {
+                                console.error('Erreur création tooltip Safari', error);
+                            }
+                        }
+                    } else if (!shouldShow && marker.minimalPopup) {
+                        const tooltipContainer = marker.minimalPopup._container;
+                        if (tooltipContainer) {
+                            const popupElement = tooltipContainer.querySelector('.minimal-popup');
+                            if (popupElement) {
+                                popupElement.classList.remove('minimal-popup-appear');
+                                popupElement.classList.add('minimal-popup-disappear');
+                                
+                                const tooltipToRemove = marker.minimalPopup;
+                                
+                                if (tooltipToRemove._clickHandler && tooltipContainer) {
+                                    tooltipContainer.removeEventListener('click', tooltipToRemove._clickHandler);
+                                    delete tooltipToRemove._clickHandler;
+                                }
+                                
+                                setTimeout(() => {
+                                    marker.minimalPopup = null;
+                                    delete window.minimalTooltipStates[markerId];
+                                    
+                                    try {
+                                        map.removeLayer(tooltipToRemove);
+                                        TooltipManager.release(tooltipToRemove);
+                                        TooltipManager.active.delete(markerId);
+                                    } catch (error) {
+                                        console.error('Erreur suppression tooltip', error);
+                                    }
+                                }, 250);
+                            }
+                        } else {
+                            const tooltipToRemove = marker.minimalPopup;
+                            marker.minimalPopup = null;
+                            delete window.minimalTooltipStates[markerId];
+                            
+                            try {
+                                map.removeLayer(tooltipToRemove);
+                                TooltipManager.release(tooltipToRemove);
+                                TooltipManager.active.delete(markerId);
+                            } catch (error) {
+                                console.error('Erreur suppression tooltip:', error);
+                            }
+                        }
+                    }
+                }
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
-                    if (!popup) return false;
+                    if (!popup || !popup._contentNode) return false;
                     
-                    const newContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    const popupElement = popup._contentNode;
+                    let hasUpdated = false;
                     
-                    // màj si le contenu a changé
-                    if (popup.getContent() !== newContent) {
-                        popup.setContent(newContent);
-                        return true;
+                    const stopsHeader = popupElement.querySelector('.stops-header');
+                    if (stopsHeader && stopsHeader.innerHTML !== stopsHeaderText) {
+                        stopsHeader.innerHTML = stopsHeaderText;
+                        hasUpdated = true;
                     }
-                    return false;
+                    
+                    const nextStopsContent = popupElement.querySelector('#nextStopsContent');
+                    if (nextStopsContent && nextStopsContent.innerHTML !== nextStopsHTML) {
+                        nextStopsContent.innerHTML = nextStopsHTML;
+                        hasUpdated = true;
+                        
+                        if (window.toggleTimeDisplay) {
+                            clearInterval(window.timeToggleInterval);
+                            window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
+                        }
+                    }
+                    
+                    const directionElement = popupElement.querySelector('.vehicle-direction');
+                    const newDirection = `➜ ${lastStopName}`;
+                    if (directionElement && directionElement.textContent !== newDirection) {
+                        directionElement.textContent = newDirection;
+                        hasUpdated = true;
+                    }
+                    
+                    const optionsContainer = popupElement.querySelector('.options');
+                    if (optionsContainer && vehicleOptionsBadges) {
+                        const currentBadgesHTML = Array.from(optionsContainer.children)
+                            .filter(el => el.tagName === 'SPAN' && !el.classList.contains('parc-badge'))
+                            .map(el => el.outerHTML)
+                            .join('');
+                        
+                        const newBadgesHTML = vehicleOptionsBadges;
+                        
+                        if (currentBadgesHTML !== newBadgesHTML) {
+                            const parcBadge = optionsContainer.querySelector('.parc-badge');
+                            optionsContainer.innerHTML = '';
+                            if (parcBadge) {
+                                optionsContainer.appendChild(parcBadge);
+                            }
+                            optionsContainer.insertAdjacentHTML('beforeend', newBadgesHTML);
+                            hasUpdated = true;
+                        }
+                    }
+                    
+                    const backgroundText = popupElement.querySelector('.background-text');
+                    const lineText = lineName[line] || "🚌🚍🚌🚍🚌🚍🚌";
+                    const expectedText = `${t("line")} ${lineText}`;
+                    if (backgroundText && backgroundText.textContent !== expectedText) {
+                        backgroundText.textContent = expectedText;
+                        hasUpdated = true;
+                    }
+                    
+                    return hasUpdated;
                 }
 
                 let updateMinimalTimeout = null;
@@ -5250,17 +5302,21 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
                 }
                 
-                const hasChanges = (
-                    marker.line !== line ||
-                    marker.destination !== lastStopName ||
-                    marker._lastNextStopsHTML !== nextStopsHTML
-                );
-                
+
+                                
+                const lineChanged = marker.line !== line;
+                const destinationChanged = marker.destination !== lastStopName;
+                const stopsChanged = marker._lastNextStopsHTML !== nextStopsHTML;
+                const stopsHeaderChanged = marker._lastStopsHeader !== stopsHeaderText;
+
+                const hasChanges = lineChanged || destinationChanged || stopsChanged || stopsHeaderChanged;
+
                 if (hasChanges) {
                     marker.vehicleData = vehicle;
                     marker.destination = lastStopName;
+                    marker._lastStopsHeader = stopsHeaderText;
                     
-                    if (marker.line !== line) {
+                    if (lineChanged) {
                         marker.line = line;
                         marker._lastNextStopsHTML = nextStopsHTML;
                         markerPool.updateMarkerStyle(marker, line, bearing);
@@ -5276,14 +5332,20 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                                 StyleManager.applyMenuStyle(textColor);
                             }
                         }
+                        
+                        updateLinesDisplay();
                     }
                     
-                    updateLinesDisplay();
-                    
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    if (marker.isPopupOpen()) {
+                        const updated = updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
+                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                        
+                        if (updated) {
+                            marker._lastNextStopsHTML = nextStopsHTML;
+                        }
+                    } else {
+                        marker._lastNextStopsHTML = nextStopsHTML;
+                    }
                 }
                 
                 if (marker._icon) {
@@ -8222,11 +8284,11 @@ if (performance && performance.memory) {
         if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
             console.warn('⚠️ Mémoire élevée, nettoyage recommandé');
             
-            // Nettoyage agressif
-            if (TextColorUtils) TextColorUtils.cache.clear();
-            if (contentCache) contentCache.clear();
-            if (colorCache) colorCache.clear();
-            if (textColorCache) textColorCache.clear();
+        if (contentCache) contentCache.clear();
+        if (colorCache) colorCache.clear();
+        if (textColorCache) textColorCache.clear();
+        if (vehicleModelLookupCache) vehicleModelLookupCache.clear();
+        if (window.tooltipContentCache) window.tooltipContentCache.clear(); 
         }
     }, 60000); // Toutes les minutes
 }
