@@ -4359,6 +4359,24 @@ function debounce(func, wait) {
     };
 }
 
+const DOMBatcher = {
+    queue: [],
+    rafId: null,
+    
+    add(fn) {
+        this.queue.push(fn);
+        if (!this.rafId) {
+            this.rafId = requestAnimationFrame(() => this.flush());
+        }
+    },
+    
+    flush() {
+        const operations = this.queue.splice(0);
+        operations.forEach(fn => fn());
+        this.rafId = null;
+    }
+};
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -4418,10 +4436,14 @@ async function fetchVehiclePositions() {
 
         const activeVehicleIds = new Set();
         
+        const markerUpdates = [];
+        const newMarkers = [];
+        
         function isInViewport(lat, lng) {
             const bounds = map.getBounds();
             return bounds.contains(L.latLng(lat, lng));
         }
+
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
@@ -5093,17 +5115,21 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     .setContent(minimalContent)
                     .addTo(map);
 
+                const clickHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const m = markerPool.get(markerId);
+                    if (m) m.openPopup();
+                };
+
                 setTimeout(() => {
                     if (minimalTooltip._container) {
-                        const clickHandler = function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const m = markerPool.get(markerId);
-                            if (m) m.openPopup();
-                        };
-                        
+                        minimalTooltip._container.addEventListener('click', clickHandler, { passive: false });
                         minimalTooltip._container.addEventListener('mousedown', clickHandler);
                         minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
+
+                        minimalTooltip._clickHandler = clickHandler;
+
                         
                         if (!minimalTooltip._container._eventHandlers) {
                             minimalTooltip._container._eventHandlers = [];
@@ -5113,7 +5139,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             fn: clickHandler
                         });
                     }
-                }, 150); 
+                }, 0); 
                 
                 marker.minimalPopup = minimalTooltip;
                 TooltipManager.active.set(markerId, minimalTooltip);
@@ -5130,21 +5156,25 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 popupElement.classList.remove('minimal-popup-appear');
                 popupElement.classList.add('minimal-popup-disappear');
                 
+                const tooltipToRemove = marker.minimalPopup;
+                
+                if (tooltipToRemove._clickHandler && tooltipContainer) {
+                    tooltipContainer.removeEventListener('click', tooltipToRemove._clickHandler);
+                    delete tooltipToRemove._clickHandler;
+                }
+                
                 setTimeout(() => {
-                    const tooltipToRemove = marker.minimalPopup;
                     marker.minimalPopup = null;
                     delete window.minimalTooltipStates[markerId];
                     
-                    if (tooltipToRemove) {
-                        try {
-                            map.removeLayer(tooltipToRemove);
-                            TooltipManager.release(tooltipToRemove);
-                            TooltipManager.active.delete(markerId);
-                        } catch (error) {
-                            console.error('Erreur suppression tooltip Safari:', error);
-                        }
+                    try {
+                        map.removeLayer(tooltipToRemove);
+                        TooltipManager.release(tooltipToRemove);
+                        TooltipManager.active.delete(markerId);
+                    } catch (error) {
+                        console.error('Erreur suppression tooltip', error);
                     }
-                }, 300); // Délai plus long pour Safari
+                }, 250);
             }
         } else {
             const tooltipToRemove = marker.minimalPopup;
@@ -5156,12 +5186,11 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 TooltipManager.release(tooltipToRemove);
                 TooltipManager.active.delete(markerId);
             } catch (error) {
-                console.error('Erreur suppression tooltip Safari:', error);
+                console.error('Erreur suppression tooltip:', error);
             }
         }
     }
 }
-
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup) return false;
@@ -5176,7 +5205,23 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     return false;
                 }
 
+                let updateMinimalTimeout = null;
+                let lastUpdateTime = 0;
+                const MIN_UPDATE_INTERVAL = 100; // ms
+
                 function updateMinimalPopups() {
+                    const now = performance.now();
+                    
+                    if (now - lastUpdateTime < MIN_UPDATE_INTERVAL) {
+                        if (updateMinimalTimeout) clearTimeout(updateMinimalTimeout);
+                        updateMinimalTimeout = setTimeout(() => {
+                            updateMinimalPopups();
+                        }, MIN_UPDATE_INTERVAL);
+                        return;
+                    }
+                    
+                    lastUpdateTime = now;
+                    
                     if (this.rafId) cancelAnimationFrame(this.rafId);
                     
                     this.rafId = requestAnimationFrame(() => {
@@ -5185,12 +5230,17 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                         
                         if (!showMinimal) {
                             markerPool.active.forEach((marker, id) => {
-                                if (marker) createOrUpdateMinimalTooltip(id, false);
+                                if (marker?.minimalPopup) {
+                                    createOrUpdateMinimalTooltip(id, false);
+                                }
                             });
                             return;
                         }
                         
                         const bounds = map.getBounds();
+                        
+                        const toShow = [];
+                        const toHide = [];
                         
                         markerPool.active.forEach((marker, markerId) => {
                             if (!marker) return;
@@ -5200,12 +5250,17 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             const shouldShow = showMinimal && !marker.isPopupOpen() && isInBounds;
                             
                             if (shouldShow) {
-                                createOrUpdateMinimalTooltip(markerId, true);
-                                if (marker.minimalPopup) {
-                                    marker.minimalPopup.setLatLng(markerLatLng);
-                                }
-                            } else {
-                                createOrUpdateMinimalTooltip(markerId, false);
+                                toShow.push({ markerId, marker, markerLatLng });
+                            } else if (marker.minimalPopup) {
+                                toHide.push(markerId);
+                            }
+                        });
+                        
+                        toHide.forEach(id => createOrUpdateMinimalTooltip(id, false));
+                        toShow.forEach(({ markerId, marker, markerLatLng }) => {
+                            createOrUpdateMinimalTooltip(markerId, true);
+                            if (marker.minimalPopup) {
+                                marker.minimalPopup.setLatLng(markerLatLng);
                             }
                         });
                     });
@@ -5213,132 +5268,192 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
 
 
             if (markerPool.has(id)) {
-                const marker = markerPool.get(id);
-                animateMarker(marker, [latitude, longitude]);
-                
-                if (marker.minimalPopup) {
-                    createOrUpdateMinimalTooltip(id, true);
-                    animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
-                }
-                
-                const hasChanges = (
-                    marker.line !== line ||
-                    marker.destination !== lastStopName ||
-                    marker._lastNextStopsHTML !== nextStopsHTML
-                );
-                
-                if (hasChanges) {
-                    marker.vehicleData = vehicle;
-                    marker.destination = lastStopName;
-                    
-                    if (marker.line !== line) {
-                        marker.line = line;
-                        marker._lastNextStopsHTML = nextStopsHTML;
-                        markerPool.updateMarkerStyle(marker, line, bearing);
-                        
-                        if (marker.isPopupOpen()) {
-                            const menubtm = document.getElementById('menubtm');
-                            if (menubtm) {
-                                const color = lineColors[line] || '#000000';
-                                lastActiveColor = color;
-                                menubtm.style.backgroundColor = `${color}9c`;
-                                
-                                const textColor = TextColorUtils.getOptimal(color);
-                                StyleManager.applyMenuStyle(textColor);
-                            }
-                        }
-                    }
-                    
-                    updateLinesDisplay();
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                }
-                
-                if (marker._icon) {
-                    const arrowElement = marker._icon.querySelector('.marker-arrow');
-                    if (arrowElement) {
-                        arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
-                    }
-                }
-                
-                if (selectedLine && marker.line !== selectedLine) {
-                    if (map.hasLayer(marker)) {
-                        map.removeLayer(marker);
-                    }
-                } else {
-                    if (!map.hasLayer(marker)) {
-                        map.addLayer(marker);
-                    }
-                }
-                
-                updateMinimalPopups();
-                
+                markerUpdates.push({
+                    id,
+                    vehicle,
+                    latitude,
+                    longitude,
+                    bearing,
+                    line,
+                    lastStopName,
+                    nextStopsHTML,
+                    vehicleOptionsBadges,
+                    vehicleBrandHtml,
+                    stopsHeaderText,
+                    backgroundColor,
+                    textColor
+                });
             } else {
-                const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
-                marker.line = line;
-                marker.vehicleData = vehicle;
-                marker.destination = lastStopName;
-                
-                if (!selectedLine || selectedLine === line) {
-                    marker.addTo(map);
-                }
-                
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                marker.bindPopup(popupContent);
-                marker._lastNextStopsHTML = nextStopsHTML;
-                
-                eventManager.on(marker, 'popupopen', function (e) {
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, false);
-                    }
-                    
-                    if (e.popup && e.popup._contentNode) {
-                        const popupElement = e.popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('hide');
-                            popupElement.classList.add('show');
-                        }
-                    }
-                }, id);
-
-                eventManager.on(marker, 'popupclose', function (e) {
-                    if (e.popup && e.popup._contentNode) {
-                        const popupElement = e.popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('show');
-                            popupElement.classList.add('hide');
-                            setTimeout(() => updateMinimalPopups(), 10);
-                        }
-                    }
-                }, id);
-
-                eventManager.on(marker, 'click', function() {
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, false);
-                    }
-                }, id);
-                
-                updateMinimalPopups();
+                newMarkers.push({
+                    id,
+                    vehicle,
+                    latitude,
+                    longitude,
+                    bearing,
+                    line,
+                    lastStopName,
+                    nextStopsHTML,
+                    vehicleOptionsBadges,
+                    vehicleBrandHtml,
+                    stopsHeaderText,
+                    backgroundColor,
+                    textColor
+                });
             }
 
 
-            map.on('zoomend', debounce(updateMinimalPopups, 100));
-            map.on('moveend', debounce(updateMinimalPopups, 150));
+
+
+            window.mapEventHandlers = {
+                zoomend: debounce(updateMinimalPopups, 100),
+                moveend: debounce(updateMinimalPopups, 150)
+            };
+
+            map.on('zoomend', window.mapEventHandlers.zoomend);
+            map.on('moveend', window.mapEventHandlers.moveend);
+
+            window.cleanupMapEvents = function() {
+                if (window.mapEventHandlers) {
+                    map.off('zoomend', window.mapEventHandlers.zoomend);
+                    map.off('moveend', window.mapEventHandlers.moveend);
+                    delete window.mapEventHandlers;
+                }
+            };
 
         }
+    });
+
+DOMBatcher.add(() => {
+    markerUpdates.forEach(update => {
+        const marker = markerPool.get(update.id);
+        if (!marker) return;
+        
+        animateMarker(marker, [update.latitude, update.longitude]);
+        
+        if (marker.minimalPopup) {
+            createOrUpdateMinimalTooltip(update.id, true);
+            animateTooltip(marker.minimalPopup, L.latLng(update.latitude, update.longitude));
+        }
+        
+        const hasChanges = (
+            marker.line !== update.line ||
+            marker.destination !== update.lastStopName ||
+            marker._lastNextStopsHTML !== update.nextStopsHTML
+        );
+        
+        if (hasChanges) {
+            marker.vehicleData = update.vehicle;
+            marker.destination = update.lastStopName;
+            
+            if (marker.line !== update.line) {
+                marker.line = update.line;
+                marker._lastNextStopsHTML = update.nextStopsHTML;
+                markerPool.updateMarkerStyle(marker, update.line, update.bearing);
+                
+                if (marker.isPopupOpen()) {
+                    const menubtm = document.getElementById('menubtm');
+                    if (menubtm) {
+                        const color = lineColors[update.line] || '#000000';
+                        lastActiveColor = color;
+                        menubtm.style.backgroundColor = `${color}9c`;
+                        
+                        const textColor = TextColorUtils.getOptimal(color);
+                        StyleManager.applyMenuStyle(textColor);
+                    }
+                }
+            }
+            
+            updateLinesDisplay();
+            updatePopupContent(marker, update.vehicle, update.line, update.lastStopName, 
+                update.nextStopsHTML, update.vehicleOptionsBadges, update.vehicleBrandHtml, 
+                update.stopsHeaderText, update.backgroundColor, update.textColor, update.id);
+        }
+        
+        if (marker._icon) {
+            const arrowElement = marker._icon.querySelector('.marker-arrow');
+            if (arrowElement) {
+                arrowElement.style.transform = `rotate(${update.bearing - 90}deg)`;
+            }
+        }
+        
+        if (selectedLine && marker.line !== selectedLine) {
+            if (map.hasLayer(marker)) {
+                map.removeLayer(marker);
+            }
+        } else {
+            if (!map.hasLayer(marker)) {
+                map.addLayer(marker);
+            }
+        }
+    });
+});
+
+DOMBatcher.add(() => {
+    newMarkers.forEach(data => {
+        const marker = markerPool.acquire(data.id, data.latitude, data.longitude, data.line, data.bearing);
+        marker.line = data.line;
+        marker.vehicleData = data.vehicle;
+        marker.destination = data.lastStopName;
+        
+        if (!selectedLine || selectedLine === data.line) {
+            marker.addTo(map);
+        }
+        
+        const popupContent = generatePopupContent(data.vehicle, data.line, data.lastStopName, 
+            data.nextStopsHTML, data.vehicleOptionsBadges, data.vehicleBrandHtml, 
+            data.stopsHeaderText, data.backgroundColor, data.textColor, data.id);
+        marker.bindPopup(popupContent);
+        marker._lastNextStopsHTML = data.nextStopsHTML;
+        
+        eventManager.on(marker, 'popupopen', function (e) {
+            if (marker.minimalPopup) {
+                createOrUpdateMinimalTooltip(data.id, false);
+            }
+            
+            if (e.popup && e.popup._contentNode) {
+                const popupElement = e.popup._contentNode.parentElement;
+                if (popupElement) {
+                    popupElement.classList.remove('hide');
+                    popupElement.classList.add('show');
+                }
+            }
+        }, data.id);
+
+        eventManager.on(marker, 'popupclose', function (e) {
+            if (e.popup && e.popup._contentNode) {
+                const popupElement = e.popup._contentNode.parentElement;
+                if (popupElement) {
+                    popupElement.classList.remove('show');
+                    popupElement.classList.add('hide');
+                    setTimeout(() => updateMinimalPopups(), 10);
+                }
+            }
+        }, data.id);
+
+        eventManager.on(marker, 'click', function() {
+            if (marker.minimalPopup) {
+                createOrUpdateMinimalTooltip(data.id, false);
+            }
+        }, data.id);
+    });
+});
+
+DOMBatcher.add(() => {
+    updateMinimalPopups();
 });
 
 
 
+
+
 const activeIds = Array.from(markerPool.active.keys());
-activeIds.forEach(id => {
-    if (!activeVehicleIds.has(id)) {
-        delete window.minimalTooltipStates[id];
-        markerPool.release(id);
-    }
+DOMBatcher.add(() => {
+    activeIds.forEach(id => {
+        if (!activeVehicleIds.has(id)) {
+            delete window.minimalTooltipStates[id];
+            markerPool.release(id);
+        }
+    });
 });
 
 setInterval(() => {
@@ -6014,6 +6129,14 @@ let menuScroller = null;
 
 function updateMenu() {
     const menu = document.getElementById('menu');
+    
+    if (menu._eventListeners) {
+        menu._eventListeners.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler);
+        });
+    }
+    menu._eventListeners = [];
+    
     menu.innerHTML = '';
     
     const topBar = document.createElement('div');
@@ -6108,23 +6231,32 @@ function updateMenu() {
     }
 
     
-    const spacer = document.createElement('div');
-    spacer.style.height = '15px'; 
-    menu.appendChild(spacer);
+const spacer = document.createElement('div');
+spacer.style.height = '15px'; 
+menu.appendChild(spacer);
 
-    let lastScrollTop = 0;
+let lastScrollTop = 0;
     
-    menu.addEventListener('scroll', function() {
-        const scrollTop = menu.scrollTop;
-        
-        if (scrollTop > lastScrollTop && scrollTop > 50) {
-            topBar.style.transform = 'translateY(-100%)';
-        } else {
-            topBar.style.transform = 'translateY(0)';
-        }
-        
-        lastScrollTop = scrollTop;
-    });
+const scrollHandler = function() {
+    const scrollTop = menu.scrollTop;
+    
+    if (scrollTop > lastScrollTop && scrollTop > 50) {
+        topBar.style.transform = 'translateY(-100%)';
+    } else {
+        topBar.style.transform = 'translateY(0)';
+    }
+    
+    lastScrollTop = scrollTop;
+};
+
+menu.addEventListener('scroll', scrollHandler);
+
+menu._eventListeners.push({ 
+    element: menu, 
+    event: 'scroll', 
+    handler: scrollHandler 
+});
+
 
 let isStandardView = localStorage.getItem('isStandardView') === 'true';
 
@@ -6477,12 +6609,20 @@ sortedLines.forEach(line => {
     favoriteButton.style.fontSize = '20px';
     favoriteButton.style.cursor = 'pointer';
     favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
-    favoriteButton.onclick = async (e) => {
+    const favoriteClickHandler = async (e) => {
         e.stopPropagation();
         const lineSection = e.target.closest('.linesection');
         const isFavorite = favoriteLines.has(line);
         await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
     };
+    
+    favoriteButton.onclick = favoriteClickHandler;
+    
+    menu._eventListeners.push({
+        element: favoriteButton,
+        event: 'click',
+        handler: favoriteClickHandler
+    });
 
     const lineTitle = document.createElement('div');
     lineTitle.textContent = `${t("line")} ${lineNameText}`;
@@ -6693,7 +6833,7 @@ sortedLines.forEach(line => {
                 busItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
                 busItem.style.borderRadius = '8px';
 
-                lineSection.onclick = () => {
+                const lineSectionClickHandler = () => {
                     if (localStorage.getItem('astuce') !== 'true') {
                         localStorage.setItem('astuce', 'true');
                         toastBottomRight.info(`${t("astuceselectligne")}`);
@@ -6734,10 +6874,17 @@ sortedLines.forEach(line => {
                         menubottom1.classList.add('slide-downb');
                     }, 10);
                     event.stopPropagation();
-
                 };
+                
+                lineSection.onclick = lineSectionClickHandler;
+                
+                menu._eventListeners.push({
+                    element: lineSection,
+                    event: 'click',
+                    handler: lineSectionClickHandler
+                });
 
-                busItem.onclick = (event) => {
+                const busItemClickHandler = (event) => {
                     event.stopPropagation();
                     safeVibrate([50, 300, 50, 30, 50], true);
                     soundsUX('MBF_Menu_VehicleSelect');
@@ -6770,6 +6917,14 @@ sortedLines.forEach(line => {
                         resetMapView();
                     }
                 };
+                
+                busItem.onclick = busItemClickHandler;
+                
+                menu._eventListeners.push({
+                    element: busItem,
+                    event: 'click',
+                    handler: busItemClickHandler
+                });
 
                 destinationSection.appendChild(busItem);
             });
@@ -8032,6 +8187,8 @@ function processTripsSync(data) {
             };
         }
     });
+
+    
     
     return updates;
 }
