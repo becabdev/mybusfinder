@@ -869,1087 +869,1118 @@ body {
     </main>
 
     <script>
-        const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
-        const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
-        const CACHE_TTL = 24 * 60 * 60 * 1000;
-        const CACHE_VERSION = '1.0';
+const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
+const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+const CACHE_VERSION = '1.0';
 
-        const state = {
-            routes: {},
-            stops: {},
-            trips: {},
-            stopTimes: {},
-            calendar: {},
-            calendarDates: {},
-            viewHistory: [],
-            currentRoute: null,
-            currentStop: null,
-            currentDestination: null,
-            coreLoaded: false,
-            realtimeInterval: null,
-            loadedRoutes: new Set(),
-            zipCache: null,
-            zipFiles: {}
-        };
+const state = {
+    routes: {},
+    stops: {},
+    trips: {},
+    stopTimes: {},
+    calendar: {},
+    calendarDates: {},
+    viewHistory: [],
+    currentRoute: null,
+    currentStop: null,
+    currentDestination: null,
+    coreLoaded: false,
+    realtimeInterval: null,
+    loadedRoutes: new Set(),
+    zipCache: null,
+    zipFiles: {},
+    // Chargement progressif: fichiers bruts conservés
+    rawTripsData: null,
+    rawStopTimesData: null
+};
 
-        const cache = {
-            serviceIds: new Map(),
-            scheduleData: new Map(),
-            destinations: new Map(),
-            stops: new Map()
-        };
+const cache = {
+    serviceIds: new Map(),
+    scheduleData: new Map(),
+    destinations: new Map(),
+    stops: new Map()
+};
 
-        const scrollState = {
-            positions: {}
-        };
+const scrollState = {
+    positions: {}
+};
 
-        function saveScrollPosition(view) {
-            scrollState.positions[view] = window.scrollY;
-        }
+function saveScrollPosition(view) {
+    scrollState.positions[view] = window.scrollY;
+}
 
-        function restoreScrollPosition(view) {
-            const position = scrollState.positions[view] || 0;
-            window.scrollTo({ top: position, behavior: 'instant' });
-        }
+function restoreScrollPosition(view) {
+    const position = scrollState.positions[view] || 0;
+    window.scrollTo({ top: position, behavior: 'instant' });
+}
 
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-        function addTouchFeedback(element) {
-            element.addEventListener('touchstart', function() {
-                this.classList.add('pressing');
-            }, { passive: true });
-            
-            element.addEventListener('touchend', function() {
-                this.classList.remove('pressing');
-            }, { passive: true });
-            
-            element.addEventListener('touchcancel', function() {
-                this.classList.remove('pressing');
-            }, { passive: true });
-        }
+function addTouchFeedback(element) {
+    element.addEventListener('touchstart', function() {
+        this.classList.add('pressing');
+    }, { passive: true });
+    
+    element.addEventListener('touchend', function() {
+        this.classList.remove('pressing');
+    }, { passive: true });
+    
+    element.addEventListener('touchcancel', function() {
+        this.classList.remove('pressing');
+    }, { passive: true });
+}
 
-        document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', init);
 
-        async function init() {
-            await loadGtfsCore();
-            showLines();
-            initScrollEffects();
-        }
+async function init() {
+    await loadGtfsCore();
+    showLines();
+    initScrollEffects();
+}
 
-        function initScrollEffects() {
-            const header = document.querySelector('.header');
-            let lastScroll = 0;
-            let ticking = false;
-            
-            window.addEventListener('scroll', () => {
-                if (!ticking) {
-                    requestAnimationFrame(() => {
-                        const currentScroll = window.scrollY;
-                        
-                        if (currentScroll > 50) {
-                            header.classList.add('scrolled');
-                        } else {
-                            header.classList.remove('scrolled');
-                        }
-                        
-                        lastScroll = currentScroll;
-                        ticking = false;
-                    });
-                    ticking = true;
-                }
-            });
-        }
-
-        async function getZip() {
-            if (state.zipCache) return state.zipCache;
-            
-            const response = await fetch(GTFS_ZIP_URL);
-            if (!response.ok) {
-                throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
-            }
-            
-            const arrayBuffer = await response.arrayBuffer();
-            const uint8Array = new Uint8Array(arrayBuffer);
-            
-            state.zipCache = fflate.unzipSync(uint8Array);
-            
-            return state.zipCache;
-        }
-
-        async function getFileFromZip(zip, filename) {
-            if (!zip[filename]) return null;
-            
-            const decoder = new TextDecoder('utf-8');
-            return decoder.decode(zip[filename]);
-        }
-
-        async function loadGtfsCore() {
-            try {
-                const cached = getCachedData('gtfs_core');
-                if (cached) {
-                    Object.assign(state, cached);
-                    state.coreLoaded = true;
-                    return;
-                }
-
-                const zip = await getZip();
-
-                const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
-                const missingFiles = requiredFiles.filter(f => !zip[f]);
+function initScrollEffects() {
+    const header = document.querySelector('.header');
+    let lastScroll = 0;
+    let ticking = false;
+    
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            requestAnimationFrame(() => {
+                const currentScroll = window.scrollY;
                 
-                if (missingFiles.length > 0) {
-                    throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
-                }
-
-                if (!zip['calendar.txt'] && !zip['calendar_dates.txt']) {
-                    throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
-                }
-
-                const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
-                    getFileFromZip(zip, 'routes.txt'),
-                    getFileFromZip(zip, 'stops.txt'),
-                    getFileFromZip(zip, 'calendar.txt'),
-                    getFileFromZip(zip, 'calendar_dates.txt')
-                ]);
-
-                state.routes = parseCSVToObject(routesText, 'route_id');
-                state.stops = parseCSVToObject(stopsText, 'stop_id');
-                
-                if (calendarText) {
-                    state.calendar = parseCSVToObject(calendarText, 'service_id');
-                }
-                
-                if (calendarDatesText) {
-                    const dates = parseCSV(calendarDatesText);
-                    dates.forEach(cd => {
-                        if (!state.calendarDates[cd.date]) {
-                            state.calendarDates[cd.date] = { added: [], removed: [] };
-                        }
-                        if (cd.exception_type === '1') {
-                            state.calendarDates[cd.date].added.push(cd.service_id);
-                        } else if (cd.exception_type === '2') {
-                            state.calendarDates[cd.date].removed.push(cd.service_id);
-                        }
-                    });
-                }
-
-                if (!calendarText && calendarDatesText) {
-                    console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
-                    state.calendar = {};
-                }
-
-                setCachedData('gtfs_core', {
-                    routes: state.routes,
-                    stops: state.stops,
-                    calendar: state.calendar,
-                    calendarDates: state.calendarDates
-                });
-
-                state.coreLoaded = true;
-            } catch (error) {
-                console.error('Erreur chargement GTFS:', error);
-                document.getElementById('loading').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">⚠️</div>
-                        <div class="state-title">Erreur de chargement</div>
-                        <div class="state-description">${error.message}</div>
-                    </div>
-                `;
-            }
-        }
-
-        async function loadTripsAndStopTimesForRoute(routeId) {
-            if (state.loadedRoutes.has(routeId)) return;
-
-            const cacheKey = `route_${routeId}`;
-            const cached = getCachedData(cacheKey);
-            
-            if (cached) {
-                state.trips[routeId] = cached.trips;
-                state.stopTimes[routeId] = cached.stopTimes;
-                state.loadedRoutes.add(routeId);
-                return;
-            }
-
-            try {
-                const zip = await getZip();
-
-                if (!zip['trips.txt'] || !zip['stop_times.txt']) {
-                    throw new Error('Fichiers trips.txt ou stop_times.txt manquants dans le ZIP');
-                }
-
-                const [tripsText, stopTimesText] = await Promise.all([
-                    getFileFromZip(zip, 'trips.txt'),
-                    getFileFromZip(zip, 'stop_times.txt')
-                ]);
-
-                const allTrips = parseCSV(tripsText);
-                const routeTrips = allTrips.filter(t => t.route_id === routeId);
-                const tripIds = new Set(routeTrips.map(t => t.trip_id));
-
-                const allStopTimes = parseCSV(stopTimesText);
-                const stopTimesByTrip = {};
-                
-                allStopTimes.forEach(st => {
-                    if (tripIds.has(st.trip_id)) {
-                        if (!stopTimesByTrip[st.trip_id]) {
-                            stopTimesByTrip[st.trip_id] = [];
-                        }
-                        stopTimesByTrip[st.trip_id].push({
-                            stop_id: st.stop_id,
-                            arrival_time: formatTimeString(st.arrival_time),
-                            departure_time: formatTimeString(st.departure_time || st.arrival_time),
-                            stop_sequence: parseInt(st.stop_sequence, 10)
-                        });
-                    }
-                });
-
-                Object.values(stopTimesByTrip).forEach(times => {
-                    times.sort((a, b) => a.stop_sequence - b.stop_sequence);
-                });
-
-                state.trips[routeId] = routeTrips;
-                state.stopTimes[routeId] = stopTimesByTrip;
-                state.loadedRoutes.add(routeId);
-
-                setCachedData(cacheKey, {
-                    trips: routeTrips,
-                    stopTimes: stopTimesByTrip
-                });
-            } catch (error) {
-                console.error('Erreur chargement route:', error);
-                alert(`Erreur lors du chargement de la ligne: ${error.message}`);
-            }
-        }
-
-        function parseCSV(text) {
-            const lines = text.trim().split(/\r?\n/);
-            const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
-
-            return lines.slice(1).filter(l => l.trim()).map(line => {
-                const values = parseCSVLine(line);
-                const obj = {};
-                headers.forEach((h, i) => obj[h] = (values[i] ?? '').trim().replace(/"/g, ''));
-                return obj;
-            });
-        }
-
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-
-                if (char === '"') {
-                    if (inQuotes && line[i + 1] === '"') {
-                        current += '"';
-                        i++;
-                    } else {
-                        inQuotes = !inQuotes;
-                    }
-                } else if (char === ',' && !inQuotes) {
-                    result.push(current);
-                    current = '';
+                if (currentScroll > 50) {
+                    header.classList.add('scrolled');
                 } else {
-                    current += char;
-                }
-            }
-            result.push(current);
-            return result;
-        }
-
-        function parseCSVToObject(text, keyField) {
-            const items = parseCSV(text);
-            const obj = {};
-            items.forEach(item => {
-                if (item[keyField]) {
-                    obj[item[keyField]] = item;
-                }
-            });
-            return obj;
-        }
-
-        function formatTimeString(timeStr) {
-            if (!timeStr) return '00h00';
-            const parts = timeStr.split(':');
-            let hour = parseInt(parts[0], 10);
-            const minute = parts[1] || '00';
-            if (hour >= 24) hour -= 24;
-            return `${hour}h${minute}`;
-        }
-
-        function getCachedData(key) {
-            try {
-                const item = localStorage.getItem(`gtfs_${key}`);
-                if (!item) return null;
-                
-                const data = JSON.parse(item);
-                if (data.version !== CACHE_VERSION) return null;
-                if (Date.now() - data.timestamp > CACHE_TTL) return null;
-                
-                return data.value;
-            } catch {
-                return null;
-            }
-        }
-
-        function setCachedData(key, value) {
-            try {
-                if (key.startsWith('route_')) {
-                    return;
+                    header.classList.remove('scrolled');
                 }
                 
-                localStorage.setItem(`gtfs_${key}`, JSON.stringify({
-                    version: CACHE_VERSION,
-                    timestamp: Date.now(),
-                    value
-                }));
-            } catch (error) {
-                console.warn('Cache localStorage plein, nettoyage...', error);
-                Object.keys(localStorage).forEach(key => {
-                    if (key.startsWith('gtfs_route_')) {
-                        localStorage.removeItem(key);
-                    }
-                });
-            }
-        }
-
-
-        function hideAllViews() {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        }
-
-        function showLines() {
-            hideAllViews();
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('lines-view').classList.add('active');
-            document.getElementById('back-btn').style.display = 'none';
-            document.getElementById('header-title').textContent = 'My Bus Schedule';
-            document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
-            state.viewHistory = [];
-
-            if (state.viewHistory.length > 0) {
-                restoreScrollPosition('lines');
-            } else {
-                scrollToTop();
-            }
-
-            const linesList = document.getElementById('lines-list');
-            linesList.innerHTML = '';
-
-            Object.entries(state.routes).forEach(([routeId, route], index) => {
-                const item = document.createElement('div');
-                item.className = 'bus-item';
-                item.style.animationDelay = `${index * 0.05}s`;
-                item.innerHTML = `
-                    <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
-                        Ligne ${route.route_short_name}
-                    </span>
-                    <span class="bus-name">${route.route_long_name}</span>
-                `;
-                item.onclick = () => showDestinations(routeId);
-                addTouchFeedback(item);
-                linesList.appendChild(item);
+                lastScroll = currentScroll;
+                ticking = false;
             });
+            ticking = true;
+        }
+    });
+}
 
+async function getZip() {
+    if (state.zipCache) return state.zipCache;
+    
+    const response = await fetch(GTFS_ZIP_URL);
+    if (!response.ok) {
+        throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    state.zipCache = fflate.unzipSync(uint8Array);
+    
+    return state.zipCache;
+}
+
+async function getFileFromZip(zip, filename) {
+    if (!zip[filename]) return null;
+    
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(zip[filename]);
+}
+
+async function loadGtfsCore() {
+    try {
+        const cached = getCachedData('gtfs_core');
+        if (cached) {
+            Object.assign(state, cached);
+            state.coreLoaded = true;
+            return;
         }
 
-        async function showDestinations(routeId) {
-            state.currentRoute = routeId;
-            
-            hideAllViews();
-            document.getElementById('destinations-view').classList.add('active');
-            document.getElementById('back-btn').style.display = 'flex';
-            
-            const route = state.routes[routeId];
-            document.getElementById('header-title').textContent = "Ligne " + route.route_short_name;
-            document.getElementById('header-subtitle').textContent = route.route_long_name;
-            
-            state.viewHistory.push('lines');
+        const zip = await getZip();
 
-            saveScrollPosition('lines');
-            scrollToTop();
-
-            const list = document.getElementById('destinations-list');
-            list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
-
-            await loadTripsAndStopTimesForRoute(routeId);
-
-            const destinations = getDestinations(routeId);
-            list.innerHTML = '';
-
-            destinations.forEach((dest, index) => {
-                const item = document.createElement('div');
-                item.className = 'destination-item';
-                item.style.animationDelay = `${index * 0.05}s`;
-                item.innerHTML = `<strong>${dest.name}</strong>`;
-                item.onclick = () => showStops(routeId, dest.id);
-                addTouchFeedback(item);
-                list.appendChild(item);
-            });
+        const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
+        const missingFiles = requiredFiles.filter(f => !zip[f]);
+        
+        if (missingFiles.length > 0) {
+            throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
         }
 
-        function showStops(routeId, destinationId = null) {
-            hideAllViews();
-            document.getElementById('stops-view').classList.add('active');
-            document.getElementById('back-btn').style.display = 'flex';
-            state.viewHistory.push('destinations');
-            saveScrollPosition('destinations');
-            scrollToTop();
-
-            const destinations = getDestinations(routeId);
-            const select = document.getElementById('destination-select');
-            select.innerHTML = '<option value="">Choisir une destination</option>';
-            
-            destinations.forEach(dest => {
-                const option = document.createElement('option');
-                option.value = dest.id;
-                option.textContent = dest.name;
-                if (dest.id === destinationId) option.selected = true;
-                select.appendChild(option);
-            });
-
-            select.onchange = () => updateStopsForDestination(routeId, select.value);
-
-            if (destinationId) {
-                updateStopsForDestination(routeId, destinationId);
-            }
+        if (!zip['calendar.txt'] && !zip['calendar_dates.txt']) {
+            throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
         }
 
-        function updateStopsForDestination(routeId, destinationId) {
-            const list = document.getElementById('stops-list');
-            list.innerHTML = '';
+        // Chargement parallèle uniquement des fichiers nécessaires immédiatement
+        const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
+            getFileFromZip(zip, 'routes.txt'),
+            getFileFromZip(zip, 'stops.txt'),
+            getFileFromZip(zip, 'calendar.txt'),
+            getFileFromZip(zip, 'calendar_dates.txt')
+        ]);
 
-            if (!destinationId) return;
-
-            const stops = getStopsForDestination(routeId, destinationId);
-            
-            stops.forEach((stop, index) => {
-                const item = document.createElement('div');
-                item.className = 'stop-item';
-                item.style.animationDelay = `${index * 0.05}s`;
-                item.innerHTML = `<strong>${stop.stop_name}</strong>`;
-                item.onclick = () => showSchedule(routeId, stop.stop_id, destinationId);
-                addTouchFeedback(item);
-                list.appendChild(item);
-            });
-        }
-
-        function showSchedule(routeId, stopId, destinationId) {
-            state.currentRoute = routeId;
-            state.currentStop = stopId;
-            state.currentDestination = destinationId;
-
-            hideAllViews();
-            document.getElementById('schedule-view').classList.add('active');
-            document.getElementById('back-btn').style.display = 'flex';
-            state.viewHistory.push('stops');
-
-            saveScrollPosition('stops');
-            scrollToTop();
-
-            const route = state.routes[routeId];
-            const stop = state.stops[stopId];
-            document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
-            document.getElementById('header-subtitle').textContent = route.route_long_name;
-
-            setupTabHandlers();
-            
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('date-picker').value = today;
-            
-            updateScheduleByDate(routeId, stopId, destinationId, today);
-        }
-
-        function setupTabHandlers() {
-            const tabs = document.querySelectorAll('.tab');
-            const indicator = document.querySelector('.tab-indicator');
-            const datePicker = document.getElementById('date-picker');
-
-            tabs.forEach((tab, index) => {
-                tab.onclick = () => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
-                    
-                    const width = tab.offsetWidth;
-                    const left = tab.offsetLeft - 6;
-                    indicator.style.width = `${width}px`;
-                    indicator.style.transform = `translateX(${left}px)`;
-
-                    document.querySelectorAll('.schedule-content').forEach(c => c.classList.remove('active'));
-                    
-                    if (tab.dataset.tab === 'theoretical') {
-                        document.getElementById('theoretical-content').classList.add('active');
-                        datePicker.style.display = 'block';
-                    } else {
-                        document.getElementById('realtime-content').classList.add('active');
-                        datePicker.style.display = 'none';
-                        loadRealtimeData();
-                    }
-
-                    if ('vibrate' in navigator) {
-                        navigator.vibrate(10);
-                    }
-                };
-            });
-
-            const activeTab = document.querySelector('.tab.active');
-            indicator.style.width = `${activeTab.offsetWidth}px`;
-            indicator.style.transform = `translateX(0px)`;
-
-            datePicker.onchange = (e) => {
-                updateScheduleByDate(state.currentRoute, state.currentStop, state.currentDestination, e.target.value);
-            };
+        state.routes = parseCSVToObject(routesText, 'route_id');
+        state.stops = parseCSVToObject(stopsText, 'stop_id');
+        
+        if (calendarText) {
+            state.calendar = parseCSVToObject(calendarText, 'service_id');
         }
         
-        function computeGtfsDateAndDow(dateString) {
-            const gtfsDate = dateString.replace(/-/g, '');
-            const safe = new Date(dateString + 'T12:00:00');
-            const dayOfWeek = safe.getDay();
-            return { gtfsDate, dayOfWeek };
-        }
-
-        function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
-            const { gtfsDate, dayOfWeek } = computeGtfsDateAndDow(dateString);
-            const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
-
-            if (activeServiceIds.length === 0) {
-                const container = document.getElementById('theoretical-content');
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="state-title">Aucun service</div><div class="state-description">Aucun service actif pour cette date</div></div>';
-                return;
-            }
-
-            const validTrips = state.trips[routeId].filter(trip => 
-                activeServiceIds.includes(trip.service_id)
-            );
-
-            displaySchedule(validTrips, stopId, destinationId, document.getElementById('theoretical-content'));
-        }
-
-        function displaySchedule(validTrips, stopId, destinationId, container) {
-            container.innerHTML = '';
-
-            const schedule = [];
-            const stopTimesByRoute = state.stopTimes[state.currentRoute];
-
-            validTrips.forEach(trip => {
-                const tripStops = stopTimesByRoute[trip.trip_id];
-                if (!tripStops || tripStops.length === 0) return;
-
-                const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
-                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
-
-                if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
-
-                schedule.push(tripStops[stopIndex].arrival_time);
-            });
-
-            if (schedule.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucun horaire</div><div class="state-description">Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
-                return;
-            }
-
-            const timesByHour = {};
-            schedule.forEach(time => {
-                const [hour, minute] = time.split('h');
-                if (!timesByHour[hour]) timesByHour[hour] = [];
-                timesByHour[hour].push(minute);
-            });
-
-            Object.keys(timesByHour)
-                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-                .forEach(hour => {
-                    const group = document.createElement('div');
-                    group.className = 'schedule-group';
-
-                    const hourTitle = document.createElement('div');
-                    hourTitle.className = 'schedule-hour';
-                    hourTitle.textContent = `${hour}h`;
-                    group.appendChild(hourTitle);
-
-                    const times = document.createElement('div');
-                    times.className = 'schedule-times';
-
-                    const uniqueMinutes = [...new Set(timesByHour[hour])]
-                        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
-
-                    uniqueMinutes.forEach(minute => {
-                        const timeEl = document.createElement('div');
-                        timeEl.className = 'schedule-time';
-                        timeEl.textContent = minute;
-                        times.appendChild(timeEl);
-                    });
-
-                    group.appendChild(times);
-                    container.appendChild(group);
-                });
-        }
-
-        function getActiveServiceIds(dayOfWeek, gtfsDate) {
-            const cacheKey = `${dayOfWeek}_${gtfsDate}`;
-            if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
-
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const dayName = dayNames[dayOfWeek];
-
-            let serviceIds = [];
-
-            const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
-
-            if (hasCalendar) {
-                for (const [serviceId, cal] of Object.entries(state.calendar)) {
-                    const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
-                    if (!inRange) continue;
-
-                    if (String(cal[dayName]).trim() === '1') {
-                        serviceIds.push(serviceId);
-                    }
+        if (calendarDatesText) {
+            const dates = parseCSV(calendarDatesText);
+            dates.forEach(cd => {
+                if (!state.calendarDates[cd.date]) {
+                    state.calendarDates[cd.date] = { added: [], removed: [] };
                 }
+                if (cd.exception_type === '1') {
+                    state.calendarDates[cd.date].added.push(cd.service_id);
+                } else if (cd.exception_type === '2') {
+                    state.calendarDates[cd.date].removed.push(cd.service_id);
+                }
+            });
+        }
+
+        if (!calendarText && calendarDatesText) {
+            console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
+            state.calendar = {};
+        }
+
+        setCachedData('gtfs_core', {
+            routes: state.routes,
+            stops: state.stops,
+            calendar: state.calendar,
+            calendarDates: state.calendarDates
+        });
+
+        state.coreLoaded = true;
+    } catch (error) {
+        console.error('Erreur chargement GTFS:', error);
+        document.getElementById('loading').innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">⚠️</div>
+                <div class="state-title">Erreur de chargement</div>
+                <div class="state-description">${error.message}</div>
+            </div>
+        `;
+    }
+}
+
+// Parse raw trips uniquement au premier besoin
+async function ensureRawTripsLoaded() {
+    if (state.rawTripsData) return;
+    
+    const zip = await getZip();
+    const tripsText = await getFileFromZip(zip, 'trips.txt');
+    state.rawTripsData = parseCSV(tripsText);
+}
+
+// Parse raw stop_times uniquement au premier besoin
+async function ensureRawStopTimesLoaded() {
+    if (state.rawStopTimesData) return;
+    
+    const zip = await getZip();
+    const stopTimesText = await getFileFromZip(zip, 'stop_times.txt');
+    state.rawStopTimesData = parseCSV(stopTimesText);
+}
+
+// Chargement on-demand avec filtrage immédiat
+async function loadTripsAndStopTimesForRoute(routeId) {
+    if (state.loadedRoutes.has(routeId)) return;
+
+    const cacheKey = `route_${routeId}`;
+    const cached = getCachedData(cacheKey);
+    
+    if (cached) {
+        state.trips[routeId] = cached.trips;
+        state.stopTimes[routeId] = cached.stopTimes;
+        state.loadedRoutes.add(routeId);
+        return;
+    }
+
+    try {
+        // Chargement raw data si pas déjà fait
+        await Promise.all([
+            ensureRawTripsLoaded(),
+            ensureRawStopTimesLoaded()
+        ]);
+
+        // Filtrage direct sur données brutes en mémoire
+        const routeTrips = state.rawTripsData.filter(t => t.route_id === routeId);
+        const tripIds = new Set(routeTrips.map(t => t.trip_id));
+
+        const stopTimesByTrip = {};
+        
+        // Filtrage optimisé: parcours unique
+        state.rawStopTimesData.forEach(st => {
+            if (tripIds.has(st.trip_id)) {
+                if (!stopTimesByTrip[st.trip_id]) {
+                    stopTimesByTrip[st.trip_id] = [];
+                }
+                stopTimesByTrip[st.trip_id].push({
+                    stop_id: st.stop_id,
+                    arrival_time: formatTimeString(st.arrival_time),
+                    departure_time: formatTimeString(st.departure_time || st.arrival_time),
+                    stop_sequence: parseInt(st.stop_sequence, 10)
+                });
+            }
+        });
+
+        // Tri batch optimisé
+        Object.values(stopTimesByTrip).forEach(times => {
+            times.sort((a, b) => a.stop_sequence - b.stop_sequence);
+        });
+
+        state.trips[routeId] = routeTrips;
+        state.stopTimes[routeId] = stopTimesByTrip;
+        state.loadedRoutes.add(routeId);
+
+        // Cache désactivé pour routes car trop volumineux
+        // setCachedData(cacheKey, { trips: routeTrips, stopTimes: stopTimesByTrip });
+    } catch (error) {
+        console.error('Erreur chargement route:', error);
+        alert(`Erreur lors du chargement de la ligne: ${error.message}`);
+    }
+}
+
+// Parsing CSV optimisé avec regex
+function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
+
+    const result = [];
+    // Parcours optimisé avec allocation mémoire réduite
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const values = parseCSVLine(line);
+        const obj = {};
+        for (let j = 0; j < headers.length; j++) {
+            obj[headers[j]] = (values[j] ?? '').trim().replace(/"/g, '');
+        }
+        result.push(obj);
+    }
+    
+    return result;
+}
+
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                current += '"';
+                i++;
             } else {
-                serviceIds = [];
+                inQuotes = !inQuotes;
             }
+        } else if (char === ',' && !inQuotes) {
+            result.push(current);
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current);
+    return result;
+}
 
-            const ex = state.calendarDates?.[gtfsDate];
-            if (ex) {
-                for (const id of ex.added || []) {
-                    if (!serviceIds.includes(id)) serviceIds.push(id);
-                }
-                for (const id of ex.removed || []) {
-                    serviceIds = serviceIds.filter(sid => sid !== id);
-                }
+function parseCSVToObject(text, keyField) {
+    const items = parseCSV(text);
+    const obj = {};
+    items.forEach(item => {
+        if (item[keyField]) {
+            obj[item[keyField]] = item;
+        }
+    });
+    return obj;
+}
+
+function formatTimeString(timeStr) {
+    if (!timeStr) return '00h00';
+    const parts = timeStr.split(':');
+    let hour = parseInt(parts[0], 10);
+    const minute = parts[1] || '00';
+    if (hour >= 24) hour -= 24;
+    return `${hour}h${minute}`;
+}
+
+function getCachedData(key) {
+    try {
+        const item = localStorage.getItem(`gtfs_${key}`);
+        if (!item) return null;
+        
+        const data = JSON.parse(item);
+        if (data.version !== CACHE_VERSION) return null;
+        if (Date.now() - data.timestamp > CACHE_TTL) return null;
+        
+        return data.value;
+    } catch {
+        return null;
+    }
+}
+
+function setCachedData(key, value) {
+    try {
+        // Cache désactivé pour routes (trop volumineux)
+        if (key.startsWith('route_')) {
+            return;
+        }
+        
+        localStorage.setItem(`gtfs_${key}`, JSON.stringify({
+            version: CACHE_VERSION,
+            timestamp: Date.now(),
+            value
+        }));
+    } catch (error) {
+        console.warn('Cache localStorage plein, nettoyage...', error);
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('gtfs_route_')) {
+                localStorage.removeItem(key);
             }
-
-            cache.serviceIds.set(cacheKey, serviceIds);
-            return serviceIds;
-        }
-
-        function getDestinations(routeId) {
-            if (cache.destinations.has(routeId)) {
-                return cache.destinations.get(routeId);
-            }
-
-            const trips = state.trips[routeId];
-            const stopTimesByRoute = state.stopTimes[routeId];
-            const destinations = new Map();
-
-            trips.forEach(trip => {
-                const tripStops = stopTimesByRoute[trip.trip_id];
-                if (tripStops && tripStops.length > 0) {
-                    const lastStop = tripStops[tripStops.length - 1];
-                    const stop = state.stops[lastStop.stop_id];
-                    if (stop && !destinations.has(stop.stop_id)) {
-                        destinations.set(stop.stop_id, { 
-                            id: stop.stop_id, 
-                            name: stop.stop_name 
-                        });
-                    }
-                }
-            });
-
-            const result = Array.from(destinations.values());
-            cache.destinations.set(routeId, result);
-            return result;
-        }
-
-        function getStopsForDestination(routeId, destinationId) {
-            const cacheKey = `${routeId}_${destinationId}`;
-            if (cache.stops.has(cacheKey)) {
-                return cache.stops.get(cacheKey);
-            }
-
-            const trips = state.trips[routeId];
-            const stopTimesByRoute = state.stopTimes[routeId];
-            const stopsMap = new Map();
-
-            trips.forEach(trip => {
-                const tripStops = stopTimesByRoute[trip.trip_id];
-                if (!tripStops) return;
-
-                const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
-                if (destIndex === -1) return;
-
-                tripStops.slice(0, destIndex).forEach(st => { 
-                    const stop = state.stops[st.stop_id];
-                    if (stop && !stopsMap.has(stop.stop_id)) {
-                        stopsMap.set(stop.stop_id, stop);
-                    }
-                });
-            });
-
-            const result = Array.from(stopsMap.values());
-            cache.stops.set(cacheKey, result);
-            return result;
-        }
-
-        async function loadRealtimeData() {
-            const container = document.getElementById('realtime-content');
-            container.innerHTML = '<div class="loading">Chargement des données temps réel...</div>';
-
-            try {
-                const response = await fetch(GTFS_RT_URL);
-                const buffer = await response.arrayBuffer();
-                
-                const root = await protobuf.load('src/gtfs-realtime.proto');
-                const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
-                const message = FeedMessage.decode(new Uint8Array(buffer));
-
-                const arrivals = processRealtimeDataForStop(message, state.currentRoute, state.currentStop);
-                displayRealtimeArrivals(arrivals, container);
-            } catch (error) {
-                console.error('Erreur temps réel:', error);
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div>Données temps réel non disponibles</div></div>';
-            }
-        }
-
-        function pad2(n) { return String(n).padStart(2, '0'); }
-
-        function parseTimeHHhMM(timeStr) {
-            const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
-            return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
-        }
-
-        function buildDateFromPicker(timeHHhMM, dateString) {
-            const { h, m } = parseTimeHHhMM(timeHHhMM);
-            const d = new Date(dateString + 'T12:00:00');
-            d.setHours(h, m, 0, 0);
-            return d;
-        }
-
-        function getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString) {
-            const stopTimesByRoute = state.stopTimes[routeId];
-            const tripStops = stopTimesByRoute?.[tripId];
-            if (!tripStops) return null;
-
-            const st = tripStops.find(x => x.stop_id === stopId);
-            if (!st?.arrival_time) return null;
-
-            return buildDateFromPicker(st.arrival_time, dateString);
-        }
-
-        function minutesDiff(a, b) {
-            return Math.round((a.getTime() - b.getTime()) / 60000);
-        }
-
-        function matchesCurrentRouteRt(tripDescriptor, routeId) {
-            const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
-            if (rtRouteId) return String(rtRouteId) === String(routeId);
-
-            const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
-            if (!rtTripId) return false;
-
-            const routeTrips = state.trips?.[routeId] || [];
-            return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
-        }
-
-        function ensureRtUi() {
-            let overlay = document.getElementById('overlay');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = 'overlay';
-                overlay.style.cssText = `
-                    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
-                    z-index:9998;
-                `;
-                document.body.appendChild(overlay);
-            }
-
-            let panel = document.getElementById('rt-panel');
-            if (!panel) {
-                panel = document.createElement('div');
-                panel.id = 'rt-panel';
-                panel.style.cssText = `
-                    display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
-                    width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
-                    background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
-                    border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
-                    z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
-                    color:#fff;
-                `;
-                panel.innerHTML = `
-                    <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
-                        border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
-                        <div style="font-weight:800" id="rt-panel-title">Détails</div>
-                        <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
-                        color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
-                    </div>
-                    <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
-                `;
-                document.body.appendChild(panel);
-            }
-
-            const close = () => closeRtPanel();
-            overlay.onclick = close;
-            const closeBtn = document.getElementById('rt-panel-close');
-            if (closeBtn) closeBtn.onclick = close;
-        }
-
-        function openRtPanel(title, html) {
-            ensureRtUi();
-            const overlay = document.getElementById('overlay');
-            const panel = document.getElementById('rt-panel');
-            const titleEl = document.getElementById('rt-panel-title');
-            const contentEl = document.getElementById('rt-panel-content');
-
-            if (titleEl) titleEl.textContent = title || 'Détails';
-            if (contentEl) contentEl.innerHTML = html || '';
-
-            overlay.style.display = 'block';
-            panel.style.display = 'block';
-        }
-
-        function closeRtPanel() {
-            const overlay = document.getElementById('overlay');
-            const panel = document.getElementById('rt-panel');
-            if (overlay) overlay.style.display = 'none';
-            if (panel) panel.style.display = 'none';
-        }
-
-        function getMinutesFromHHhMM(timeStr) {
-            const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
-            return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
-        }
-
-        function sendVehicleToParent(vehicleId, tripId) {
-            const message = {
-                type: 'vehicleSelected',
-                vehicleId: vehicleId || null,
-                tripId: tripId || null,
-                stopId: state.currentStop || null,
-                routeId: state.currentRoute || null,
-                timestamp: new Date().getTime()
-            };
-
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage(message, '*');
-            } else if (window.opener) {
-                window.opener.postMessage(message, '*');
-            } else {
-                console.warn('Aucun parent/opener pour recevoir le message:', message);
-            }
-        }
-
-        function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
-            ensureRtUi();
-
-            const route = state.routes?.[routeId];
-            const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
-            const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
-
-            const tripStops = state.stopTimes?.[routeId]?.[tripId];
-            if (!tripStops || tripStops.length === 0) {
-                openRtPanel(
-                    `Bus ${vehicleId || '—'} • ${routeLabel}`,
-                    `<div style="opacity:.8">Aucun détail d'arrêts pour ce trajet.</div>`
-                );
-                return;
-            }
-
-            const now = new Date();
-            const nowMin = now.getHours() * 60 + now.getMinutes();
-
-            let nextIndex = 0;
-            for (let i = 0; i < tripStops.length; i++) {
-                const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
-                if (tMin >= nowMin) { nextIndex = i; break; }
-                nextIndex = i;
-            }
-
-            const rows = tripStops.map((st, idx) => {
-                const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
-                const time = st.arrival_time || '--h--';
-
-                const isNext = idx === nextIndex;
-                const isPast = idx < nextIndex;
-
-                return `
-                    <div style="
-                        display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
-                        border-bottom:1px solid rgba(255,255,255,.08);
-                        background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
-                        opacity:${isPast ? '.55' : '1'};
-                    ">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="
-                                width:10px; height:10px; border-radius:999px;
-                                background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
-                                box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
-                            "></div>
-                            <div>${stopName}</div>
-                        </div>
-                        <div style="font-weight:800;">${time}</div>
-                    </div>
-                `;
-            }).join('');
-
-            const html = `
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-                    <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
-                    <div style="font-weight:800;">${routeLabel}</div>
-                    <div style="opacity:.85;">• Trajet ${tripId}</div>
-                    ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
-                </div>
-
-                <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
-                    ${rows}
-                </div>
-
-                <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
-                    <button id="rt-show-map-btn" style="
-                        cursor:pointer; border:none; color:#fff;
-                        background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
-                        padding:10px 14px; border-radius:12px; font-weight:800;
-                        box-shadow:0 8px 24px rgba(0,0,0,.25);
-                    ">
-                        Afficher dans la carte
-                    </button>
-                </div>
-            `;
-
-            openRtPanel(`Détails • ${routeLabel}`, html);
-
-            const btn = document.getElementById('rt-show-map-btn');
-            if (btn) {
-                btn.onclick = () => {
-                    sendVehicleToParent(vehicleId, tripId);
-                    closeRtPanel();
-                };
-            }
-        }
-
-        function processRealtimeDataForStop(message, routeId, stopId) {
-            const arrivals = [];
-            const now = Date.now() / 1000;
-
-            message.entity.forEach(entity => {
-                if (!entity.tripUpdate) return;
-
-                const tu = entity.tripUpdate;
-                const td = tu.trip;
-
-                const tripId = td.tripId || td.trip_id;
-                if (!tripId) return;
-
-                const rtRouteId = td.routeId || td.route_id;
-                if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
-
-                if (!rtRouteId) {
-                    const routeTrips = state.trips?.[routeId] || [];
-                    const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
-                    if (!ok) return;
-                }
-
-                const vehicleId =
-                    entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
-                    entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
-
-                tu.stopTimeUpdate?.forEach(update => {
-                    if (update.stopId !== stopId) return;
-
-                    const arrivalTime = update.arrival?.time || update.departure?.time;
-                    if (!arrivalTime || arrivalTime <= now) return;
-
-                    arrivals.push({
-                        time: arrivalTime,
-                        tripId: tripId,
-                        vehicleId: vehicleId,
-                        headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
-                    });
-                });
-            });
-
-            return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
-        }
-
-        function displayRealtimeArrivals(arrivals, container) {
-            container.innerHTML = '';
-
-            if (!arrivals || arrivals.length === 0) {
-                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
-                return;
-            }
-
-            arrivals.forEach(arr => {
-                const date = new Date(arr.time * 1000);
-                const hh = pad2(date.getHours());
-                const mm = pad2(date.getMinutes());
-
-                const item = document.createElement('div');
-                item.className = 'realtime-item';
-                item.style.cursor = 'pointer';
-
-                const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
-
-                item.innerHTML = `
-                    <div>
-                        <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
-                            ${busLabel ? `<span>${busLabel}</span>` : ''}
-                        </div>
-                        ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
-                    </div>
-                    <div class="realtime-time">${hh}h${mm}</div>
-                `;
-
-                item.addEventListener('click', () => {
-                    showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
-                });
-
-                container.appendChild(item);
-            });
-        }
-
-        function goBack() {
-            const previous = state.viewHistory.pop();
+        });
+    }
+}
+
+
+function hideAllViews() {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+}
+
+function showLines() {
+    hideAllViews();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('lines-view').classList.add('active');
+    document.getElementById('back-btn').style.display = 'none';
+    document.getElementById('header-title').textContent = 'My Bus Schedule';
+    document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
+    state.viewHistory = [];
+
+    if (state.viewHistory.length > 0) {
+        restoreScrollPosition('lines');
+    } else {
+        scrollToTop();
+    }
+
+    const linesList = document.getElementById('lines-list');
+    linesList.innerHTML = '';
+
+    Object.entries(state.routes).forEach(([routeId, route], index) => {
+        const item = document.createElement('div');
+        item.className = 'bus-item';
+        item.style.animationDelay = `${index * 0.05}s`;
+        item.innerHTML = `
+            <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
+                Ligne ${route.route_short_name}
+            </span>
+            <span class="bus-name">${route.route_long_name}</span>
+        `;
+        item.onclick = () => showDestinations(routeId);
+        addTouchFeedback(item);
+        linesList.appendChild(item);
+    });
+
+}
+
+async function showDestinations(routeId) {
+    state.currentRoute = routeId;
+    
+    hideAllViews();
+    document.getElementById('destinations-view').classList.add('active');
+    document.getElementById('back-btn').style.display = 'flex';
+    
+    const route = state.routes[routeId];
+    document.getElementById('header-title').textContent = "Ligne " + route.route_short_name;
+    document.getElementById('header-subtitle').textContent = route.route_long_name;
+    
+    state.viewHistory.push('lines');
+
+    saveScrollPosition('lines');
+    scrollToTop();
+
+    const list = document.getElementById('destinations-list');
+    list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
+
+    // Chargement asynchrone en arrière-plan
+    await loadTripsAndStopTimesForRoute(routeId);
+
+    const destinations = getDestinations(routeId);
+    list.innerHTML = '';
+
+    destinations.forEach((dest, index) => {
+        const item = document.createElement('div');
+        item.className = 'destination-item';
+        item.style.animationDelay = `${index * 0.05}s`;
+        item.innerHTML = `<strong>${dest.name}</strong>`;
+        item.onclick = () => showStops(routeId, dest.id);
+        addTouchFeedback(item);
+        list.appendChild(item);
+    });
+}
+
+function showStops(routeId, destinationId = null) {
+    hideAllViews();
+    document.getElementById('stops-view').classList.add('active');
+    document.getElementById('back-btn').style.display = 'flex';
+    state.viewHistory.push('destinations');
+    saveScrollPosition('destinations');
+    scrollToTop();
+
+    const destinations = getDestinations(routeId);
+    const select = document.getElementById('destination-select');
+    select.innerHTML = '<option value="">Choisir une destination</option>';
+    
+    destinations.forEach(dest => {
+        const option = document.createElement('option');
+        option.value = dest.id;
+        option.textContent = dest.name;
+        if (dest.id === destinationId) option.selected = true;
+        select.appendChild(option);
+    });
+
+    select.onchange = () => updateStopsForDestination(routeId, select.value);
+
+    if (destinationId) {
+        updateStopsForDestination(routeId, destinationId);
+    }
+}
+
+function updateStopsForDestination(routeId, destinationId) {
+    const list = document.getElementById('stops-list');
+    list.innerHTML = '';
+
+    if (!destinationId) return;
+
+    const stops = getStopsForDestination(routeId, destinationId);
+    
+    stops.forEach((stop, index) => {
+        const item = document.createElement('div');
+        item.className = 'stop-item';
+        item.style.animationDelay = `${index * 0.05}s`;
+        item.innerHTML = `<strong>${stop.stop_name}</strong>`;
+        item.onclick = () => showSchedule(routeId, stop.stop_id, destinationId);
+        addTouchFeedback(item);
+        list.appendChild(item);
+    });
+}
+
+function showSchedule(routeId, stopId, destinationId) {
+    state.currentRoute = routeId;
+    state.currentStop = stopId;
+    state.currentDestination = destinationId;
+
+    hideAllViews();
+    document.getElementById('schedule-view').classList.add('active');
+    document.getElementById('back-btn').style.display = 'flex';
+    state.viewHistory.push('stops');
+
+    saveScrollPosition('stops');
+    scrollToTop();
+
+    const route = state.routes[routeId];
+    const stop = state.stops[stopId];
+    document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
+    document.getElementById('header-subtitle').textContent = route.route_long_name;
+
+    setupTabHandlers();
+    
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date-picker').value = today;
+    
+    updateScheduleByDate(routeId, stopId, destinationId, today);
+}
+
+function setupTabHandlers() {
+    const tabs = document.querySelectorAll('.tab');
+    const indicator = document.querySelector('.tab-indicator');
+    const datePicker = document.getElementById('date-picker');
+
+    tabs.forEach((tab, index) => {
+        tab.onclick = () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
             
-            if (!previous) {
-                showLines();
-                return;
+            const width = tab.offsetWidth;
+            const left = tab.offsetLeft - 6;
+            indicator.style.width = `${width}px`;
+            indicator.style.transform = `translateX(${left}px)`;
+
+            document.querySelectorAll('.schedule-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab.dataset.tab === 'theoretical') {
+                document.getElementById('theoretical-content').classList.add('active');
+                datePicker.style.display = 'block';
+            } else {
+                document.getElementById('realtime-content').classList.add('active');
+                datePicker.style.display = 'none';
+                loadRealtimeData();
             }
 
-            switch (previous) {
-                case 'lines':
-                    showLines();
-                    restoreScrollPosition('lines');
-                    break;
-                case 'destinations':
-                    showDestinations(state.currentRoute);
-                    restoreScrollPosition('destinations');
-                    break;
-                case 'stops':
-                    showStops(state.currentRoute, state.currentDestination);
-                    restoreScrollPosition('stops');
-                    break;
+            if ('vibrate' in navigator) {
+                navigator.vibrate(10);
+            }
+        };
+    });
+
+    const activeTab = document.querySelector('.tab.active');
+    indicator.style.width = `${activeTab.offsetWidth}px`;
+    indicator.style.transform = `translateX(0px)`;
+
+    datePicker.onchange = (e) => {
+        updateScheduleByDate(state.currentRoute, state.currentStop, state.currentDestination, e.target.value);
+    };
+}
+
+function computeGtfsDateAndDow(dateString) {
+    const gtfsDate = dateString.replace(/-/g, '');
+    const safe = new Date(dateString + 'T12:00:00');
+    const dayOfWeek = safe.getDay();
+    return { gtfsDate, dayOfWeek };
+}
+
+function updateScheduleByDate(routeId, stopId, destinationId, dateString) {
+    const { gtfsDate, dayOfWeek } = computeGtfsDateAndDow(dateString);
+    const activeServiceIds = getActiveServiceIds(dayOfWeek, gtfsDate);
+
+    if (activeServiceIds.length === 0) {
+        const container = document.getElementById('theoretical-content');
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="state-title">Aucun service</div><div class="state-description">Aucun service actif pour cette date</div></div>';
+        return;
+    }
+
+    const validTrips = state.trips[routeId].filter(trip => 
+        activeServiceIds.includes(trip.service_id)
+    );
+
+    displaySchedule(validTrips, stopId, destinationId, document.getElementById('theoretical-content'));
+}
+
+function displaySchedule(validTrips, stopId, destinationId, container) {
+    container.innerHTML = '';
+
+    const schedule = [];
+    const stopTimesByRoute = state.stopTimes[state.currentRoute];
+
+    validTrips.forEach(trip => {
+        const tripStops = stopTimesByRoute[trip.trip_id];
+        if (!tripStops || tripStops.length === 0) return;
+
+        const stopIndex = tripStops.findIndex(st => st.stop_id === stopId);
+        const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+
+        if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
+
+        schedule.push(tripStops[stopIndex].arrival_time);
+    });
+
+    if (schedule.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div class="state-title">Aucun horaire</div><div class="state-description">Aucun horaire disponible pour cette combinaison arrêt/destination</div></div>';
+        return;
+    }
+
+    const timesByHour = {};
+    schedule.forEach(time => {
+        const [hour, minute] = time.split('h');
+        if (!timesByHour[hour]) timesByHour[hour] = [];
+        timesByHour[hour].push(minute);
+    });
+
+    Object.keys(timesByHour)
+        .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+        .forEach(hour => {
+            const group = document.createElement('div');
+            group.className = 'schedule-group';
+
+            const hourTitle = document.createElement('div');
+            hourTitle.className = 'schedule-hour';
+            hourTitle.textContent = `${hour}h`;
+            group.appendChild(hourTitle);
+
+            const times = document.createElement('div');
+            times.className = 'schedule-times';
+
+            const uniqueMinutes = [...new Set(timesByHour[hour])]
+                .sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+            uniqueMinutes.forEach(minute => {
+                const timeEl = document.createElement('div');
+                timeEl.className = 'schedule-time';
+                timeEl.textContent = minute;
+                times.appendChild(timeEl);
+            });
+
+            group.appendChild(times);
+            container.appendChild(group);
+        });
+}
+
+function getActiveServiceIds(dayOfWeek, gtfsDate) {
+    const cacheKey = `${dayOfWeek}_${gtfsDate}`;
+    if (cache.serviceIds.has(cacheKey)) return cache.serviceIds.get(cacheKey);
+
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+
+    let serviceIds = [];
+
+    const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
+
+    if (hasCalendar) {
+        for (const [serviceId, cal] of Object.entries(state.calendar)) {
+            const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
+            if (!inRange) continue;
+
+            if (String(cal[dayName]).trim() === '1') {
+                serviceIds.push(serviceId);
             }
         }
+    } else {
+        serviceIds = [];
+    }
 
-        const backBtn = document.getElementById('back-btn');
-        backBtn.onclick = goBack;
-        addTouchFeedback(backBtn);
+    const ex = state.calendarDates?.[gtfsDate];
+    if (ex) {
+        for (const id of ex.added || []) {
+            if (!serviceIds.includes(id)) serviceIds.push(id);
+        }
+        for (const id of ex.removed || []) {
+            serviceIds = serviceIds.filter(sid => sid !== id);
+        }
+    }
 
-        window.addEventListener('beforeunload', () => {
-            if (state.realtimeInterval) {
-                clearInterval(state.realtimeInterval);
+    cache.serviceIds.set(cacheKey, serviceIds);
+    return serviceIds;
+}
+
+// Calcul destinations avec cache
+function getDestinations(routeId) {
+    if (cache.destinations.has(routeId)) {
+        return cache.destinations.get(routeId);
+    }
+
+    const trips = state.trips[routeId];
+    const stopTimesByRoute = state.stopTimes[routeId];
+    const destinations = new Map();
+
+    trips.forEach(trip => {
+        const tripStops = stopTimesByRoute[trip.trip_id];
+        if (tripStops && tripStops.length > 0) {
+            const lastStop = tripStops[tripStops.length - 1];
+            const stop = state.stops[lastStop.stop_id];
+            if (stop && !destinations.has(stop.stop_id)) {
+                destinations.set(stop.stop_id, { 
+                    id: stop.stop_id, 
+                    name: stop.stop_name 
+                });
+            }
+        }
+    });
+
+    const result = Array.from(destinations.values());
+    cache.destinations.set(routeId, result);
+    return result;
+}
+
+// Calcul stops avec cache optimisé
+function getStopsForDestination(routeId, destinationId) {
+    const cacheKey = `${routeId}_${destinationId}`;
+    if (cache.stops.has(cacheKey)) {
+        return cache.stops.get(cacheKey);
+    }
+
+    const trips = state.trips[routeId];
+    const stopTimesByRoute = state.stopTimes[routeId];
+    const stopsMap = new Map();
+
+    trips.forEach(trip => {
+        const tripStops = stopTimesByRoute[trip.trip_id];
+        if (!tripStops) return;
+
+        const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
+        if (destIndex === -1) return;
+
+        tripStops.slice(0, destIndex).forEach(st => { 
+            const stop = state.stops[st.stop_id];
+            if (stop && !stopsMap.has(stop.stop_id)) {
+                stopsMap.set(stop.stop_id, stop);
             }
         });
+    });
 
-        // Smooth page load
-        window.addEventListener('load', () => {
-            document.body.style.opacity = '0';
-            requestAnimationFrame(() => {
-                document.body.style.transition = 'opacity 0.4s ease';
-                document.body.style.opacity = '1';
+    const result = Array.from(stopsMap.values());
+    cache.stops.set(cacheKey, result);
+    return result;
+}
+
+async function loadRealtimeData() {
+    const container = document.getElementById('realtime-content');
+    container.innerHTML = '<div class="loading">Chargement des données temps réel...</div>';
+
+    try {
+        const response = await fetch(GTFS_RT_URL);
+        const buffer = await response.arrayBuffer();
+        
+        const root = await protobuf.load('src/gtfs-realtime.proto');
+        const FeedMessage = root.lookupType('transit_realtime.FeedMessage');
+        const message = FeedMessage.decode(new Uint8Array(buffer));
+
+        const arrivals = processRealtimeDataForStop(message, state.currentRoute, state.currentStop);
+        displayRealtimeArrivals(arrivals, container);
+    } catch (error) {
+        console.error('Erreur temps réel:', error);
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div>Données temps réel non disponibles</div></div>';
+    }
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function parseTimeHHhMM(timeStr) {
+    const [h, m] = timeStr.split('h').map(x => parseInt(x, 10));
+    return { h: isNaN(h) ? 0 : h, m: isNaN(m) ? 0 : m };
+}
+
+function buildDateFromPicker(timeHHhMM, dateString) {
+    const { h, m } = parseTimeHHhMM(timeHHhMM);
+    const d = new Date(dateString + 'T12:00:00');
+    d.setHours(h, m, 0, 0);
+    return d;
+}
+
+function getTheoreticalTimeForTripStop(routeId, tripId, stopId, dateString) {
+    const stopTimesByRoute = state.stopTimes[routeId];
+    const tripStops = stopTimesByRoute?.[tripId];
+    if (!tripStops) return null;
+
+    const st = tripStops.find(x => x.stop_id === stopId);
+    if (!st?.arrival_time) return null;
+
+    return buildDateFromPicker(st.arrival_time, dateString);
+}
+
+function minutesDiff(a, b) {
+    return Math.round((a.getTime() - b.getTime()) / 60000);
+}
+
+function matchesCurrentRouteRt(tripDescriptor, routeId) {
+    const rtRouteId = tripDescriptor?.routeId || tripDescriptor?.route_id;
+    if (rtRouteId) return String(rtRouteId) === String(routeId);
+
+    const rtTripId = tripDescriptor?.tripId || tripDescriptor?.trip_id;
+    if (!rtTripId) return false;
+
+    const routeTrips = state.trips?.[routeId] || [];
+    return routeTrips.some(t => String(t.trip_id) === String(rtTripId));
+}
+
+function ensureRtUi() {
+    let overlay = document.getElementById('overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'overlay';
+        overlay.style.cssText = `
+            display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+            z-index:9998;
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    let panel = document.getElementById('rt-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'rt-panel';
+        panel.style.cssText = `
+            display:none; position:fixed; left:50%; top:60px; transform:translateX(-50%);
+            width:min(720px, calc(100vw - 24px)); max-height:calc(100vh - 120px);
+            background:rgba(20, 18, 60, .92); border:1px solid rgba(255,255,255,.18);
+            border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.45);
+            z-index:9999; overflow:hidden; backdrop-filter: blur(18px);
+            color:#fff;
+        `;
+        panel.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px;
+                border-bottom:1px solid rgba(255,255,255,.12); gap:12px;">
+                <div style="font-weight:800" id="rt-panel-title">Détails</div>
+                <button id="rt-panel-close" style="cursor:pointer; border:none; background:rgba(255,255,255,.12);
+                color:#fff; border:1px solid rgba(255,255,255,.18); border-radius:12px; width:40px; height:40px; font-size:18px;">✕</button>
+            </div>
+            <div id="rt-panel-content" style="padding:14px 16px; overflow:auto; max-height:calc(100vh - 190px);"></div>
+        `;
+        document.body.appendChild(panel);
+    }
+
+    const close = () => closeRtPanel();
+    overlay.onclick = close;
+    const closeBtn = document.getElementById('rt-panel-close');
+    if (closeBtn) closeBtn.onclick = close;
+}
+
+function openRtPanel(title, html) {
+    ensureRtUi();
+    const overlay = document.getElementById('overlay');
+    const panel = document.getElementById('rt-panel');
+    const titleEl = document.getElementById('rt-panel-title');
+    const contentEl = document.getElementById('rt-panel-content');
+
+    if (titleEl) titleEl.textContent = title || 'Détails';
+    if (contentEl) contentEl.innerHTML = html || '';
+
+    overlay.style.display = 'block';
+    panel.style.display = 'block';
+}
+
+function closeRtPanel() {
+    const overlay = document.getElementById('overlay');
+    const panel = document.getElementById('rt-panel');
+    if (overlay) overlay.style.display = 'none';
+    if (panel) panel.style.display = 'none';
+}
+
+function getMinutesFromHHhMM(timeStr) {
+    const [h, m] = (timeStr || '').split('h').map(x => parseInt(x, 10));
+    return (isNaN(h) ? 0 : h) * 60 + (isNaN(m) ? 0 : m);
+}
+
+function sendVehicleToParent(vehicleId, tripId) {
+    const message = {
+        type: 'vehicleSelected',
+        vehicleId: vehicleId || null,
+        tripId: tripId || null,
+        stopId: state.currentStop || null,
+        routeId: state.currentRoute || null,
+        timestamp: new Date().getTime()
+    };
+
+    if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, '*');
+    } else if (window.opener) {
+        window.opener.postMessage(message, '*');
+    } else {
+        console.warn('Aucun parent/opener pour recevoir le message:', message);
+    }
+}
+
+function showStopsTimelineForTrip(routeId, tripId, vehicleId) {
+    ensureRtUi();
+
+    const route = state.routes?.[routeId];
+    const routeLabel = route?.route_short_name ? `${route.route_short_name}` : 'Ligne';
+    const routeColor = route?.route_color ? `#${route.route_color}` : '#8b5cf6';
+
+    const tripStops = state.stopTimes?.[routeId]?.[tripId];
+    if (!tripStops || tripStops.length === 0) {
+        openRtPanel(
+            `Bus ${vehicleId || '—'} • ${routeLabel}`,
+            `<div style="opacity:.8">Aucun détail d'arrêts pour ce trajet.</div>`
+        );
+        return;
+    }
+
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+
+    let nextIndex = 0;
+    for (let i = 0; i < tripStops.length; i++) {
+        const tMin = getMinutesFromHHhMM(tripStops[i].arrival_time);
+        if (tMin >= nowMin) { nextIndex = i; break; }
+        nextIndex = i;
+    }
+
+    const rows = tripStops.map((st, idx) => {
+        const stopName = state.stops?.[st.stop_id]?.stop_name || st.stop_id;
+        const time = st.arrival_time || '--h--';
+
+        const isNext = idx === nextIndex;
+        const isPast = idx < nextIndex;
+
+        return `
+            <div style="
+                display:flex; justify-content:space-between; gap:12px; padding:10px 10px;
+                border-bottom:1px solid rgba(255,255,255,.08);
+                background:${isNext ? 'rgba(255,255,255,.10)' : 'transparent'};
+                opacity:${isPast ? '.55' : '1'};
+            ">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="
+                        width:10px; height:10px; border-radius:999px;
+                        background:${isNext ? routeColor : 'rgba(255,255,255,.35)'};
+                        box-shadow:${isNext ? '0 0 0 3px rgba(139,92,246,.25)' : 'none'};
+                    "></div>
+                    <div>${stopName}</div>
+                </div>
+                <div style="font-weight:800;">${time}</div>
+            </div>
+        `;
+    }).join('');
+
+    const html = `
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+            <div style="width:10px; height:10px; border-radius:999px; background:${routeColor}; box-shadow:0 0 0 3px rgba(139,92,246,.25)"></div>
+            <div style="font-weight:800;">${routeLabel}</div>
+            <div style="opacity:.85;">• Trajet ${tripId}</div>
+            ${vehicleId ? `<div style="margin-left:auto; font-weight:800;">Bus ${vehicleId}</div>` : ''}
+        </div>
+
+        <div style="border:1px solid rgba(255,255,255,.12); border-radius:14px; overflow:hidden;">
+            ${rows}
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
+            <button id="rt-show-map-btn" style="
+                cursor:pointer; border:none; color:#fff;
+                background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(59,130,246,.9));
+                padding:10px 14px; border-radius:12px; font-weight:800;
+                box-shadow:0 8px 24px rgba(0,0,0,.25);
+            ">
+                Afficher dans la carte
+            </button>
+        </div>
+    `;
+
+    openRtPanel(`Détails • ${routeLabel}`, html);
+
+    const btn = document.getElementById('rt-show-map-btn');
+    if (btn) {
+        btn.onclick = () => {
+            sendVehicleToParent(vehicleId, tripId);
+            closeRtPanel();
+        };
+    }
+}
+
+function processRealtimeDataForStop(message, routeId, stopId) {
+    const arrivals = [];
+    const now = Date.now() / 1000;
+
+    message.entity.forEach(entity => {
+        if (!entity.tripUpdate) return;
+
+        const tu = entity.tripUpdate;
+        const td = tu.trip;
+
+        const tripId = td.tripId || td.trip_id;
+        if (!tripId) return;
+
+        const rtRouteId = td.routeId || td.route_id;
+        if (rtRouteId && String(rtRouteId) !== String(routeId)) return;
+
+        if (!rtRouteId) {
+            const routeTrips = state.trips?.[routeId] || [];
+            const ok = routeTrips.some(t => String(t.trip_id) === String(tripId));
+            if (!ok) return;
+        }
+
+        const vehicleId =
+            entity.vehicle?.id || entity.vehicle?.label || tu.vehicle?.id || tu.vehicle?.label ||
+            entity.vehicle?.vehicle?.id || entity.vehicle?.vehicle?.label;
+
+        tu.stopTimeUpdate?.forEach(update => {
+            if (update.stopId !== stopId) return;
+
+            const arrivalTime = update.arrival?.time || update.departure?.time;
+            if (!arrivalTime || arrivalTime <= now) return;
+
+            arrivals.push({
+                time: arrivalTime,
+                tripId: tripId,
+                vehicleId: vehicleId,
+                headsign: td.tripHeadsign || td.trip_headsign || 'Destination'
             });
         });
+    });
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && state.viewHistory.length > 0) {
-                goBack();
-            }
+    return arrivals.sort((a, b) => a.time - b.time).slice(0, 8);
+}
+
+function displayRealtimeArrivals(arrivals, container) {
+    container.innerHTML = '';
+
+    if (!arrivals || arrivals.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚌</div><div>Aucune arrivée prévue</div></div>';
+        return;
+    }
+
+    arrivals.forEach(arr => {
+        const date = new Date(arr.time * 1000);
+        const hh = pad2(date.getHours());
+        const mm = pad2(date.getMinutes());
+
+        const item = document.createElement('div');
+        item.className = 'realtime-item';
+        item.style.cursor = 'pointer';
+
+        const busLabel = arr.vehicleId ? `Bus ${arr.vehicleId}` : '';
+
+        item.innerHTML = `
+            <div>
+                <div class="realtime-destination" style="display:flex; gap:10px; align-items:baseline; flex-wrap:wrap;">
+                    ${busLabel ? `<span>${busLabel}</span>` : ''}
+                </div>
+                ${arr.delayText ? `<div style="font-size:13px; margin-top:4px; opacity:.9;">${arr.delayText}</div>` : ''}
+            </div>
+            <div class="realtime-time">${hh}h${mm}</div>
+        `;
+
+        item.addEventListener('click', () => {
+            showStopsTimelineForTrip(state.currentRoute, arr.tripId, arr.vehicleId);
         });
+
+        container.appendChild(item);
+    });
+}
+
+function goBack() {
+    const previous = state.viewHistory.pop();
+    
+    if (!previous) {
+        showLines();
+        return;
+    }
+
+    switch (previous) {
+        case 'lines':
+            showLines();
+            restoreScrollPosition('lines');
+            break;
+        case 'destinations':
+            showDestinations(state.currentRoute);
+            restoreScrollPosition('destinations');
+            break;
+        case 'stops':
+            showStops(state.currentRoute, state.currentDestination);
+            restoreScrollPosition('stops');
+            break;
+    }
+}
+
+const backBtn = document.getElementById('back-btn');
+backBtn.onclick = goBack;
+addTouchFeedback(backBtn);
+
+window.addEventListener('beforeunload', () => {
+    if (state.realtimeInterval) {
+        clearInterval(state.realtimeInterval);
+    }
+});
+
+// Smooth page load
+window.addEventListener('load', () => {
+    document.body.style.opacity = '0';
+    requestAnimationFrame(() => {
+        document.body.style.transition = 'opacity 0.4s ease';
+        document.body.style.opacity = '1';
+    });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && state.viewHistory.length > 0) {
+        goBack();
+    }
+});
     </script>
 </body>
 </html>
