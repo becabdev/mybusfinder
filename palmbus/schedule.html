@@ -1022,15 +1022,31 @@ async function loadTripsAndStopTimesForRoute(routeId) {
         // Requête serveur pour trips + stop_times filtrés pour cette route
         const response = await fetch(`${GTFS_API_URL}?action=route&route_id=${encodeURIComponent(routeId)}`);
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Erreur serveur HTTP:', response.status, errorText);
             throw new Error(`Erreur serveur: ${response.status}`);
         }
 
-        const data = await response.json();
+        // Debug: affiche texte brut avant parsing
+        const responseText = await response.text();
+        console.log('Reponse brute serveur (premiers 500 chars):', responseText.substring(0, 500));
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Erreur parse JSON:', parseError);
+            console.error('Reponse complete:', responseText);
+            throw new Error('Réponse serveur invalide (pas JSON)');
+        }
         
         // Validation réponse
         if (!data.trips || !data.stopTimes) {
+            console.error('Données manquantes dans réponse:', data);
             throw new Error('Données invalides reçues du serveur');
         }
+        
+        console.log(`Route ${routeId} chargée: ${data.trips.length} trips, ${Object.keys(data.stopTimes).length} trip_ids`);
         
         state.trips[routeId] = data.trips;
         state.stopTimes[routeId] = data.stopTimes;
