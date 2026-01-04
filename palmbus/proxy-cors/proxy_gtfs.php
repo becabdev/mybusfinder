@@ -147,7 +147,7 @@ if (isset($_GET['action'])) {
                 break;
                 
             case 'route':
-                // CHARGEMENT ON-DEMAND: stop_times pour route specifique
+                // CHARGEMENT ON-DEMAND: trips + stop_times pour route specifique
                 $routeId = $_GET['route_id'] ?? null;
                 if (!$routeId) {
                     http_response_code(400);
@@ -162,10 +162,37 @@ if (isset($_GET['action'])) {
                     // Cache route existe
                     echo file_get_contents($routeCacheFile);
                 } else {
-                    // Genere cache pour cette route
-                    $trips = $coreData['tripsByRoute'][$routeId] ?? [];
+                    // Genere cache pour cette route: parse trips.txt pour obtenir trips de cette route
+                    $trips = [];
+                    $tripsFile = $extractDir . '/trips.txt';
+                    
+                    if (!file_exists($tripsFile)) {
+                        throw new Exception('trips.txt non extrait');
+                    }
+                    
+                    $handle = fopen($tripsFile, 'r');
+                    $headers = fgetcsv($handle);
+                    $tripIdIndex = array_search('trip_id', $headers);
+                    $routeIdIndex = array_search('route_id', $headers);
+                    $serviceIdIndex = array_search('service_id', $headers);
+                    
+                    // Lit trips.txt, filtre par route_id
+                    while (($row = fgetcsv($handle)) !== false) {
+                        $rowRouteId = $row[$routeIdIndex] ?? '';
+                        if ($rowRouteId !== $routeId) continue;
+                        
+                        $trips[] = [
+                            'trip_id' => $row[$tripIdIndex] ?? '',
+                            'route_id' => $rowRouteId,
+                            'service_id' => $row[$serviceIdIndex] ?? ''
+                        ];
+                    }
+                    fclose($handle);
+                    
                     if (empty($trips)) {
-                        echo json_encode(['trips' => [], 'stopTimes' => []]);
+                        $emptyResponse = json_encode(['trips' => [], 'stopTimes' => []]);
+                        file_put_contents($routeCacheFile, $emptyResponse);
+                        echo $emptyResponse;
                         break;
                     }
                     

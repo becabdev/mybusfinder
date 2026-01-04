@@ -960,7 +960,7 @@ function initScrollEffects() {
     });
 }
 
-// Chargement données core depuis serveur (routes, stops, calendar)
+// Chargement données core depuis serveur (routes, stops, calendar - SANS trips/stopTimes)
 async function loadGtfsCore() {
     try {
         const cached = getCachedData('gtfs_core');
@@ -970,7 +970,7 @@ async function loadGtfsCore() {
             return;
         }
 
-        // Requête serveur pour données pré-processées
+        // Requête serveur pour données pré-processées (leger: pas de trips/stopTimes)
         const response = await fetch(`${GTFS_API_URL}?action=core`);
         if (!response.ok) {
             throw new Error(`Erreur serveur: ${response.status}`);
@@ -982,6 +982,7 @@ async function loadGtfsCore() {
         state.stops = data.stops;
         state.calendar = data.calendar || {};
         state.calendarDates = data.calendarDates || {};
+        // PAS de trips ni stopTimes ici, charges a la demande
 
         setCachedData('gtfs_core', {
             routes: state.routes,
@@ -1003,7 +1004,7 @@ async function loadGtfsCore() {
     }
 }
 
-// Chargement données ligne spécifique depuis serveur
+// Chargement données ligne spécifique depuis serveur (trips + stop_times)
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
 
@@ -1018,13 +1019,18 @@ async function loadTripsAndStopTimesForRoute(routeId) {
     }
 
     try {
-        // Requête serveur pour trips + stop_times filtrés
+        // Requête serveur pour trips + stop_times filtrés pour cette route
         const response = await fetch(`${GTFS_API_URL}?action=route&route_id=${encodeURIComponent(routeId)}`);
         if (!response.ok) {
             throw new Error(`Erreur serveur: ${response.status}`);
         }
 
         const data = await response.json();
+        
+        // Validation réponse
+        if (!data.trips || !data.stopTimes) {
+            throw new Error('Données invalides reçues du serveur');
+        }
         
         state.trips[routeId] = data.trips;
         state.stopTimes[routeId] = data.stopTimes;
@@ -1036,7 +1042,7 @@ async function loadTripsAndStopTimesForRoute(routeId) {
         });
     } catch (error) {
         console.error('Erreur chargement route:', error);
-        alert(`Erreur lors du chargement de la ligne: ${error.message}`);
+        throw error; // Propage erreur pour affichage
     }
 }
 
@@ -1129,21 +1135,31 @@ async function showDestinations(routeId) {
     const list = document.getElementById('destinations-list');
     list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
 
-    // Chargement depuis serveur: beaucoup plus rapide
-    await loadTripsAndStopTimesForRoute(routeId);
+    try {
+        // Chargement depuis serveur: trips + stop_times pour cette route
+        await loadTripsAndStopTimesForRoute(routeId);
 
-    const destinations = getDestinations(routeId);
-    list.innerHTML = '';
+        const destinations = getDestinations(routeId);
+        
+        if (destinations.length === 0) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="state-title">Aucune destination</div><div class="state-description">Aucune destination trouvée pour cette ligne</div></div>';
+            return;
+        }
+        
+        list.innerHTML = '';
 
-    destinations.forEach((dest, index) => {
-        const item = document.createElement('div');
-        item.className = 'destination-item';
-        item.style.animationDelay = `${index * 0.05}s`;
-        item.innerHTML = `<strong>${dest.name}</strong>`;
-        item.onclick = () => showStops(routeId, dest.id);
-        addTouchFeedback(item);
-        list.appendChild(item);
-    });
+        destinations.forEach((dest, index) => {
+            const item = document.createElement('div');
+            item.className = 'destination-item';
+            item.style.animationDelay = `${index * 0.05}s`;
+            item.innerHTML = `<strong>${dest.name}</strong>`;
+            item.onclick = () => showStops(routeId, dest.id);
+            addTouchFeedback(item);
+            list.appendChild(item);
+        });
+    } catch (error) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="state-title">Erreur</div><div class="state-description">${error.message}</div></div>`;
+    }
 }
 
 function showStops(routeId, destinationId = null) {
@@ -1802,7 +1818,6 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state.viewHistory.length > 0) {
         goBack();
     }
-});
-    </script>
+});    </script>
 </body>
 </html>
