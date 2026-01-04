@@ -5683,13 +5683,14 @@ const textColorCache = new Map();
                 nextStops: stopsData,
                 stopsHeader: stopsHeaderText
             });
+            requestAnimationFrame(() => {
+                updateMinimalPopups();
+            });
         }
     });
 
     
-    requestAnimationFrame(() => {
-        updateMinimalPopups();
-    });
+
 
     const activeIds = Array.from(markerPool.active.keys());
 
