@@ -4364,11 +4364,15 @@ function generateStopsHTML(stopsArray) {
         return `<div style="position: relative; max-height: 120px;"><ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;"></ul></div>`;
     }
     
-    const stopsListHTML = stopsArray.map(stop => `
-        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
+    // Utiliser un fragment pour meilleures performances
+    const listItems = stopsArray.map(stop => {
+        // Échapper les caractères spéciaux pour éviter les injections
+        const escapedName = stop.stopName.replace(/[<>]/g, '');
+        
+        return `<li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
             <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
                 <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                    <div class="stop-name" style="position: relative; display: inline-block;">${stop.stopName}</div>
+                    <div class="stop-name" style="position: relative; display: inline-block;">${escapedName}</div>
                 </div>
             </div>
             <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
@@ -4385,12 +4389,13 @@ function generateStopsHTML(stopsArray) {
                     <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
                 </svg>
             </div>
-        </li>`).join('');
+        </li>`;
+    }).join('');
     
     return `
         <div style="position: relative; max-height: 120px;">
             <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
-                ${stopsListHTML}
+                ${listItems}
             </ul>
         </div>
     `;
@@ -5237,7 +5242,9 @@ const textColorCache = new Map();
                         const currentStops = Array.from(nextStopsContent.querySelectorAll('li'));
                         
                         if (currentStops.length !== stopsData.length) {
+                            const scrollTop = nextStopsContent.scrollTop; 
                             nextStopsContent.innerHTML = generateStopsHTML(stopsData).match(/<ul[^>]*>(.*?)<\/ul>/s)[1];
+                            nextStopsContent.scrollTop = scrollTop; 
                             hasUpdated = true;
                             
                             if (window.toggleTimeDisplay) {
@@ -5263,6 +5270,12 @@ const textColorCache = new Map();
                                         
                                         hasUpdated = true;
                                     }
+                                }
+                                
+                                const stopNameElement = li.querySelector('.stop-name');
+                                if (stopNameElement && stopNameElement.textContent !== stopData.stopName) {
+                                    stopNameElement.textContent = stopData.stopName;
+                                    hasUpdated = true;
                                 }
                             });
                         }
@@ -5304,6 +5317,20 @@ const textColorCache = new Map();
                     }
                     
                     return hasUpdated;
+                }
+
+                const popupUpdateThrottle = new Map();
+
+                function shouldUpdatePopup(markerId) {
+                    const now = Date.now();
+                    const lastUpdate = popupUpdateThrottle.get(markerId) || 0;
+                    
+                    if (now - lastUpdate < 1000) {
+                        return false;
+                    }
+                    
+                    popupUpdateThrottle.set(markerId, now);
+                    return true;
                 }
 
                 let updateMinimalTimeout = null;
@@ -5396,7 +5423,7 @@ const textColorCache = new Map();
                         marker._lastStopsHash = stopsHash;
                         marker._lastStopsData = stopsData; 
                         markerPool.updateMarkerStyle(marker, line, bearing);
-                                            
+                                                    
                         if (marker.isPopupOpen()) {
                             const menubtm = document.getElementById('menubtm');
                             if (menubtm) {
@@ -5414,12 +5441,25 @@ const textColorCache = new Map();
                     
                     if (marker.isPopupOpen()) {
                         if (stopsChanged || stopsHeaderChanged || destinationChanged) {
-                            const updated = updatePopupContent(marker, vehicle, line, lastStopName, stopsData, 
-                                vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                            if (!shouldUpdatePopup(id)) {
+                                return; 
+                            }
                             
-                            if (updated) {
-                                marker._lastStopsHash = stopsHash;
-                                marker._lastStopsData = stopsData;
+                            if (!marker._updateScheduled) {
+                                marker._updateScheduled = true;
+                                requestAnimationFrame(() => {
+                                    marker._updateScheduled = false;
+                                    const updated = updatePopupContent(
+                                        marker, vehicle, line, lastStopName, stopsData, 
+                                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, 
+                                        backgroundColor, textColor, id
+                                    );
+                                    
+                                    if (updated) {
+                                        marker._lastStopsHash = stopsHash;
+                                        marker._lastStopsData = stopsData;
+                                    }
+                                });
                             }
                         }
                     } else {
