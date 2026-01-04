@@ -5115,7 +5115,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             fn: clickHandler
                         });
                     }
-                }, 150); 
+                }, 10); 
                 
                 marker.minimalPopup = minimalTooltip;
                 TooltipManager.active.set(markerId, minimalTooltip);
@@ -5146,7 +5146,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             console.error('Erreur suppression tooltip Safari:', error);
                         }
                     }
-                }, 300); // Délai plus long pour Safari
+                }, 20); // Délai plus long pour Safari
             }
         } else {
             const tooltipToRemove = marker.minimalPopup;
@@ -5327,8 +5327,8 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
             }
 
 
-            map.on('zoomend', debounce(updateMinimalPopups, 100));
-            map.on('moveend', debounce(updateMinimalPopups, 150));
+            map.on('zoomend', debounce(updateMinimalPopups, 10));
+            map.on('moveend', debounce(updateMinimalPopups, 30));
 
         }
 });
