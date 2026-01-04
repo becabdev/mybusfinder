@@ -1,3 +1,5 @@
+
+
         if (!window.requestIdleCallback) {
             window.requestIdleCallback = function(callback, options) {
                 const start = Date.now();
@@ -5144,7 +5146,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             console.error('Erreur suppression tooltip Safari:', error);
                         }
                     }
-                }, 300); 
+                }, 300); // Délai plus long pour Safari
             }
         } else {
             const tooltipToRemove = marker.minimalPopup;
@@ -5325,8 +5327,8 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
             }
 
 
-            map.on('zoomend', debounce(updateMinimalPopups, 10));
-            map.on('moveend', debounce(updateMinimalPopups, 50));
+            map.on('zoomend', debounce(updateMinimalPopups, 100));
+            map.on('moveend', debounce(updateMinimalPopups, 150));
 
         }
 });
