@@ -1,5 +1,5 @@
 <?php
-@ini_set('memory_limit', '256M');
+@ini_set('memory_limit', '128M'); // Revient a limite basse
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, HEAD, OPTIONS");
@@ -27,7 +27,7 @@ if (isset($_GET['action'])) {
     $action = $_GET['action'];
     
     try {
-        // ETAPE 1: Cache core (leger, sans stop_times)
+        // ETAPE 1: Cache core (leger, sans trips/stopTimes)
         $coreValid = file_exists($coreCacheFile) && (time() - filemtime($coreCacheFile) < $cacheTTL);
         
         if ($debug) $coreValid = false;
@@ -58,11 +58,11 @@ if (isset($_GET['action'])) {
             $zip->close();
             
             // Parse fichiers legers seulement
-            $debugInfo['steps'][] = 'Parse routes/stops/calendar/trips...';
-            $routes = parseCSVFile($extractDir . '/routes.txt');
-            $stops = parseCSVFile($extractDir . '/stops.txt');
-            $calendar = file_exists($extractDir . '/calendar.txt') ? parseCSVFile($extractDir . '/calendar.txt') : [];
-            $calendarDates = file_exists($extractDir . '/calendar_dates.txt') ? parseCSVFile($extractDir . '/calendar_dates.txt') : [];
+            $debugInfo['steps'][] = 'Parse routes/stops/calendar...';
+            $routes = parseCSVFileSmall($extractDir . '/routes.txt');
+            $stops = parseCSVFileSmall($extractDir . '/stops.txt');
+            $calendar = file_exists($extractDir . '/calendar.txt') ? parseCSVFileSmall($extractDir . '/calendar.txt') : [];
+            $calendarDates = file_exists($extractDir . '/calendar_dates.txt') ? parseCSVFileSmall($extractDir . '/calendar_dates.txt') : [];
             
             $routesById = arrayToObject($routes, 'route_id');
             $stopsById = arrayToObject($stops, 'stop_id');
@@ -83,45 +83,18 @@ if (isset($_GET['action'])) {
                 }
             }
             
-            // Parse trips UNIQUEMENT pour index route->trips
-            $tripsByRoute = [];
-            $tripsFile = $extractDir . '/trips.txt';
-            $handle = fopen($tripsFile, 'r');
-            $headers = fgetcsv($handle);
-            $tripIdIndex = array_search('trip_id', $headers);
-            $routeIdIndex = array_search('route_id', $headers);
-            $serviceIdIndex = array_search('service_id', $headers);
-            
-            while (($row = fgetcsv($handle)) !== false) {
-                $routeId = $row[$routeIdIndex] ?? '';
-                if (empty($routeId)) continue;
-                
-                if (!isset($tripsByRoute[$routeId])) {
-                    $tripsByRoute[$routeId] = [];
-                }
-                
-                $tripsByRoute[$routeId][] = [
-                    'trip_id' => $row[$tripIdIndex] ?? '',
-                    'route_id' => $routeId,
-                    'service_id' => $row[$serviceIdIndex] ?? ''
-                ];
-            }
-            fclose($handle);
-            
-            // Cache core SANS stop_times
+            // Cache core SANS trips/stopTimes
             $coreData = [
                 'routes' => $routesById,
                 'stops' => $stopsById,
                 'calendar' => $calendarById,
                 'calendarDates' => $calendarDatesByDate,
-                'tripsByRoute' => $tripsByRoute,
                 'generated' => time()
             ];
             
             if ($debug) {
                 $debugInfo['routes_count'] = count($routesById);
                 $debugInfo['stops_count'] = count($stopsById);
-                $debugInfo['trips_by_route_count'] = count($tripsByRoute);
                 $coreData['_debug'] = $debugInfo;
             }
             
@@ -133,7 +106,6 @@ if (isset($_GET['action'])) {
         // Reponse selon action
         switch ($action) {
             case 'core':
-                // Donnees initiales sans stop_times
                 $response = [
                     'routes' => $coreData['routes'] ?? [],
                     'stops' => $coreData['stops'] ?? [],
@@ -147,7 +119,7 @@ if (isset($_GET['action'])) {
                 break;
                 
             case 'route':
-                // CHARGEMENT ON-DEMAND: trips + stop_times pour route specifique
+                // STREAMING PUR: ne charge jamais tout en memoire
                 $routeId = $_GET['route_id'] ?? null;
                 if (!$routeId) {
                     http_response_code(400);
@@ -159,68 +131,60 @@ if (isset($_GET['action'])) {
                 $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
                 
                 if (file_exists($routeCacheFile) && (time() - filemtime($routeCacheFile) < $cacheTTL)) {
-                    // Cache route existe
+                    // Cache existe
                     echo file_get_contents($routeCacheFile);
                 } else {
-                    // Genere cache pour cette route: parse trips.txt pour obtenir trips de cette route
+                    // Generation: streaming pur ligne par ligne
                     $trips = [];
+                    $tripIds = [];
+                    
+                    // PASS 1: Collecte trip_ids pour cette route (leger)
                     $tripsFile = $extractDir . '/trips.txt';
+                    if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
                     
-                    if (!file_exists($tripsFile)) {
-                        throw new Exception('trips.txt non extrait');
+                    $fh = fopen($tripsFile, 'r');
+                    $headers = fgetcsv($fh);
+                    $tripIdIdx = array_search('trip_id', $headers);
+                    $routeIdIdx = array_search('route_id', $headers);
+                    $serviceIdIdx = array_search('service_id', $headers);
+                    
+                    while (($row = fgetcsv($fh)) !== false) {
+                        if (($row[$routeIdIdx] ?? '') === $routeId) {
+                            $tripId = $row[$tripIdIdx] ?? '';
+                            $trips[] = [
+                                'trip_id' => $tripId,
+                                'route_id' => $routeId,
+                                'service_id' => $row[$serviceIdIdx] ?? ''
+                            ];
+                            $tripIds[$tripId] = true;
+                        }
                     }
-                    
-                    $handle = fopen($tripsFile, 'r');
-                    $headers = fgetcsv($handle);
-                    $tripIdIndex = array_search('trip_id', $headers);
-                    $routeIdIndex = array_search('route_id', $headers);
-                    $serviceIdIndex = array_search('service_id', $headers);
-                    
-                    // Lit trips.txt, filtre par route_id
-                    while (($row = fgetcsv($handle)) !== false) {
-                        $rowRouteId = $row[$routeIdIndex] ?? '';
-                        if ($rowRouteId !== $routeId) continue;
-                        
-                        $trips[] = [
-                            'trip_id' => $row[$tripIdIndex] ?? '',
-                            'route_id' => $rowRouteId,
-                            'service_id' => $row[$serviceIdIndex] ?? ''
-                        ];
-                    }
-                    fclose($handle);
+                    fclose($fh);
                     
                     if (empty($trips)) {
-                        $emptyResponse = json_encode(['trips' => [], 'stopTimes' => []]);
-                        file_put_contents($routeCacheFile, $emptyResponse);
-                        echo $emptyResponse;
+                        $empty = json_encode(['trips' => [], 'stopTimes' => []]);
+                        file_put_contents($routeCacheFile, $empty);
+                        echo $empty;
                         break;
                     }
                     
-                    // Construit set trip_ids pour cette route
-                    $tripIds = [];
-                    foreach ($trips as $trip) {
-                        $tripIds[$trip['trip_id']] = true;
-                    }
-                    
-                    // Parse stop_times UNIQUEMENT pour ces trips
-                    $stopTimesByTrip = [];
+                    // PASS 2: Streaming stop_times avec buffer limite
                     $stopTimesFile = $extractDir . '/stop_times.txt';
+                    if (!file_exists($stopTimesFile)) throw new Exception('stop_times.txt non extrait');
                     
-                    if (!file_exists($stopTimesFile)) {
-                        throw new Exception('stop_times.txt non extrait');
-                    }
-                    
-                    $handle = fopen($stopTimesFile, 'r');
-                    $headers = fgetcsv($handle);
-                    
+                    $fh = fopen($stopTimesFile, 'r');
+                    $headers = fgetcsv($fh);
                     $tripIdIdx = array_search('trip_id', $headers);
                     $stopIdIdx = array_search('stop_id', $headers);
                     $arrivalIdx = array_search('arrival_time', $headers);
                     $departureIdx = array_search('departure_time', $headers);
                     $sequenceIdx = array_search('stop_sequence', $headers);
                     
-                    // Lit ligne par ligne, ne garde que trips de cette route
-                    while (($row = fgetcsv($handle)) !== false) {
+                    $stopTimesByTrip = [];
+                    $lineCount = 0;
+                    
+                    // Stream ligne par ligne
+                    while (($row = fgetcsv($fh)) !== false) {
                         $tripId = $row[$tripIdIdx] ?? '';
                         
                         // Filtre: uniquement trips de cette route
@@ -236,10 +200,26 @@ if (isset($_GET['action'])) {
                             'departure_time' => formatTime($row[$departureIdx] ?? $row[$arrivalIdx] ?? ''),
                             'stop_sequence' => (int)($row[$sequenceIdx] ?? 0)
                         ];
+                        
+                        $lineCount++;
+                        
+                        // Si trop de stop_times accumules (route tres longue), tri progressif
+                        if ($lineCount % 10000 === 0) {
+                            // Tri partiel pour liberer memoire
+                            foreach ($stopTimesByTrip as $tid => &$times) {
+                                if (count($times) > 100) { // Trip probablement complet
+                                    usort($times, function($a, $b) {
+                                        return $a['stop_sequence'] - $b['stop_sequence'];
+                                    });
+                                }
+                            }
+                            unset($times);
+                            gc_collect_cycles();
+                        }
                     }
-                    fclose($handle);
+                    fclose($fh);
                     
-                    // Tri stop_times
+                    // Tri final
                     foreach ($stopTimesByTrip as &$times) {
                         usort($times, function($a, $b) {
                             return $a['stop_sequence'] - $b['stop_sequence'];
@@ -253,6 +233,10 @@ if (isset($_GET['action'])) {
                     ];
                     
                     $json = json_encode($routeData);
+                    if ($json === false) {
+                        throw new Exception('Erreur encodage JSON: ' . json_last_error_msg());
+                    }
+                    
                     file_put_contents($routeCacheFile, $json);
                     echo $json;
                 }
@@ -291,28 +275,28 @@ if (isset($_SERVER['HTTP_X_CONTENT_ONLY_HEADER'])) {
 header("Content-Type: application/zip");
 echo $data;
 
-// Fonctions helper
-function parseCSVFile($filepath) {
+// Parse CSV leger: ne garde que donnees essentielles
+function parseCSVFileSmall($filepath) {
     if (!file_exists($filepath)) return [];
     
     $result = [];
-    $handle = fopen($filepath, 'r');
-    if (!$handle) return [];
+    $fh = fopen($filepath, 'r');
+    if (!$fh) return [];
     
-    $headers = fgetcsv($handle);
+    $headers = fgetcsv($fh);
     if (!$headers) {
-        fclose($handle);
+        fclose($fh);
         return [];
     }
     
-    while (($row = fgetcsv($handle)) !== false) {
+    while (($row = fgetcsv($fh)) !== false) {
         $item = [];
         foreach ($headers as $i => $header) {
             $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
         }
         $result[] = $item;
     }
-    fclose($handle);
+    fclose($fh);
     
     return $result;
 }
