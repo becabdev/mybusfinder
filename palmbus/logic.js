@@ -4359,59 +4359,22 @@ function debounce(func, wait) {
     };
 }
 
-function generateStopsHTML(stopsArray) {
-    if (!stopsArray || stopsArray.length === 0) {
-        return `<div style="position: relative; max-height: 120px;"><ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;"></ul></div>`;
+
+async function fetchVehiclePositions() {
+    if (!gtfsInitialized) {
+        return;
     }
-    
-    // Utiliser un fragment pour meilleures performances
-    const listItems = stopsArray.map(stop => {
-        // Échapper les caractères spéciaux pour éviter les injections
-        const escapedName = stop.stopName.replace(/[<>]/g, '');
-        
-        return `<li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
-            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
-                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                    <div class="stop-name" style="position: relative; display: inline-block;">${escapedName}</div>
-                </div>
-            </div>
-            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                <div class="time-display" 
-                    data-time-left="${stop.timeLeftText}" 
-                    data-departure-time="${stop.departureTime}">
-                    ${stop.timeLeftText}
-                </div>
-                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <g class="rss-waves">
-                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
-                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
-                    </g>
-                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
-                </svg>
-            </div>
-        </li>`;
-    }).join('');
-    
-    return `
-        <div style="position: relative; max-height: 120px;">
-            <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
-                ${listItems}
-            </ul>
-        </div>
-    `;
-}
 
-function generatePopupContent(vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-    const nextStopsHTML = generateStopsHTML(stopsData);
-    
-    const cacheKey = `${id}-${line}-${lastStopName}`;
-    const stopsHash = stopsData ? stopsData.map(s => s.stopId).join(',') : '';
+    const contentCache = new Map();
+const colorCache = new Map();
+const textColorCache = new Map();
 
+function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
+    const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
+    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
+    
     if (contentCache.has(cacheKey)) {
-        const cached = contentCache.get(cacheKey);
-        if (cached.stopsHash === stopsHash && cached.stopsHeaderText === stopsHeaderText) {
-            return cached.content;
-        }
+        return contentCache.get(cacheKey);
     }
     
     const popupContent = `
@@ -4475,171 +4438,9 @@ function generatePopupContent(vehicle, line, lastStopName, stopsData, vehicleOpt
         keysToDelete.forEach(key => contentCache.delete(key));
     }
     
-contentCache.set(cacheKey, {
-    content: popupContent,
-    stopsHash: stopsHash,
-    stopsHeaderText: stopsHeaderText,
-    timestamp: Date.now()
-});
-    
+    contentCache.set(cacheKey, popupContent);
     return popupContent;
 }
-
-// ==================== POPUP LAZY MANAGER ====================
-const PopupManager = {
-    generated: new Map(), 
-    
-    generateOnOpen(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-        if (this.generated.has(id)) {
-            this.updateExistingPopup(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-            return;
-        }
-        
-        const popupContent = generatePopupContent(vehicle, line, lastStopName, stopsData, 
-            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-        
-        marker.bindPopup(popupContent);
-        this.generated.set(id, {
-            lastStopsHash: this.getStopsHash(stopsData),
-            lastStopsHeader: stopsHeaderText,
-            lastDestination: lastStopName
-        });
-    },
-    
-    updateExistingPopup(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-        const popup = marker.getPopup();
-        if (!popup || !popup._contentNode) return;
-        
-        const cached = this.generated.get(id);
-        const currentHash = this.getStopsHash(stopsData);
-        
-        const popupElement = popup._contentNode;
-        
-        if (cached.lastStopsHeader !== stopsHeaderText) {
-            const stopsHeader = popupElement.querySelector('.stops-header');
-            if (stopsHeader) {
-                stopsHeader.innerHTML = stopsHeaderText;
-                cached.lastStopsHeader = stopsHeaderText;
-            }
-        }
-        
-        const currentStops = popupElement.querySelectorAll('#nextStopsContent li');
-        currentStops.forEach((li, index) => {
-            const stopData = stopsData[index];
-            if (!stopData) return;
-            
-            const timeDisplay = li.querySelector('.time-display');
-            if (timeDisplay) {
-                const currentTime = timeDisplay.getAttribute('data-time-left');
-                
-                if (currentTime !== stopData.timeLeftText) {
-                    timeDisplay.setAttribute('data-time-left', stopData.timeLeftText);
-                    timeDisplay.setAttribute('data-departure-time', stopData.departureTime);
-                    
-                    if (window.showTimeLeft === undefined || window.showTimeLeft) {
-                        timeDisplay.textContent = stopData.timeLeftText;
-                    }
-                }
-            }
-        });
-        
-        if (cached.lastDestination !== lastStopName) {
-            const directionElement = popupElement.querySelector('.vehicle-direction');
-            if (directionElement) {
-                directionElement.textContent = `➜ ${lastStopName}`;
-                cached.lastDestination = lastStopName;
-            }
-        }
-        
-        cached.lastStopsHash = currentHash;
-    },
-    
-    getStopsHash(stopsData) {
-        if (!stopsData) return '';
-        return stopsData.map(s => `${s.stopId}-${s.timeLeftText}`).join('|');
-    },
-    
-    remove(id) {
-        this.generated.delete(id);
-    },
-    
-    clear() {
-        this.generated.clear();
-    }
-};
-// ==================== FIN POPUP LAZY MANAGER ====================
-
-// ==================== MENU DATA MANAGER ====================
-const MenuDataManager = {
-    vehiclesByLine: new Map(), 
-    
-    updateVehicleData(vehicleId, line, destination, vehicleData) {
-        if (!this.vehiclesByLine.has(line)) {
-            this.vehiclesByLine.set(line, new Map());
-        }
-        
-        const lineData = this.vehiclesByLine.get(line);
-        
-        if (!lineData.has(destination)) {
-            lineData.set(destination, new Map());
-        }
-        
-        const destData = lineData.get(destination);
-        destData.set(vehicleId, {
-            vehicleData: vehicleData,
-            lastUpdate: Date.now()
-        });
-    },
-    
-    removeVehicle(vehicleId) {
-        for (const [line, destinations] of this.vehiclesByLine) {
-            for (const [dest, vehicles] of destinations) {
-                vehicles.delete(vehicleId);
-                
-                if (vehicles.size === 0) {
-                    destinations.delete(dest);
-                }
-            }
-            
-            if (destinations.size === 0) {
-                this.vehiclesByLine.delete(line);
-            }
-        }
-    },
-    
-    getAllData() {
-        const result = {};
-        
-        for (const [line, destinations] of this.vehiclesByLine) {
-            result[line] = {};
-            
-            for (const [dest, vehicles] of destinations) {
-                result[line][dest] = Array.from(vehicles.entries()).map(([id, data]) => ({
-                    parkNumber: id,
-                    vehicleData: data.vehicleData,
-                    vehicle: markerPool.get(id) 
-                }));
-            }
-        }
-        
-        return result;
-    },
-    
-    clear() {
-        this.vehiclesByLine.clear();
-    }
-};
-// ==================== FIN MENU DATA MANAGER ====================
-
-
-async function fetchVehiclePositions() {
-    if (!gtfsInitialized) {
-        return;
-    }
-
-    const contentCache = new Map();
-const colorCache = new Map();
-const textColorCache = new Map();
 
     
     // Throttling basé sur la visibilité
@@ -4781,42 +4582,28 @@ const textColorCache = new Map();
                 }
 
 
-                const stopsData = filteredStops.map(stop => {
-                    const timeLeft = stop.delay;
-                    const timeLeftText = timeLeft !== null 
-                        ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                        : '';
-                    
-                    const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                    
-                    return {
-                        stopId: stop.stopId,
-                        stopName: stopName,
-                        timeLeftText: timeLeftText,
-                        departureTime: stop.arrivalTime || stop.departureTime || "Inconnu",
-                        delay: stop.delay
-                    };
-                });
-
-                const stopsHash = stopsData.map(s => `${s.stopId}-${s.timeLeftText}`).join('|');
-
-                function generateStopsHTML(stopsArray) {
-                    if (!stopsArray || stopsArray.length === 0) {
-                        return `<div style="position: relative; max-height: 120px;"><ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;"></ul></div>`;
-                    }
-                    
-                    const stopsListHTML = stopsArray.map(stop => `
+                let stopsListHTML = '';
+                if (filteredStops.length > 0) {
+                    stopsListHTML = filteredStops.map(stop => {
+                        const timeLeft = stop.delay;
+                        const timeLeftText = timeLeft !== null 
+                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                            : '';
+                        
+                        const stopName = stopNameMap[stop.stopId] || stop.stopId;
+                                                
+                        return `
                         <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
                             <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
                                 <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" style="position: relative; display: inline-block;">${stop.stopName}</div>
+                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
                                 </div>
                             </div>
                             <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
                                 <div class="time-display" 
-                                    data-time-left="${stop.timeLeftText}" 
-                                    data-departure-time="${stop.departureTime}">
-                                    ${stop.timeLeftText}
+                                    data-time-left="${timeLeftText}" 
+                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                                    ${timeLeftText}
                                 </div>
                                 <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <g class="rss-waves">
@@ -4826,18 +4613,17 @@ const textColorCache = new Map();
                                     <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
                                 </svg>
                             </div>
-                        </li>`).join('');
-                    
-                    return `
-                        <div style="position: relative; max-height: 120px;">
-                            <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
-                                ${stopsListHTML}
-                            </ul>
-                        </div>
-                    `;
+                        </li>`;
+                    }).join('');
                 }
 
-                const nextStopsHTML = generateStopsHTML(stopsData);
+                const nextStopsHTML = `
+                    <div style="position: relative; max-height: 120px;">
+                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
+                            ${stopsListHTML}
+                        </ul>
+                    </div>
+                `;
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
@@ -5178,306 +4964,218 @@ const textColorCache = new Map();
                 }
 
 
-                const TooltipManager = {
-                    pool: [],
-                    maxPoolSize: 50,
-                    active: new Map(),
-                    
-                    acquire() {
-                        let tooltip = this.pool.pop();
-                        if (!tooltip) {
-                            tooltip = L.tooltip({
-                                permanent: true,
-                                direction: 'center',
-                                className: 'minimal-tooltip-container',
-                                offset: [0, 0],
-                                opacity: 1
-                            });
-                        }
-                        return tooltip;
-                    },
-                    
-                    release(tooltip) {
-                        if (!tooltip) return;
-                        
-                        if (tooltip._container) {
-                            const handlers = tooltip._container._eventHandlers;
-                            if (handlers) {
-                                handlers.forEach(handler => {
-                                    tooltip._container.removeEventListener(handler.event, handler.fn);
-                                });
-                            }
-                        }
-                        
-                        if (this.pool.length < this.maxPoolSize) {
-                            this.pool.push(tooltip);
-                        }
-                    },
-                    
-                    clear() {
-                        this.active.forEach((tooltip) => {
-                            map.removeLayer(tooltip);
-                        });
-                        this.active.clear();
-                        this.pool = [];
-                    }
+const TooltipManager = {
+    pool: [],
+    maxPoolSize: 50,
+    active: new Map(),
+    
+    acquire() {
+        let tooltip = this.pool.pop();
+        if (!tooltip) {
+            tooltip = L.tooltip({
+                permanent: true,
+                direction: 'center',
+                className: 'minimal-tooltip-container',
+                offset: [0, 0],
+                opacity: 1
+            });
+        }
+        return tooltip;
+    },
+    
+    release(tooltip) {
+        if (!tooltip) return;
+        
+        if (tooltip._container) {
+            const handlers = tooltip._container._eventHandlers;
+            if (handlers) {
+                handlers.forEach(handler => {
+                    tooltip._container.removeEventListener(handler.event, handler.fn);
+                });
+            }
+        }
+        
+        if (this.pool.length < this.maxPoolSize) {
+            this.pool.push(tooltip);
+        }
+    },
+    
+    clear() {
+        this.active.forEach((tooltip) => {
+            map.removeLayer(tooltip);
+        });
+        this.active.clear();
+        this.pool = [];
+    }
+};
+
+function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
+    const marker = markerPool.get(markerId);
+    if (!marker) return;
+    
+    // Safari : Vérifier le support des tooltips
+    if (typeof L.tooltip !== 'function') {
+        console.warn('Tooltips non supportés');
+        return;
+    }
+    
+    if (shouldShow && !marker.isPopupOpen()) {
+        if (!marker.minimalPopup) {
+            const minimalTooltip = TooltipManager.acquire();
+            
+            const color = lineColors[marker.line] || '#000000';
+            const textColor = TextColorUtils.getOptimal(color);
+            
+            const minimalContent = `
+                <div class="minimal-popup minimal-popup-appear" style="
+                    position: relative;
+                    font-family: 'League Spartan', sans-serif;
+                    font-size: 11px;
+                    color: ${textColor};
+                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
+                    -webkit-backdrop-filter: blur(12px);
+                    backdrop-filter: blur(12px);
+                    border-radius: 12px;
+                    padding: 6px 10px;
+                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
+                    min-width: 80px;
+                    max-width: 140px;
+                    cursor: pointer;
+                    border: 1px solid ${color}60;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    -webkit-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    transform: translateY(0);
+                    -webkit-transform: translateY(0) translateZ(0);
+                ">
+                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                        <div style="
+                            background: rgba(255,255,255,0.2);
+                            border-radius: 6px;
+                            padding: 2px 6px;
+                            font-weight: 600;
+                            font-size: 10px;
+                            line-height: 1.2;
+                        ">
+                            ${lineName[marker.line] || t("unknownline")}
+                        </div>
+                        <div style="
+                            background: rgba(0,0,0,0.3);
+                            border-radius: 4px;
+                            padding: 1px 4px;
+                            font-size: 9px;
+                            font-weight: 500;
+                        ">
+                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
+                        </div>
+                    </div>
+                    <div style="
+                        font-size: 9px; 
+                        opacity: 0.85; 
+                        margin-top: 2px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        font-weight: 400;
+                    ">
+                        ➜ ${marker.destination || t("unknowndestination")}
+                    </div>
+                </div>
+            `;
+
+            try {
+                minimalTooltip
+                    .setLatLng(marker.getLatLng())
+                    .setContent(minimalContent)
+                    .addTo(map);
+
+                const clickHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const m = markerPool.get(markerId);
+                    if (m) m.openPopup();
                 };
 
-                function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
-                    const marker = markerPool.get(markerId);
-                    if (!marker) return;
-                    
-                    // Safari : Vérifier le support des tooltips
-                    if (typeof L.tooltip !== 'function') {
-                        console.warn('Tooltips non supportés');
-                        return;
-                    }
-                    
-                    if (shouldShow && !marker.isPopupOpen()) {
-                        if (!marker.minimalPopup) {
-                            const minimalTooltip = TooltipManager.acquire();
-                            
-                            const color = lineColors[marker.line] || '#000000';
-                            const textColor = TextColorUtils.getOptimal(color);
-                            
-                            const tooltipCacheKey = `${markerId}-${marker.line}-${marker.destination}`;
-                            
-                            let minimalContent;
-                            if (window.tooltipContentCache && window.tooltipContentCache.has(tooltipCacheKey)) {
-                                minimalContent = window.tooltipContentCache.get(tooltipCacheKey);
-                            } else {
-                                minimalContent = `
-                                    <div class="minimal-popup minimal-popup-appear" style="
-                                        position: relative;
-                                        font-family: 'League Spartan', sans-serif;
-                                        font-size: 11px;
-                                        color: ${textColor};
-                                        background: linear-gradient(135deg, ${color}f0, ${color}d0);
-                                        backdrop-filter: blur(12px);
-                                        border-radius: 12px;
-                                        padding: 6px 10px;
-                                        box-shadow: 0 4px 16px -2px ${color}80;
-                                        min-width: 80px;
-                                        max-width: 140px;
-                                        cursor: pointer;
-                                        border: 1px solid ${color}60;
-                                    ">
-                                        <div style="display: flex; align-items: center; gap: 6px;">
-                                            <div style="background: rgba(255,255,255,0.2); border-radius: 6px; padding: 2px 6px; font-weight: 600; font-size: 10px;">
-                                                ${lineName[marker.line] || t("unknownline")}
-                                            </div>
-                                            <div style="background: rgba(0,0,0,0.3); border-radius: 4px; padding: 1px 4px; font-size: 9px;">
-                                                ${((marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id) || t("unknownparc")).toString().padStart(3, '0')}
-                                            </div>
-                                        </div>
-                                        <div style="font-size: 9px; opacity: 0.85; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                            ➜ ${marker.destination || t("unknowndestination")}
-                                        </div>
-                                    </div>
-                                `;
-                                
-                                if (!window.tooltipContentCache) {
-                                    window.tooltipContentCache = new Map();
-                                }
-                                
-                                if (window.tooltipContentCache.size > 100) {
-                                    const firstKey = window.tooltipContentCache.keys().next().value;
-                                    window.tooltipContentCache.delete(firstKey);
-                                }
-                                window.tooltipContentCache.set(tooltipCacheKey, minimalContent);
-                            }
+                setTimeout(() => {
+                    if (minimalTooltip._container) {
+                        minimalTooltip._container.addEventListener('click', clickHandler, { passive: false });
+                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
+                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
 
-                            try {
-                                minimalTooltip
-                                    .setLatLng(marker.getLatLng())
-                                    .setContent(minimalContent)
-                                    .addTo(map);
+                        minimalTooltip._clickHandler = clickHandler;
 
-                                const clickHandler = function(e) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    const m = markerPool.get(markerId);
-                                    if (m) m.openPopup();
-                                };
-
-                                setTimeout(() => {
-                                    if (minimalTooltip._container) {
-                                        minimalTooltip._container.addEventListener('click', clickHandler, { passive: false });
-                                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
-                                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
-
-                                        minimalTooltip._clickHandler = clickHandler;
-
-                                        
-                                        if (!minimalTooltip._container._eventHandlers) {
-                                            minimalTooltip._container._eventHandlers = [];
-                                        }
-                                        minimalTooltip._container._eventHandlers.push({
-                                            event: 'mousedown',
-                                            fn: clickHandler
-                                        });
-                                    }
-                                }, 0); 
-                                
-                                marker.minimalPopup = minimalTooltip;
-                                TooltipManager.active.set(markerId, minimalTooltip);
-                                window.minimalTooltipStates[markerId] = 'visible';
-                            } catch (error) {
-                                console.error('Erreur création tooltip Safari', error);
-                            }
+                        
+                        if (!minimalTooltip._container._eventHandlers) {
+                            minimalTooltip._container._eventHandlers = [];
                         }
-                    } else if (!shouldShow && marker.minimalPopup) {
-                        const tooltipContainer = marker.minimalPopup._container;
-                        if (tooltipContainer) {
-                            const popupElement = tooltipContainer.querySelector('.minimal-popup');
-                            if (popupElement) {
-                                popupElement.classList.remove('minimal-popup-appear');
-                                popupElement.classList.add('minimal-popup-disappear');
-                                
-                                const tooltipToRemove = marker.minimalPopup;
-                                
-                                if (tooltipToRemove._clickHandler && tooltipContainer) {
-                                    tooltipContainer.removeEventListener('click', tooltipToRemove._clickHandler);
-                                    delete tooltipToRemove._clickHandler;
-                                }
-                                
-                                setTimeout(() => {
-                                    marker.minimalPopup = null;
-                                    delete window.minimalTooltipStates[markerId];
-                                    
-                                    try {
-                                        map.removeLayer(tooltipToRemove);
-                                        TooltipManager.release(tooltipToRemove);
-                                        TooltipManager.active.delete(markerId);
-                                    } catch (error) {
-                                        console.error('Erreur suppression tooltip', error);
-                                    }
-                                }, 250);
-                            }
-                        } else {
-                            const tooltipToRemove = marker.minimalPopup;
-                            marker.minimalPopup = null;
-                            delete window.minimalTooltipStates[markerId];
-                            
-                            try {
-                                map.removeLayer(tooltipToRemove);
-                                TooltipManager.release(tooltipToRemove);
-                                TooltipManager.active.delete(markerId);
-                            } catch (error) {
-                                console.error('Erreur suppression tooltip:', error);
-                            }
-                        }
+                        minimalTooltip._container._eventHandlers.push({
+                            event: 'mousedown',
+                            fn: clickHandler
+                        });
                     }
+                }, 0); 
+                
+                marker.minimalPopup = minimalTooltip;
+                TooltipManager.active.set(markerId, minimalTooltip);
+                window.minimalTooltipStates[markerId] = 'visible';
+            } catch (error) {
+                console.error('Erreur création tooltip Safari', error);
+            }
+        }
+    } else if (!shouldShow && marker.minimalPopup) {
+        const tooltipContainer = marker.minimalPopup._container;
+        if (tooltipContainer) {
+            const popupElement = tooltipContainer.querySelector('.minimal-popup');
+            if (popupElement) {
+                popupElement.classList.remove('minimal-popup-appear');
+                popupElement.classList.add('minimal-popup-disappear');
+                
+                const tooltipToRemove = marker.minimalPopup;
+                
+                if (tooltipToRemove._clickHandler && tooltipContainer) {
+                    tooltipContainer.removeEventListener('click', tooltipToRemove._clickHandler);
+                    delete tooltipToRemove._clickHandler;
                 }
-
-                /*
-                function updatePopupContent(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
+                
+                setTimeout(() => {
+                    marker.minimalPopup = null;
+                    delete window.minimalTooltipStates[markerId];
+                    
+                    try {
+                        map.removeLayer(tooltipToRemove);
+                        TooltipManager.release(tooltipToRemove);
+                        TooltipManager.active.delete(markerId);
+                    } catch (error) {
+                        console.error('Erreur suppression tooltip', error);
+                    }
+                }, 250);
+            }
+        } else {
+            const tooltipToRemove = marker.minimalPopup;
+            marker.minimalPopup = null;
+            delete window.minimalTooltipStates[markerId];
+            
+            try {
+                map.removeLayer(tooltipToRemove);
+                TooltipManager.release(tooltipToRemove);
+                TooltipManager.active.delete(markerId);
+            } catch (error) {
+                console.error('Erreur suppression tooltip:', error);
+            }
+        }
+    }
+}
+                function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
-                    if (!popup || !popup._contentNode) return false;
+                    if (!popup) return false;
                     
-                    const popupElement = popup._contentNode;
-                    let hasUpdated = false;
+                    const newContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                     
-                    const stopsHeader = popupElement.querySelector('.stops-header');
-                    if (stopsHeader && stopsHeader.innerHTML !== stopsHeaderText) {
-                        stopsHeader.innerHTML = stopsHeaderText;
-                        hasUpdated = true;
+                    // màj si le contenu a changé
+                    if (popup.getContent() !== newContent) {
+                        popup.setContent(newContent);
+                        return true;
                     }
-                    
-                    const nextStopsContent = popupElement.querySelector('#nextStopsContent');
-                    if (nextStopsContent && stopsData) {
-                        const currentStops = Array.from(nextStopsContent.querySelectorAll('li'));
-                        
-                        if (currentStops.length !== stopsData.length) {
-                            const scrollTop = nextStopsContent.scrollTop; 
-                            nextStopsContent.innerHTML = generateStopsHTML(stopsData).match(/<ul[^>]*>(.*?)<\/ul>/s)[1];
-                            nextStopsContent.scrollTop = scrollTop; 
-                            hasUpdated = true;
-                            
-                            if (window.toggleTimeDisplay) {
-                                clearInterval(window.timeToggleInterval);
-                                window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
-                            }
-                        } else {
-                            currentStops.forEach((li, index) => {
-                                const stopData = stopsData[index];
-                                if (!stopData) return;
-                                
-                                const timeDisplay = li.querySelector('.time-display');
-                                if (timeDisplay) {
-                                    const currentTime = timeDisplay.getAttribute('data-time-left');
-                                    
-                                    if (currentTime !== stopData.timeLeftText) {
-                                        timeDisplay.setAttribute('data-time-left', stopData.timeLeftText);
-                                        timeDisplay.setAttribute('data-departure-time', stopData.departureTime);
-                                        
-                                        if (window.showTimeLeft === undefined || window.showTimeLeft) {
-                                            timeDisplay.textContent = stopData.timeLeftText;
-                                        }
-                                        
-                                        hasUpdated = true;
-                                    }
-                                }
-                                
-                                const stopNameElement = li.querySelector('.stop-name');
-                                if (stopNameElement && stopNameElement.textContent !== stopData.stopName) {
-                                    stopNameElement.textContent = stopData.stopName;
-                                    hasUpdated = true;
-                                }
-                            });
-                        }
-                    }
-                    
-                    const directionElement = popupElement.querySelector('.vehicle-direction');
-                    const newDirection = `➜ ${lastStopName}`;
-                    if (directionElement && directionElement.textContent !== newDirection) {
-                        directionElement.textContent = newDirection;
-                        hasUpdated = true;
-                    }
-                    
-                    const optionsContainer = popupElement.querySelector('.options');
-                    if (optionsContainer && vehicleOptionsBadges) {
-                        const currentBadgesHTML = Array.from(optionsContainer.children)
-                            .filter(el => el.tagName === 'SPAN' && !el.classList.contains('parc-badge'))
-                            .map(el => el.outerHTML)
-                            .join('');
-                        
-                        const newBadgesHTML = vehicleOptionsBadges;
-                        
-                        if (currentBadgesHTML !== newBadgesHTML) {
-                            const parcBadge = optionsContainer.querySelector('.parc-badge');
-                            optionsContainer.innerHTML = '';
-                            if (parcBadge) {
-                                optionsContainer.appendChild(parcBadge);
-                            }
-                            optionsContainer.insertAdjacentHTML('beforeend', newBadgesHTML);
-                            hasUpdated = true;
-                        }
-                    }
-                    
-                    const backgroundText = popupElement.querySelector('.background-text');
-                    const lineText = lineName[line] || "🚌🚍🚌🚍🚌🚍🚌";
-                    const expectedText = `${t("line")} ${lineText}`;
-                    if (backgroundText && backgroundText.textContent !== expectedText) {
-                        backgroundText.textContent = expectedText;
-                        hasUpdated = true;
-                    }
-                    
-                    return hasUpdated;
-                } */
-
-                const popupUpdateThrottle = new Map();
-
-                function shouldUpdatePopup(markerId) {
-                    const now = Date.now();
-                    const lastUpdate = popupUpdateThrottle.get(markerId) || 0;
-                    
-                    if (now - lastUpdate < 1000) {
-                        return false;
-                    }
-                    
-                    popupUpdateThrottle.set(markerId, now);
-                    return true;
+                    return false;
                 }
 
                 let updateMinimalTimeout = null;
@@ -5542,29 +5240,29 @@ const textColorCache = new Map();
                 }
 
 
-                if (markerPool.has(id)) {
-                    const marker = markerPool.get(id);
-                    
-                    animateMarker(marker, [latitude, longitude]);
-                    
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, true);
-                        animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
-                    }
-                    
-                    // Stocker les données pour utilisation future
+            if (markerPool.has(id)) {
+                const marker = markerPool.get(id);
+                
+                animateMarker(marker, [latitude, longitude]);
+                
+                if (marker.minimalPopup) {
+                    createOrUpdateMinimalTooltip(id, true);
+                    animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
+                }
+                
+                const hasChanges = (
+                    marker.line !== line ||
+                    marker.destination !== lastStopName ||
+                    marker._lastNextStopsHTML !== nextStopsHTML
+                );
+                
+                if (hasChanges) {
                     marker.vehicleData = vehicle;
                     marker.destination = lastStopName;
-                    marker.line = line;
-                    marker._currentStopsData = stopsData;
-                    marker._currentStopsHeader = stopsHeaderText;
-                    marker._currentVehicleOptionsBadges = vehicleOptionsBadges;
-                    marker._currentVehicleBrandHtml = vehicleBrandHtml;
                     
-                    // Mise à jour du style si ligne changée
-                    const lineChanged = marker._lastLine !== line;
-                    if (lineChanged) {
-                        marker._lastLine = line;
+                    if (marker.line !== line) {
+                        marker.line = line;
+                        marker._lastNextStopsHTML = nextStopsHTML;
                         markerPool.updateMarkerStyle(marker, line, bearing);
                         
                         if (marker.isPopupOpen()) {
@@ -5578,119 +5276,85 @@ const textColorCache = new Map();
                                 StyleManager.applyMenuStyle(textColor);
                             }
                         }
-                        
-                        updateLinesDisplay();
                     }
                     
-                    // IMPORTANT : Mise à jour popup SEULEMENT s'il est ouvert
-                    if (marker.isPopupOpen()) {
-                        PopupManager.updateExistingPopup(
-                            marker, vehicle, line, lastStopName, stopsData,
-                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
-                            backgroundColor, textColor, id
-                        );
-                    }
+                    updateLinesDisplay();
                     
-                    // Mise à jour flèche direction
-                    if (marker._icon) {
-                        const arrowElement = marker._icon.querySelector('.marker-arrow');
-                        if (arrowElement) {
-                            arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
-                        }
-                    }
-                    
-                    // Gestion filtrage
-                    if (selectedLine && marker.line !== selectedLine) {
-                        if (map.hasLayer(marker)) {
-                            map.removeLayer(marker);
-                        }
-                    } else {
-                        if (!map.hasLayer(marker)) {
-                            map.addLayer(marker);
-                        }
-                    }
-                    
-                } else {
-                    // NOUVEAU MARKER
-                    const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
-                    marker.line = line;
-                    marker._lastLine = line;
-                    marker.vehicleData = vehicle;
-                    marker.destination = lastStopName;
-                    
-                    // Stocker les données pour génération lazy
-                    marker._currentStopsData = stopsData;
-                    marker._currentStopsHeader = stopsHeaderText;
-                    marker._currentVehicleOptionsBadges = vehicleOptionsBadges;
-                    marker._currentVehicleBrandHtml = vehicleBrandHtml;
-                    
-                    if (!selectedLine || selectedLine === line) {
-                        marker.addTo(map);
-                    }
-                    
-                    // Pas de bindPopup ici ! On le fera à l'ouverture
-                    
-                    // Event handler pour génération lazy
-                    eventManager.on(marker, 'popupopen', function (e) {
-                        // Générer/mettre à jour le popup à l'ouverture
-                        PopupManager.generateOnOpen(
-                            marker, 
-                            marker.vehicleData, 
-                            marker.line, 
-                            marker.destination, 
-                            marker._currentStopsData,
-                            marker._currentVehicleOptionsBadges,
-                            marker._currentVehicleBrandHtml,
-                            marker._currentStopsHeader,
-                            lineColors[marker.line] || '#000000',
-                            TextColorUtils.getOptimal(lineColors[marker.line] || '#000000'),
-                            id
-                        );
-                        
-                        if (marker.minimalPopup) {
-                            createOrUpdateMinimalTooltip(id, false);
-                        }
-                        
-                        if (e.popup && e.popup._contentNode) {
-                            const popupElement = e.popup._contentNode.parentElement;
-                            if (popupElement) {
-                                popupElement.classList.remove('hide');
-                                popupElement.classList.add('show');
-                            }
-                        }
-                    }, id);
-
-                    eventManager.on(marker, 'popupclose', function (e) {
-                        if (e.popup && e.popup._contentNode) {
-                            const popupElement = e.popup._contentNode.parentElement;
-                            if (popupElement) {
-                                popupElement.classList.remove('show');
-                                popupElement.classList.add('hide');
-                                setTimeout(() => updateMinimalPopups(), 10);
-                            }
-                        }
-                    }, id);
-
-                    eventManager.on(marker, 'click', function() {
-                        if (marker.minimalPopup) {
-                            createOrUpdateMinimalTootip(id, false);
-                        }
-                    }, id);
+                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
+                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
+                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
                 }
+                
+                if (marker._icon) {
+                    const arrowElement = marker._icon.querySelector('.marker-arrow');
+                    if (arrowElement) {
+                        arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
+                    }
+                }
+                
+                if (selectedLine && marker.line !== selectedLine) {
+                    if (map.hasLayer(marker)) {
+                        map.removeLayer(marker);
+                    }
+                } else {
+                    if (!map.hasLayer(marker)) {
+                        map.addLayer(marker);
+                    }
+                }
+                
+            } else {
+                const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
+                marker.line = line;
+                marker.vehicleData = vehicle;
+                marker.destination = lastStopName;
+                
+                if (!selectedLine || selectedLine === line) {
+                    marker.addTo(map);
+                }
+                
+                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
+                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                marker.bindPopup(popupContent);
+                marker._lastNextStopsHTML = nextStopsHTML;
+                
+                eventManager.on(marker, 'popupopen', function (e) {
+                    if (marker.minimalPopup) {
+                        createOrUpdateMinimalTooltip(id, false);
+                    }
+                    
+                    if (e.popup && e.popup._contentNode) {
+                        const popupElement = e.popup._contentNode.parentElement;
+                        if (popupElement) {
+                            popupElement.classList.remove('hide');
+                            popupElement.classList.add('show');
+                        }
+                    }
+                }, id);
 
-            MenuDataManager.updateVehicleData(id, line, lastStopName, {
-                vehicle: vehicle,
-                nextStops: stopsData,
-                stopsHeader: stopsHeaderText
-            });
+                eventManager.on(marker, 'popupclose', function (e) {
+                    if (e.popup && e.popup._contentNode) {
+                        const popupElement = e.popup._contentNode.parentElement;
+                        if (popupElement) {
+                            popupElement.classList.remove('show');
+                            popupElement.classList.add('hide');
+                            setTimeout(() => updateMinimalPopups(), 10);
+                        }
+                    }
+                }, id);
 
+                eventManager.on(marker, 'click', function() {
+                    if (marker.minimalPopup) {
+                        createOrUpdateMinimalTooltip(id, false);
+                    }
+                }, id);
+            }
         }
     });
 
-requestAnimationFrame(() => {
-    updateMinimalPopups();
-});
-
+    requestAnimationFrame(() => {
+        updateMinimalPopups();
+    });
 
     const activeIds = Array.from(markerPool.active.keys());
 
@@ -6692,7 +6356,27 @@ function getNextStopInfo(vehicleId) {
 }
 
 
-const busesByLineAndDestination = MenuDataManager.getAllData();
+const busesByLineAndDestination = {};
+
+markerPool.active.forEach((marker, id) => {
+    const line = marker.line;
+    const destination = marker.destination || "Inconnue";
+    
+    if (!busesByLineAndDestination[line]) {
+        busesByLineAndDestination[line] = {};
+    }
+
+    if (!busesByLineAndDestination[line][destination]) {
+        busesByLineAndDestination[line][destination] = [];
+    }
+
+    busesByLineAndDestination[line][destination].push({
+        parkNumber: marker.id,
+        vehicle: marker,
+        vehicleData: marker.vehicleData,
+        nextStops: marker.rawData?.nextStops || []
+    });
+});
 
 updateMenuStatistics();
 
@@ -7249,17 +6933,6 @@ const menubottom1 = document.getElementById('menubtm');
             
 
         updateMenu();
-
-        DOMBatcher.add(() => {
-            activeIds.forEach(id => {
-                if (!activeVehicleIds.has(id)) {
-                    delete window.minimalTooltipStates[id];
-                    PopupManager.remove(id); 
-                    MenuDataManager.removeVehicle(id); 
-                    markerPool.release(id);
-                }
-            });
-        });
 
     } catch (error) {
         return;
@@ -8549,11 +8222,11 @@ if (performance && performance.memory) {
         if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
             console.warn('⚠️ Mémoire élevée, nettoyage recommandé');
             
-        if (contentCache) contentCache.clear();
-        if (colorCache) colorCache.clear();
-        if (textColorCache) textColorCache.clear();
-        if (vehicleModelLookupCache) vehicleModelLookupCache.clear();
-        if (window.tooltipContentCache) window.tooltipContentCache.clear(); 
+            // Nettoyage agressif
+            if (TextColorUtils) TextColorUtils.cache.clear();
+            if (contentCache) contentCache.clear();
+            if (colorCache) colorCache.clear();
+            if (textColorCache) textColorCache.clear();
         }
     }, 60000); // Toutes les minutes
 }
