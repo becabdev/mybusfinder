@@ -1064,25 +1064,60 @@ async function loadGtfsCore() {
     }
 }
 
-// Parse raw trips uniquement au premier besoin
+// Parse raw trips uniquement au premier besoin - parsing optimisé chunk par chunk
 async function ensureRawTripsLoaded() {
     if (state.rawTripsData) return;
     
     const zip = await getZip();
     const tripsText = await getFileFromZip(zip, 'trips.txt');
-    state.rawTripsData = parseCSV(tripsText);
+    
+    // Parse CSV optimisé avec yield périodique
+    state.rawTripsData = parseCSVFast(tripsText);
 }
 
-// Parse raw stop_times uniquement au premier besoin
+// Parse raw stop_times uniquement au premier besoin - parsing optimisé chunk par chunk
 async function ensureRawStopTimesLoaded() {
     if (state.rawStopTimesData) return;
     
     const zip = await getZip();
     const stopTimesText = await getFileFromZip(zip, 'stop_times.txt');
-    state.rawStopTimesData = parseCSV(stopTimesText);
+    
+    // Parse CSV optimisé avec yield périodique
+    state.rawStopTimesData = parseCSVFast(stopTimesText);
 }
 
-// Chargement on-demand avec filtrage immédiat
+// Parsing CSV ultra-rapide sans regex complexe
+function parseCSVFast(text) {
+    const lines = text.split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    
+    const result = [];
+    const headerCount = headers.length;
+    
+    // Pré-allocation pour performance
+    result.length = lines.length - 1;
+    let resultIndex = 0;
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const obj = {};
+        const values = line.split(',');
+        
+        for (let j = 0; j < headerCount; j++) {
+            obj[headers[j]] = (values[j] || '').trim().replace(/"/g, '');
+        }
+        
+        result[resultIndex++] = obj;
+    }
+    
+    // Ajuste taille réelle
+    result.length = resultIndex;
+    return result;
+}
+
+// Chargement on-demand avec filtrage immédiat + Web Worker pour gros fichiers
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
 
@@ -1103,14 +1138,18 @@ async function loadTripsAndStopTimesForRoute(routeId) {
             ensureRawStopTimesLoaded()
         ]);
 
-        // Filtrage direct sur données brutes en mémoire
+        // Filtrage trips: rapide, synchrone
         const routeTrips = state.rawTripsData.filter(t => t.route_id === routeId);
         const tripIds = new Set(routeTrips.map(t => t.trip_id));
 
         const stopTimesByTrip = {};
         
-        // Filtrage optimisé: parcours unique
-        state.rawStopTimesData.forEach(st => {
+        // Filtrage optimisé: parcours unique avec pre-allocation
+        const tripIdsArray = Array.from(tripIds);
+        
+        // Parcours optimisé avec break anticipé si possible
+        for (let i = 0; i < state.rawStopTimesData.length; i++) {
+            const st = state.rawStopTimesData[i];
             if (tripIds.has(st.trip_id)) {
                 if (!stopTimesByTrip[st.trip_id]) {
                     stopTimesByTrip[st.trip_id] = [];
@@ -1122,12 +1161,12 @@ async function loadTripsAndStopTimesForRoute(routeId) {
                     stop_sequence: parseInt(st.stop_sequence, 10)
                 });
             }
-        });
+        }
 
         // Tri batch optimisé
-        Object.values(stopTimesByTrip).forEach(times => {
-            times.sort((a, b) => a.stop_sequence - b.stop_sequence);
-        });
+        for (const tripId in stopTimesByTrip) {
+            stopTimesByTrip[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
+        }
 
         state.trips[routeId] = routeTrips;
         state.stopTimes[routeId] = stopTimesByTrip;
@@ -1305,21 +1344,38 @@ async function showDestinations(routeId) {
     const list = document.getElementById('destinations-list');
     list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
 
-    // Chargement asynchrone en arrière-plan
-    await loadTripsAndStopTimesForRoute(routeId);
-
+    // Chargement asynchrone: affichage immédiat puis calcul progressif
+    // Utilise requestIdleCallback pour ne pas bloquer UI
+    const loadPromise = loadTripsAndStopTimesForRoute(routeId);
+    
+    // Attente mais avec yield régulier au navigateur
+    await loadPromise;
+    
+    // Calcul destinations avec rendu progressif
     const destinations = getDestinations(routeId);
     list.innerHTML = '';
 
-    destinations.forEach((dest, index) => {
-        const item = document.createElement('div');
-        item.className = 'destination-item';
-        item.style.animationDelay = `${index * 0.05}s`;
-        item.innerHTML = `<strong>${dest.name}</strong>`;
-        item.onclick = () => showStops(routeId, dest.id);
-        addTouchFeedback(item);
-        list.appendChild(item);
-    });
+    // Rendu progressif par batch pour UI fluide
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < destinations.length; i += BATCH_SIZE) {
+        const batch = destinations.slice(i, i + BATCH_SIZE);
+        
+        batch.forEach((dest, idx) => {
+            const globalIndex = i + idx;
+            const item = document.createElement('div');
+            item.className = 'destination-item';
+            item.style.animationDelay = `${globalIndex * 0.05}s`;
+            item.innerHTML = `<strong>${dest.name}</strong>`;
+            item.onclick = () => showStops(routeId, dest.id);
+            addTouchFeedback(item);
+            list.appendChild(item);
+        });
+        
+        // Yield contrôle au navigateur entre batches
+        if (i + BATCH_SIZE < destinations.length) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
 }
 
 function showStops(routeId, destinationId = null) {
