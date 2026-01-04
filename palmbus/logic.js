@@ -4485,6 +4485,152 @@ contentCache.set(cacheKey, {
     return popupContent;
 }
 
+// ==================== POPUP LAZY MANAGER ====================
+const PopupManager = {
+    generated: new Map(), 
+    
+    generateOnOpen(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
+        if (this.generated.has(id)) {
+            this.updateExistingPopup(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+            return;
+        }
+        
+        const popupContent = generatePopupContent(vehicle, line, lastStopName, stopsData, 
+            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+        
+        marker.bindPopup(popupContent);
+        this.generated.set(id, {
+            lastStopsHash: this.getStopsHash(stopsData),
+            lastStopsHeader: stopsHeaderText,
+            lastDestination: lastStopName
+        });
+    },
+    
+    updateExistingPopup(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
+        const popup = marker.getPopup();
+        if (!popup || !popup._contentNode) return;
+        
+        const cached = this.generated.get(id);
+        const currentHash = this.getStopsHash(stopsData);
+        
+        const popupElement = popup._contentNode;
+        
+        if (cached.lastStopsHeader !== stopsHeaderText) {
+            const stopsHeader = popupElement.querySelector('.stops-header');
+            if (stopsHeader) {
+                stopsHeader.innerHTML = stopsHeaderText;
+                cached.lastStopsHeader = stopsHeaderText;
+            }
+        }
+        
+        const currentStops = popupElement.querySelectorAll('#nextStopsContent li');
+        currentStops.forEach((li, index) => {
+            const stopData = stopsData[index];
+            if (!stopData) return;
+            
+            const timeDisplay = li.querySelector('.time-display');
+            if (timeDisplay) {
+                const currentTime = timeDisplay.getAttribute('data-time-left');
+                
+                if (currentTime !== stopData.timeLeftText) {
+                    timeDisplay.setAttribute('data-time-left', stopData.timeLeftText);
+                    timeDisplay.setAttribute('data-departure-time', stopData.departureTime);
+                    
+                    if (window.showTimeLeft === undefined || window.showTimeLeft) {
+                        timeDisplay.textContent = stopData.timeLeftText;
+                    }
+                }
+            }
+        });
+        
+        if (cached.lastDestination !== lastStopName) {
+            const directionElement = popupElement.querySelector('.vehicle-direction');
+            if (directionElement) {
+                directionElement.textContent = `➜ ${lastStopName}`;
+                cached.lastDestination = lastStopName;
+            }
+        }
+        
+        cached.lastStopsHash = currentHash;
+    },
+    
+    getStopsHash(stopsData) {
+        if (!stopsData) return '';
+        return stopsData.map(s => `${s.stopId}-${s.timeLeftText}`).join('|');
+    },
+    
+    remove(id) {
+        this.generated.delete(id);
+    },
+    
+    clear() {
+        this.generated.clear();
+    }
+};
+// ==================== FIN POPUP LAZY MANAGER ====================
+
+// ==================== MENU DATA MANAGER ====================
+const MenuDataManager = {
+    vehiclesByLine: new Map(), 
+    
+    updateVehicleData(vehicleId, line, destination, vehicleData) {
+        if (!this.vehiclesByLine.has(line)) {
+            this.vehiclesByLine.set(line, new Map());
+        }
+        
+        const lineData = this.vehiclesByLine.get(line);
+        
+        if (!lineData.has(destination)) {
+            lineData.set(destination, new Map());
+        }
+        
+        const destData = lineData.get(destination);
+        destData.set(vehicleId, {
+            vehicleData: vehicleData,
+            lastUpdate: Date.now()
+        });
+    },
+    
+    removeVehicle(vehicleId) {
+        for (const [line, destinations] of this.vehiclesByLine) {
+            for (const [dest, vehicles] of destinations) {
+                vehicles.delete(vehicleId);
+                
+                if (vehicles.size === 0) {
+                    destinations.delete(dest);
+                }
+            }
+            
+            if (destinations.size === 0) {
+                this.vehiclesByLine.delete(line);
+            }
+        }
+    },
+    
+    getAllData() {
+        const result = {};
+        
+        for (const [line, destinations] of this.vehiclesByLine) {
+            result[line] = {};
+            
+            for (const [dest, vehicles] of destinations) {
+                result[line][dest] = Array.from(vehicles.entries()).map(([id, data]) => ({
+                    parkNumber: id,
+                    vehicleData: data.vehicleData,
+                    vehicle: markerPool.get(id) 
+                }));
+            }
+        }
+        
+        return result;
+    },
+    
+    clear() {
+        this.vehiclesByLine.clear();
+    }
+};
+// ==================== FIN MENU DATA MANAGER ====================
+
 
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
@@ -5224,6 +5370,7 @@ const textColorCache = new Map();
                     }
                 }
 
+                /*
                 function updatePopupContent(marker, vehicle, line, lastStopName, stopsData, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup || !popup._contentNode) return false;
@@ -5317,7 +5464,7 @@ const textColorCache = new Map();
                     }
                     
                     return hasUpdated;
-                }
+                } */
 
                 const popupUpdateThrottle = new Map();
 
@@ -5395,35 +5542,31 @@ const textColorCache = new Map();
                 }
 
 
-            if (markerPool.has(id)) {
-                const marker = markerPool.get(id);
-                
-                animateMarker(marker, [latitude, longitude]);
-                
-                if (marker.minimalPopup) {
-                    createOrUpdateMinimalTooltip(id, true);
-                    animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
-                }
-                
-         
-                const lineChanged = marker.line !== line;
-                const destinationChanged = marker.destination !== lastStopName;
-                const stopsChanged = marker._lastStopsHash !== stopsHash; 
-                const stopsHeaderChanged = marker._lastStopsHeader !== stopsHeaderText;
-
-                const hasChanges = lineChanged || destinationChanged || stopsChanged || stopsHeaderChanged;
-
-                if (hasChanges) {
+                if (markerPool.has(id)) {
+                    const marker = markerPool.get(id);
+                    
+                    animateMarker(marker, [latitude, longitude]);
+                    
+                    if (marker.minimalPopup) {
+                        createOrUpdateMinimalTooltip(id, true);
+                        animateTooltip(marker.minimalPopup, L.latLng(latitude, longitude));
+                    }
+                    
+                    // Stocker les données pour utilisation future
                     marker.vehicleData = vehicle;
                     marker.destination = lastStopName;
-                    marker._lastStopsHeader = stopsHeaderText;
+                    marker.line = line;
+                    marker._currentStopsData = stopsData;
+                    marker._currentStopsHeader = stopsHeaderText;
+                    marker._currentVehicleOptionsBadges = vehicleOptionsBadges;
+                    marker._currentVehicleBrandHtml = vehicleBrandHtml;
                     
+                    // Mise à jour du style si ligne changée
+                    const lineChanged = marker._lastLine !== line;
                     if (lineChanged) {
-                        marker.line = line;
-                        marker._lastStopsHash = stopsHash;
-                        marker._lastStopsData = stopsData; 
+                        marker._lastLine = line;
                         markerPool.updateMarkerStyle(marker, line, bearing);
-                                                    
+                        
                         if (marker.isPopupOpen()) {
                             const menubtm = document.getElementById('menubtm');
                             if (menubtm) {
@@ -5439,102 +5582,111 @@ const textColorCache = new Map();
                         updateLinesDisplay();
                     }
                     
+                    // IMPORTANT : Mise à jour popup SEULEMENT s'il est ouvert
                     if (marker.isPopupOpen()) {
-                        if (stopsChanged || stopsHeaderChanged || destinationChanged) {
-                            if (!shouldUpdatePopup(id)) {
-                                return; 
-                            }
-                            
-                            if (!marker._updateScheduled) {
-                                marker._updateScheduled = true;
-                                requestAnimationFrame(() => {
-                                    marker._updateScheduled = false;
-                                    const updated = updatePopupContent(
-                                        marker, vehicle, line, lastStopName, stopsData, 
-                                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, 
-                                        backgroundColor, textColor, id
-                                    );
-                                    
-                                    if (updated) {
-                                        marker._lastStopsHash = stopsHash;
-                                        marker._lastStopsData = stopsData;
-                                    }
-                                });
-                            }
-                        }
-                    } else {
-                        marker._lastStopsHash = stopsHash;
-                        marker._lastStopsData = stopsData;
-                    }
-                }
-                
-                if (marker._icon) {
-                    const arrowElement = marker._icon.querySelector('.marker-arrow');
-                    if (arrowElement) {
-                        arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
-                    }
-                }
-                
-                if (selectedLine && marker.line !== selectedLine) {
-                    if (map.hasLayer(marker)) {
-                        map.removeLayer(marker);
-                    }
-                } else {
-                    if (!map.hasLayer(marker)) {
-                        map.addLayer(marker);
-                    }
-                }
-                
-            } else {
-                const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
-                marker.line = line;
-                marker.vehicleData = vehicle;
-                marker.destination = lastStopName;
-                
-                if (!selectedLine || selectedLine === line) {
-                    marker.addTo(map);
-                }
-                
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, stopsData, 
-                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                marker.bindPopup(popupContent);
-                marker._lastStopsHash = stopsHash; 
-                marker._lastStopsData = stopsData;
-                
-                eventManager.on(marker, 'popupopen', function (e) {
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, false);
+                        PopupManager.updateExistingPopup(
+                            marker, vehicle, line, lastStopName, stopsData,
+                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
+                            backgroundColor, textColor, id
+                        );
                     }
                     
-                    if (e.popup && e.popup._contentNode) {
-                        const popupElement = e.popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('hide');
-                            popupElement.classList.add('show');
+                    // Mise à jour flèche direction
+                    if (marker._icon) {
+                        const arrowElement = marker._icon.querySelector('.marker-arrow');
+                        if (arrowElement) {
+                            arrowElement.style.transform = `rotate(${bearing - 90}deg)`;
                         }
                     }
-                }, id);
-
-                eventManager.on(marker, 'popupclose', function (e) {
-                    if (e.popup && e.popup._contentNode) {
-                        const popupElement = e.popup._contentNode.parentElement;
-                        if (popupElement) {
-                            popupElement.classList.remove('show');
-                            popupElement.classList.add('hide');
-                            setTimeout(() => updateMinimalPopups(), 10);
+                    
+                    // Gestion filtrage
+                    if (selectedLine && marker.line !== selectedLine) {
+                        if (map.hasLayer(marker)) {
+                            map.removeLayer(marker);
+                        }
+                    } else {
+                        if (!map.hasLayer(marker)) {
+                            map.addLayer(marker);
                         }
                     }
-                }, id);
-
-                eventManager.on(marker, 'click', function() {
-                    if (marker.minimalPopup) {
-                        createOrUpdateMinimalTooltip(id, false);
+                    
+                } else {
+                    // NOUVEAU MARKER
+                    const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
+                    marker.line = line;
+                    marker._lastLine = line;
+                    marker.vehicleData = vehicle;
+                    marker.destination = lastStopName;
+                    
+                    // Stocker les données pour génération lazy
+                    marker._currentStopsData = stopsData;
+                    marker._currentStopsHeader = stopsHeaderText;
+                    marker._currentVehicleOptionsBadges = vehicleOptionsBadges;
+                    marker._currentVehicleBrandHtml = vehicleBrandHtml;
+                    
+                    if (!selectedLine || selectedLine === line) {
+                        marker.addTo(map);
                     }
-                }, id);
-            }
+                    
+                    // Pas de bindPopup ici ! On le fera à l'ouverture
+                    
+                    // Event handler pour génération lazy
+                    eventManager.on(marker, 'popupopen', function (e) {
+                        // Générer/mettre à jour le popup à l'ouverture
+                        PopupManager.generateOnOpen(
+                            marker, 
+                            marker.vehicleData, 
+                            marker.line, 
+                            marker.destination, 
+                            marker._currentStopsData,
+                            marker._currentVehicleOptionsBadges,
+                            marker._currentVehicleBrandHtml,
+                            marker._currentStopsHeader,
+                            lineColors[marker.line] || '#000000',
+                            TextColorUtils.getOptimal(lineColors[marker.line] || '#000000'),
+                            id
+                        );
+                        
+                        if (marker.minimalPopup) {
+                            createOrUpdateMinimalTooltip(id, false);
+                        }
+                        
+                        if (e.popup && e.popup._contentNode) {
+                            const popupElement = e.popup._contentNode.parentElement;
+                            if (popupElement) {
+                                popupElement.classList.remove('hide');
+                                popupElement.classList.add('show');
+                            }
+                        }
+                    }, id);
+
+                    eventManager.on(marker, 'popupclose', function (e) {
+                        if (e.popup && e.popup._contentNode) {
+                            const popupElement = e.popup._contentNode.parentElement;
+                            if (popupElement) {
+                                popupElement.classList.remove('show');
+                                popupElement.classList.add('hide');
+                                setTimeout(() => updateMinimalPopups(), 10);
+                            }
+                        }
+                    }, id);
+
+                    eventManager.on(marker, 'click', function() {
+                        if (marker.minimalPopup) {
+                            createOrUpdateMinimalTootip(id, false);
+                        }
+                    }, id);
+                }
+
+            MenuDataManager.updateVehicleData(id, line, lastStopName, {
+                vehicle: vehicle,
+                nextStops: stopsData,
+                stopsHeader: stopsHeaderText
+            });
         }
     });
 
+    
     requestAnimationFrame(() => {
         updateMinimalPopups();
     });
@@ -6539,27 +6691,7 @@ function getNextStopInfo(vehicleId) {
 }
 
 
-const busesByLineAndDestination = {};
-
-markerPool.active.forEach((marker, id) => {
-    const line = marker.line;
-    const destination = marker.destination || "Inconnue";
-    
-    if (!busesByLineAndDestination[line]) {
-        busesByLineAndDestination[line] = {};
-    }
-
-    if (!busesByLineAndDestination[line][destination]) {
-        busesByLineAndDestination[line][destination] = [];
-    }
-
-    busesByLineAndDestination[line][destination].push({
-        parkNumber: marker.id,
-        vehicle: marker,
-        vehicleData: marker.vehicleData,
-        nextStops: marker.rawData?.nextStops || []
-    });
-});
+const busesByLineAndDestination = MenuDataManager.getAllData();
 
 updateMenuStatistics();
 
@@ -7116,6 +7248,17 @@ const menubottom1 = document.getElementById('menubtm');
             
 
         updateMenu();
+
+        DOMBatcher.add(() => {
+            activeIds.forEach(id => {
+                if (!activeVehicleIds.has(id)) {
+                    delete window.minimalTooltipStates[id];
+                    PopupManager.remove(id); 
+                    MenuDataManager.removeVehicle(id); 
+                    markerPool.release(id);
+                }
+            });
+        });
 
     } catch (error) {
         return;
