@@ -869,10 +869,10 @@ body {
     </main>
 
     <script>
-const GTFS_ZIP_URL = 'proxy-cors/proxy_gtfs.php';
+const GTFS_API_URL = 'proxy-cors/proxy_gtfs.php';
 const GTFS_RT_URL = 'proxy-cors/proxy_tripupdate.php';
 const CACHE_TTL = 24 * 60 * 60 * 1000;
-const CACHE_VERSION = '1.0';
+const CACHE_VERSION = '1.1';
 
 const state = {
     routes: {},
@@ -887,12 +887,7 @@ const state = {
     currentDestination: null,
     coreLoaded: false,
     realtimeInterval: null,
-    loadedRoutes: new Set(),
-    zipCache: null,
-    zipFiles: {},
-    // Chargement progressif: fichiers bruts conservés
-    rawTripsData: null,
-    rawStopTimesData: null
+    loadedRoutes: new Set()
 };
 
 const cache = {
@@ -965,29 +960,7 @@ function initScrollEffects() {
     });
 }
 
-async function getZip() {
-    if (state.zipCache) return state.zipCache;
-    
-    const response = await fetch(GTFS_ZIP_URL);
-    if (!response.ok) {
-        throw new Error(`Fichier GTFS introuvable (${response.status}). Vérifiez que ${GTFS_ZIP_URL} existe.`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    state.zipCache = fflate.unzipSync(uint8Array);
-    
-    return state.zipCache;
-}
-
-async function getFileFromZip(zip, filename) {
-    if (!zip[filename]) return null;
-    
-    const decoder = new TextDecoder('utf-8');
-    return decoder.decode(zip[filename]);
-}
-
+// Chargement données core depuis serveur (routes, stops, calendar)
 async function loadGtfsCore() {
     try {
         const cached = getCachedData('gtfs_core');
@@ -997,52 +970,18 @@ async function loadGtfsCore() {
             return;
         }
 
-        const zip = await getZip();
+        // Requête serveur pour données pré-processées
+        const response = await fetch(`${GTFS_API_URL}?action=core`);
+        if (!response.ok) {
+            throw new Error(`Erreur serveur: ${response.status}`);
+        }
 
-        const requiredFiles = ['routes.txt', 'stops.txt', 'trips.txt', 'stop_times.txt'];
-        const missingFiles = requiredFiles.filter(f => !zip[f]);
+        const data = await response.json();
         
-        if (missingFiles.length > 0) {
-            throw new Error(`Fichiers GTFS manquants: ${missingFiles.join(', ')}`);
-        }
-
-        if (!zip['calendar.txt'] && !zip['calendar_dates.txt']) {
-            throw new Error('Ni calendar.txt ni calendar_dates.txt trouvé. Au moins un des deux est requis.');
-        }
-
-        // Chargement parallèle uniquement des fichiers nécessaires immédiatement
-        const [routesText, stopsText, calendarText, calendarDatesText] = await Promise.all([
-            getFileFromZip(zip, 'routes.txt'),
-            getFileFromZip(zip, 'stops.txt'),
-            getFileFromZip(zip, 'calendar.txt'),
-            getFileFromZip(zip, 'calendar_dates.txt')
-        ]);
-
-        state.routes = parseCSVToObject(routesText, 'route_id');
-        state.stops = parseCSVToObject(stopsText, 'stop_id');
-        
-        if (calendarText) {
-            state.calendar = parseCSVToObject(calendarText, 'service_id');
-        }
-        
-        if (calendarDatesText) {
-            const dates = parseCSV(calendarDatesText);
-            dates.forEach(cd => {
-                if (!state.calendarDates[cd.date]) {
-                    state.calendarDates[cd.date] = { added: [], removed: [] };
-                }
-                if (cd.exception_type === '1') {
-                    state.calendarDates[cd.date].added.push(cd.service_id);
-                } else if (cd.exception_type === '2') {
-                    state.calendarDates[cd.date].removed.push(cd.service_id);
-                }
-            });
-        }
-
-        if (!calendarText && calendarDatesText) {
-            console.warn('calendar.txt manquant: utilisation de calendar_dates.txt uniquement');
-            state.calendar = {};
-        }
+        state.routes = data.routes;
+        state.stops = data.stops;
+        state.calendar = data.calendar || {};
+        state.calendarDates = data.calendarDates || {};
 
         setCachedData('gtfs_core', {
             routes: state.routes,
@@ -1064,60 +1003,7 @@ async function loadGtfsCore() {
     }
 }
 
-// Parse raw trips uniquement au premier besoin - parsing optimisé chunk par chunk
-async function ensureRawTripsLoaded() {
-    if (state.rawTripsData) return;
-    
-    const zip = await getZip();
-    const tripsText = await getFileFromZip(zip, 'trips.txt');
-    
-    // Parse CSV optimisé avec yield périodique
-    state.rawTripsData = parseCSVFast(tripsText);
-}
-
-// Parse raw stop_times uniquement au premier besoin - parsing optimisé chunk par chunk
-async function ensureRawStopTimesLoaded() {
-    if (state.rawStopTimesData) return;
-    
-    const zip = await getZip();
-    const stopTimesText = await getFileFromZip(zip, 'stop_times.txt');
-    
-    // Parse CSV optimisé avec yield périodique
-    state.rawStopTimesData = parseCSVFast(stopTimesText);
-}
-
-// Parsing CSV ultra-rapide sans regex complexe
-function parseCSVFast(text) {
-    const lines = text.split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    
-    const result = [];
-    const headerCount = headers.length;
-    
-    // Pré-allocation pour performance
-    result.length = lines.length - 1;
-    let resultIndex = 0;
-    
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        const obj = {};
-        const values = line.split(',');
-        
-        for (let j = 0; j < headerCount; j++) {
-            obj[headers[j]] = (values[j] || '').trim().replace(/"/g, '');
-        }
-        
-        result[resultIndex++] = obj;
-    }
-    
-    // Ajuste taille réelle
-    result.length = resultIndex;
-    return result;
-}
-
-// Chargement on-demand avec filtrage immédiat + Web Worker pour gros fichiers
+// Chargement données ligne spécifique depuis serveur
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
 
@@ -1132,120 +1018,26 @@ async function loadTripsAndStopTimesForRoute(routeId) {
     }
 
     try {
-        // Chargement raw data si pas déjà fait
-        await Promise.all([
-            ensureRawTripsLoaded(),
-            ensureRawStopTimesLoaded()
-        ]);
-
-        // Filtrage trips: rapide, synchrone
-        const routeTrips = state.rawTripsData.filter(t => t.route_id === routeId);
-        const tripIds = new Set(routeTrips.map(t => t.trip_id));
-
-        const stopTimesByTrip = {};
-        
-        // Filtrage optimisé: parcours unique avec pre-allocation
-        const tripIdsArray = Array.from(tripIds);
-        
-        // Parcours optimisé avec break anticipé si possible
-        for (let i = 0; i < state.rawStopTimesData.length; i++) {
-            const st = state.rawStopTimesData[i];
-            if (tripIds.has(st.trip_id)) {
-                if (!stopTimesByTrip[st.trip_id]) {
-                    stopTimesByTrip[st.trip_id] = [];
-                }
-                stopTimesByTrip[st.trip_id].push({
-                    stop_id: st.stop_id,
-                    arrival_time: formatTimeString(st.arrival_time),
-                    departure_time: formatTimeString(st.departure_time || st.arrival_time),
-                    stop_sequence: parseInt(st.stop_sequence, 10)
-                });
-            }
+        // Requête serveur pour trips + stop_times filtrés
+        const response = await fetch(`${GTFS_API_URL}?action=route&route_id=${encodeURIComponent(routeId)}`);
+        if (!response.ok) {
+            throw new Error(`Erreur serveur: ${response.status}`);
         }
 
-        // Tri batch optimisé
-        for (const tripId in stopTimesByTrip) {
-            stopTimesByTrip[tripId].sort((a, b) => a.stop_sequence - b.stop_sequence);
-        }
-
-        state.trips[routeId] = routeTrips;
-        state.stopTimes[routeId] = stopTimesByTrip;
+        const data = await response.json();
+        
+        state.trips[routeId] = data.trips;
+        state.stopTimes[routeId] = data.stopTimes;
         state.loadedRoutes.add(routeId);
 
-        // Cache désactivé pour routes car trop volumineux
-        // setCachedData(cacheKey, { trips: routeTrips, stopTimes: stopTimesByTrip });
+        setCachedData(cacheKey, {
+            trips: data.trips,
+            stopTimes: data.stopTimes
+        });
     } catch (error) {
         console.error('Erreur chargement route:', error);
         alert(`Erreur lors du chargement de la ligne: ${error.message}`);
     }
-}
-
-// Parsing CSV optimisé avec regex
-function parseCSV(text) {
-    const lines = text.trim().split(/\r?\n/);
-    const headers = parseCSVLine(lines[0]).map(h => h.trim().replace(/"/g, ''));
-
-    const result = [];
-    // Parcours optimisé avec allocation mémoire réduite
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        const values = parseCSVLine(line);
-        const obj = {};
-        for (let j = 0; j < headers.length; j++) {
-            obj[headers[j]] = (values[j] ?? '').trim().replace(/"/g, '');
-        }
-        result.push(obj);
-    }
-    
-    return result;
-}
-
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-
-        if (char === '"') {
-            if (inQuotes && line[i + 1] === '"') {
-                current += '"';
-                i++;
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = '';
-        } else {
-            current += char;
-        }
-    }
-    result.push(current);
-    return result;
-}
-
-function parseCSVToObject(text, keyField) {
-    const items = parseCSV(text);
-    const obj = {};
-    items.forEach(item => {
-        if (item[keyField]) {
-            obj[item[keyField]] = item;
-        }
-    });
-    return obj;
-}
-
-function formatTimeString(timeStr) {
-    if (!timeStr) return '00h00';
-    const parts = timeStr.split(':');
-    let hour = parseInt(parts[0], 10);
-    const minute = parts[1] || '00';
-    if (hour >= 24) hour -= 24;
-    return `${hour}h${minute}`;
 }
 
 function getCachedData(key) {
@@ -1265,11 +1057,6 @@ function getCachedData(key) {
 
 function setCachedData(key, value) {
     try {
-        // Cache désactivé pour routes (trop volumineux)
-        if (key.startsWith('route_')) {
-            return;
-        }
-        
         localStorage.setItem(`gtfs_${key}`, JSON.stringify({
             version: CACHE_VERSION,
             timestamp: Date.now(),
@@ -1284,7 +1071,6 @@ function setCachedData(key, value) {
         });
     }
 }
-
 
 function hideAllViews() {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1322,7 +1108,6 @@ function showLines() {
         addTouchFeedback(item);
         linesList.appendChild(item);
     });
-
 }
 
 async function showDestinations(routeId) {
@@ -1344,38 +1129,21 @@ async function showDestinations(routeId) {
     const list = document.getElementById('destinations-list');
     list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
 
-    // Chargement asynchrone: affichage immédiat puis calcul progressif
-    // Utilise requestIdleCallback pour ne pas bloquer UI
-    const loadPromise = loadTripsAndStopTimesForRoute(routeId);
-    
-    // Attente mais avec yield régulier au navigateur
-    await loadPromise;
-    
-    // Calcul destinations avec rendu progressif
+    // Chargement depuis serveur: beaucoup plus rapide
+    await loadTripsAndStopTimesForRoute(routeId);
+
     const destinations = getDestinations(routeId);
     list.innerHTML = '';
 
-    // Rendu progressif par batch pour UI fluide
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < destinations.length; i += BATCH_SIZE) {
-        const batch = destinations.slice(i, i + BATCH_SIZE);
-        
-        batch.forEach((dest, idx) => {
-            const globalIndex = i + idx;
-            const item = document.createElement('div');
-            item.className = 'destination-item';
-            item.style.animationDelay = `${globalIndex * 0.05}s`;
-            item.innerHTML = `<strong>${dest.name}</strong>`;
-            item.onclick = () => showStops(routeId, dest.id);
-            addTouchFeedback(item);
-            list.appendChild(item);
-        });
-        
-        // Yield contrôle au navigateur entre batches
-        if (i + BATCH_SIZE < destinations.length) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
-    }
+    destinations.forEach((dest, index) => {
+        const item = document.createElement('div');
+        item.className = 'destination-item';
+        item.style.animationDelay = `${index * 0.05}s`;
+        item.innerHTML = `<strong>${dest.name}</strong>`;
+        item.onclick = () => showStops(routeId, dest.id);
+        addTouchFeedback(item);
+        list.appendChild(item);
+    });
 }
 
 function showStops(routeId, destinationId = null) {
@@ -1612,7 +1380,6 @@ function getActiveServiceIds(dayOfWeek, gtfsDate) {
     return serviceIds;
 }
 
-// Calcul destinations avec cache
 function getDestinations(routeId) {
     if (cache.destinations.has(routeId)) {
         return cache.destinations.get(routeId);
@@ -1641,7 +1408,6 @@ function getDestinations(routeId) {
     return result;
 }
 
-// Calcul stops avec cache optimisé
 function getStopsForDestination(routeId, destinationId) {
     const cacheKey = `${routeId}_${destinationId}`;
     if (cache.stops.has(cacheKey)) {
