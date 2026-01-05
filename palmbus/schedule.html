@@ -1008,15 +1008,8 @@ async function loadGtfsCore() {
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
 
-    const cacheKey = `route_${routeId}`;
-    const cached = getCachedData(cacheKey);
-    
-    if (cached) {
-        state.trips[routeId] = cached.trips;
-        state.stopTimes[routeId] = cached.stopTimes;
-        state.loadedRoutes.add(routeId);
-        return;
-    }
+    // PAS de cache localStorage pour routes (trop volumineux)
+    // Le cache serveur suffit amplement
 
     try {
         // Requête serveur pour trips + stop_times filtrés pour cette route
@@ -1052,10 +1045,8 @@ async function loadTripsAndStopTimesForRoute(routeId) {
         state.stopTimes[routeId] = data.stopTimes;
         state.loadedRoutes.add(routeId);
 
-        setCachedData(cacheKey, {
-            trips: data.trips,
-            stopTimes: data.stopTimes
-        });
+        // PAS de cache localStorage - trop gros, serveur gère déjà le cache
+        
     } catch (error) {
         console.error('Erreur chargement route:', error);
         throw error; // Propage erreur pour affichage
@@ -1079,18 +1070,29 @@ function getCachedData(key) {
 
 function setCachedData(key, value) {
     try {
+        // Ne cache QUE les données core (routes, stops, calendar)
+        // PAS les routes individuelles - trop volumineuses
+        if (key.startsWith('route_')) {
+            return; // Ignore, serveur gère cache
+        }
+        
         localStorage.setItem(`gtfs_${key}`, JSON.stringify({
             version: CACHE_VERSION,
             timestamp: Date.now(),
             value
         }));
     } catch (error) {
-        console.warn('Cache localStorage plein, nettoyage...', error);
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('gtfs_route_')) {
-                localStorage.removeItem(key);
-            }
-        });
+        // Si quota dépassée, nettoie uniquement vieux caches
+        if (error.name === 'QuotaExceededError') {
+            console.warn('Cache localStorage plein, nettoyage...');
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('gtfs_route_')) {
+                    localStorage.removeItem(k);
+                }
+            });
+        } else {
+            console.warn('Erreur cache localStorage:', error);
+        }
     }
 }
 
@@ -1834,6 +1836,8 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state.viewHistory.length > 0) {
         goBack();
     }
-});    </script>
+});    
+
+</script>
 </body>
 </html>
