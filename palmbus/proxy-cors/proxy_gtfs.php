@@ -182,6 +182,7 @@ if (isset($_GET['action'])) {
                     
                     $stopTimesByTrip = [];
                     $lineCount = 0;
+                    $maxStopTimesPerTrip = 200; // Limite sécurité
                     
                     // Stream ligne par ligne
                     while (($row = fgetcsv($fh)) !== false) {
@@ -194,42 +195,55 @@ if (isset($_GET['action'])) {
                             $stopTimesByTrip[$tripId] = [];
                         }
                         
+                        // Limite stop_times par trip pour éviter explosion mémoire
+                        if (count($stopTimesByTrip[$tripId]) >= $maxStopTimesPerTrip) {
+                            continue; // Skip si trip déjà trop long
+                        }
+                        
+                        $seq = (int)($row[$sequenceIdx] ?? 0);
+                        $arrivalTime = $row[$arrivalIdx] ?? '';
+                        
+                        // Compression: stocke format compact
                         $stopTimesByTrip[$tripId][] = [
-                            'stop_id' => $row[$stopIdIdx] ?? '',
-                            'arrival_time' => formatTime($row[$arrivalIdx] ?? ''),
-                            'departure_time' => formatTime($row[$departureIdx] ?? $row[$arrivalIdx] ?? ''),
-                            'stop_sequence' => (int)($row[$sequenceIdx] ?? 0)
+                            's' => $row[$stopIdIdx] ?? '', // stop_id raccourci
+                            'a' => formatTimeCompact($arrivalTime), // arrival compact
+                            'q' => $seq // sequence
                         ];
                         
                         $lineCount++;
                         
-                        // Si trop de stop_times accumules (route tres longue), tri progressif
-                        if ($lineCount % 10000 === 0) {
-                            // Tri partiel pour liberer memoire
-                            foreach ($stopTimesByTrip as $tid => &$times) {
-                                if (count($times) > 100) { // Trip probablement complet
-                                    usort($times, function($a, $b) {
-                                        return $a['stop_sequence'] - $b['stop_sequence'];
-                                    });
-                                }
-                            }
-                            unset($times);
+                        // GC tous les 5000 lignes (réduit fréquence)
+                        if ($lineCount % 5000 === 0) {
                             gc_collect_cycles();
                         }
                     }
                     fclose($fh);
                     
-                    // Tri final
-                    foreach ($stopTimesByTrip as &$times) {
+                    // Tri final et conversion format standard
+                    $stopTimesStandard = [];
+                    foreach ($stopTimesByTrip as $tid => $times) {
+                        // Tri par séquence
                         usort($times, function($a, $b) {
-                            return $a['stop_sequence'] - $b['stop_sequence'];
+                            return $a['q'] - $b['q'];
                         });
+                        
+                        // Convertit en format standard attendu par JS
+                        $standardTimes = [];
+                        foreach ($times as $t) {
+                            $standardTimes[] = [
+                                'stop_id' => $t['s'],
+                                'arrival_time' => $t['a'],
+                                'departure_time' => $t['a'], // Simplifie: departure = arrival
+                                'stop_sequence' => $t['q']
+                            ];
+                        }
+                        $stopTimesStandard[$tid] = $standardTimes;
                     }
-                    unset($times);
+                    unset($stopTimesByTrip); // Libère mémoire intermédiaire
                     
                     $routeData = [
                         'trips' => $trips,
-                        'stopTimes' => $stopTimesByTrip
+                        'stopTimes' => $stopTimesStandard
                     ];
                     
                     $json = json_encode($routeData);

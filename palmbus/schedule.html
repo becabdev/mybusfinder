@@ -1332,7 +1332,10 @@ function displaySchedule(validTrips, stopId, destinationId, container) {
 
         if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
 
-        schedule.push(tripStops[stopIndex].arrival_time);
+        // Normalise format temps (serveur peut retourner "7:30" ou "7h30")
+        const arrivalTime = tripStops[stopIndex].arrival_time;
+        const normalized = arrivalTime.includes(':') ? arrivalTime.replace(':', 'h') : arrivalTime;
+        schedule.push(normalized);
     });
 
     if (schedule.length === 0) {
@@ -1836,8 +1839,6 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && state.viewHistory.length > 0) {
         goBack();
     }
-});    
-
-</script>
+});    </script>
 </body>
 </html>
