@@ -1,5 +1,5 @@
 <?php
-@ini_set('memory_limit', '128M'); // Revient a limite basse
+@ini_set('memory_limit', '1024M');
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, HEAD, OPTIONS");
@@ -21,13 +21,59 @@ $debug = isset($_GET['debug']);
 if (!is_dir($cacheDir)) mkdir($cacheDir, 0755, true);
 if (!is_dir($extractDir)) mkdir($extractDir, 0755, true);
 
+// Fonctions helper declarees en premier
+function parseCSVFileSmall($filepath) {
+    if (!file_exists($filepath)) return [];
+    
+    $result = [];
+    $fh = fopen($filepath, 'r');
+    if (!$fh) return [];
+    
+    $headers = fgetcsv($fh);
+    if (!$headers) {
+        fclose($fh);
+        return [];
+    }
+    
+    while (($row = fgetcsv($fh)) !== false) {
+        $item = [];
+        foreach ($headers as $i => $header) {
+            $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
+        }
+        $result[] = $item;
+    }
+    fclose($fh);
+    
+    return $result;
+}
+
+function arrayToObject($array, $keyField) {
+    $result = [];
+    foreach ($array as $item) {
+        $key = $item[$keyField] ?? null;
+        if ($key !== null && $key !== '') {
+            $result[$key] = $item;
+        }
+    }
+    return $result;
+}
+
+function formatTimeCompact($time) {
+    if (empty($time)) return '0:00';
+    $parts = explode(':', $time);
+    if (count($parts) < 2) return '0:00';
+    $hour = (int)$parts[0];
+    $minute = $parts[1] ?? '00';
+    if ($hour >= 24) $hour -= 24;
+    return "{$hour}:{$minute}";
+}
+
 // Endpoint JSON
 if (isset($_GET['action'])) {
     header("Content-Type: application/json");
     $action = $_GET['action'];
     
     try {
-        // ETAPE 1: Cache core (leger, sans trips/stopTimes)
         $coreValid = file_exists($coreCacheFile) && (time() - filemtime($coreCacheFile) < $cacheTTL);
         
         if ($debug) $coreValid = false;
@@ -57,7 +103,7 @@ if (isset($_GET['action'])) {
             }
             $zip->close();
             
-            // Parse fichiers legers seulement
+            // Parse fichiers legers
             $debugInfo['steps'][] = 'Parse routes/stops/calendar...';
             $routes = parseCSVFileSmall($extractDir . '/routes.txt');
             $stops = parseCSVFileSmall($extractDir . '/stops.txt');
@@ -83,7 +129,7 @@ if (isset($_GET['action'])) {
                 }
             }
             
-            // Cache core SANS trips/stopTimes
+            // Cache core
             $coreData = [
                 'routes' => $routesById,
                 'stops' => $stopsById,
@@ -119,7 +165,6 @@ if (isset($_GET['action'])) {
                 break;
                 
             case 'route':
-                // STREAMING PUR: ne charge jamais tout en memoire
                 $routeId = $_GET['route_id'] ?? null;
                 if (!$routeId) {
                     http_response_code(400);
@@ -127,18 +172,15 @@ if (isset($_GET['action'])) {
                     exit;
                 }
                 
-                // Cache par route
                 $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
                 
                 if (file_exists($routeCacheFile) && (time() - filemtime($routeCacheFile) < $cacheTTL)) {
-                    // Cache existe
                     echo file_get_contents($routeCacheFile);
                 } else {
-                    // Generation: streaming pur ligne par ligne
                     $trips = [];
                     $tripIds = [];
                     
-                    // PASS 1: Collecte trip_ids pour cette route (leger)
+                    // PASS 1: Collecte trips
                     $tripsFile = $extractDir . '/trips.txt';
                     if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
                     
@@ -168,7 +210,7 @@ if (isset($_GET['action'])) {
                         break;
                     }
                     
-                    // PASS 2: Streaming stop_times avec buffer limite
+                    // PASS 2: Stop times streaming
                     $stopTimesFile = $extractDir . '/stop_times.txt';
                     if (!file_exists($stopTimesFile)) throw new Exception('stop_times.txt non extrait');
                     
@@ -177,69 +219,61 @@ if (isset($_GET['action'])) {
                     $tripIdIdx = array_search('trip_id', $headers);
                     $stopIdIdx = array_search('stop_id', $headers);
                     $arrivalIdx = array_search('arrival_time', $headers);
-                    $departureIdx = array_search('departure_time', $headers);
                     $sequenceIdx = array_search('stop_sequence', $headers);
                     
                     $stopTimesByTrip = [];
                     $lineCount = 0;
-                    $maxStopTimesPerTrip = 200; // Limite sécurité
+                    $maxStopTimesPerTrip = 200;
                     
-                    // Stream ligne par ligne
                     while (($row = fgetcsv($fh)) !== false) {
                         $tripId = $row[$tripIdIdx] ?? '';
                         
-                        // Filtre: uniquement trips de cette route
                         if (!isset($tripIds[$tripId])) continue;
                         
                         if (!isset($stopTimesByTrip[$tripId])) {
                             $stopTimesByTrip[$tripId] = [];
                         }
                         
-                        // Limite stop_times par trip pour éviter explosion mémoire
                         if (count($stopTimesByTrip[$tripId]) >= $maxStopTimesPerTrip) {
-                            continue; // Skip si trip déjà trop long
+                            continue;
                         }
                         
                         $seq = (int)($row[$sequenceIdx] ?? 0);
                         $arrivalTime = $row[$arrivalIdx] ?? '';
                         
-                        // Compression: stocke format compact
                         $stopTimesByTrip[$tripId][] = [
-                            's' => $row[$stopIdIdx] ?? '', // stop_id raccourci
-                            'a' => formatTimeCompact($arrivalTime), // arrival compact
-                            'q' => $seq // sequence
+                            's' => $row[$stopIdIdx] ?? '',
+                            'a' => formatTimeCompact($arrivalTime),
+                            'q' => $seq
                         ];
                         
                         $lineCount++;
                         
-                        // GC tous les 5000 lignes (réduit fréquence)
                         if ($lineCount % 5000 === 0) {
                             gc_collect_cycles();
                         }
                     }
                     fclose($fh);
                     
-                    // Tri final et conversion format standard
+                    // Tri et conversion format standard
                     $stopTimesStandard = [];
                     foreach ($stopTimesByTrip as $tid => $times) {
-                        // Tri par séquence
                         usort($times, function($a, $b) {
                             return $a['q'] - $b['q'];
                         });
                         
-                        // Convertit en format standard attendu par JS
                         $standardTimes = [];
                         foreach ($times as $t) {
                             $standardTimes[] = [
                                 'stop_id' => $t['s'],
                                 'arrival_time' => $t['a'],
-                                'departure_time' => $t['a'], // Simplifie: departure = arrival
+                                'departure_time' => $t['a'],
                                 'stop_sequence' => $t['q']
                             ];
                         }
                         $stopTimesStandard[$tid] = $standardTimes;
                     }
-                    unset($stopTimesByTrip); // Libère mémoire intermédiaire
+                    unset($stopTimesByTrip);
                     
                     $routeData = [
                         'trips' => $trips,
@@ -288,51 +322,4 @@ if (isset($_SERVER['HTTP_X_CONTENT_ONLY_HEADER'])) {
 
 header("Content-Type: application/zip");
 echo $data;
-
-// Parse CSV leger: ne garde que donnees essentielles
-function parseCSVFileSmall($filepath) {
-    if (!file_exists($filepath)) return [];
-    
-    $result = [];
-    $fh = fopen($filepath, 'r');
-    if (!$fh) return [];
-    
-    $headers = fgetcsv($fh);
-    if (!$headers) {
-        fclose($fh);
-        return [];
-    }
-    
-    while (($row = fgetcsv($fh)) !== false) {
-        $item = [];
-        foreach ($headers as $i => $header) {
-            $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
-        }
-        $result[] = $item;
-    }
-    fclose($fh);
-    
-    return $result;
-}
-
-function arrayToObject($array, $keyField) {
-    $result = [];
-    foreach ($array as $item) {
-        $key = $item[$keyField] ?? null;
-        if ($key !== null && $key !== '') {
-            $result[$key] = $item;
-        }
-    }
-    return $result;
-}
-
-function formatTime($time) {
-    if (empty($time)) return '00h00';
-    $parts = explode(':', $time);
-    if (count($parts) < 2) return '00h00';
-    $hour = (int)$parts[0];
-    $minute = $parts[1] ?? '00';
-    if ($hour >= 24) $hour -= 24;
-    return "{$hour}h{$minute}";
-}
 ?>
