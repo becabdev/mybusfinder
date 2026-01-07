@@ -1272,12 +1272,23 @@ function updateStopsForDestination(routeId, destinationId) {
 
     const stops = getStopsForDestination(routeId, destinationId);
     
+    // AJOUTER CE LOG
+    console.log('Arrêts à afficher:', stops.length);
+    console.log('Premiers arrêts:', stops.slice(0, 3));
+    
     stops.forEach((stop, index) => {
         const item = document.createElement('div');
         item.className = 'stop-item';
         item.style.animationDelay = `${index * 0.05}s`;
         item.innerHTML = `<strong>${stop.stop_name}</strong>`;
-        item.onclick = () => showSchedule(routeId, stop.stop_id, destinationId);
+        
+        // VÉRIFIER LE STOP_ID ICI
+        console.log('Stop créé:', stop.stop_id, stop.stop_name);
+        
+        item.onclick = () => {
+            console.log('Clic sur stop:', stop.stop_id, destinationId);
+            showSchedule(routeId, stop.stop_id, destinationId);
+        };
         addTouchFeedback(item);
         list.appendChild(item);
     });
@@ -1549,45 +1560,45 @@ function getStopsForDestination(routeId, destinationId) {
     const trips = state.trips[routeId];
     const stopTimesByRoute = state.stopTimes[routeId];
     
-    console.log('getStopsForDestination appelé:', {routeId, destinationId});
-    
     const stopsMap = new Map();
-    let tripsWithDest = 0;
+    const stopOrderMap = new Map(); // Pour garder l'ordre
 
     trips.forEach(trip => {
         const tripStops = stopTimesByRoute[trip.trip_id];
         
-        if (!tripStops) {
-            return;
-        }
+        if (!tripStops) return;
 
         const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
         
-        if (destIndex === -1) {
-            return; // Destination pas dans ce trip
-        }
+        if (destIndex === -1) return; // Destination pas dans ce trip
         
-        if (destIndex === 0) {
-            console.warn('Destination est le premier arrêt du trip:', trip.trip_id);
-            return; // Pas d'arrêts avant la destination
-        }
-        
-        tripsWithDest++;
-
-        // Prendre TOUS les arrêts avant la destination
-        tripStops.slice(0, destIndex).forEach(st => { 
+        // Ajouter TOUS les autres arrêts du trip (avant ET après si besoin)
+        tripStops.forEach((st, idx) => {
+            // Ne pas inclure la destination elle-même
+            if (idx === destIndex) return;
+            
+            // Pour un trajet normal, on veut les arrêts AVANT la destination
+            // Pour un trajet retour, la destination est au début, donc on veut APRÈS
+            if (destIndex > 0 && idx >= destIndex) return; // Cas normal
+            if (destIndex === 0 && idx > destIndex) {
+                // Cas retour : on garde les arrêts après
+            }
+            
             const stop = state.stops[st.stop_id];
             if (stop && !stopsMap.has(stop.stop_id)) {
                 stopsMap.set(stop.stop_id, stop);
+                stopOrderMap.set(stop.stop_id, idx); // Garde l'ordre original
             }
         });
     });
 
-    console.log('Trips avec cette destination:', tripsWithDest);
-    console.log('Stops trouvés pour destination:', stopsMap.size);
-    console.log('Premiers stops:', Array.from(stopsMap.values()).slice(0, 5).map(s => s.stop_name));
+    console.log('Stops trouvés:', stopsMap.size);
 
-    const result = Array.from(stopsMap.values());
+    // Trier par ordre de passage
+    const result = Array.from(stopsMap.values()).sort((a, b) => {
+        return (stopOrderMap.get(a.stop_id) || 0) - (stopOrderMap.get(b.stop_id) || 0);
+    });
+    
     cache.stops.set(cacheKey, result);
     return result;
 }
