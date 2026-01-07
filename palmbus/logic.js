@@ -185,7 +185,7 @@
         });
 
 
-        VERSION_NAME = '3.2';
+        VERSION_NAME = '3.3 Nightly';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -1890,41 +1890,39 @@ document.getElementById('close-popup1').addEventListener('click', closeUpdatePop
 
 
 function hideLoadingScreen() {
-    setTimeout(() => {
-        const loadingScreen = document.getElementById('loading-screen');
+    const loadingScreen = document.getElementById('loading-screen');
 
-        if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
-            disparaitrelelogo();
-            const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Merci de patienter, une mise à jour est en cours ' + window.VERSION_NAME;
-            soundsUX('MBF_NotificationInfo');
-            localStorage.setItem('buildversion', window.BUILD_VERSION);
-                setTimeout(() => {
-                    window.location.reload();
-                }, 300);
-
-        } else {
-
-        const logoscr = document.getElementById('logoscr');
-        logoscr.classList.add('logoscrappp');
-        loadingScreen.classList.add('logoscrapppp');
-        loadingScreen.style.pointerEvents = 'none';
-        const menubottom1 = document.getElementById('menubtm');
-        menubottom1.style.display = 'flex';
-        window.isMenuShowed = false;
-    
-        if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+    if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
+        disparaitrelelogo();
+        const loadingtext = document.getElementById('loading-text');
+        loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
+        soundsUX('MBF_NotificationInfo');
+        localStorage.setItem('buildversion', window.BUILD_VERSION);
             setTimeout(() => {
-                menubottom1.classList.remove('slide-upb');
-                menubottom1.classList.add('slide-downb');
-            }, 10);
-        }
+                window.location.reload();
+            }, 3000);
 
+    } else {
+
+    const logoscr = document.getElementById('logoscr');
+    logoscr.classList.add('logoscrappp');
+    loadingScreen.classList.add('logoscrapppp');
+    loadingScreen.style.pointerEvents = 'none';
+    const menubottom1 = document.getElementById('menubtm');
+    menubottom1.style.display = 'flex';
+    window.isMenuShowed = false;
+
+    if (localStorage.getItem('nepasafficheraccueil') === 'true') {
         setTimeout(() => {
-            loadingScreen.style.display = 'none';
-        }, 300);
+            menubottom1.classList.remove('slide-upb');
+            menubottom1.classList.add('slide-downb');
+        }, 10);
     }
-    }, 100);
+
+    setTimeout(() => {
+        loadingScreen.style.display = 'none';
+    }, 300);
+}
 }
 
 
@@ -2365,10 +2363,12 @@ function createLoadingOverlay() {
 function showLoadingOverlay() {
     const overlay = createLoadingOverlay();
     overlay.classList.add('visible');
+    window.overlayVisible = true;
 }
 
 function hideLoadingOverlay() {
     const overlay = document.getElementById('gtfs-loading-overlay');
+    window.overlayVisible = false;
     if (overlay) {
         overlay.classList.remove('visible');
     }
