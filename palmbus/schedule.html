@@ -960,7 +960,6 @@ function initScrollEffects() {
     });
 }
 
-// Chargement données core depuis serveur (routes, stops, calendar - SANS trips/stopTimes)
 async function loadGtfsCore() {
     try {
         const cached = getCachedData('gtfs_core');
@@ -970,7 +969,7 @@ async function loadGtfsCore() {
             return;
         }
 
-        // Requête serveur pour données pré-processées (leger: pas de trips/stopTimes)
+        // MODIFIÉ : Requête avec décompression automatique
         const response = await fetch(`${GTFS_API_URL}?action=core`);
         if (!response.ok) {
             throw new Error(`Erreur serveur: ${response.status}`);
@@ -978,11 +977,11 @@ async function loadGtfsCore() {
 
         const data = await response.json();
         
-        state.routes = data.routes;
-        state.stops = data.stops;
+        // MODIFIÉ : Adapter au nouveau format
+        state.routes = data.routes || {};
+        state.stops = data.stops || {};
         state.calendar = data.calendar || {};
         state.calendarDates = data.calendarDates || {};
-        // PAS de trips ni stopTimes ici, charges a la demande
 
         setCachedData('gtfs_core', {
             routes: state.routes,
@@ -1332,9 +1331,10 @@ function displaySchedule(validTrips, stopId, destinationId, container) {
 
         if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
 
-        // Normalise format temps (serveur peut retourner "7:30" ou "7h30")
         const arrivalTime = tripStops[stopIndex].arrival_time;
-        const normalized = arrivalTime.includes(':') ? arrivalTime.replace(':', 'h') : arrivalTime;
+        const normalized = arrivalTime.includes(':') 
+            ? arrivalTime.replace(':', 'h') 
+            : arrivalTime;
         schedule.push(normalized);
     });
 
