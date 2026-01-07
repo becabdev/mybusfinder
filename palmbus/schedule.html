@@ -1483,10 +1483,6 @@ function getDestinations(routeId) {
     const trips = state.trips[routeId];
     const stopTimesByRoute = state.stopTimes[routeId];
     
-    // AJOUTER DES LOGS
-    console.log('getDestinations - trips:', trips?.length);
-    console.log('getDestinations - stopTimes keys:', Object.keys(stopTimesByRoute || {}).length);
-    
     if (!trips || !stopTimesByRoute) {
         console.error('Trips ou stopTimes manquants');
         return [];
@@ -1494,36 +1490,40 @@ function getDestinations(routeId) {
     
     const destinations = new Map();
 
-    trips.forEach(trip => {
+    trips.forEach((trip, idx) => {
         const tripStops = stopTimesByRoute[trip.trip_id];
         
         if (!tripStops || tripStops.length === 0) {
-            console.warn('Pas de stops pour trip:', trip.trip_id);
             return;
         }
         
         const lastStop = tripStops[tripStops.length - 1];
+        const stopId = lastStop.stop_id;
         
-        // LOG LE DERNIER STOP
-        console.log('Dernier stop du trip', trip.trip_id, ':', lastStop);
+        // LOG DÉTAILLÉ pour les 10 premiers trips
+        if (idx < 10) {
+            console.log(`Trip ${idx}: stop_id="${stopId}", existe dans state.stops:`, !!state.stops[stopId]);
+            if (!state.stops[stopId]) {
+                console.log('Stop ID manquant:', stopId);
+                console.log('Stops disponibles similaires:', 
+                    Object.keys(state.stops).filter(k => k.includes('BASTI') || k.includes('BLANCH')).slice(0, 5)
+                );
+            }
+        }
         
-        const stop = state.stops[lastStop.stop_id];
+        const stop = state.stops[stopId];
         
         if (!stop) {
-            console.warn('Stop non trouvé:', lastStop.stop_id);
             return;
         }
         
-        if (!destinations.has(stop.stop_id)) {
-            destinations.set(stop.stop_id, { 
-                id: stop.stop_id, 
+        if (!destinations.has(stopId)) {
+            destinations.set(stopId, { 
+                id: stopId, 
                 name: stop.stop_name 
             });
-            console.log('Destination ajoutée:', stop.stop_name);
         }
     });
-
-    console.log('Total destinations trouvées:', destinations.size);
 
     const result = Array.from(destinations.values());
     cache.destinations.set(routeId, result);
