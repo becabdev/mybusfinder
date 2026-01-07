@@ -147,46 +147,109 @@ function createOptimizedStops($extractDir, $outputFile) {
     return true;
 }
 
-// Créer un fichier core ultra-léger (seulement les IDs)
-function createOptimizedCore($extractDir, $outputFile) {
+function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) {
+    // Charger les routes optimisées
+    $routesCompressed = file_get_contents($routesFile);
+    $routesJson = gzdecode($routesCompressed);
+    $routes = json_decode($routesJson, true);
+    
+    // Charger les stops optimisés
+    $stopsCompressed = file_get_contents($stopsFile);
+    $stopsJson = gzdecode($stopsCompressed);
+    $stops = json_decode($stopsJson, true);
+    
+    // Convertir le format compact en format complet pour le client
+    $routesExpanded = [];
+    foreach ($routes as $id => $r) {
+        $routesExpanded[$id] = [
+            's' => $r['s'],
+            'l' => $r['l'],
+            'c' => $r['c'],
+            't' => $r['t']
+        ];
+    }
+    
+    $stopsExpanded = [];
+    foreach ($stops as $id => $s) {
+        $stopsExpanded[$id] = [
+            'n' => $s['n'],
+            'lat' => $s['lat'],
+            'lon' => $s['lon']
+        ];
+    }
+    
+    // AJOUTER: Charger calendar et calendar_dates
+    $calendar = [];
+    $calendarFile = $extractDir . '/calendar.txt';
+    if (file_exists($calendarFile)) {
+        $fh = fopen($calendarFile, 'r');
+        $headers = fgetcsv($fh);
+        while (($row = fgetcsv($fh)) !== false) {
+            $item = [];
+            foreach ($headers as $i => $header) {
+                $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
+            }
+            if (!empty($item['service_id'])) {
+                $calendar[$item['service_id']] = $item;
+            }
+        }
+        fclose($fh);
+    }
+    
+    // Charger calendar_dates
+    $calendarDatesByDate = [];
+    $calendarDatesFile = $extractDir . '/calendar_dates.txt';
+    if (file_exists($calendarDatesFile)) {
+        $fh = fopen($calendarDatesFile, 'r');
+        $headers = fgetcsv($fh);
+        while (($row = fgetcsv($fh)) !== false) {
+            $item = [];
+            foreach ($headers as $i => $header) {
+                $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
+            }
+            
+            $date = $item['date'] ?? '';
+            if (empty($date)) continue;
+            
+            if (!isset($calendarDatesByDate[$date])) {
+                $calendarDatesByDate[$date] = ['added' => [], 'removed' => []];
+            }
+            
+            if (($item['exception_type'] ?? '') === '1') {
+                $calendarDatesByDate[$date]['added'][] = $item['service_id'] ?? '';
+            } else {
+                $calendarDatesByDate[$date]['removed'][] = $item['service_id'] ?? '';
+            }
+        }
+        fclose($fh);
+    }
+    
     $core = [
-        'route_ids' => [],
-        'stop_ids' => []
+        'routes' => $routesExpanded,
+        'stops' => $stopsExpanded,
+        'calendar' => $calendar,
+        'calendarDates' => $calendarDatesByDate,
+        'generated' => time()
     ];
-    
-    parseCSVStream($extractDir . '/routes.txt', function($item) use (&$core) {
-        $routeId = $item['route_id'] ?? '';
-        if ($routeId) {
-            $core['route_ids'][] = $routeId;
-        }
-    });
-    
-    parseCSVStream($extractDir . '/stops.txt', function($item) use (&$core) {
-        $stopId = $item['stop_id'] ?? '';
-        if ($stopId) {
-            $core['stop_ids'][] = $stopId;
-        }
-    });
     
     // Compression GZIP
     $json = json_encode($core);
     $compressed = gzencode($json, 9);
     file_put_contents($outputFile, $compressed);
     
-    unset($core, $json);
+    unset($routes, $stops, $routesExpanded, $stopsExpanded, $core, $json);
     gc_collect_cycles();
     
     return true;
 }
 
-function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile) {
+function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {
     $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
         throw new Exception('Impossible ouvrir ZIP');
     }
     
-    // Extraction sélective
-    $filesToExtract = ['routes.txt', 'stops.txt'];
+    $filesToExtract = ['routes.txt', 'stops.txt', 'calendar.txt', 'calendar_dates.txt', 'trips.txt', 'stop_times.txt'];
     foreach ($filesToExtract as $file) {
         if ($zip->locateName($file) !== false) {
             $zip->extractTo($extractDir, $file);
@@ -194,18 +257,18 @@ function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $optimizedCoreFile, 
     }
     $zip->close();
     
-    // Création des fichiers optimisés et compressés
-    createOptimizedCore($extractDir, $optimizedCoreFile);
+    // Créer fichiers optimisés compressés
     createOptimizedRoutes($extractDir, $optimizedRoutesFile);
     createOptimizedStops($extractDir, $optimizedStopsFile);
+    createOptimizedCore($extractDir, $optimizedRoutesFile, $optimizedStopsFile, $optimizedCoreFile);
     
-    // Nettoyer les fichiers TXT pour libérer l'espace
-    foreach ($filesToExtract as $file) {
-        $filepath = $extractDir . '/' . $file;
-        if (file_exists($filepath)) {
-            unlink($filepath);
-        }
-    }
+    // Créer aussi fichier JSON classique pour compatibilité
+    $compressed = file_get_contents($optimizedCoreFile);
+    $coreData = json_decode(gzdecode($compressed), true);
+    file_put_contents($coreCacheFile, json_encode($coreData));
+    
+    // Créer index trip->route
+    buildTripIndex($extractDir, $tripIndexFile);
     
     return true;
 }
