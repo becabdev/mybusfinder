@@ -969,14 +969,12 @@ async function loadGtfsCore() {
             return;
         }
 
-        // ÉTAPE 1: Récupérer les routes
         const routesResponse = await fetch(`${GTFS_API_URL}?action=routes`);
         if (!routesResponse.ok) {
             throw new Error(`Erreur routes: ${routesResponse.status}`);
         }
         const routesData = await routesResponse.json();
         
-        // ÉTAPE 2: Récupérer les stops
         const stopsResponse = await fetch(`${GTFS_API_URL}?action=stops`);
         if (!stopsResponse.ok) {
             throw new Error(`Erreur stops: ${stopsResponse.status}`);
@@ -1010,9 +1008,10 @@ async function loadGtfsCore() {
         for (const [id, stop] of Object.entries(stopsData || {})) {
             if (!stop) continue;
             
-            // Format compact
+            // Format compact - AJOUTER LE STOP_ID
             if (stop.n !== undefined) {
                 state.stops[id] = {
+                    stop_id: id,  // ← AJOUT CRITIQUE
                     stop_name: stop.n,
                     stop_lat: stop.lat,
                     stop_lon: stop.lon
@@ -1020,11 +1019,15 @@ async function loadGtfsCore() {
             }
             // Format complet
             else if (stop.stop_name !== undefined) {
-                state.stops[id] = stop;
+                // S'assurer que stop_id existe
+                state.stops[id] = {
+                    stop_id: id,  // ← AJOUT CRITIQUE
+                    ...stop
+                };
             }
         }
         
-        // Calendar et calendarDates sont vides pour l'instant (pas dans routes/stops)
+        // Calendar et calendarDates sont vides pour l'instant
         state.calendar = {};
         state.calendarDates = {};
         
@@ -1054,7 +1057,6 @@ async function loadGtfsCore() {
         `;
     }
 }
-
 
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
