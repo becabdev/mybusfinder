@@ -303,7 +303,7 @@ if (isset($_GET['action'])) {
             
             // Extraction et optimisation
             error_log("Extraction et optimisation...");
-            extractAndProcessGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile);
+            extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile);
             error_log("Optimisation terminée");
         }
         
