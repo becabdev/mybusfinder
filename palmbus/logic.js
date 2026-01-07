@@ -2098,33 +2098,19 @@ async function extractGTFSFiles() {
         loadingtext.textContent = 'Chargement des données dyna en cours - async... 😊';
         soundsUX('MBF_Popup');
 
-
-        const response = await fetch('proxy-cors/proxy_gtfs.php');
+        const response = await fetch('proxy-cors/proxy_gtfs.php?action=extracted');
         if (!response.ok) {
             throw new Error(`Échec téléchargement ${response.status} ${response.statusText}`);
-            toastBottomRight.warning('Oups ! Une erreur s\'est produite... avez vous actualisé la page ?');
-
         }
         
-        const zipData = await response.arrayBuffer();
+        const extractedFiles = await response.json();
         
-        const fileHash = await calculateSHA256(zipData.slice(0, Math.min(zipData.byteLength, 1024 * 50)));
-        
-        const zip = await JSZip.loadAsync(zipData);
-        
-        const extractedFiles = {};
-        
-        const filePromises = [];
-        zip.forEach((relativePath, zipEntry) => {
-            if (!zipEntry.dir) {
-                const promise = zipEntry.async("string").then(content => {
-                    extractedFiles[relativePath] = content;
-                });
-                filePromises.push(promise);
-            }
-        });
-        
-        await Promise.all(filePromises);
+        const filesString = JSON.stringify(extractedFiles);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(filesString.substring(0, Math.min(filesString.length, 1024 * 50)));
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         
         const metadata = {
             fileHash,
@@ -2133,6 +2119,7 @@ async function extractGTFSFiles() {
         
         return { extractedFiles, metadata };
     } catch (error) {
+        console.error('Erreur lors du chargement des fichiers GTFS', error);
         throw error;
     }
 }
@@ -2361,6 +2348,56 @@ async function initializeGTFS() {
         throw error;
     }
 }
+
+async function checkGTFSUpdate() {
+    try {
+        const db = await initDB();
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        const storedMetadata = await new Promise((resolve, reject) => {
+            const request = store.get('gtfsMetadata');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        
+        if (!storedMetadata || !storedMetadata.fileHash) {
+            return { needsUpdate: true };
+        }
+        
+        const lastUpdate = new Date(storedMetadata.lastUpdate);
+        const now = new Date();
+        const ageInDays = (now - lastUpdate) / (1000 * 60 * 60 * 24);
+        
+        if (ageInDays > 4) {
+            console.log('Cache expiré (> 4 jours), mise à jour nécessaire');
+            return { needsUpdate: true };
+        }
+        
+        try {
+            const response = await fetch('proxy-cors/proxy_gtfs.php?action=extracted', {
+                method: 'HEAD'
+            });
+            
+            const lastModified = response.headers.get('Last-Modified');
+            if (lastModified) {
+                const serverDate = new Date(lastModified);
+                if (serverDate > lastUpdate) {
+                    console.log('Nouvelle version disponible sur le serveur');
+                    return { needsUpdate: true };
+                }
+            }
+        } catch (error) {
+            console.warn('Impossible de vérifier la version serveur:', error);
+        }
+        
+        return { needsUpdate: false, metadata: storedMetadata };
+    } catch (error) {
+        console.error('Erreur vérif maj GTFS', error);
+        return { needsUpdate: true };
+    }
+}
+
 
 async function clearGTFSCache() {
     try {

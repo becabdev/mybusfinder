@@ -1,6 +1,6 @@
 <?php
 @ini_set('memory_limit', '1024M');
-set_time_limit(300); // 5 minutes max pour generation initiale
+set_time_limit(300);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, HEAD, OPTIONS");
@@ -16,8 +16,11 @@ $extractDir = $cacheDir . '/extracted';
 $coreCacheFile = $cacheDir . '/gtfs_core.json';
 $tripIndexFile = $cacheDir . '/trip_index.json';
 $zipCacheFile = $cacheDir . '/gtfs.zip';
-$cacheMarkerFile = $cacheDir . '/cache_created.txt'; // Marqueur date creation cache
+$cacheMarkerFile = $cacheDir . '/cache_created.txt';
 $cacheTTL = 4 * 24 * 60 * 60; // 4 jours
+
+// Nouveau: fichier JSON contenant tous les fichiers extraits
+$extractedJsonFile = $cacheDir . '/gtfs_extracted.json';
 
 $debug = isset($_GET['debug']);
 
@@ -27,7 +30,6 @@ if (!is_dir($extractDir)) mkdir($extractDir, 0755, true);
 // Verification expiration cache global (4 jours)
 function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
     if (!file_exists($cacheMarkerFile)) {
-        // Premier run: cree marqueur
         file_put_contents($cacheMarkerFile, time());
         return;
     }
@@ -44,7 +46,6 @@ function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
             }
         }
         
-        // Supprime aussi fichiers extraits
         $extractDir = $cacheDir . '/extracted';
         if (is_dir($extractDir)) {
             $extractedFiles = glob($extractDir . '/*.txt');
@@ -55,12 +56,10 @@ function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
             }
         }
         
-        // Reset marqueur
         file_put_contents($cacheMarkerFile, time());
     }
 }
 
-// Nettoie cache si expire
 checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL);
 
 // Fonctions helper
@@ -110,7 +109,6 @@ function formatTimeCompact($time) {
     return "{$hour}:{$minute}";
 }
 
-// Construction index trip->route (une seule fois)
 function buildTripIndex($extractDir, $tripIndexFile) {
     $tripsFile = $extractDir . '/trips.txt';
     if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
@@ -134,13 +132,43 @@ function buildTripIndex($extractDir, $tripIndexFile) {
     return $tripToRoute;
 }
 
+// NOUVELLE FONCTION: Extraction et création du JSON avec tous les fichiers
+function createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir) {
+    $zip = new ZipArchive();
+    if ($zip->open($zipCacheFile) !== TRUE) {
+        throw new Exception('Impossible ouvrir ZIP');
+    }
+    
+    // Extraction des fichiers
+    $filesToExtract = ['routes.txt', 'stops.txt', 'calendar.txt', 'calendar_dates.txt', 'trips.txt', 'stop_times.txt'];
+    foreach ($filesToExtract as $file) {
+        if ($zip->locateName($file) !== false) {
+            $zip->extractTo($extractDir, $file);
+        }
+    }
+    $zip->close();
+    
+    // Lecture des fichiers et création du JSON
+    $extractedData = [];
+    foreach ($filesToExtract as $file) {
+        $filepath = $extractDir . '/' . $file;
+        if (file_exists($filepath)) {
+            $extractedData[$file] = file_get_contents($filepath);
+        }
+    }
+    
+    // Sauvegarde dans un seul fichier JSON
+    file_put_contents($extractedJsonFile, json_encode($extractedData));
+    
+    return $extractedData;
+}
+
 // Endpoint JSON
 if (isset($_GET['action'])) {
     header("Content-Type: application/json");
     $action = $_GET['action'];
     
     try {
-        // Verifie validite cache (fichier existe ET pas expire)
         $coreValid = file_exists($coreCacheFile) && file_exists($cacheMarkerFile);
         
         if ($debug) $coreValid = false;
@@ -148,7 +176,7 @@ if (isset($_GET['action'])) {
         if (!$coreValid) {
             $debugInfo = ['steps' => []];
             
-            // Telechargement ZIP
+            // Telechargement ZIP si nécessaire
             if (!file_exists($zipCacheFile) || (time() - filemtime($zipCacheFile) > $cacheTTL)) {
                 $debugInfo['steps'][] = 'Telechargement ZIP...';
                 $zipData = @file_get_contents($url);
@@ -157,18 +185,11 @@ if (isset($_GET['action'])) {
                 unset($zipData);
             }
             
-            // Extraction ZIP
-            $debugInfo['steps'][] = 'Extraction ZIP...';
-            $zip = new ZipArchive();
-            if ($zip->open($zipCacheFile) !== TRUE) throw new Exception('Impossible ouvrir ZIP');
-            
-            $filesToExtract = ['routes.txt', 'stops.txt', 'calendar.txt', 'calendar_dates.txt', 'trips.txt', 'stop_times.txt'];
-            foreach ($filesToExtract as $file) {
-                if ($zip->locateName($file) !== false) {
-                    $zip->extractTo($extractDir, $file);
-                }
+            // Extraction et création du JSON si nécessaire
+            if (!file_exists($extractedJsonFile) || (time() - filemtime($extractedJsonFile) > $cacheTTL)) {
+                $debugInfo['steps'][] = 'Extraction ZIP et creation JSON...';
+                createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir);
             }
-            $zip->close();
             
             // Parse fichiers legers
             $debugInfo['steps'][] = 'Parse routes/stops/calendar...';
@@ -196,7 +217,6 @@ if (isset($_GET['action'])) {
                 }
             }
             
-            // Construction index trip->route (optimisation critique)
             $debugInfo['steps'][] = 'Construction index trip->route...';
             buildTripIndex($extractDir, $tripIndexFile);
             
@@ -245,12 +265,9 @@ if (isset($_GET['action'])) {
                 
                 $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
                 
-                // Cache valide si existe (pas de verif TTL individuel, gere par nettoyage global)
                 if (file_exists($routeCacheFile)) {
-                    // Cache existe
                     echo file_get_contents($routeCacheFile);
                 } else {
-                    // Charge index trip->route
                     if (!file_exists($tripIndexFile)) {
                         buildTripIndex($extractDir, $tripIndexFile);
                     }
@@ -289,7 +306,7 @@ if (isset($_GET['action'])) {
                         break;
                     }
                     
-                    // PASS 2: Stop times avec index optimise
+                    // PASS 2: Stop times
                     $stopTimesFile = $extractDir . '/stop_times.txt';
                     if (!file_exists($stopTimesFile)) throw new Exception('stop_times.txt non extrait');
                     
@@ -303,12 +320,11 @@ if (isset($_GET['action'])) {
                     $stopTimesByTrip = [];
                     $lineCount = 0;
                     $matchCount = 0;
-                    $maxStopTimesPerTrip = 150; // Reduit pour perf
+                    $maxStopTimesPerTrip = 150;
                     
                     while (($row = fgetcsv($fh)) !== false) {
                         $tripId = $row[$tripIdIdx] ?? '';
                         
-                        // Lookup ultra-rapide avec index
                         if (!isset($tripIds[$tripId])) continue;
                         
                         if (!isset($stopTimesByTrip[$tripId])) {
@@ -332,9 +348,7 @@ if (isset($_GET['action'])) {
                             gc_collect_cycles();
                         }
                         
-                        // Early exit si tous trips complets
                         if ($matchCount > count($tripIds) * 50) {
-                            // Au moins 50 stops/trip trouvés, probablement complet
                             break;
                         }
                     }
@@ -375,6 +389,26 @@ if (isset($_GET['action'])) {
                 }
                 break;
                 
+            // NOUVEAU: Endpoint pour récupérer le JSON avec tous les fichiers extraits
+            case 'extracted':
+                // Vérifier si le JSON existe et est à jour
+                if (!file_exists($extractedJsonFile) || (time() - filemtime($extractedJsonFile) > $cacheTTL)) {
+                    // Télécharger le ZIP si nécessaire
+                    if (!file_exists($zipCacheFile) || (time() - filemtime($zipCacheFile) > $cacheTTL)) {
+                        $zipData = @file_get_contents($url);
+                        if ($zipData === false) throw new Exception('Impossible telecharger ZIP');
+                        file_put_contents($zipCacheFile, $zipData);
+                        unset($zipData);
+                    }
+                    
+                    // Créer le JSON avec les fichiers extraits
+                    createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir);
+                }
+                
+                // Renvoyer le JSON
+                echo file_get_contents($extractedJsonFile);
+                break;
+                
             default:
                 http_response_code(400);
                 echo json_encode(['error' => 'Action invalide']);
@@ -392,7 +426,7 @@ if (isset($_GET['action'])) {
     exit;
 }
 
-// Fallback ZIP
+// Fallback ZIP (pour compatibilité avec l'ancien code)
 if (isset($_SERVER['HTTP_X_CONTENT_ONLY_HEADER'])) {
     $context = stream_context_create([
         'http' => [
