@@ -2322,7 +2322,6 @@ async function initializeGTFS() {
         stopIds.length = 0;
         Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
         
-        // Utilisation de la nouvelle API PHP optimisée
         const { needsUpdate, metadata } = await checkGTFSUpdate();
         
         let coreData;
@@ -2330,7 +2329,6 @@ async function initializeGTFS() {
         if (needsUpdate) {
             console.log('Chargement des données GTFS depuis le serveur...');
             
-            // Récupération des données core (routes, stops, calendar)
             const coreResponse = await fetch('proxy-cors/proxy_gtfs.php?action=core');
             if (!coreResponse.ok) {
                 throw new Error(`Erreur HTTP: ${coreResponse.status}`);
@@ -2338,13 +2336,12 @@ async function initializeGTFS() {
             
             coreData = await coreResponse.json();
             
-            // Mise en cache des données core
             await saveToCache({
                 routes: coreData.routes,
                 stops: coreData.stops,
                 calendar: coreData.calendar,
                 calendarDates: coreData.calendarDates
-            }, metadata);
+            }, {});
             
             toastBottomRight.success('Données téléchargées avec succès !');
             soundsUX('MBF_Success');
@@ -2353,14 +2350,12 @@ async function initializeGTFS() {
             const cachedData = await getFromCache();
             
             if (!cachedData) {
-                // Si pas de cache, forcer le téléchargement
                 return await initializeGTFS();
             }
             
             coreData = cachedData;
         }
         
-        // Traitement des routes pour extraire les couleurs et noms de lignes
         if (coreData.routes) {
             Object.entries(coreData.routes).forEach(([routeId, route]) => {
                 lineColors[routeId] = route.route_color || '#FFFFFF';
@@ -2368,7 +2363,6 @@ async function initializeGTFS() {
             });
         }
         
-        // Traitement des stops pour extraire les IDs et noms
         if (coreData.stops) {
             Object.entries(coreData.stops).forEach(([stopId, stop]) => {
                 stopIds.push(stopId);
