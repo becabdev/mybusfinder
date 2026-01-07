@@ -300,6 +300,115 @@ if (isset($_GET['action'])) {
                 
                 echo json_encode($info, JSON_PRETTY_PRINT);
                 break;
+
+                case 'route':
+                    $routeId = $_GET['route_id'] ?? null;
+                    if (!$routeId) {
+                        http_response_code(400);
+                        echo json_encode(['error' => 'route_id manquant']);
+                        exit;
+                    }
+                    
+                    $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
+                    
+                    // Cache valide si existe
+                    if (file_exists($routeCacheFile)) {
+                        echo file_get_contents($routeCacheFile);
+                    } else {
+                        // Extraire les fichiers si nécessaire
+                        if (!file_exists($extractDir . '/trips.txt') || !file_exists($extractDir . '/stop_times.txt')) {
+                            $zip = new ZipArchive();
+                            if ($zip->open($zipCacheFile) !== TRUE) {
+                                throw new Exception('Impossible ouvrir ZIP');
+                            }
+                            
+                            $filesToExtract = ['trips.txt', 'stop_times.txt'];
+                            foreach ($filesToExtract as $file) {
+                                if ($zip->locateName($file) !== false) {
+                                    $zip->extractTo($extractDir, $file);
+                                }
+                            }
+                            $zip->close();
+                        }
+                        
+                        // Charger trips pour cette route
+                        $trips = [];
+                        $tripIds = [];
+                        
+                        $tripsFile = $extractDir . '/trips.txt';
+                        $fh = fopen($tripsFile, 'r');
+                        $headers = fgetcsv($fh);
+                        $tripIdIdx = array_search('trip_id', $headers);
+                        $routeIdIdx = array_search('route_id', $headers);
+                        $serviceIdIdx = array_search('service_id', $headers);
+                        
+                        while (($row = fgetcsv($fh)) !== false) {
+                            if (($row[$routeIdIdx] ?? '') === $routeId) {
+                                $tripId = $row[$tripIdIdx] ?? '';
+                                $trips[] = [
+                                    'trip_id' => $tripId,
+                                    'route_id' => $routeId,
+                                    'service_id' => $row[$serviceIdIdx] ?? ''
+                                ];
+                                $tripIds[$tripId] = true;
+                            }
+                        }
+                        fclose($fh);
+                        
+                        if (empty($trips)) {
+                            $empty = json_encode(['trips' => [], 'stopTimes' => []]);
+                            file_put_contents($routeCacheFile, $empty);
+                            echo $empty;
+                            break;
+                        }
+                        
+                        // Charger stop_times
+                        $stopTimesFile = $extractDir . '/stop_times.txt';
+                        $fh = fopen($stopTimesFile, 'r');
+                        $headers = fgetcsv($fh);
+                        $tripIdIdx = array_search('trip_id', $headers);
+                        $stopIdIdx = array_search('stop_id', $headers);
+                        $arrivalIdx = array_search('arrival_time', $headers);
+                        $sequenceIdx = array_search('stop_sequence', $headers);
+                        
+                        $stopTimesByTrip = [];
+                        
+                        while (($row = fgetcsv($fh)) !== false) {
+                            $tripId = $row[$tripIdIdx] ?? '';
+                            
+                            if (!isset($tripIds[$tripId])) continue;
+                            
+                            if (!isset($stopTimesByTrip[$tripId])) {
+                                $stopTimesByTrip[$tripId] = [];
+                            }
+                            
+                            $arrivalTime = $row[$arrivalIdx] ?? '';
+                            $stopTimesByTrip[$tripId][] = [
+                                'stop_id' => $row[$stopIdIdx] ?? '',
+                                'arrival_time' => $arrivalTime,
+                                'departure_time' => $arrivalTime,
+                                'stop_sequence' => (int)($row[$sequenceIdx] ?? 0)
+                            ];
+                        }
+                        fclose($fh);
+                        
+                        // Trier par séquence
+                        foreach ($stopTimesByTrip as $tid => &$times) {
+                            usort($times, function($a, $b) {
+                                return $a['stop_sequence'] - $b['stop_sequence'];
+                            });
+                        }
+                        
+                        $routeData = [
+                            'trips' => $trips,
+                            'stopTimes' => $stopTimesByTrip
+                        ];
+                        
+                        $json = json_encode($routeData);
+                        file_put_contents($routeCacheFile, $json);
+                        echo $json;
+                    }
+                    break;
                 
             default:
                 error_log("Action invalide: " . $action);
