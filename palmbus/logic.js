@@ -4581,32 +4581,10 @@ async function fetchVehiclePositions() {
         const buffer = await response.arrayBuffer();
         const data = await decodeProtobuf(buffer);
 
-        const activeVehicleIds = new Set();
-        
-        function isInViewport(lat, lng) {
-            const bounds = map.getBounds();
-            return bounds.contains(L.latLng(lat, lng));
-        }
-        const routeDataMap = new Map();
-
-        const routesToLoad = new Set();
-        data.entity.forEach(entity => {
-            if (entity.vehicle && entity.vehicle.trip && entity.vehicle.trip.routeId) {
-                routesToLoad.add(entity.vehicle.trip.routeId);
-            }
-        });
-
-        await Promise.all(
-            Array.from(routesToLoad).map(async (routeId) => {
-                const routeData = await loadRouteData(routeId);
-                routeDataMap.set(routeId, routeData);
-            })
-        );
 
         data.entity.forEach(entity => {
             const vehicle = entity.vehicle;
             if (vehicle) {
-
 
                 const id = vehicle.vehicle.label || vehicle.vehicle.id || entity.id;
                 const vehicleOptionsBadges = getVehicleOptionsBadges(id);
