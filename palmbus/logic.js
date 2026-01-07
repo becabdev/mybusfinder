@@ -4661,14 +4661,14 @@ async function fetchVehiclePositions() {
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    const routeData = routeDataMap.get(line) || { trips: [], stopTimes: {} };
-                    const stopTimesForTrip = routeData.stopTimes[tripId] || [];
-                    
                     stopsListHTML = filteredStops.map(stop => {
+                        const timeLeft = stop.delay;
+                        const timeLeftText = timeLeft !== null 
+                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                            : '';
+                        
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                        
-                        const delayInfo = calculateStopDelay(tripId, stop.stopId, stopTimesForTrip);
-                        
+                                    
                         let timeDisplay = '';
                         let delayBadge = '';
                         
