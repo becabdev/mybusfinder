@@ -1901,7 +1901,7 @@ function hideLoadingScreen() {
             localStorage.setItem('buildversion', window.BUILD_VERSION);
                 setTimeout(() => {
                     window.location.reload();
-                }, 1000);
+                }, 300);
 
         } else {
 
@@ -2296,48 +2296,189 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
-// Chargement progressif et optimisé
+// Fonction pour créer l'overlay de chargement
+function createLoadingOverlay() {
+    // Vérifier si l'overlay existe déjà
+    let overlay = document.getElementById('gtfs-loading-overlay');
+    
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'gtfs-loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-container">
+                <div class="loading-icon">🚀</div>
+                <div class="loading-text">Chargement des données GTFS...</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                </div>
+                <div class="progress-percentage" id="progress-percentage">0%</div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        // Ajouter les styles
+        const style = document.createElement('style');
+        style.textContent = `
+            #gtfs-loading-overlay {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                z-index: 999999;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            }
+            
+            #gtfs-loading-overlay.visible {
+                opacity: 1;
+                visibility: visible;
+            }
+            
+            .loading-container {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 20px 30px;
+                border-radius: 16px;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                min-width: 320px;
+                backdrop-filter: blur(10px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+            
+            .loading-icon {
+                font-size: 32px;
+                text-align: center;
+                animation: rocket-bounce 1s ease-in-out infinite;
+                margin-bottom: 10px;
+            }
+            
+            @keyframes rocket-bounce {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+            }
+            
+            .loading-text {
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                text-align: center;
+                margin-bottom: 15px;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            }
+            
+            .progress-bar-container {
+                width: 100%;
+                height: 8px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                overflow: hidden;
+                margin-bottom: 10px;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .progress-bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+                border-radius: 10px;
+                width: 0%;
+                transition: width 0.4s ease;
+                box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+            }
+            
+            .progress-percentage {
+                color: white;
+                font-size: 14px;
+                font-weight: 700;
+                text-align: center;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    return overlay;
+}
+
+// Fonction pour afficher l'overlay
+function showLoadingOverlay() {
+    const overlay = createLoadingOverlay();
+    overlay.classList.add('visible');
+}
+
+// Fonction pour masquer l'overlay
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('gtfs-loading-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+}
+
+// Fonction pour mettre à jour la progression
+function updateLoadingProgress(percentage, text = null) {
+    const progressFill = document.getElementById('progress-bar-fill');
+    const progressPercentage = document.getElementById('progress-percentage');
+    const loadingText = document.querySelector('.loading-text');
+    
+    if (progressFill) {
+        progressFill.style.width = `${percentage}%`;
+    }
+    
+    if (progressPercentage) {
+        progressPercentage.textContent = `${percentage}%`;
+    }
+    
+    if (text && loadingText) {
+        loadingText.textContent = text;
+    }
+    
+    // Masquer automatiquement à 100%
+    if (percentage >= 100) {
+        setTimeout(() => {
+            hideLoadingOverlay();
+        }, 500);
+    }
+}
+
+// Version modifiée de votre fonction loadGTFSDataOptimized
 async function loadGTFSDataOptimized() {
     try {
         disparaitrelelogo();
-        const loadingtext = document.getElementById('loading-text');
+        
+        // Afficher l'overlay
+        showLoadingOverlay();
         
         // Indicateur de progression
         let progress = 0;
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
-            loadingtext.textContent = `Chargement... ${progress}% 🚀`;
+            updateLoadingProgress(progress, `Chargement des données GTFS... (${step}/${total})`);
         };
         
         updateProgress(0, 3);
         soundsUX('MBF_Popup');
 
-        // VÉRIFICATION: Tester d'abord l'endpoint info
-        console.log('🔍 Vérification des endpoints...');
+        console.log('Vérification des endpoints...');
         const infoResponse = await fetch('proxy-cors/proxy_gtfs.php?action=info', {
             cache: 'no-store'
         });
         
         if (!infoResponse.ok) {
             const errorText = await infoResponse.text();
-            console.error('Erreur info endpoint:', errorText);
-            throw new Error(`Endpoint info invalide: ${infoResponse.status}`);
+            console.error('Erreur info endpoint', errorText);
+            throw new Error(`Endpoint info invalide ${infoResponse.status}`);
         }
         
         const serverInfo = await infoResponse.json();
         console.log('📊 Info serveur:', serverInfo);
         
-        // Vérifier que les fichiers existent côté serveur
         if (!serverInfo.routes_exists) {
-            console.warn('⚠️ Fichier routes non trouvé, première génération en cours...');
-            // Attendre un peu que le serveur génère les fichiers
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         updateProgress(1, 3);
+        updateLoadingProgress(33, 'Chargement des routes...');
 
-        // ÉTAPE 1: Charger les routes
-        console.log('📥 Chargement des routes...');
+        console.log('Chargement des routes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
             cache: 'no-store',
             headers: {
@@ -2348,9 +2489,8 @@ async function loadGTFSDataOptimized() {
         
         if (!routesResponse.ok) {
             const errorText = await routesResponse.text();
-            console.error('Erreur routes:', errorText);
+            console.error('Erreur routes', errorText);
             
-            // Essayer de parser comme JSON pour plus d'infos
             try {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(`Erreur routes (${routesResponse.status}): ${errorJson.error || errorText}`);
@@ -2359,23 +2499,21 @@ async function loadGTFSDataOptimized() {
             }
         }
         
-        // Vérifier le Content-Type
         const contentType = routesResponse.headers.get('Content-Type');
-        console.log('Content-Type routes:', contentType);
+        console.log('Content-Type routes :', contentType);
         
         const routesData = await routesResponse.json();
-        console.log('✅ Routes chargées:', Object.keys(routesData).length, 'lignes');
+        console.log('Routes chargées', Object.keys(routesData).length, 'lignes');
         
-        // Traitement ultra-rapide des routes
         Object.entries(routesData).forEach(([routeId, data]) => {
             lineColors[routeId] = data.c ? `#${data.c}` : '#FFFFFF';
             lineName[routeId] = data.s || data.l || routeId;
         });
         
         updateProgress(2, 3);
+        updateLoadingProgress(66, 'Chargement des arrêts...');
         
-        // ÉTAPE 2: Charger les stops
-        console.log('📥 Chargement des stops...');
+        console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
             cache: 'no-store',
             headers: {
@@ -2391,19 +2529,19 @@ async function loadGTFSDataOptimized() {
         }
         
         const stopsData = await stopsResponse.json();
-        console.log('✅ Stops chargés:', Object.keys(stopsData).length, 'arrêts');
+        console.log('Stops chargés:', Object.keys(stopsData).length, 'arrêts');
         
-        // Traitement ultra-rapide des stops
         Object.entries(stopsData).forEach(([stopId, data]) => {
             stopIds.push(stopId);
             stopNameMap[stopId] = data.n || stopId;
         });
         
         updateProgress(3, 3);
+        updateLoadingProgress(100, 'Terminé ! 🎉');
         
         apparaitrelelogo();
         
-        console.log('✅ Données GTFS chargées:', {
+        console.log('Données GTFS chargées', {
             routes: Object.keys(lineColors).length,
             stops: stopIds.length,
             memoryUsed: performance.memory ? 
@@ -2419,19 +2557,20 @@ async function loadGTFSDataOptimized() {
         };
         
     } catch (error) {
-        console.error('❌ Erreur lors du chargement GTFS:', error);
+        console.error('Erreur lors du chargement gtfs', error);
         console.error('Stack:', error.stack);
         
-        // Message d'erreur plus détaillé pour l'utilisateur
+        // Masquer l'overlay en cas d'erreur
+        hideLoadingOverlay();
+        
         const errorMessage = error.message || 'Erreur inconnue';
-        toastBottomRight.error(`Erreur de chargement: ${errorMessage}`);
+        toastBottomRight.error(`Erreur de chargement ${errorMessage}`);
         soundsUX('MBF_NotificationError');
         
         throw error;
     }
 }
 
-// Fonction pour obtenir les infos sur le cache serveur (optionnel)
 async function getServerCacheInfo() {
     try {
         const response = await fetch('proxy-cors/proxy_gtfs.php?action=info');
@@ -2452,23 +2591,19 @@ async function getServerCacheInfo() {
     }
 }
 
-// Fonction principale d'initialisation (remplace l'ancienne initializeGTFS)
 async function initializeGTFS() {
     try {
-        // Nettoyage des données existantes
         Object.keys(lineColors).forEach(key => delete lineColors[key]);
         Object.keys(lineName).forEach(key => delete lineName[key]);
         stopIds.length = 0;
         Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
         
-        // Chargement optimisé
         const startTime = performance.now();
         const data = await loadGTFSDataOptimized();
         const loadTime = ((performance.now() - startTime) / 1000).toFixed(2);
         
-        console.log(`⚡ GTFS chargé en ${loadTime}s`);
+        console.log(`GTFS chargé en ${loadTime}s`);
         
-        // Optionnel: afficher les infos du cache serveur
         if (window.location.search.includes('debug')) {
             await getServerCacheInfo();
         }
@@ -2520,7 +2655,7 @@ async function checkGTFSUpdate() {
                 }
             }
         } catch (error) {
-            console.warn('Impossible de vérifier la version serveur:', error);
+            console.warn('Impossible de vérifier la version serveur', error);
         }
         
         return { needsUpdate: false, metadata: storedMetadata };
@@ -5512,12 +5647,6 @@ activeIds.forEach(id => {
     }
 });
 
-setInterval(() => {
-    if (textColorCache.size > 20) {
-        textColorCache.clear();
-    }
-}, 180000);
-
         
 let isMenuVisible = true;
 
@@ -8296,11 +8425,6 @@ setInterval(() => {
             const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
             keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
         }
-    }
-    
-    if (contentCache && contentCache.size > 50) {
-        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
-        keysToDelete.forEach(key => contentCache.delete(key));
     }
     
     // Forcer le garbage collection si disponible
