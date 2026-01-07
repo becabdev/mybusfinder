@@ -969,20 +969,33 @@ async function loadGtfsCore() {
             return;
         }
 
-        // MODIFIÉ : Requête avec décompression automatique
         const response = await fetch(`${GTFS_API_URL}?action=core`);
         if (!response.ok) {
             throw new Error(`Erreur serveur: ${response.status}`);
         }
 
         const data = await response.json();
-
-        console.log('Données reçues du serveur:', data);
-        console.log('Routes:', data.routes);
-        console.log('Nombre de routes:', Object.keys(data.routes || {}).length);
-
-        state.routes = data.routes || {};
-        state.stops = data.stops || {};
+        
+        // MODIFIÉ : Convertir format compact en format complet
+        state.routes = {};
+        for (const [id, r] of Object.entries(data.routes || {})) {
+            state.routes[id] = {
+                route_short_name: r.s,
+                route_long_name: r.l,
+                route_color: r.c,
+                route_text_color: r.t
+            };
+        }
+        
+        state.stops = {};
+        for (const [id, s] of Object.entries(data.stops || {})) {
+            state.stops[id] = {
+                stop_name: s.n,
+                stop_lat: s.lat,
+                stop_lon: s.lon
+            };
+        }
+        
         state.calendar = data.calendar || {};
         state.calendarDates = data.calendarDates || {};
 
@@ -1006,7 +1019,6 @@ async function loadGtfsCore() {
     }
 }
 
-// Chargement données ligne spécifique depuis serveur (trips + stop_times)
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
 
@@ -1106,13 +1118,6 @@ function showLines() {
     hideAllViews();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('lines-view').classList.add('active');
-    
-    // AJOUTER CES LOGS
-    console.log('showLines() appelé');
-    console.log('state.routes:', state.routes);
-    console.log('Type de state.routes:', typeof state.routes);
-    console.log('Nombre routes:', Object.keys(state.routes || {}).length);
-    
     document.getElementById('back-btn').style.display = 'none';
     document.getElementById('header-title').textContent = 'My Bus Schedule';
     document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
