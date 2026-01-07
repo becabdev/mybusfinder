@@ -243,6 +243,33 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
     return true;
 }
 
+// Construction index trip->route
+function buildTripIndex($extractDir, $tripIndexFile) {
+    $tripsFile = $extractDir . '/trips.txt';
+    if (!file_exists($tripsFile)) {
+        error_log('Warning: trips.txt non trouvé pour buildTripIndex');
+        return;
+    }
+    
+    $tripToRoute = [];
+    $fh = fopen($tripsFile, 'r');
+    $headers = fgetcsv($fh);
+    $tripIdIdx = array_search('trip_id', $headers);
+    $routeIdIdx = array_search('route_id', $headers);
+    
+    while (($row = fgetcsv($fh)) !== false) {
+        $tripId = $row[$tripIdIdx] ?? '';
+        $routeId = $row[$routeIdIdx] ?? '';
+        if ($tripId && $routeId) {
+            $tripToRoute[$tripId] = $routeId;
+        }
+    }
+    fclose($fh);
+    
+    file_put_contents($tripIndexFile, json_encode($tripToRoute));
+    return $tripToRoute;
+}
+
 function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {
     $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
