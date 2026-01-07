@@ -2304,12 +2304,9 @@ function createLoadingOverlay() {
         overlay.id = 'gtfs-loading-overlay';
         overlay.innerHTML = `
             <div class="loading-container">
-                <div class="loading-icon">🚀</div>
-                <div class="loading-text">Chargement des données dyna en cours - async... 💫</div>
                 <div class="progress-bar-container">
                     <div class="progress-bar-fill" id="progress-bar-fill"></div>
                 </div>
-                <div class="progress-percentage" id="progress-percentage">0%</div>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -2320,7 +2317,7 @@ function createLoadingOverlay() {
                 position: fixed;
                 bottom: 20px;
                 left: 50%;
-                transform: translateX(-70%);
+                transform: translateX(-50%) translateY(-20%);
                 z-index: 999999999999999999999;
                 opacity: 0;
                 visibility: hidden;
@@ -2330,38 +2327,13 @@ function createLoadingOverlay() {
             #gtfs-loading-overlay.visible {
                 opacity: 1;
                 visibility: visible;
-                transform: translateX(-50%);
+                transform: translateX(-50%) translateY(0%);
             }
             
             .loading-container {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 padding: 20px 30px;
                 border-radius: 16px;
-                box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
                 min-width: 320px;
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-            }
-            
-            .loading-icon {
-                font-size: 32px;
-                text-align: center;
-                animation: rocket-bounce 1s ease-in-out infinite;
-                margin-bottom: 10px;
-            }
-            
-            @keyframes rocket-bounce {
-                0%, 100% { transform: translateY(0px); }
-                50% { transform: translateY(-10px); }
-            }
-            
-            .loading-text {
-                color: white;
-                font-size: 16px;
-                font-weight: 600;
-                text-align: center;
-                margin-bottom: 15px;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
             }
             
             .progress-bar-container {
@@ -2382,14 +2354,7 @@ function createLoadingOverlay() {
                 transition: width 0.4s ease;
                 box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
             }
-            
-            .progress-percentage {
-                color: white;
-                font-size: 14px;
-                font-weight: 700;
-                text-align: center;
-                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-            }
+
         `;
         document.head.appendChild(style);
     }
@@ -2409,21 +2374,13 @@ function hideLoadingOverlay() {
     }
 }
 
-function updateLoadingProgress(percentage, text = null) {
+function updateLoadingProgress(percentage) {
     const progressFill = document.getElementById('progress-bar-fill');
     const progressPercentage = document.getElementById('progress-percentage');
     const loadingText = document.querySelector('.loading-text');
     
     if (progressFill) {
         progressFill.style.width = `${percentage}%`;
-    }
-    
-    if (progressPercentage) {
-        progressPercentage.textContent = `${percentage}%`;
-    }
-    
-    if (text && loadingText) {
-        loadingText.textContent = text;
     }
     
     if (percentage >= 100) {
@@ -2442,7 +2399,7 @@ async function loadGTFSDataOptimized() {
         let progress = 0;
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
-            updateLoadingProgress(progress, `Chargement des données dyna en cours - async... 💫 (${step}/${total})`);
+            updateLoadingProgress(progress);
         };
         
         updateProgress(0, 3);
@@ -2467,7 +2424,7 @@ async function loadGTFSDataOptimized() {
         }
 
         updateProgress(1, 3);
-        updateLoadingProgress(33, 'Chargement des routes...');
+        updateLoadingProgress(33);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2502,7 +2459,7 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(2, 3);
-        updateLoadingProgress(66, 'Chargement des arrêts...');
+        updateLoadingProgress(66);
         
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2528,7 +2485,7 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(3, 3);
-        updateLoadingProgress(100, 'Bon voyage ! 🎉');
+        updateLoadingProgress(100);
         
         apparaitrelelogo();
         
