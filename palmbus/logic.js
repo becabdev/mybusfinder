@@ -2033,14 +2033,16 @@ async function checkGTFSUpdate() {
             request.onerror = () => reject(request.error);
         });
         
-        if (!storedMetadata || !storedMetadata.fileHash) {
+        if (!storedMetadata || !storedMetadata.lastUpdate) {
             return { needsUpdate: true };
         }
         
-        const { fileHash, needsFullDownload } = await getFileHash();
+        const cacheAge = Date.now() - new Date(storedMetadata.lastUpdate).getTime();
+        const cacheTTL = 4 * 24 * 60 * 60 * 1000; // 4 jours en millisecondes
         
-        if (fileHash !== storedMetadata.fileHash) {
-            return { needsUpdate: true, fileHash };
+        if (cacheAge > cacheTTL) {
+            console.log('Cache expiré, rechargement nécessaire');
+            return { needsUpdate: true };
         }
         
         return { needsUpdate: false, metadata: storedMetadata };
@@ -2059,13 +2061,16 @@ async function saveToCache(data, metadata) {
 
             store.put(data, 'gtfsData');
             
-            if (!metadata) {
-                metadata = {};
-            }
-            metadata.lastUpdate = new Date().toISOString();
-            store.put(metadata, 'gtfsMetadata');
+            const metadataToSave = {
+                ...metadata,
+                lastUpdate: new Date().toISOString()
+            };
+            store.put(metadataToSave, 'gtfsMetadata');
 
-            transaction.oncomplete = () => resolve();
+            transaction.oncomplete = () => {
+                console.log('Données GTFS sauvegardées en cache');
+                resolve();
+            };
             transaction.onerror = () => reject(transaction.error);
         });
     } catch (error) {
@@ -2073,7 +2078,6 @@ async function saveToCache(data, metadata) {
         throw error;
     }
 }
-
 async function getFromCache() {
     try {
         const db = await initDB();
@@ -2091,7 +2095,7 @@ async function getFromCache() {
     }
 }
 
-async function extractGTFSFiles() {
+/* async function extractGTFSFiles() {
     try {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
@@ -2308,6 +2312,8 @@ async function loadLineTerminusData(stopsFileContent) {
         console.error('Erreur', error);
     }
 }
+    
+*/
 
 async function initializeGTFS() {
     try {
