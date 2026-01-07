@@ -2140,7 +2140,7 @@ async function getFromCache() {
         throw error;
     }
 }
-
+*/
 function parseCSVLine(csvLine) {
     const result = [];
     let currentValue = '';
@@ -2169,6 +2169,7 @@ function parseCSVLine(csvLine) {
     });
 }
 
+/*
 async function loadLineColors(routesFileContent) {
     try {
         if (!routesFileContent) {
@@ -2336,6 +2337,11 @@ async function initializeGTFS() {
             
             coreData = await coreResponse.json();
             
+            // AJOUTER CES LOGS DE DÉBOGAGE :
+            console.log('Données reçues du serveur:', coreData);
+            console.log('Nombre de routes:', Object.keys(coreData.routes || {}).length);
+            console.log('Nombre de stops:', Object.keys(coreData.stops || {}).length);
+            
             await saveToCache({
                 routes: coreData.routes,
                 stops: coreData.stops,
@@ -2350,10 +2356,22 @@ async function initializeGTFS() {
             const cachedData = await getFromCache();
             
             if (!cachedData) {
+                console.log('Pas de cache, rechargement...');
                 return await initializeGTFS();
             }
             
             coreData = cachedData;
+            
+            // AJOUTER CES LOGS DE DÉBOGAGE :
+            console.log('Données chargées du cache:', coreData);
+            console.log('Nombre de routes:', Object.keys(coreData.routes || {}).length);
+            console.log('Nombre de stops:', Object.keys(coreData.stops || {}).length);
+        }
+        
+        // Vérifier que les données existent
+        if (!coreData || !coreData.routes || !coreData.stops) {
+            console.error('Données GTFS invalides ou manquantes:', coreData);
+            throw new Error('Données GTFS invalides');
         }
         
         if (coreData.routes) {
@@ -2370,8 +2388,10 @@ async function initializeGTFS() {
             });
         }
         
-        console.log(`${Object.keys(lineColors).length} lignes chargées`);
-        console.log(`${stopIds.length} arrêts chargés`);
+        console.log(`✅ ${Object.keys(lineColors).length} lignes chargées`);
+        console.log(`✅ ${stopIds.length} arrêts chargés`);
+        console.log('Exemple de ligne:', Object.keys(lineColors)[0], lineColors[Object.keys(lineColors)[0]]);
+        console.log('Exemple de nom:', Object.keys(lineName)[0], lineName[Object.keys(lineName)[0]]);
         
         return {
             lineColors,
