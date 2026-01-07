@@ -969,24 +969,18 @@ async function loadGtfsCore() {
             return;
         }
 
-        const routesResponse = await fetch(`${GTFS_API_URL}?action=routes`);
-        if (!routesResponse.ok) {
-            throw new Error(`Erreur routes: ${routesResponse.status}`);
+        // CHANGER: Charger TOUT depuis l'action core (pas routes/stops séparément)
+        const coreResponse = await fetch(`${GTFS_API_URL}?action=core`);
+        if (!coreResponse.ok) {
+            throw new Error(`Erreur core: ${coreResponse.status}`);
         }
-        const routesData = await routesResponse.json();
+        const coreData = await coreResponse.json();
         
-        const stopsResponse = await fetch(`${GTFS_API_URL}?action=stops`);
-        if (!stopsResponse.ok) {
-            throw new Error(`Erreur stops: ${stopsResponse.status}`);
-        }
-        const stopsData = await stopsResponse.json();
-        
-        console.log('Routes reçues:', routesData);
-        console.log('Stops reçus:', stopsData);
+        console.log('Core data reçu:', coreData);
         
         // Convertir format compact en format complet
         state.routes = {};
-        for (const [id, route] of Object.entries(routesData || {})) {
+        for (const [id, route] of Object.entries(coreData.routes || {})) {
             if (!route) continue;
             
             // Format compact
@@ -1005,13 +999,13 @@ async function loadGtfsCore() {
         }
         
         state.stops = {};
-        for (const [id, stop] of Object.entries(stopsData || {})) {
+        for (const [id, stop] of Object.entries(coreData.stops || {})) {
             if (!stop) continue;
             
             // Format compact - AJOUTER LE STOP_ID
             if (stop.n !== undefined) {
                 state.stops[id] = {
-                    stop_id: id,  // ← AJOUT CRITIQUE
+                    stop_id: id,
                     stop_name: stop.n,
                     stop_lat: stop.lat,
                     stop_lon: stop.lon
@@ -1019,20 +1013,21 @@ async function loadGtfsCore() {
             }
             // Format complet
             else if (stop.stop_name !== undefined) {
-                // S'assurer que stop_id existe
                 state.stops[id] = {
-                    stop_id: id,  // ← AJOUT CRITIQUE
+                    stop_id: id,
                     ...stop
                 };
             }
         }
         
-        // Calendar et calendarDates sont vides pour l'instant
-        state.calendar = {};
-        state.calendarDates = {};
+        // AJOUTER: Charger calendar et calendarDates
+        state.calendar = coreData.calendar || {};
+        state.calendarDates = coreData.calendarDates || {};
         
         console.log('Routes chargées:', Object.keys(state.routes).length);
         console.log('Stops chargés:', Object.keys(state.stops).length);
+        console.log('Calendar chargé:', Object.keys(state.calendar).length);
+        console.log('CalendarDates chargé:', Object.keys(state.calendarDates).length);
         
         if (Object.keys(state.routes).length === 0) {
             throw new Error('Aucune route chargée');
