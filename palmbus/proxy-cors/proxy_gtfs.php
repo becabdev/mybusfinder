@@ -178,60 +178,72 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
         ];
     }
     
-    // AJOUTER: Charger calendar et calendar_dates
-    $calendar = [];
-    $calendarFile = $extractDir . '/calendar.txt';
-    if (file_exists($calendarFile)) {
-        $fh = fopen($calendarFile, 'r');
+    $parseCSV = function($filepath) {
+        if (!file_exists($filepath)) return [];
+        
+        $result = [];
+        $fh = fopen($filepath, 'r');
+        if (!$fh) return [];
+        
         $headers = fgetcsv($fh);
+        if (!$headers) {
+            fclose($fh);
+            return [];
+        }
+        
         while (($row = fgetcsv($fh)) !== false) {
             $item = [];
             foreach ($headers as $i => $header) {
                 $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
             }
-            if (!empty($item['service_id'])) {
-                $calendar[$item['service_id']] = $item;
-            }
+            $result[] = $item;
         }
         fclose($fh);
+        
+        return $result;
+    };
+    
+    // Parser calendar.txt
+    $calendarArray = $parseCSV($extractDir . '/calendar.txt');
+    $calendarById = [];
+    foreach ($calendarArray as $item) {
+        $serviceId = $item['service_id'] ?? '';
+        if ($serviceId) {
+            $calendarById[$serviceId] = $item;
+        }
     }
     
-    // Charger calendar_dates
+    // Parser calendar_dates.txt
+    $calendarDatesArray = $parseCSV($extractDir . '/calendar_dates.txt');
     $calendarDatesByDate = [];
-    $calendarDatesFile = $extractDir . '/calendar_dates.txt';
-    if (file_exists($calendarDatesFile)) {
-        $fh = fopen($calendarDatesFile, 'r');
-        $headers = fgetcsv($fh);
-        while (($row = fgetcsv($fh)) !== false) {
-            $item = [];
-            foreach ($headers as $i => $header) {
-                $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
-            }
-            
-            $date = $item['date'] ?? '';
-            if (empty($date)) continue;
-            
-            if (!isset($calendarDatesByDate[$date])) {
-                $calendarDatesByDate[$date] = ['added' => [], 'removed' => []];
-            }
-            
-            if (($item['exception_type'] ?? '') === '1') {
-                $calendarDatesByDate[$date]['added'][] = $item['service_id'] ?? '';
-            } else {
-                $calendarDatesByDate[$date]['removed'][] = $item['service_id'] ?? '';
-            }
+    foreach ($calendarDatesArray as $cd) {
+        $date = $cd['date'] ?? '';
+        if (empty($date)) continue;
+        
+        if (!isset($calendarDatesByDate[$date])) {
+            $calendarDatesByDate[$date] = ['added' => [], 'removed' => []];
         }
-        fclose($fh);
+        
+        if (($cd['exception_type'] ?? '') === '1') {
+            $calendarDatesByDate[$date]['added'][] = $cd['service_id'] ?? '';
+        } else {
+            $calendarDatesByDate[$date]['removed'][] = $cd['service_id'] ?? '';
+        }
+    }
+    
+    // Forcer objet vide si aucune donnée
+    if (empty($calendarById)) {
+        $calendarById = new stdClass();
     }
     
     $core = [
         'routes' => $routesExpanded,
         'stops' => $stopsExpanded,
-        'calendar' => $calendar,
+        'calendar' => $calendarById,
         'calendarDates' => $calendarDatesByDate,
         'generated' => time()
     ];
-    
+        
     // Compression GZIP
     $json = json_encode($core);
     $compressed = gzencode($json, 9);
