@@ -2296,9 +2296,7 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
-// Fonction pour créer l'overlay de chargement
 function createLoadingOverlay() {
-    // Vérifier si l'overlay existe déjà
     let overlay = document.getElementById('gtfs-loading-overlay');
     
     if (!overlay) {
@@ -2307,7 +2305,7 @@ function createLoadingOverlay() {
         overlay.innerHTML = `
             <div class="loading-container">
                 <div class="loading-icon">🚀</div>
-                <div class="loading-text">Chargement des données GTFS...</div>
+                <div class="loading-text">Chargement des données dyna en cours - async... 💫</div>
                 <div class="progress-bar-container">
                     <div class="progress-bar-fill" id="progress-bar-fill"></div>
                 </div>
@@ -2316,23 +2314,23 @@ function createLoadingOverlay() {
         `;
         document.body.appendChild(overlay);
         
-        // Ajouter les styles
         const style = document.createElement('style');
         style.textContent = `
             #gtfs-loading-overlay {
                 position: fixed;
                 bottom: 20px;
                 left: 50%;
-                transform: translateX(-50%);
+                transform: translateX(-70%);
                 z-index: 999999999999999999999;
                 opacity: 0;
                 visibility: hidden;
-                transition: opacity 0.3s ease, visibility 0.3s ease;
+                transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
             }
             
             #gtfs-loading-overlay.visible {
                 opacity: 1;
                 visibility: visible;
+                transform: translateX(-50%);
             }
             
             .loading-container {
@@ -2399,13 +2397,11 @@ function createLoadingOverlay() {
     return overlay;
 }
 
-// Fonction pour afficher l'overlay
 function showLoadingOverlay() {
     const overlay = createLoadingOverlay();
     overlay.classList.add('visible');
 }
 
-// Fonction pour masquer l'overlay
 function hideLoadingOverlay() {
     const overlay = document.getElementById('gtfs-loading-overlay');
     if (overlay) {
@@ -2413,7 +2409,6 @@ function hideLoadingOverlay() {
     }
 }
 
-// Fonction pour mettre à jour la progression
 function updateLoadingProgress(percentage, text = null) {
     const progressFill = document.getElementById('progress-bar-fill');
     const progressPercentage = document.getElementById('progress-percentage');
@@ -2431,7 +2426,6 @@ function updateLoadingProgress(percentage, text = null) {
         loadingText.textContent = text;
     }
     
-    // Masquer automatiquement à 100%
     if (percentage >= 100) {
         setTimeout(() => {
             hideLoadingOverlay();
@@ -2439,19 +2433,16 @@ function updateLoadingProgress(percentage, text = null) {
     }
 }
 
-// Version modifiée de votre fonction loadGTFSDataOptimized
 async function loadGTFSDataOptimized() {
     try {
-        disparaitrelelogo();
+        setTimeout(() => {
+            showLoadingOverlay();
+        }, 200);        
         
-        // Afficher l'overlay
-        showLoadingOverlay();
-        
-        // Indicateur de progression
         let progress = 0;
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
-            updateLoadingProgress(progress, `Chargement des données GTFS... (${step}/${total})`);
+            updateLoadingProgress(progress, `Chargement des données dyna en cours - async... 💫 (${step}/${total})`);
         };
         
         updateProgress(0, 3);
@@ -2478,7 +2469,7 @@ async function loadGTFSDataOptimized() {
         updateProgress(1, 3);
         updateLoadingProgress(33, 'Chargement des routes...');
 
-        console.log('Chargement des routes...');
+        console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
             cache: 'no-store',
             headers: {
@@ -2537,7 +2528,7 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(3, 3);
-        updateLoadingProgress(100, 'Terminé ! 🎉');
+        updateLoadingProgress(100, 'Bon voyage ! 🎉');
         
         apparaitrelelogo();
         
