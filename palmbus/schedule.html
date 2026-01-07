@@ -969,77 +969,70 @@ async function loadGtfsCore() {
             return;
         }
 
-        const response = await fetch(`${GTFS_API_URL}?action=core`);
-        if (!response.ok) {
-            throw new Error(`Erreur serveur: ${response.status}`);
+        // ÉTAPE 1: Récupérer les routes
+        const routesResponse = await fetch(`${GTFS_API_URL}?action=routes`);
+        if (!routesResponse.ok) {
+            throw new Error(`Erreur routes: ${routesResponse.status}`);
         }
-
-        const data = await response.json();
+        const routesData = await routesResponse.json();
         
-        console.log('Données brutes reçues:', data);
+        // ÉTAPE 2: Récupérer les stops
+        const stopsResponse = await fetch(`${GTFS_API_URL}?action=stops`);
+        if (!stopsResponse.ok) {
+            throw new Error(`Erreur stops: ${stopsResponse.status}`);
+        }
+        const stopsData = await stopsResponse.json();
         
-        // DÉTECTION AUTOMATIQUE DU FORMAT
+        console.log('Routes reçues:', routesData);
+        console.log('Stops reçus:', stopsData);
+        
+        // Convertir format compact en format complet
         state.routes = {};
+        for (const [id, route] of Object.entries(routesData || {})) {
+            if (!route) continue;
+            
+            // Format compact
+            if (route.s !== undefined) {
+                state.routes[id] = {
+                    route_short_name: route.s,
+                    route_long_name: route.l,
+                    route_color: route.c || 'FFFFFF',
+                    route_text_color: route.t || '000000'
+                };
+            }
+            // Format complet
+            else if (route.route_short_name !== undefined) {
+                state.routes[id] = route;
+            }
+        }
+        
         state.stops = {};
-        
-        // Convertir routes (détecte format compact ou complet)
-        if (data.routes && typeof data.routes === 'object') {
-            for (const [id, route] of Object.entries(data.routes)) {
-                if (!route) continue;
-                
-                // Format compact : {s, l, c, t}
-                if (route.s !== undefined) {
-                    state.routes[id] = {
-                        route_short_name: route.s,
-                        route_long_name: route.l,
-                        route_color: route.c || 'FFFFFF',
-                        route_text_color: route.t || '000000'
-                    };
-                }
-                // Format complet : {route_short_name, route_long_name, ...}
-                else if (route.route_short_name !== undefined) {
-                    state.routes[id] = route;
-                }
-                // Format inconnu
-                else {
-                    console.warn('Format route inconnu:', route);
-                }
+        for (const [id, stop] of Object.entries(stopsData || {})) {
+            if (!stop) continue;
+            
+            // Format compact
+            if (stop.n !== undefined) {
+                state.stops[id] = {
+                    stop_name: stop.n,
+                    stop_lat: stop.lat,
+                    stop_lon: stop.lon
+                };
+            }
+            // Format complet
+            else if (stop.stop_name !== undefined) {
+                state.stops[id] = stop;
             }
         }
         
-        // Convertir stops (détecte format compact ou complet)
-        if (data.stops && typeof data.stops === 'object') {
-            for (const [id, stop] of Object.entries(data.stops)) {
-                if (!stop) continue;
-                
-                // Format compact : {n, lat, lon}
-                if (stop.n !== undefined) {
-                    state.stops[id] = {
-                        stop_name: stop.n,
-                        stop_lat: stop.lat,
-                        stop_lon: stop.lon
-                    };
-                }
-                // Format complet : {stop_name, stop_lat, ...}
-                else if (stop.stop_name !== undefined) {
-                    state.stops[id] = stop;
-                }
-                // Format inconnu
-                else {
-                    console.warn('Format stop inconnu:', stop);
-                }
-            }
-        }
-        
-        state.calendar = data.calendar || {};
-        state.calendarDates = data.calendarDates || {};
+        // Calendar et calendarDates sont vides pour l'instant (pas dans routes/stops)
+        state.calendar = {};
+        state.calendarDates = {};
         
         console.log('Routes chargées:', Object.keys(state.routes).length);
         console.log('Stops chargés:', Object.keys(state.stops).length);
         
-        // Vérification finale
         if (Object.keys(state.routes).length === 0) {
-            throw new Error('Aucune route chargée - vérifier format serveur');
+            throw new Error('Aucune route chargée');
         }
 
         setCachedData('gtfs_core', {
@@ -1061,6 +1054,8 @@ async function loadGtfsCore() {
         `;
     }
 }
+
+
 async function loadTripsAndStopTimesForRoute(routeId) {
     if (state.loadedRoutes.has(routeId)) return;
 
