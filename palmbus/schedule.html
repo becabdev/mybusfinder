@@ -1476,9 +1476,26 @@ function getActiveServiceIds(dayOfWeek, gtfsDate) {
             }
         }
     } else {
-        serviceIds = [];
+        // FALLBACK: Si calendar est vide, récupérer tous les service_ids des trips
+        console.log('Calendar vide, utilisation des service_ids des trips');
+        const allServiceIds = new Set();
+        
+        // Parcourir tous les trips chargés pour trouver les service_ids
+        Object.values(state.trips).forEach(routeTrips => {
+            if (Array.isArray(routeTrips)) {
+                routeTrips.forEach(trip => {
+                    if (trip.service_id) {
+                        allServiceIds.add(trip.service_id);
+                    }
+                });
+            }
+        });
+        
+        serviceIds = Array.from(allServiceIds);
+        console.log('Service IDs trouvés dans trips:', serviceIds);
     }
 
+    // Appliquer les exceptions de calendarDates
     const ex = state.calendarDates?.[gtfsDate];
     if (ex) {
         for (const id of ex.added || []) {
@@ -1488,6 +1505,8 @@ function getActiveServiceIds(dayOfWeek, gtfsDate) {
             serviceIds = serviceIds.filter(sid => sid !== id);
         }
     }
+
+    console.log('Services actifs pour', gtfsDate, ':', serviceIds);
 
     cache.serviceIds.set(cacheKey, serviceIds);
     return serviceIds;
