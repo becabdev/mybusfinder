@@ -14,14 +14,54 @@ $url = 'https://www.data.gouv.fr/fr/datasets/r/47bc8088-6c72-43ad-a959-a5bbdd1aa
 $cacheDir = __DIR__ . '/cache';
 $extractDir = $cacheDir . '/extracted';
 $coreCacheFile = $cacheDir . '/gtfs_core.json';
-$tripIndexFile = $cacheDir . '/trip_index.json'; // Index trip_id -> route_id
+$tripIndexFile = $cacheDir . '/trip_index.json';
 $zipCacheFile = $cacheDir . '/gtfs.zip';
-$cacheTTL = 24 * 60 * 60;
+$cacheMarkerFile = $cacheDir . '/cache_created.txt'; // Marqueur date creation cache
+$cacheTTL = 4 * 24 * 60 * 60; // 4 jours
 
 $debug = isset($_GET['debug']);
 
 if (!is_dir($cacheDir)) mkdir($cacheDir, 0755, true);
 if (!is_dir($extractDir)) mkdir($extractDir, 0755, true);
+
+// Verification expiration cache global (4 jours)
+function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
+    if (!file_exists($cacheMarkerFile)) {
+        // Premier run: cree marqueur
+        file_put_contents($cacheMarkerFile, time());
+        return;
+    }
+    
+    $cacheCreationTime = (int)file_get_contents($cacheMarkerFile);
+    $cacheAge = time() - $cacheCreationTime;
+    
+    if ($cacheAge > $cacheTTL) {
+        // Cache expire: nettoyage complet
+        $files = glob($cacheDir . '/*.json');
+        foreach ($files as $file) {
+            if (is_file($file)) {
+                unlink($file);
+            }
+        }
+        
+        // Supprime aussi fichiers extraits
+        $extractDir = $cacheDir . '/extracted';
+        if (is_dir($extractDir)) {
+            $extractedFiles = glob($extractDir . '/*.txt');
+            foreach ($extractedFiles as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
+        }
+        
+        // Reset marqueur
+        file_put_contents($cacheMarkerFile, time());
+    }
+}
+
+// Nettoie cache si expire
+checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL);
 
 // Fonctions helper
 function parseCSVFileSmall($filepath) {
@@ -100,7 +140,8 @@ if (isset($_GET['action'])) {
     $action = $_GET['action'];
     
     try {
-        $coreValid = file_exists($coreCacheFile) && (time() - filemtime($coreCacheFile) < $cacheTTL);
+        // Verifie validite cache (fichier existe ET pas expire)
+        $coreValid = file_exists($coreCacheFile) && file_exists($cacheMarkerFile);
         
         if ($debug) $coreValid = false;
         
@@ -204,7 +245,8 @@ if (isset($_GET['action'])) {
                 
                 $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
                 
-                if (file_exists($routeCacheFile) && (time() - filemtime($routeCacheFile) < $cacheTTL)) {
+                // Cache valide si existe (pas de verif TTL individuel, gere par nettoyage global)
+                if (file_exists($routeCacheFile)) {
                     // Cache existe
                     echo file_get_contents($routeCacheFile);
                 } else {
