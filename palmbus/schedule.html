@@ -1576,7 +1576,7 @@ function getStopsForDestination(routeId, destinationId) {
     const stopTimesByRoute = state.stopTimes[routeId];
     
     const stopsMap = new Map();
-    const stopOrderMap = new Map(); // Pour garder l'ordre
+    const stopOrderMap = new Map(); // Pour garder l'ordre moyen
 
     trips.forEach(trip => {
         const tripStops = stopTimesByRoute[trip.trip_id];
@@ -1585,33 +1585,23 @@ function getStopsForDestination(routeId, destinationId) {
 
         const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
         
-        if (destIndex === -1) return; // Destination pas dans ce trip
+        if (destIndex === -1 || destIndex === 0) return; // Pas de destination ou destination au début
         
-        // Ajouter TOUS les autres arrêts du trip (avant ET après si besoin)
-        tripStops.forEach((st, idx) => {
-            // Ne pas inclure la destination elle-même
-            if (idx === destIndex) return;
-            
-            // Pour un trajet normal, on veut les arrêts AVANT la destination
-            // Pour un trajet retour, la destination est au début, donc on veut APRÈS
-            if (destIndex > 0 && idx >= destIndex) return; // Cas normal
-            if (destIndex === 0 && idx > destIndex) {
-                // Cas retour : on garde les arrêts après
-            }
-            
+        // Prendre tous les arrêts AVANT la destination
+        tripStops.slice(0, destIndex).forEach((st, idx) => {
             const stop = state.stops[st.stop_id];
             if (stop && !stopsMap.has(stop.stop_id)) {
                 stopsMap.set(stop.stop_id, stop);
-                stopOrderMap.set(stop.stop_id, idx); // Garde l'ordre original
+                stopOrderMap.set(stop.stop_id, idx); // Position dans le trajet
             }
         });
     });
 
-    console.log('Stops trouvés:', stopsMap.size);
-
-    // Trier par ordre de passage
+    // Trier les arrêts par leur position moyenne dans les trajets
     const result = Array.from(stopsMap.values()).sort((a, b) => {
-        return (stopOrderMap.get(a.stop_id) || 0) - (stopOrderMap.get(b.stop_id) || 0);
+        const orderA = stopOrderMap.get(a.stop_id) || 0;
+        const orderB = stopOrderMap.get(b.stop_id) || 0;
+        return orderA - orderB;
     });
     
     cache.stops.set(cacheKey, result);
