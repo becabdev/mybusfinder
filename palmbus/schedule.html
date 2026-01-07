@@ -1197,7 +1197,6 @@ async function showDestinations(routeId) {
     document.getElementById('header-subtitle').textContent = route.route_long_name;
     
     state.viewHistory.push('lines');
-
     saveScrollPosition('lines');
     scrollToTop();
 
@@ -1205,10 +1204,17 @@ async function showDestinations(routeId) {
     list.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div class="state-title">Chargement</div><div class="state-description">Obtention des destinations...</div></div>';
 
     try {
-        // Chargement depuis serveur: trips + stop_times pour cette route
         await loadTripsAndStopTimesForRoute(routeId);
 
+        // AJOUTER CES LOGS
+        console.log('Trips chargés:', state.trips[routeId]);
+        console.log('Stop times chargés:', state.stopTimes[routeId]);
+        console.log('Nombre de trips:', state.trips[routeId]?.length);
+        console.log('Nombre de stop times:', Object.keys(state.stopTimes[routeId] || {}).length);
+
         const destinations = getDestinations(routeId);
+        
+        console.log('Destinations trouvées:', destinations);
         
         if (destinations.length === 0) {
             list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="state-title">Aucune destination</div><div class="state-description">Aucune destination trouvée pour cette ligne</div></div>';
@@ -1505,14 +1511,33 @@ function getStopsForDestination(routeId, destinationId) {
 
     const trips = state.trips[routeId];
     const stopTimesByRoute = state.stopTimes[routeId];
+    
+    // AJOUTER CES LOGS
+    console.log('getStopsForDestination appelé:', {routeId, destinationId});
+    console.log('Trips disponibles:', trips?.length);
+    console.log('Premier trip example:', trips?.[0]);
+    
     const stopsMap = new Map();
 
     trips.forEach(trip => {
         const tripStops = stopTimesByRoute[trip.trip_id];
-        if (!tripStops) return;
+        
+        // LOG DÉTAILLÉ
+        if (!tripStops) {
+            console.warn('Pas de stop times pour trip:', trip.trip_id);
+            return;
+        }
+        
+        console.log('Trip stops:', tripStops.length, 'pour trip', trip.trip_id);
 
         const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
-        if (destIndex === -1) return;
+        
+        if (destIndex === -1) {
+            console.warn('Destination non trouvée dans trip:', trip.trip_id);
+            return;
+        }
+        
+        console.log('Destination trouvée à index:', destIndex);
 
         tripStops.slice(0, destIndex).forEach(st => { 
             const stop = state.stops[st.stop_id];
@@ -1521,6 +1546,8 @@ function getStopsForDestination(routeId, destinationId) {
             }
         });
     });
+
+    console.log('Stops trouvés pour destination:', stopsMap.size);
 
     const result = Array.from(stopsMap.values());
     cache.stops.set(cacheKey, result);
