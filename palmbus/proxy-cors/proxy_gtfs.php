@@ -1,5 +1,6 @@
 <?php
 @ini_set('memory_limit', '1024M');
+set_time_limit(300); // 5 minutes max pour generation initiale
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, HEAD, OPTIONS");
@@ -13,6 +14,7 @@ $url = 'https://www.data.gouv.fr/fr/datasets/r/47bc8088-6c72-43ad-a959-a5bbdd1aa
 $cacheDir = __DIR__ . '/cache';
 $extractDir = $cacheDir . '/extracted';
 $coreCacheFile = $cacheDir . '/gtfs_core.json';
+$tripIndexFile = $cacheDir . '/trip_index.json'; // Index trip_id -> route_id
 $zipCacheFile = $cacheDir . '/gtfs.zip';
 $cacheTTL = 24 * 60 * 60;
 
@@ -21,7 +23,7 @@ $debug = isset($_GET['debug']);
 if (!is_dir($cacheDir)) mkdir($cacheDir, 0755, true);
 if (!is_dir($extractDir)) mkdir($extractDir, 0755, true);
 
-// Fonctions helper declarees en premier
+// Fonctions helper
 function parseCSVFileSmall($filepath) {
     if (!file_exists($filepath)) return [];
     
@@ -66,6 +68,30 @@ function formatTimeCompact($time) {
     $minute = $parts[1] ?? '00';
     if ($hour >= 24) $hour -= 24;
     return "{$hour}:{$minute}";
+}
+
+// Construction index trip->route (une seule fois)
+function buildTripIndex($extractDir, $tripIndexFile) {
+    $tripsFile = $extractDir . '/trips.txt';
+    if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
+    
+    $tripToRoute = [];
+    $fh = fopen($tripsFile, 'r');
+    $headers = fgetcsv($fh);
+    $tripIdIdx = array_search('trip_id', $headers);
+    $routeIdIdx = array_search('route_id', $headers);
+    
+    while (($row = fgetcsv($fh)) !== false) {
+        $tripId = $row[$tripIdIdx] ?? '';
+        $routeId = $row[$routeIdIdx] ?? '';
+        if ($tripId && $routeId) {
+            $tripToRoute[$tripId] = $routeId;
+        }
+    }
+    fclose($fh);
+    
+    file_put_contents($tripIndexFile, json_encode($tripToRoute));
+    return $tripToRoute;
 }
 
 // Endpoint JSON
@@ -129,6 +155,10 @@ if (isset($_GET['action'])) {
                 }
             }
             
+            // Construction index trip->route (optimisation critique)
+            $debugInfo['steps'][] = 'Construction index trip->route...';
+            buildTripIndex($extractDir, $tripIndexFile);
+            
             // Cache core
             $coreData = [
                 'routes' => $routesById,
@@ -175,12 +205,19 @@ if (isset($_GET['action'])) {
                 $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
                 
                 if (file_exists($routeCacheFile) && (time() - filemtime($routeCacheFile) < $cacheTTL)) {
+                    // Cache existe
                     echo file_get_contents($routeCacheFile);
                 } else {
+                    // Charge index trip->route
+                    if (!file_exists($tripIndexFile)) {
+                        buildTripIndex($extractDir, $tripIndexFile);
+                    }
+                    $tripToRoute = json_decode(file_get_contents($tripIndexFile), true);
+                    
+                    // PASS 1: Collecte trips pour cette route
                     $trips = [];
                     $tripIds = [];
                     
-                    // PASS 1: Collecte trips
                     $tripsFile = $extractDir . '/trips.txt';
                     if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
                     
@@ -210,7 +247,7 @@ if (isset($_GET['action'])) {
                         break;
                     }
                     
-                    // PASS 2: Stop times streaming
+                    // PASS 2: Stop times avec index optimise
                     $stopTimesFile = $extractDir . '/stop_times.txt';
                     if (!file_exists($stopTimesFile)) throw new Exception('stop_times.txt non extrait');
                     
@@ -223,11 +260,13 @@ if (isset($_GET['action'])) {
                     
                     $stopTimesByTrip = [];
                     $lineCount = 0;
-                    $maxStopTimesPerTrip = 200;
+                    $matchCount = 0;
+                    $maxStopTimesPerTrip = 150; // Reduit pour perf
                     
                     while (($row = fgetcsv($fh)) !== false) {
                         $tripId = $row[$tripIdIdx] ?? '';
                         
+                        // Lookup ultra-rapide avec index
                         if (!isset($tripIds[$tripId])) continue;
                         
                         if (!isset($stopTimesByTrip[$tripId])) {
@@ -238,24 +277,28 @@ if (isset($_GET['action'])) {
                             continue;
                         }
                         
-                        $seq = (int)($row[$sequenceIdx] ?? 0);
-                        $arrivalTime = $row[$arrivalIdx] ?? '';
-                        
                         $stopTimesByTrip[$tripId][] = [
                             's' => $row[$stopIdIdx] ?? '',
-                            'a' => formatTimeCompact($arrivalTime),
-                            'q' => $seq
+                            'a' => formatTimeCompact($row[$arrivalIdx] ?? ''),
+                            'q' => (int)($row[$sequenceIdx] ?? 0)
                         ];
                         
+                        $matchCount++;
                         $lineCount++;
                         
-                        if ($lineCount % 5000 === 0) {
+                        if ($lineCount % 10000 === 0) {
                             gc_collect_cycles();
+                        }
+                        
+                        // Early exit si tous trips complets
+                        if ($matchCount > count($tripIds) * 50) {
+                            // Au moins 50 stops/trip trouvés, probablement complet
+                            break;
                         }
                     }
                     fclose($fh);
                     
-                    // Tri et conversion format standard
+                    // Tri et conversion
                     $stopTimesStandard = [];
                     foreach ($stopTimesByTrip as $tid => $times) {
                         usort($times, function($a, $b) {
