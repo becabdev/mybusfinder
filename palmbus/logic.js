@@ -2296,6 +2296,38 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
+async function loadGTFSFilesFromServer() {
+    try {
+        disparaitrelelogo();
+        const loadingtext = document.getElementById('loading-text');
+        loadingtext.textContent = 'Chargement des données en cours... 😊';
+        soundsUX('MBF_Popup');
+
+        const response = await fetch('proxy-cors/proxy_gtfs.php?action=extracted', {
+            cache: 'no-store', 
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Échec téléchargement ${response.status} ${response.statusText}`);
+        }
+        
+        const extractedFiles = await response.json();
+        
+        apparaitrelelogo();
+        
+        return extractedFiles;
+    } catch (error) {
+        console.error('Erreur lors du chargement des fichiers GTFS:', error);
+        toastBottomRight.error('Erreur lors du chargement des données GTFS');
+        soundsUX('MBF_NotificationError');
+        throw error;
+    }
+}
+
 async function initializeGTFS() {
     try {
         Object.keys(lineColors).forEach(key => delete lineColors[key]);
@@ -2303,30 +2335,12 @@ async function initializeGTFS() {
         stopIds.length = 0;
         Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
         
-        let extractedFiles;
-        
-        const { needsUpdate, fileHash, metadata } = await checkGTFSUpdate();
-        
-        if (needsUpdate) {
-            const result = await extractGTFSFiles();
-            apparaitrelelogo();
-            extractedFiles = result.extractedFiles;
-            
-            await saveToCache(extractedFiles, result.metadata);
-            
-        } else {
-            extractedFiles = await getFromCache();
-            if (!extractedFiles) {
-                const result = await extractGTFSFiles();
-                extractedFiles = result.extractedFiles;
-                await saveToCache(extractedFiles, result.metadata);
-                toastBottomRight.success('Données téléchargées avec succès !');
-                soundsUX('MBF_Success');
-            } 
-        }
+        const extractedFiles = await loadGTFSFilesFromServer();
         
         if (extractedFiles['routes.txt']) {
             await loadLineColors(extractedFiles['routes.txt']);
+        } else {
+            console.error('Fichier routes.txt non trouvé');
         }
         
         if (extractedFiles['stops.txt']) {
@@ -2335,7 +2349,7 @@ async function initializeGTFS() {
         } else {
             console.error('Fichier stops.txt non trouvé');
         }
-        
+                
         return {
             lineColors,
             lineName,
