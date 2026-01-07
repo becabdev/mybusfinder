@@ -2309,10 +2309,35 @@ async function loadGTFSDataOptimized() {
             loadingtext.textContent = `Chargement... ${progress}% 🚀`;
         };
         
-        updateProgress(1, 3);
+        updateProgress(0, 3);
         soundsUX('MBF_Popup');
 
-        // ÉTAPE 1: Charger les routes (compressé, ~50-100KB au lieu de plusieurs MB)
+        // VÉRIFICATION: Tester d'abord l'endpoint info
+        console.log('🔍 Vérification des endpoints...');
+        const infoResponse = await fetch('proxy-cors/proxy_gtfs.php?action=info', {
+            cache: 'no-store'
+        });
+        
+        if (!infoResponse.ok) {
+            const errorText = await infoResponse.text();
+            console.error('Erreur info endpoint:', errorText);
+            throw new Error(`Endpoint info invalide: ${infoResponse.status}`);
+        }
+        
+        const serverInfo = await infoResponse.json();
+        console.log('📊 Info serveur:', serverInfo);
+        
+        // Vérifier que les fichiers existent côté serveur
+        if (!serverInfo.routes_exists) {
+            console.warn('⚠️ Fichier routes non trouvé, première génération en cours...');
+            // Attendre un peu que le serveur génère les fichiers
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        updateProgress(1, 3);
+
+        // ÉTAPE 1: Charger les routes
+        console.log('📥 Chargement des routes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
             cache: 'no-store',
             headers: {
@@ -2322,13 +2347,26 @@ async function loadGTFSDataOptimized() {
         });
         
         if (!routesResponse.ok) {
-            throw new Error(`Erreur chargement routes: ${routesResponse.status}`);
+            const errorText = await routesResponse.text();
+            console.error('Erreur routes:', errorText);
+            
+            // Essayer de parser comme JSON pour plus d'infos
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(`Erreur routes (${routesResponse.status}): ${errorJson.error || errorText}`);
+            } catch (e) {
+                throw new Error(`Erreur routes (${routesResponse.status}): ${errorText}`);
+            }
         }
         
-        // Le serveur envoie du JSON compressé (GZIP), le navigateur décompresse automatiquement
-        const routesData = await routesResponse.json();
+        // Vérifier le Content-Type
+        const contentType = routesResponse.headers.get('Content-Type');
+        console.log('Content-Type routes:', contentType);
         
-        // Traitement ultra-rapide des routes (déjà optimisées côté serveur)
+        const routesData = await routesResponse.json();
+        console.log('✅ Routes chargées:', Object.keys(routesData).length, 'lignes');
+        
+        // Traitement ultra-rapide des routes
         Object.entries(routesData).forEach(([routeId, data]) => {
             lineColors[routeId] = data.c ? `#${data.c}` : '#FFFFFF';
             lineName[routeId] = data.s || data.l || routeId;
@@ -2336,7 +2374,8 @@ async function loadGTFSDataOptimized() {
         
         updateProgress(2, 3);
         
-        // ÉTAPE 2: Charger les stops (compressé, ~100-200KB au lieu de plusieurs MB)
+        // ÉTAPE 2: Charger les stops
+        console.log('📥 Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
             cache: 'no-store',
             headers: {
@@ -2346,10 +2385,13 @@ async function loadGTFSDataOptimized() {
         });
         
         if (!stopsResponse.ok) {
-            throw new Error(`Erreur chargement stops: ${stopsResponse.status}`);
+            const errorText = await stopsResponse.text();
+            console.error('Erreur stops:', errorText);
+            throw new Error(`Erreur stops (${stopsResponse.status}): ${errorText}`);
         }
         
         const stopsData = await stopsResponse.json();
+        console.log('✅ Stops chargés:', Object.keys(stopsData).length, 'arrêts');
         
         // Traitement ultra-rapide des stops
         Object.entries(stopsData).forEach(([stopId, data]) => {
@@ -2377,9 +2419,14 @@ async function loadGTFSDataOptimized() {
         };
         
     } catch (error) {
-        console.error('Erreur lors du chargement GTFS:', error);
-        toastBottomRight.error('Erreur de chargement des données');
+        console.error('❌ Erreur lors du chargement GTFS:', error);
+        console.error('Stack:', error.stack);
+        
+        // Message d'erreur plus détaillé pour l'utilisateur
+        const errorMessage = error.message || 'Erreur inconnue';
+        toastBottomRight.error(`Erreur de chargement: ${errorMessage}`);
         soundsUX('MBF_NotificationError');
+        
         throw error;
     }
 }
@@ -2433,7 +2480,6 @@ async function initializeGTFS() {
         throw error;
     }
 }
-
 
 async function checkGTFSUpdate() {
     try {

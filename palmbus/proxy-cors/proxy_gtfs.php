@@ -1,6 +1,6 @@
 <?php
-@ini_set('memory_limit', '1024M');
-set_time_limit(300);
+@ini_set('memory_limit', '512M');
+set_time_limit(180);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, HEAD, OPTIONS");
@@ -19,15 +19,16 @@ $zipCacheFile = $cacheDir . '/gtfs.zip';
 $cacheMarkerFile = $cacheDir . '/cache_created.txt';
 $cacheTTL = 4 * 24 * 60 * 60; // 4 jours
 
-// Nouveau: fichier JSON contenant tous les fichiers extraits
-$extractedJsonFile = $cacheDir . '/gtfs_extracted.json';
+// Fichiers optimisés et compressés
+$optimizedCoreFile = $cacheDir . '/gtfs_core_optimized.json.gz';
+$optimizedRoutesFile = $cacheDir . '/gtfs_routes_optimized.json.gz';
+$optimizedStopsFile = $cacheDir . '/gtfs_stops_optimized.json.gz';
 
 $debug = isset($_GET['debug']);
 
 if (!is_dir($cacheDir)) mkdir($cacheDir, 0755, true);
 if (!is_dir($extractDir)) mkdir($extractDir, 0755, true);
 
-// Verification expiration cache global (4 jours)
 function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
     if (!file_exists($cacheMarkerFile)) {
         file_put_contents($cacheMarkerFile, time());
@@ -38,21 +39,16 @@ function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
     $cacheAge = time() - $cacheCreationTime;
     
     if ($cacheAge > $cacheTTL) {
-        // Cache expire: nettoyage complet
-        $files = glob($cacheDir . '/*.json');
+        $files = glob($cacheDir . '/*.{json,gz}', GLOB_BRACE);
         foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-            }
+            if (is_file($file)) unlink($file);
         }
         
         $extractDir = $cacheDir . '/extracted';
         if (is_dir($extractDir)) {
             $extractedFiles = glob($extractDir . '/*.txt');
             foreach ($extractedFiles as $file) {
-                if (is_file($file)) {
-                    unlink($file);
-                }
+                if (is_file($file)) unlink($file);
             }
         }
         
@@ -62,85 +58,135 @@ function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
 
 checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL);
 
-// Fonctions helper
-function parseCSVFileSmall($filepath) {
-    if (!file_exists($filepath)) return [];
+// Parse CSV en streaming pour économiser la RAM
+function parseCSVStream($filepath, $callback, $maxRows = null) {
+    if (!file_exists($filepath)) return 0;
     
-    $result = [];
     $fh = fopen($filepath, 'r');
-    if (!$fh) return [];
+    if (!$fh) return 0;
     
     $headers = fgetcsv($fh);
     if (!$headers) {
         fclose($fh);
-        return [];
+        return 0;
     }
     
+    $count = 0;
     while (($row = fgetcsv($fh)) !== false) {
+        if ($maxRows && $count >= $maxRows) break;
+        
         $item = [];
         foreach ($headers as $i => $header) {
             $item[trim($header)] = isset($row[$i]) ? trim($row[$i]) : '';
         }
-        $result[] = $item;
-    }
-    fclose($fh);
-    
-    return $result;
-}
-
-function arrayToObject($array, $keyField) {
-    $result = [];
-    foreach ($array as $item) {
-        $key = $item[$keyField] ?? null;
-        if ($key !== null && $key !== '') {
-            $result[$key] = $item;
-        }
-    }
-    return $result;
-}
-
-function formatTimeCompact($time) {
-    if (empty($time)) return '0:00';
-    $parts = explode(':', $time);
-    if (count($parts) < 2) return '0:00';
-    $hour = (int)$parts[0];
-    $minute = $parts[1] ?? '00';
-    if ($hour >= 24) $hour -= 24;
-    return "{$hour}:{$minute}";
-}
-
-function buildTripIndex($extractDir, $tripIndexFile) {
-    $tripsFile = $extractDir . '/trips.txt';
-    if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
-    
-    $tripToRoute = [];
-    $fh = fopen($tripsFile, 'r');
-    $headers = fgetcsv($fh);
-    $tripIdIdx = array_search('trip_id', $headers);
-    $routeIdIdx = array_search('route_id', $headers);
-    
-    while (($row = fgetcsv($fh)) !== false) {
-        $tripId = $row[$tripIdIdx] ?? '';
-        $routeId = $row[$routeIdIdx] ?? '';
-        if ($tripId && $routeId) {
-            $tripToRoute[$tripId] = $routeId;
+        
+        $callback($item);
+        $count++;
+        
+        if ($count % 1000 === 0) {
+            gc_collect_cycles();
         }
     }
     fclose($fh);
     
-    file_put_contents($tripIndexFile, json_encode($tripToRoute));
-    return $tripToRoute;
+    return $count;
 }
 
-// NOUVELLE FONCTION: Extraction et création du JSON avec tous les fichiers
-function createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir) {
+// Créer un fichier optimisé pour routes (seulement les champs nécessaires)
+function createOptimizedRoutes($extractDir, $outputFile) {
+    $routes = [];
+    
+    parseCSVStream($extractDir . '/routes.txt', function($item) use (&$routes) {
+        $routeId = $item['route_id'] ?? '';
+        if ($routeId) {
+            // Ne garder que les champs essentiels
+            $routes[$routeId] = [
+                's' => $item['route_short_name'] ?? '',  // short_name
+                'l' => $item['route_long_name'] ?? '',    // long_name
+                'c' => $item['route_color'] ?? 'FFFFFF', // color
+                't' => $item['route_text_color'] ?? '000000' // text_color
+            ];
+        }
+    });
+    
+    // Compression GZIP
+    $json = json_encode($routes);
+    $compressed = gzencode($json, 9);
+    file_put_contents($outputFile, $compressed);
+    
+    unset($routes, $json);
+    gc_collect_cycles();
+    
+    return true;
+}
+
+// Créer un fichier optimisé pour stops (seulement les champs nécessaires)
+function createOptimizedStops($extractDir, $outputFile) {
+    $stops = [];
+    
+    parseCSVStream($extractDir . '/stops.txt', function($item) use (&$stops) {
+        $stopId = $item['stop_id'] ?? '';
+        if ($stopId) {
+            // Ne garder que les champs essentiels
+            $stops[$stopId] = [
+                'n' => $item['stop_name'] ?? '',     // name
+                'lat' => $item['stop_lat'] ?? '',    // latitude
+                'lon' => $item['stop_lon'] ?? ''     // longitude
+            ];
+        }
+    });
+    
+    // Compression GZIP
+    $json = json_encode($stops);
+    $compressed = gzencode($json, 9);
+    file_put_contents($outputFile, $compressed);
+    
+    unset($stops, $json);
+    gc_collect_cycles();
+    
+    return true;
+}
+
+// Créer un fichier core ultra-léger (seulement les IDs)
+function createOptimizedCore($extractDir, $outputFile) {
+    $core = [
+        'route_ids' => [],
+        'stop_ids' => []
+    ];
+    
+    parseCSVStream($extractDir . '/routes.txt', function($item) use (&$core) {
+        $routeId = $item['route_id'] ?? '';
+        if ($routeId) {
+            $core['route_ids'][] = $routeId;
+        }
+    });
+    
+    parseCSVStream($extractDir . '/stops.txt', function($item) use (&$core) {
+        $stopId = $item['stop_id'] ?? '';
+        if ($stopId) {
+            $core['stop_ids'][] = $stopId;
+        }
+    });
+    
+    // Compression GZIP
+    $json = json_encode($core);
+    $compressed = gzencode($json, 9);
+    file_put_contents($outputFile, $compressed);
+    
+    unset($core, $json);
+    gc_collect_cycles();
+    
+    return true;
+}
+
+function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile) {
     $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
         throw new Exception('Impossible ouvrir ZIP');
     }
     
-    // Extraction des fichiers
-    $filesToExtract = ['routes.txt', 'stops.txt', 'calendar.txt', 'calendar_dates.txt', 'trips.txt', 'stop_times.txt'];
+    // Extraction sélective
+    $filesToExtract = ['routes.txt', 'stops.txt'];
     foreach ($filesToExtract as $file) {
         if ($zip->locateName($file) !== false) {
             $zip->extractTo($extractDir, $file);
@@ -148,285 +194,140 @@ function createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir) {
     }
     $zip->close();
     
-    // Lecture des fichiers et création du JSON
-    $extractedData = [];
+    // Création des fichiers optimisés et compressés
+    createOptimizedCore($extractDir, $optimizedCoreFile);
+    createOptimizedRoutes($extractDir, $optimizedRoutesFile);
+    createOptimizedStops($extractDir, $optimizedStopsFile);
+    
+    // Nettoyer les fichiers TXT pour libérer l'espace
     foreach ($filesToExtract as $file) {
         $filepath = $extractDir . '/' . $file;
         if (file_exists($filepath)) {
-            $extractedData[$file] = file_get_contents($filepath);
+            unlink($filepath);
         }
     }
     
-    // Sauvegarde dans un seul fichier JSON
-    file_put_contents($extractedJsonFile, json_encode($extractedData));
-    
-    return $extractedData;
+    return true;
 }
 
 // Endpoint JSON
 if (isset($_GET['action'])) {
-    header("Content-Type: application/json");
     $action = $_GET['action'];
     
+    // Log pour debug
+    error_log("Action demandée: " . $action);
+    
     try {
-        $coreValid = file_exists($coreCacheFile) && file_exists($cacheMarkerFile);
+        // Vérifier si les fichiers optimisés existent
+        $needsOptimization = !file_exists($optimizedCoreFile) || 
+                            !file_exists($optimizedRoutesFile) || 
+                            !file_exists($optimizedStopsFile);
         
-        if ($debug) $coreValid = false;
+        error_log("Needs optimization: " . ($needsOptimization ? 'OUI' : 'NON'));
         
-        if (!$coreValid) {
-            $debugInfo = ['steps' => []];
+        if ($needsOptimization || $debug) {
+            error_log("Début de l'optimisation...");
             
-            // Telechargement ZIP si nécessaire
+            // Télécharger le ZIP si nécessaire
             if (!file_exists($zipCacheFile) || (time() - filemtime($zipCacheFile) > $cacheTTL)) {
-                $debugInfo['steps'][] = 'Telechargement ZIP...';
+                error_log("Téléchargement du ZIP...");
                 $zipData = @file_get_contents($url);
                 if ($zipData === false) throw new Exception('Impossible telecharger ZIP');
                 file_put_contents($zipCacheFile, $zipData);
                 unset($zipData);
+                error_log("ZIP téléchargé: " . filesize($zipCacheFile) . " bytes");
             }
             
-            // Extraction et création du JSON si nécessaire
-            if (!file_exists($extractedJsonFile) || (time() - filemtime($extractedJsonFile) > $cacheTTL)) {
-                $debugInfo['steps'][] = 'Extraction ZIP et creation JSON...';
-                createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir);
-            }
-            
-            // Parse fichiers legers
-            $debugInfo['steps'][] = 'Parse routes/stops/calendar...';
-            $routes = parseCSVFileSmall($extractDir . '/routes.txt');
-            $stops = parseCSVFileSmall($extractDir . '/stops.txt');
-            $calendar = file_exists($extractDir . '/calendar.txt') ? parseCSVFileSmall($extractDir . '/calendar.txt') : [];
-            $calendarDates = file_exists($extractDir . '/calendar_dates.txt') ? parseCSVFileSmall($extractDir . '/calendar_dates.txt') : [];
-            
-            $routesById = arrayToObject($routes, 'route_id');
-            $stopsById = arrayToObject($stops, 'stop_id');
-            $calendarById = arrayToObject($calendar, 'service_id');
-            
-            // Index calendar_dates
-            $calendarDatesByDate = [];
-            foreach ($calendarDates as $cd) {
-                $date = $cd['date'] ?? '';
-                if (empty($date)) continue;
-                if (!isset($calendarDatesByDate[$date])) {
-                    $calendarDatesByDate[$date] = ['added' => [], 'removed' => []];
-                }
-                if (($cd['exception_type'] ?? '') === '1') {
-                    $calendarDatesByDate[$date]['added'][] = $cd['service_id'] ?? '';
-                } else {
-                    $calendarDatesByDate[$date]['removed'][] = $cd['service_id'] ?? '';
-                }
-            }
-            
-            $debugInfo['steps'][] = 'Construction index trip->route...';
-            buildTripIndex($extractDir, $tripIndexFile);
-            
-            // Cache core
-            $coreData = [
-                'routes' => $routesById,
-                'stops' => $stopsById,
-                'calendar' => $calendarById,
-                'calendarDates' => $calendarDatesByDate,
-                'generated' => time()
-            ];
-            
-            if ($debug) {
-                $debugInfo['routes_count'] = count($routesById);
-                $debugInfo['stops_count'] = count($stopsById);
-                $coreData['_debug'] = $debugInfo;
-            }
-            
-            file_put_contents($coreCacheFile, json_encode($coreData));
-        } else {
-            $coreData = json_decode(file_get_contents($coreCacheFile), true);
+            // Extraction et optimisation
+            error_log("Extraction et optimisation...");
+            extractAndOptimizeGTFS($zipCacheFile, $extractDir, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile);
+            error_log("Optimisation terminée");
         }
         
-        // Reponse selon action
         switch ($action) {
             case 'core':
-                $response = [
-                    'routes' => $coreData['routes'] ?? [],
-                    'stops' => $coreData['stops'] ?? [],
-                    'calendar' => $coreData['calendar'] ?? [],
-                    'calendarDates' => $coreData['calendarDates'] ?? []
+                if (!file_exists($optimizedCoreFile)) {
+                    throw new Exception("Fichier core non trouvé");
+                }
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                error_log("Envoi du fichier core: " . filesize($optimizedCoreFile) . " bytes");
+                readfile($optimizedCoreFile);
+                break;
+                
+            case 'routes':
+                if (!file_exists($optimizedRoutesFile)) {
+                    throw new Exception("Fichier routes non trouvé: " . $optimizedRoutesFile);
+                }
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                error_log("Envoi du fichier routes: " . filesize($optimizedRoutesFile) . " bytes");
+                readfile($optimizedRoutesFile);
+                break;
+                
+            case 'stops':
+                if (!file_exists($optimizedStopsFile)) {
+                    throw new Exception("Fichier stops non trouvé");
+                }
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                error_log("Envoi du fichier stops: " . filesize($optimizedStopsFile) . " bytes");
+                readfile($optimizedStopsFile);
+                break;
+                
+            case 'info':
+                header("Content-Type: application/json");
+                
+                $info = [
+                    'core_exists' => file_exists($optimizedCoreFile),
+                    'routes_exists' => file_exists($optimizedRoutesFile),
+                    'stops_exists' => file_exists($optimizedStopsFile),
+                    'core_size' => file_exists($optimizedCoreFile) ? filesize($optimizedCoreFile) : 0,
+                    'routes_size' => file_exists($optimizedRoutesFile) ? filesize($optimizedRoutesFile) : 0,
+                    'stops_size' => file_exists($optimizedStopsFile) ? filesize($optimizedStopsFile) : 0,
+                    'total_size' => 0,
+                    'cache_age_hours' => 0,
+                    'cache_dir' => $cacheDir,
+                    'extract_dir' => $extractDir
                 ];
-                if ($debug && isset($coreData['_debug'])) {
-                    $response['_debug'] = $coreData['_debug'];
-                }
-                echo json_encode($response);
-                break;
                 
-            case 'route':
-                $routeId = $_GET['route_id'] ?? null;
-                if (!$routeId) {
-                    http_response_code(400);
-                    echo json_encode(['error' => 'route_id manquant']);
-                    exit;
+                $info['total_size'] = $info['core_size'] + $info['routes_size'] + $info['stops_size'];
+                
+                if (file_exists($cacheMarkerFile)) {
+                    $cacheTime = (int)file_get_contents($cacheMarkerFile);
+                    $info['cache_age_hours'] = round((time() - $cacheTime) / 3600, 1);
                 }
                 
-                $routeCacheFile = $cacheDir . '/route_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $routeId) . '.json';
-                
-                if (file_exists($routeCacheFile)) {
-                    echo file_get_contents($routeCacheFile);
-                } else {
-                    if (!file_exists($tripIndexFile)) {
-                        buildTripIndex($extractDir, $tripIndexFile);
-                    }
-                    $tripToRoute = json_decode(file_get_contents($tripIndexFile), true);
-                    
-                    // PASS 1: Collecte trips pour cette route
-                    $trips = [];
-                    $tripIds = [];
-                    
-                    $tripsFile = $extractDir . '/trips.txt';
-                    if (!file_exists($tripsFile)) throw new Exception('trips.txt non extrait');
-                    
-                    $fh = fopen($tripsFile, 'r');
-                    $headers = fgetcsv($fh);
-                    $tripIdIdx = array_search('trip_id', $headers);
-                    $routeIdIdx = array_search('route_id', $headers);
-                    $serviceIdIdx = array_search('service_id', $headers);
-                    
-                    while (($row = fgetcsv($fh)) !== false) {
-                        if (($row[$routeIdIdx] ?? '') === $routeId) {
-                            $tripId = $row[$tripIdIdx] ?? '';
-                            $trips[] = [
-                                'trip_id' => $tripId,
-                                'route_id' => $routeId,
-                                'service_id' => $row[$serviceIdIdx] ?? ''
-                            ];
-                            $tripIds[$tripId] = true;
-                        }
-                    }
-                    fclose($fh);
-                    
-                    if (empty($trips)) {
-                        $empty = json_encode(['trips' => [], 'stopTimes' => []]);
-                        file_put_contents($routeCacheFile, $empty);
-                        echo $empty;
-                        break;
-                    }
-                    
-                    // PASS 2: Stop times
-                    $stopTimesFile = $extractDir . '/stop_times.txt';
-                    if (!file_exists($stopTimesFile)) throw new Exception('stop_times.txt non extrait');
-                    
-                    $fh = fopen($stopTimesFile, 'r');
-                    $headers = fgetcsv($fh);
-                    $tripIdIdx = array_search('trip_id', $headers);
-                    $stopIdIdx = array_search('stop_id', $headers);
-                    $arrivalIdx = array_search('arrival_time', $headers);
-                    $sequenceIdx = array_search('stop_sequence', $headers);
-                    
-                    $stopTimesByTrip = [];
-                    $lineCount = 0;
-                    $matchCount = 0;
-                    $maxStopTimesPerTrip = 150;
-                    
-                    while (($row = fgetcsv($fh)) !== false) {
-                        $tripId = $row[$tripIdIdx] ?? '';
-                        
-                        if (!isset($tripIds[$tripId])) continue;
-                        
-                        if (!isset($stopTimesByTrip[$tripId])) {
-                            $stopTimesByTrip[$tripId] = [];
-                        }
-                        
-                        if (count($stopTimesByTrip[$tripId]) >= $maxStopTimesPerTrip) {
-                            continue;
-                        }
-                        
-                        $stopTimesByTrip[$tripId][] = [
-                            's' => $row[$stopIdIdx] ?? '',
-                            'a' => formatTimeCompact($row[$arrivalIdx] ?? ''),
-                            'q' => (int)($row[$sequenceIdx] ?? 0)
-                        ];
-                        
-                        $matchCount++;
-                        $lineCount++;
-                        
-                        if ($lineCount % 10000 === 0) {
-                            gc_collect_cycles();
-                        }
-                        
-                        if ($matchCount > count($tripIds) * 50) {
-                            break;
-                        }
-                    }
-                    fclose($fh);
-                    
-                    // Tri et conversion
-                    $stopTimesStandard = [];
-                    foreach ($stopTimesByTrip as $tid => $times) {
-                        usort($times, function($a, $b) {
-                            return $a['q'] - $b['q'];
-                        });
-                        
-                        $standardTimes = [];
-                        foreach ($times as $t) {
-                            $standardTimes[] = [
-                                'stop_id' => $t['s'],
-                                'arrival_time' => $t['a'],
-                                'departure_time' => $t['a'],
-                                'stop_sequence' => $t['q']
-                            ];
-                        }
-                        $stopTimesStandard[$tid] = $standardTimes;
-                    }
-                    unset($stopTimesByTrip);
-                    
-                    $routeData = [
-                        'trips' => $trips,
-                        'stopTimes' => $stopTimesStandard
-                    ];
-                    
-                    $json = json_encode($routeData);
-                    if ($json === false) {
-                        throw new Exception('Erreur encodage JSON: ' . json_last_error_msg());
-                    }
-                    
-                    file_put_contents($routeCacheFile, $json);
-                    echo $json;
-                }
-                break;
-                
-            // NOUVEAU: Endpoint pour récupérer le JSON avec tous les fichiers extraits
-            case 'extracted':
-                // Vérifier si le JSON existe et est à jour
-                if (!file_exists($extractedJsonFile) || (time() - filemtime($extractedJsonFile) > $cacheTTL)) {
-                    // Télécharger le ZIP si nécessaire
-                    if (!file_exists($zipCacheFile) || (time() - filemtime($zipCacheFile) > $cacheTTL)) {
-                        $zipData = @file_get_contents($url);
-                        if ($zipData === false) throw new Exception('Impossible telecharger ZIP');
-                        file_put_contents($zipCacheFile, $zipData);
-                        unset($zipData);
-                    }
-                    
-                    // Créer le JSON avec les fichiers extraits
-                    createExtractedJson($zipCacheFile, $extractedJsonFile, $extractDir);
-                }
-                
-                // Renvoyer le JSON
-                echo file_get_contents($extractedJsonFile);
+                echo json_encode($info, JSON_PRETTY_PRINT);
                 break;
                 
             default:
+                error_log("Action invalide: " . $action);
+                header("Content-Type: application/json");
                 http_response_code(400);
-                echo json_encode(['error' => 'Action invalide']);
+                echo json_encode([
+                    'error' => 'Action invalide',
+                    'action_received' => $action,
+                    'valid_actions' => ['core', 'routes', 'stops', 'info']
+                ]);
         }
         
     } catch (Exception $e) {
+        error_log("ERREUR: " . $e->getMessage());
+        header("Content-Type: application/json");
         http_response_code(500);
         echo json_encode([
             'error' => $e->getMessage(),
             'file' => $e->getFile(),
-            'line' => $e->getLine()
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
         ]);
     }
     
     exit;
 }
 
-// Fallback ZIP (pour compatibilité avec l'ancien code)
+// Fallback ZIP (pour compatibilité)
 if (isset($_SERVER['HTTP_X_CONTENT_ONLY_HEADER'])) {
     $context = stream_context_create([
         'http' => [
