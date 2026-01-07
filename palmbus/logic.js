@@ -2324,7 +2324,7 @@ function createLoadingOverlay() {
                 bottom: 20px;
                 left: 50%;
                 transform: translateX(-50%);
-                z-index: 999999;
+                z-index: 999999999999999999999;
                 opacity: 0;
                 visibility: hidden;
                 transition: opacity 0.3s ease, visibility 0.3s ease;
