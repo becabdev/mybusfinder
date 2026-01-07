@@ -249,58 +249,32 @@ if (isset($_GET['action'])) {
                 if (!file_exists($optimizedCoreFile)) {
                     throw new Exception("Fichier core non trouvé");
                 }
-                
-                $compressed = file_get_contents($optimizedCoreFile);
-                $json = gzdecode($compressed);
-                
                 header("Content-Type: application/json");
-                echo $json; 
-                break;                
-                case 'routes':
-                    if (!file_exists($optimizedRoutesFile)) {
-                        throw new Exception("Fichier routes non trouvé");
-                    }
-                    
-                    $compressed = file_get_contents($optimizedRoutesFile);
-                    $routesJson = gzdecode($compressed);
-                    $routes = json_decode($routesJson, true);
-                    
-                    $routesExpanded = [];
-                    foreach ($routes as $id => $r) {
-                        $routesExpanded[$id] = [
-                            'route_short_name' => $r['s'],
-                            'route_long_name' => $r['l'],
-                            'route_color' => $r['c'],
-                            'route_text_color' => $r['t']
-                        ];
-                    }
-                    
-                    header("Content-Type: application/json");
-                    echo json_encode($routesExpanded); 
-                    break;
-
-                case 'stops':
-                    if (!file_exists($optimizedStopsFile)) {
-                        throw new Exception("Fichier stops non trouvé");
-                    }
-                    
-                    // Décompresser et convertir
-                    $compressed = file_get_contents($optimizedStopsFile);
-                    $stopsJson = gzdecode($compressed);
-                    $stops = json_decode($stopsJson, true);
-                    
-                    $stopsExpanded = [];
-                    foreach ($stops as $id => $s) {
-                        $stopsExpanded[$id] = [
-                            'stop_name' => $s['n'],
-                            'stop_lat' => $s['lat'],
-                            'stop_lon' => $s['lon']
-                        ];
-                    }
-                    
-                    header("Content-Type: application/json");
-                    echo json_encode($stopsExpanded); // JSON normal
-                    break;                
+                header("Content-Encoding: gzip");
+                error_log("Envoi du fichier core: " . filesize($optimizedCoreFile) . " bytes");
+                readfile($optimizedCoreFile);
+                break;
+                
+            case 'routes':
+                if (!file_exists($optimizedRoutesFile)) {
+                    throw new Exception("Fichier routes non trouvé: " . $optimizedRoutesFile);
+                }
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                error_log("Envoi du fichier routes: " . filesize($optimizedRoutesFile) . " bytes");
+                readfile($optimizedRoutesFile);
+                break;
+                
+            case 'stops':
+                if (!file_exists($optimizedStopsFile)) {
+                    throw new Exception("Fichier stops non trouvé");
+                }
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                error_log("Envoi du fichier stops: " . filesize($optimizedStopsFile) . " bytes");
+                readfile($optimizedStopsFile);
+                break;
+                
             case 'info':
                 header("Content-Type: application/json");
                 

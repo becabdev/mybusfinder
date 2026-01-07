@@ -976,8 +976,11 @@ async function loadGtfsCore() {
         }
 
         const data = await response.json();
-        
-        // MODIFIÉ : Adapter au nouveau format
+
+        console.log('Données reçues du serveur:', data);
+        console.log('Routes:', data.routes);
+        console.log('Nombre de routes:', Object.keys(data.routes || {}).length);
+
         state.routes = data.routes || {};
         state.stops = data.stops || {};
         state.calendar = data.calendar || {};
@@ -1103,6 +1106,13 @@ function showLines() {
     hideAllViews();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('lines-view').classList.add('active');
+    
+    // AJOUTER CES LOGS
+    console.log('showLines() appelé');
+    console.log('state.routes:', state.routes);
+    console.log('Type de state.routes:', typeof state.routes);
+    console.log('Nombre routes:', Object.keys(state.routes || {}).length);
+    
     document.getElementById('back-btn').style.display = 'none';
     document.getElementById('header-title').textContent = 'My Bus Schedule';
     document.getElementById('header-subtitle').textContent = 'Sélectionnez une ligne';
