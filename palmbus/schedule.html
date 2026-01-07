@@ -1298,6 +1298,16 @@ function showSchedule(routeId, stopId, destinationId) {
 
     const route = state.routes[routeId];
     const stop = state.stops[stopId];
+    
+    // AJOUTER UNE VÉRIFICATION
+    if (!stop) {
+        console.error('Stop non trouvé:', stopId);
+        console.log('Stops disponibles:', Object.keys(state.stops).slice(0, 10));
+        document.getElementById('header-title').textContent = `${route.route_short_name} - Arrêt inconnu`;
+        document.getElementById('header-subtitle').textContent = route.route_long_name;
+        return;
+    }
+    
     document.getElementById('header-title').textContent = `${route.route_short_name} - ${stop.stop_name}`;
     document.getElementById('header-subtitle').textContent = route.route_long_name;
 
@@ -1539,33 +1549,32 @@ function getStopsForDestination(routeId, destinationId) {
     const trips = state.trips[routeId];
     const stopTimesByRoute = state.stopTimes[routeId];
     
-    // AJOUTER CES LOGS
     console.log('getStopsForDestination appelé:', {routeId, destinationId});
-    console.log('Trips disponibles:', trips?.length);
-    console.log('Premier trip example:', trips?.[0]);
     
     const stopsMap = new Map();
+    let tripsWithDest = 0;
 
     trips.forEach(trip => {
         const tripStops = stopTimesByRoute[trip.trip_id];
         
-        // LOG DÉTAILLÉ
         if (!tripStops) {
-            console.warn('Pas de stop times pour trip:', trip.trip_id);
             return;
         }
-        
-        console.log('Trip stops:', tripStops.length, 'pour trip', trip.trip_id);
 
         const destIndex = tripStops.findIndex(st => st.stop_id === destinationId);
         
         if (destIndex === -1) {
-            console.warn('Destination non trouvée dans trip:', trip.trip_id);
-            return;
+            return; // Destination pas dans ce trip
         }
         
-        console.log('Destination trouvée à index:', destIndex);
+        if (destIndex === 0) {
+            console.warn('Destination est le premier arrêt du trip:', trip.trip_id);
+            return; // Pas d'arrêts avant la destination
+        }
+        
+        tripsWithDest++;
 
+        // Prendre TOUS les arrêts avant la destination
         tripStops.slice(0, destIndex).forEach(st => { 
             const stop = state.stops[st.stop_id];
             if (stop && !stopsMap.has(stop.stop_id)) {
@@ -1574,7 +1583,9 @@ function getStopsForDestination(routeId, destinationId) {
         });
     });
 
+    console.log('Trips avec cette destination:', tripsWithDest);
     console.log('Stops trouvés pour destination:', stopsMap.size);
+    console.log('Premiers stops:', Array.from(stopsMap.values()).slice(0, 5).map(s => s.stop_name));
 
     const result = Array.from(stopsMap.values());
     cache.stops.set(cacheKey, result);
