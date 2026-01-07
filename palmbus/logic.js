@@ -8260,26 +8260,35 @@ async function main() {
     try {
         initWorker();
         
+        // 1. INITIALISER LA CARTE D'ABORD
+        if (!map) {
+            console.log('Initialisation de la carte...');
+            map = await initMap();
+        }
+        
+        // 2. PUIS charger les données GTFS
+        console.log('Chargement des données GTFS...');
         const gtfsData = await initializeGTFS();
         gtfsInitialized = true;
         
+        // 3. PUIS charger les lignes GeoJSON (qui a besoin de map.getZoom())
+        console.log('Chargement des lignes GeoJSON...');
         await loadGeoJsonLines();
         
+        // 4. PUIS charger les données temps réel
+        console.log('Chargement des données temps réel...');
         await Promise.all([
             fetchTripUpdates().catch(console.error),
-            hideLoadingScreen(),
             fetchVehiclePositions()
         ]);
         
+        // 5. Cacher l'écran de chargement
+        hideLoadingScreen();
+        
+        // 6. Démarrer les mises à jour périodiques
         startFetchUpdates();
-
-        setTimeout(() => {
-            preloadVisibleRoutes();
-        }, 3000);
-
-        setInterval(() => {
-            preloadVisibleRoutes();
-        }, 60000);
+        
+        console.log('✅ Application initialisée avec succès');
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
