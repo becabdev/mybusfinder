@@ -2296,60 +2296,79 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
-async function loadGTFSFilesFromServer() {
+// Chargement progressif et optimisé
+async function loadGTFSDataOptimized() {
     try {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
-        loadingtext.textContent = 'Chargement des données en cours... 😊';
+        
+        // Indicateur de progression
+        let progress = 0;
+        const updateProgress = (step, total) => {
+            progress = Math.round((step / total) * 100);
+            loadingtext.textContent = `Chargement... ${progress}% 🚀`;
+        };
+        
+        updateProgress(1, 3);
         soundsUX('MBF_Popup');
 
-        const response = await fetch('proxy-cors/proxy_gtfs.php?action=extracted', {
-            cache: 'no-store', 
+        // ÉTAPE 1: Charger les routes (compressé, ~50-100KB au lieu de plusieurs MB)
+        const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
+            cache: 'no-store',
             headers: {
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache'
             }
         });
         
-        if (!response.ok) {
-            throw new Error(`Échec téléchargement ${response.status} ${response.statusText}`);
+        if (!routesResponse.ok) {
+            throw new Error(`Erreur chargement routes: ${routesResponse.status}`);
         }
         
-        const extractedFiles = await response.json();
+        // Le serveur envoie du JSON compressé (GZIP), le navigateur décompresse automatiquement
+        const routesData = await routesResponse.json();
+        
+        // Traitement ultra-rapide des routes (déjà optimisées côté serveur)
+        Object.entries(routesData).forEach(([routeId, data]) => {
+            lineColors[routeId] = data.c ? `#${data.c}` : '#FFFFFF';
+            lineName[routeId] = data.s || data.l || routeId;
+        });
+        
+        updateProgress(2, 3);
+        
+        // ÉTAPE 2: Charger les stops (compressé, ~100-200KB au lieu de plusieurs MB)
+        const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
+        if (!stopsResponse.ok) {
+            throw new Error(`Erreur chargement stops: ${stopsResponse.status}`);
+        }
+        
+        const stopsData = await stopsResponse.json();
+        
+        // Traitement ultra-rapide des stops
+        Object.entries(stopsData).forEach(([stopId, data]) => {
+            stopIds.push(stopId);
+            stopNameMap[stopId] = data.n || stopId;
+        });
+        
+        updateProgress(3, 3);
         
         apparaitrelelogo();
         
-        return extractedFiles;
-    } catch (error) {
-        console.error('Erreur lors du chargement des fichiers GTFS:', error);
-        toastBottomRight.error('Erreur lors du chargement des données GTFS');
-        soundsUX('MBF_NotificationError');
-        throw error;
-    }
-}
-
-async function initializeGTFS() {
-    try {
-        Object.keys(lineColors).forEach(key => delete lineColors[key]);
-        Object.keys(lineName).forEach(key => delete lineName[key]);
-        stopIds.length = 0;
-        Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
+        console.log('✅ Données GTFS chargées:', {
+            routes: Object.keys(lineColors).length,
+            stops: stopIds.length,
+            memoryUsed: performance.memory ? 
+                `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB` : 
+                'N/A'
+        });
         
-        const extractedFiles = await loadGTFSFilesFromServer();
-        
-        if (extractedFiles['routes.txt']) {
-            await loadLineColors(extractedFiles['routes.txt']);
-        } else {
-            console.error('Fichier routes.txt non trouvé');
-        }
-        
-        if (extractedFiles['stops.txt']) {
-            await loadStopIds(extractedFiles['stops.txt']);
-            await loadLineTerminusData(extractedFiles['stops.txt']);
-        } else {
-            console.error('Fichier stops.txt non trouvé');
-        }
-                
         return {
             lineColors,
             lineName,
@@ -2358,10 +2377,63 @@ async function initializeGTFS() {
         };
         
     } catch (error) {
-        console.error('Erreur lors de l\'initialisation data théorique gtfs', error);
+        console.error('Erreur lors du chargement GTFS:', error);
+        toastBottomRight.error('Erreur de chargement des données');
+        soundsUX('MBF_NotificationError');
         throw error;
     }
 }
+
+// Fonction pour obtenir les infos sur le cache serveur (optionnel)
+async function getServerCacheInfo() {
+    try {
+        const response = await fetch('proxy-cors/proxy_gtfs.php?action=info');
+        const info = await response.json();
+        
+        console.log('📊 Info cache serveur:', {
+            totalSize: `${(info.total_size / 1024).toFixed(2)} KB`,
+            coreSize: `${(info.core_size / 1024).toFixed(2)} KB`,
+            routesSize: `${(info.routes_size / 1024).toFixed(2)} KB`,
+            stopsSize: `${(info.stops_size / 1024).toFixed(2)} KB`,
+            cacheAge: `${info.cache_age_hours}h`
+        });
+        
+        return info;
+    } catch (error) {
+        console.warn('Impossible de récupérer les infos cache:', error);
+        return null;
+    }
+}
+
+// Fonction principale d'initialisation (remplace l'ancienne initializeGTFS)
+async function initializeGTFS() {
+    try {
+        // Nettoyage des données existantes
+        Object.keys(lineColors).forEach(key => delete lineColors[key]);
+        Object.keys(lineName).forEach(key => delete lineName[key]);
+        stopIds.length = 0;
+        Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
+        
+        // Chargement optimisé
+        const startTime = performance.now();
+        const data = await loadGTFSDataOptimized();
+        const loadTime = ((performance.now() - startTime) / 1000).toFixed(2);
+        
+        console.log(`⚡ GTFS chargé en ${loadTime}s`);
+        
+        // Optionnel: afficher les infos du cache serveur
+        if (window.location.search.includes('debug')) {
+            await getServerCacheInfo();
+        }
+        
+        return data;
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation GTFS', error);
+        throw error;
+    }
+}
+
 
 async function checkGTFSUpdate() {
     try {
