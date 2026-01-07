@@ -1407,11 +1407,19 @@ function displaySchedule(validTrips, stopId, destinationId, container) {
 
         if (stopIndex === -1 || destIndex === -1 || stopIndex >= destIndex) return;
 
-        const arrivalTime = tripStops[stopIndex].arrival_time;
-        const normalized = arrivalTime.includes(':') 
-            ? arrivalTime.replace(':', 'h') 
-            : arrivalTime;
-        schedule.push(normalized);
+        // MODIFIER CETTE PARTIE - Normaliser le format
+        let arrivalTime = tripStops[stopIndex].arrival_time;
+        
+        // Gérer format "HH:MM:SS" ou "H:MM" du serveur
+        if (arrivalTime.includes(':')) {
+            const parts = arrivalTime.split(':');
+            const hour = parseInt(parts[0]);
+            const minute = parts[1];
+            arrivalTime = `${hour}h${minute}`;
+        }
+        // Sinon supposer format "Hh MM" déjà bon
+        
+        schedule.push(arrivalTime);
     });
 
     if (schedule.length === 0) {
@@ -1422,8 +1430,14 @@ function displaySchedule(validTrips, stopId, destinationId, container) {
     const timesByHour = {};
     schedule.forEach(time => {
         const [hour, minute] = time.split('h');
-        if (!timesByHour[hour]) timesByHour[hour] = [];
-        timesByHour[hour].push(minute);
+        const h = parseInt(hour);
+        const m = minute || '00';
+        
+        // Gérer les heures >= 24 (lendemain)
+        const displayHour = h >= 24 ? h - 24 : h;
+        
+        if (!timesByHour[displayHour]) timesByHour[displayHour] = [];
+        timesByHour[displayHour].push(m);
     });
 
     Object.keys(timesByHour)
@@ -1467,6 +1481,7 @@ function getActiveServiceIds(dayOfWeek, gtfsDate) {
     const hasCalendar = state.calendar && Object.keys(state.calendar).length > 0;
 
     if (hasCalendar) {
+        // Utiliser calendar.txt
         for (const [serviceId, cal] of Object.entries(state.calendar)) {
             const inRange = gtfsDate >= cal.start_date && gtfsDate <= cal.end_date;
             if (!inRange) continue;
@@ -1476,26 +1491,12 @@ function getActiveServiceIds(dayOfWeek, gtfsDate) {
             }
         }
     } else {
-        // FALLBACK: Si calendar est vide, récupérer tous les service_ids des trips
-        console.log('Calendar vide, utilisation des service_ids des trips');
-        const allServiceIds = new Set();
-        
-        // Parcourir tous les trips chargés pour trouver les service_ids
-        Object.values(state.trips).forEach(routeTrips => {
-            if (Array.isArray(routeTrips)) {
-                routeTrips.forEach(trip => {
-                    if (trip.service_id) {
-                        allServiceIds.add(trip.service_id);
-                    }
-                });
-            }
-        });
-        
-        serviceIds = Array.from(allServiceIds);
-        console.log('Service IDs trouvés dans trips:', serviceIds);
+        // FALLBACK: calendar vide, on retourne un tableau vide
+        // Les exceptions calendarDates ajouteront les services
+        serviceIds = [];
     }
 
-    // Appliquer les exceptions de calendarDates
+    // Appliquer les exceptions calendar_dates
     const ex = state.calendarDates?.[gtfsDate];
     if (ex) {
         for (const id of ex.added || []) {
@@ -1505,8 +1506,6 @@ function getActiveServiceIds(dayOfWeek, gtfsDate) {
             serviceIds = serviceIds.filter(sid => sid !== id);
         }
     }
-
-    console.log('Services actifs pour', gtfsDate, ':', serviceIds);
 
     cache.serviceIds.set(cacheKey, serviceIds);
     return serviceIds;
