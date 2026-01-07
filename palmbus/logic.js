@@ -2033,16 +2033,14 @@ async function checkGTFSUpdate() {
             request.onerror = () => reject(request.error);
         });
         
-        if (!storedMetadata || !storedMetadata.lastUpdate) {
+        if (!storedMetadata || !storedMetadata.fileHash) {
             return { needsUpdate: true };
         }
         
-        const cacheAge = Date.now() - new Date(storedMetadata.lastUpdate).getTime();
-        const cacheTTL = 4 * 24 * 60 * 60 * 1000; // 4 jours en millisecondes
+        const { fileHash, needsFullDownload } = await getFileHash();
         
-        if (cacheAge > cacheTTL) {
-            console.log('Cache expiré, rechargement nécessaire');
-            return { needsUpdate: true };
+        if (fileHash !== storedMetadata.fileHash) {
+            return { needsUpdate: true, fileHash };
         }
         
         return { needsUpdate: false, metadata: storedMetadata };
@@ -2061,16 +2059,13 @@ async function saveToCache(data, metadata) {
 
             store.put(data, 'gtfsData');
             
-            const metadataToSave = {
-                ...metadata,
-                lastUpdate: new Date().toISOString()
-            };
-            store.put(metadataToSave, 'gtfsMetadata');
+            if (!metadata) {
+                metadata = {};
+            }
+            metadata.lastUpdate = new Date().toISOString();
+            store.put(metadata, 'gtfsMetadata');
 
-            transaction.oncomplete = () => {
-                console.log('Données GTFS sauvegardées en cache');
-                resolve();
-            };
+            transaction.oncomplete = () => resolve();
             transaction.onerror = () => reject(transaction.error);
         });
     } catch (error) {
@@ -2078,6 +2073,7 @@ async function saveToCache(data, metadata) {
         throw error;
     }
 }
+
 async function getFromCache() {
     try {
         const db = await initDB();
@@ -2095,7 +2091,7 @@ async function getFromCache() {
     }
 }
 
-/* async function extractGTFSFiles() {
+async function extractGTFSFiles() {
     try {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
@@ -2140,7 +2136,7 @@ async function getFromCache() {
         throw error;
     }
 }
-*/
+
 function parseCSVLine(csvLine) {
     const result = [];
     let currentValue = '';
@@ -2169,7 +2165,6 @@ function parseCSVLine(csvLine) {
     });
 }
 
-/*
 async function loadLineColors(routesFileContent) {
     try {
         if (!routesFileContent) {
@@ -2313,8 +2308,6 @@ async function loadLineTerminusData(stopsFileContent) {
         console.error('Erreur', error);
     }
 }
-    
-*/
 
 async function initializeGTFS() {
     try {
@@ -2323,229 +2316,73 @@ async function initializeGTFS() {
         stopIds.length = 0;
         Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
         
-        const { needsUpdate, metadata } = await checkGTFSUpdate();
+        let extractedFiles;
         
-        let coreData;
+        const { needsUpdate, fileHash, metadata } = await checkGTFSUpdate();
         
         if (needsUpdate) {
-            console.log('Chargement des données GTFS depuis le serveur...');
+            const result = await extractGTFSFiles();
+            apparaitrelelogo();
+            extractedFiles = result.extractedFiles;
             
-            const coreResponse = await fetch('proxy-cors/proxy_gtfs.php?action=core');
-            if (!coreResponse.ok) {
-                throw new Error(`Erreur HTTP: ${coreResponse.status}`);
-            }
+            await saveToCache(extractedFiles, result.metadata);
             
-            coreData = await coreResponse.json();
-            
-            // AJOUTER CES LOGS DE DÉBOGAGE :
-            console.log('Données reçues du serveur:', coreData);
-            console.log('Nombre de routes:', Object.keys(coreData.routes || {}).length);
-            console.log('Nombre de stops:', Object.keys(coreData.stops || {}).length);
-            
-            await saveToCache({
-                routes: coreData.routes,
-                stops: coreData.stops,
-                calendar: coreData.calendar,
-                calendarDates: coreData.calendarDates
-            }, {});
-            
-            toastBottomRight.success('Données téléchargées avec succès !');
-            soundsUX('MBF_Success');
         } else {
-            console.log('Chargement des données GTFS depuis le cache...');
-            const cachedData = await getFromCache();
-            
-            if (!cachedData) {
-                console.log('Pas de cache, rechargement...');
-                return await initializeGTFS();
-            }
-            
-            coreData = cachedData;
-            
-            // AJOUTER CES LOGS DE DÉBOGAGE :
-            console.log('Données chargées du cache:', coreData);
-            console.log('Nombre de routes:', Object.keys(coreData.routes || {}).length);
-            console.log('Nombre de stops:', Object.keys(coreData.stops || {}).length);
+            extractedFiles = await getFromCache();
+            if (!extractedFiles) {
+                const result = await extractGTFSFiles();
+                extractedFiles = result.extractedFiles;
+                await saveToCache(extractedFiles, result.metadata);
+                toastBottomRight.success('Données téléchargées avec succès !');
+                soundsUX('MBF_Success');
+            } 
         }
         
-        // Vérifier que les données existent
-        if (!coreData || !coreData.routes || !coreData.stops) {
-            console.error('Données GTFS invalides ou manquantes:', coreData);
-            throw new Error('Données GTFS invalides');
+        if (extractedFiles['routes.txt']) {
+            await loadLineColors(extractedFiles['routes.txt']);
         }
         
-        if (coreData.routes) {
-            Object.entries(coreData.routes).forEach(([routeId, route]) => {
-                lineColors[routeId] = route.route_color || '#FFFFFF';
-                lineName[routeId] = route.short_name || route.long_name || '';
-            });
+        if (extractedFiles['stops.txt']) {
+            await loadStopIds(extractedFiles['stops.txt']);
+            await loadLineTerminusData(extractedFiles['stops.txt']);
+        } else {
+            console.error('Fichier stops.txt non trouvé');
         }
-        
-        if (coreData.stops) {
-            Object.entries(coreData.stops).forEach(([stopId, stop]) => {
-                stopIds.push(stopId);
-                stopNameMap[stopId] = stop.stop_name || stopId;
-            });
-        }
-        
-        console.log(`✅ ${Object.keys(lineColors).length} lignes chargées`);
-        console.log(`✅ ${stopIds.length} arrêts chargés`);
-        console.log('Exemple de ligne:', Object.keys(lineColors)[0], lineColors[Object.keys(lineColors)[0]]);
-        console.log('Exemple de nom:', Object.keys(lineName)[0], lineName[Object.keys(lineName)[0]]);
         
         return {
             lineColors,
             lineName,
             stopIds,
-            stopNameMap,
-            calendar: coreData.calendar,
-            calendarDates: coreData.calendarDates
+            stopNameMap
         };
         
     } catch (error) {
         console.error('Erreur lors de l\'initialisation data théorique gtfs', error);
-        toastBottomRight.error('Erreur lors du chargement des données GTFS');
-        soundsUX('MBF_NotificationError');
         throw error;
     }
-}
-
-const routeDataCache = new Map();
-
-/**
- * Charge les données détaillées d'une ligne (trips et stop_times)
- * @param {string} routeId - L'ID de la ligne
- * @returns {Promise<Object>} Les données de la ligne (trips et stopTimes)
- */
-async function loadRouteData(routeId) {
-    if (routeDataCache.has(routeId)) {
-        return routeDataCache.get(routeId);
-    }
-    
-    try {
-        const response = await fetch(`proxy-cors/proxy_gtfs.php?action=route&route_id=${encodeURIComponent(routeId)}`);
-        
-        if (!response.ok) {
-            throw new Error(`Erreur HTTP: ${response.status}`);
-        }
-        
-        const routeData = await response.json();
-        
-        routeDataCache.set(routeId, routeData);
-        
-        if (routeDataCache.size > 20) {
-            const firstKey = routeDataCache.keys().next().value;
-            routeDataCache.delete(firstKey);
-        }
-        
-        return routeData;
-    } catch (error) {
-        console.error(`Erreur chargement données ligne ${routeId}:`, error);
-        return { trips: [], stopTimes: {} };
-    }
-}
-
-/**
- * Calcule le retard estimé pour un arrêt donné basé sur les trip updates
- * @param {string} tripId - L'ID du trip
- * @param {string} stopId - L'ID de l'arrêt
- * @param {Array} stopTimes - Les horaires théoriques (du GTFS statique)
- * @returns {Object} Informations sur le retard
- */
-function calculateStopDelay(tripId, stopId, stopTimes) {
-    const cleanStopId = stopId.replace("0:", "");
-    
-    const tripUpdate = tripUpdates[tripId];
-    
-    if (!tripUpdate || !tripUpdate.stopUpdates) {
-        return {
-            hasRealtime: false,
-            scheduledTime: null,
-            estimatedTime: null,
-            delay: 0,
-            delayMinutes: 0
-        };
-    }
-    
-    const stopUpdate = tripUpdate.stopUpdates.find(update => 
-        update.stopId.replace("0:", "") === cleanStopId
-    );
-    
-    if (!stopUpdate) {
-        return {
-            hasRealtime: false,
-            scheduledTime: null,
-            estimatedTime: null,
-            delay: 0,
-            delayMinutes: 0
-        };
-    }
-    
-    const theoreticalStop = stopTimes.find(st => 
-        st.stop_id.replace("0:", "") === cleanStopId
-    );
-    
-    const scheduledTime = theoreticalStop ? theoreticalStop.arrival_time : null;
-    const delay = stopUpdate.arrivalDelay || 0;
-    const delayMinutes = Math.round(delay / 60);
-    
-    let estimatedTime = null;
-    if (scheduledTime && delay !== 0) {
-        const [hours, minutes, seconds] = scheduledTime.split(':').map(Number);
-        const totalSeconds = hours * 3600 + minutes * 60 + seconds + delay;
-        
-        const estHours = Math.floor(totalSeconds / 3600) % 24;
-        const estMinutes = Math.floor((totalSeconds % 3600) / 60);
-        estimatedTime = `${estHours.toString().padStart(2, '0')}:${estMinutes.toString().padStart(2, '0')}`;
-    } else {
-        estimatedTime = scheduledTime;
-    }
-    
-    return {
-        hasRealtime: true,
-        scheduledTime,
-        estimatedTime,
-        delay,
-        delayMinutes,
-        status: delay > 60 ? 'late' : delay < -60 ? 'early' : 'ontime'
-    };
 }
 
 async function clearGTFSCache() {
     try {
         const db = await initDB();
         localStorage.clear();
-            await new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
             const request = store.clear();
 
-            request.onsuccess = () => resolve();
+            request.onsuccess = () => {
+                toastBottomRight.success('MBF3 : Cache erased successfully !!');
+                soundsUX('MBF_Success');
+                resolve();
+            };
             request.onerror = () => reject(request.error);
         });
-        
-        toastBottomRight.success('MBF3 : Cache erased successfully !!');
-        soundsUX('MBF_Success');
-        
-        await clearServerCache();
-        
     } catch (error) {
         console.error('Erreur lors de l\'effacement du cache', error);
         toastBottomRight.error('Erreur lors de l\'effacement du cache');
         soundsUX('MBF_NotificationError');
         throw error;
-    }
-}
-
-async function clearServerCache() {
-    try {
-        const response = await fetch('proxy-cors/proxy_gtfs.php?action=core&debug=1');
-        if (response.ok) {
-            console.log('Cache serveur vidé');
-            toastBottomRight.success('Cache serveur vidé avec succès');
-        }
-    } catch (error) {
-        console.error('Erreur vidage cache serveur:', error);
     }
 }
 
@@ -4581,10 +4418,17 @@ async function fetchVehiclePositions() {
         const buffer = await response.arrayBuffer();
         const data = await decodeProtobuf(buffer);
 
+        const activeVehicleIds = new Set();
+        
+        function isInViewport(lat, lng) {
+            const bounds = map.getBounds();
+            return bounds.contains(L.latLng(lat, lng));
+        }
 
-        data.entity.forEach(entity => {
-            const vehicle = entity.vehicle;
-            if (vehicle) {
+            data.entity.forEach(entity => {
+                const vehicle = entity.vehicle;
+                if (vehicle) {
+
 
                 const id = vehicle.vehicle.label || vehicle.vehicle.id || entity.id;
                 const vehicleOptionsBadges = getVehicleOptionsBadges(id);
@@ -4668,40 +4512,6 @@ async function fetchVehiclePositions() {
                             : '';
                         
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                                    
-                        let timeDisplay = '';
-                        let delayBadge = '';
-                        
-                        if (delayInfo.hasRealtime) {
-                            const timeLeft = stop.delay;
-                            const timeLeftText = timeLeft !== null 
-                                ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                                : '';
-                            
-                            timeDisplay = timeLeftText;
-                            
-                            if (Math.abs(delayInfo.delayMinutes) >= 2) {
-                                const badgeColor = delayInfo.status === 'late' ? '#ff4444' : 
-                                                delayInfo.status === 'early' ? '#44ff44' : '#888';
-                                const delayText = delayInfo.delayMinutes > 0 
-                                    ? `+${delayInfo.delayMinutes}` 
-                                    : `${delayInfo.delayMinutes}`;
-                                
-                                delayBadge = `
-                                    <span style="
-                                        background: ${badgeColor}; 
-                                        color: white; 
-                                        padding: 2px 6px; 
-                                        border-radius: 4px; 
-                                        font-size: 0.75em;
-                                        margin-left: 5px;
-                                        font-weight: bold;
-                                    ">${delayText}min</span>
-                                `;
-                            }
-                        } else {
-                            timeDisplay = stop.arrivalTime || stop.departureTime || "Inconnu";
-                        }
                                                 
                         return `
                         <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
@@ -8260,64 +8070,24 @@ async function main() {
     try {
         initWorker();
         
-        // 1. INITIALISER LA CARTE D'ABORD
-        if (!map) {
-            console.log('Initialisation de la carte...');
-            map = await initMap();
-        }
-        
-        // 2. PUIS charger les données GTFS
-        console.log('Chargement des données GTFS...');
         const gtfsData = await initializeGTFS();
         gtfsInitialized = true;
         
-        // 3. PUIS charger les lignes GeoJSON (qui a besoin de map.getZoom())
-        console.log('Chargement des lignes GeoJSON...');
         await loadGeoJsonLines();
         
-        // 4. PUIS charger les données temps réel
-        console.log('Chargement des données temps réel...');
         await Promise.all([
             fetchTripUpdates().catch(console.error),
+            hideLoadingScreen(),
             fetchVehiclePositions()
         ]);
         
-        // 5. Cacher l'écran de chargement
-        hideLoadingScreen();
-        
-        // 6. Démarrer les mises à jour périodiques
         startFetchUpdates();
-        
-        console.log('✅ Application initialisée avec succès');
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
         toastBottomRight.error("Une erreur critique est survenue. Nous investigons actuellement sur la cause de la panne.");
         soundsUX('MBF_NotificationError');
     }
-}
-
-/**
- * précharge les données des lignes visibles sur la carte
- * optimise les performances en chargeant à l'avance les données necessaires
- */
-async function preloadVisibleRoutes() {
-    const visibleRoutes = new Set();
-    
-    markerPool.active.forEach((marker) => {
-        if (marker.line && map.getBounds().contains(marker.getLatLng())) {
-            visibleRoutes.add(marker.line);
-        }
-    });
-    
-    const loadPromises = Array.from(visibleRoutes).map(routeId => 
-        loadRouteData(routeId).catch(err => {
-            console.warn(`Erreur préchargement ligne ${routeId}:`, err);
-        })
-    );
-    
-    await Promise.all(loadPromises);
-    console.log(`${visibleRoutes.size} lignes préchargées`);
 }
 
 // ==================== NETTOYAGE GLOBAL ====================
