@@ -2065,8 +2065,8 @@
                 transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
             }
             .logoscrapp {
-                transform: scale(1);
-                opacity: 1;
+                transform: scale(0.7) translateX(-70%) translateY(50px);
+                opacity: 0;
                 filter: blur(0) invert(1);
             }
             .logoscrappp {

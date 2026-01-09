@@ -8091,7 +8091,7 @@ setTimeout(() => {
         const mapPane = map.getPanes().tilePane;
         mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
     }
-}, 2000);
+}, 300);
 
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
