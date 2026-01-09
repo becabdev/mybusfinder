@@ -1155,30 +1155,6 @@ async function initMap() {
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
 
-        const osmb = new OSMBuildings(mapInstance).load();
-    osmb.hide(); // Caché par défaut
-    
-    let is3DMode = false;
-    const ZOOM_3D_THRESHOLD = 17;
-    
-    mapInstance.on('zoomend', function() {
-        const currentZoom = mapInstance.getZoom();
-        
-        if (currentZoom >= ZOOM_3D_THRESHOLD && !is3DMode) {
-            is3DMode = true;
-            
-            // Animation progressive
-            osmb.show();
-            animateTilt(mapInstance, 45, 500); // 45° en 500ms
-            
-        } else if (currentZoom < ZOOM_3D_THRESHOLD && is3DMode) {
-            is3DMode = false;
-            
-            animateTilt(mapInstance, 0, 500);
-            setTimeout(() => osmb.hide(), 500);
-        }
-    });
-
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
         const zoom = mapInstance.getZoom();
@@ -1258,29 +1234,6 @@ mapInstance.attributionControl.setPrefix('');
     return mapInstance;
 }
 
-function animateTilt(map, targetPitch, duration) {
-    const startPitch = map.getPitch() || 0;
-    const startTime = performance.now();
-    
-    function animate(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        const eased = progress < 0.5 
-            ? 2 * progress * progress 
-            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
-        const currentPitch = startPitch + (targetPitch - startPitch) * eased;
-        map.setPitch(currentPitch);
-        
-        if (progress < 1) {
-            requestAnimationFrame(animate);
-        }
-    }
-    
-    requestAnimationFrame(animate);
-}
-
 function onLocationFound(e) {
     const radius = e.accuracy / 2;
 
@@ -1345,6 +1298,75 @@ function locateUser() {
 (async function() {
     map = await initMap();
 })();
+
+// ==================== OSM BUILDINGS 3D ====================
+let osmBuildings = null;
+let is3DViewActive = false;
+const MIN_ZOOM_FOR_3D = 16; // Niveau de zoom pour activer la 3D
+
+function init3DBuildings() {
+    if (osmBuildings) return osmBuildings;
+    
+    osmBuildings = new OSMBuildings(map).load();
+    
+    // Style des bâtiments
+    osmBuildings.set({
+        color: '#999999',
+        wallColor: '#cccccc',
+        roofColor: '#aaaaaa',
+        shadows: true,
+        fadeIn: true
+    });
+    
+    return osmBuildings;
+}
+
+function toggle3DView(enable) {
+    if (enable && !is3DViewActive) {
+        if (!osmBuildings) {
+            init3DBuildings();
+        }
+        
+        // Animation d'entrée en vue 3D
+        map.setZoom(map.getZoom(), { animate: true });
+        
+        // Inclinaison de la vue
+        if (osmBuildings.setTilt) {
+            osmBuildings.setTilt(45);
+        }
+        
+        is3DViewActive = true;
+        console.log('Vue 3D activée');
+        
+    } else if (!enable && is3DViewActive) {
+        // Retour à la vue 2D
+        if (osmBuildings && osmBuildings.setTilt) {
+            osmBuildings.setTilt(0);
+        }
+        
+        is3DViewActive = false;
+        console.log('Vue 2D activée');
+    }
+}
+
+function handle3DToggleOnZoom() {
+    const currentZoom = map.getZoom();
+    
+    if (currentZoom >= MIN_ZOOM_FOR_3D && !is3DViewActive) {
+        toggle3DView(true);
+    } else if (currentZoom < MIN_ZOOM_FOR_3D && is3DViewActive) {
+        toggle3DView(false);
+    }
+}
+
+// Écouteur d'événement pour le zoom
+map.on('zoomend', debounce(handle3DToggleOnZoom, 100));
+
+// Vérification initiale au chargement
+setTimeout(() => {
+    handle3DToggleOnZoom();
+}, 1000);
+// ==================== FIN OSM BUILDINGS 3D ====================
 
 const sunOverlay = document.getElementById('sun-overlay');
     let isSunOrientationVisible = false; 
