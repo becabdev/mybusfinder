@@ -111,6 +111,9 @@
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 body {
@@ -915,20 +918,35 @@ function scrollToTop() {
 }
 
 function addTouchFeedback(element) {
+    element.style.touchAction = 'manipulation';
+    element.style.userSelect = 'none';
+    element.style.webkitUserSelect = 'none';
+    
+    let touchStarted = false;
+    
     element.addEventListener('touchstart', function(e) {
+        touchStarted = true;
         this.classList.add('pressing');
     }, { passive: true });
     
     element.addEventListener('touchend', function(e) {
         this.classList.remove('pressing');
+        touchStarted = false;
     }, { passive: true });
     
     element.addEventListener('touchcancel', function() {
         this.classList.remove('pressing');
+        touchStarted = false;
     }, { passive: true });
     
-    element.style.touchAction = 'manipulation';
+    element.addEventListener('click', function(e) {
+        if (!touchStarted) {
+            this.classList.add('pressing');
+            setTimeout(() => this.classList.remove('pressing'), 200);
+        }
+    });
 }
+
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
@@ -1167,17 +1185,25 @@ function showLines() {
     const linesList = document.getElementById('lines-list');
     linesList.innerHTML = '';
 
-    Object.entries(state.routes).forEach(([routeId, route], index) => {
+Object.entries(state.routes).forEach(([routeId, route], index) => {
         const item = document.createElement('div');
         item.className = 'bus-item';
         item.style.animationDelay = `${index * 0.05}s`;
+        item.style.cursor = 'pointer';
         item.innerHTML = `
             <span class="bus-number" style="background: #${route.route_color || '007AFF'}; color: #${route.route_text_color || 'ffffff'}">
                 Ligne ${route.route_short_name}
             </span>
             <span class="bus-name">${route.route_long_name}</span>
         `;
-        item.onclick = () => showDestinations(routeId);
+        
+        const handleClick = () => showDestinations(routeId);
+        item.addEventListener('click', handleClick);
+        item.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleClick();
+        }, { passive: false });
+        
         addTouchFeedback(item);
         linesList.appendChild(item);
     });
@@ -1225,8 +1251,16 @@ async function showDestinations(routeId) {
             const item = document.createElement('div');
             item.className = 'destination-item';
             item.style.animationDelay = `${index * 0.05}s`;
+            item.style.cursor = 'pointer';
             item.innerHTML = `<strong>${dest.name}</strong>`;
-            item.onclick = () => showStops(routeId, dest.id);
+            
+            const handleClick = () => showStops(routeId, dest.id);
+            item.addEventListener('click', handleClick);
+            item.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                handleClick();
+            }, { passive: false });
+            
             addTouchFeedback(item);
             list.appendChild(item);
         });
@@ -1270,23 +1304,25 @@ function updateStopsForDestination(routeId, destinationId) {
 
     const stops = getStopsForDestination(routeId, destinationId);
     
-    // AJOUTER CE LOG
-    console.log('Arrêts à afficher:', stops.length);
-    console.log('Premiers arrêts:', stops.slice(0, 3));
-    
     stops.forEach((stop, index) => {
         const item = document.createElement('div');
         item.className = 'stop-item';
         item.style.animationDelay = `${index * 0.05}s`;
+        item.style.cursor = 'pointer';
         item.innerHTML = `<strong>${stop.stop_name}</strong>`;
         
-        // VÉRIFIER LE STOP_ID ICI
         console.log('Stop créé:', stop.stop_id, stop.stop_name);
         
-        item.onclick = () => {
+        const handleClick = () => {
             console.log('Clic sur stop:', stop.stop_id, destinationId);
             showSchedule(routeId, stop.stop_id, destinationId);
         };
+        item.addEventListener('click', handleClick);
+        item.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            handleClick();
+        }, { passive: false });
+        
         addTouchFeedback(item);
         list.appendChild(item);
     });
