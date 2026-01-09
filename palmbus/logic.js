@@ -3202,7 +3202,9 @@ async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    currentZoomLevel = map.getZoom();
+    setTimeout(() => {
+        currentZoomLevel = map.getZoom();
+    }, 200);
 
     const busLines = L.geoJSON(geoJsonData, {
         filter: function(feature) {
