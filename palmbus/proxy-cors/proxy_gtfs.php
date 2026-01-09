@@ -1,5 +1,5 @@
 <?php
-@ini_set('memory_limit', '512M');
+@ini_set('memory_limit', '4096M');
 set_time_limit(180);
 
 header("Access-Control-Allow-Origin: *");
@@ -243,7 +243,7 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
         'calendarDates' => $calendarDatesByDate,
         'generated' => time()
     ];
-        
+
     // Compression GZIP
     $json = json_encode($core);
     $compressed = gzencode($json, 9);
