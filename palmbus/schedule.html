@@ -914,32 +914,46 @@ function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function addTouchFeedback(element) {
+function addTouchFeedback(element, callback) {
     element.style.touchAction = 'manipulation';
     element.style.userSelect = 'none';
     element.style.webkitUserSelect = 'none';
     
     let touchStarted = false;
+    let touchMoved = false;
     
     element.addEventListener('touchstart', function(e) {
         touchStarted = true;
+        touchMoved = false;
         this.classList.add('pressing');
+    }, { passive: true });
+    
+    element.addEventListener('touchmove', function(e) {
+        touchMoved = true;
+        this.classList.remove('pressing');
     }, { passive: true });
     
     element.addEventListener('touchend', function(e) {
         this.classList.remove('pressing');
+        if (touchStarted && !touchMoved && callback) {
+            e.preventDefault();
+            callback(e);
+        }
         touchStarted = false;
-    }, { passive: true });
+        touchMoved = false;
+    });
     
     element.addEventListener('touchcancel', function() {
         this.classList.remove('pressing');
         touchStarted = false;
+        touchMoved = false;
     }, { passive: true });
     
     element.addEventListener('click', function(e) {
-        if (!touchStarted) {
+        if (!touchStarted && callback) {
             this.classList.add('pressing');
             setTimeout(() => this.classList.remove('pressing'), 200);
+            callback(e);
         }
     });
 }
@@ -1192,8 +1206,7 @@ function showLines() {
             </span>
             <span class="bus-name">${route.route_long_name}</span>
         `;
-        item.onclick = () => showDestinations(routeId);
-        addTouchFeedback(item);
+        addTouchFeedback(item, () => showDestinations(routeId));
         linesList.appendChild(item);
     });
 }
@@ -1241,8 +1254,7 @@ async function showDestinations(routeId) {
             item.className = 'destination-item';
             item.style.animationDelay = `${index * 0.05}s`;
             item.innerHTML = `<strong>${dest.name}</strong>`;
-            item.onclick = () => showStops(routeId, dest.id);
-            addTouchFeedback(item);
+            addTouchFeedback(item, () => showStops(routeId, dest.id));
             list.appendChild(item);
         });
     } catch (error) {
@@ -1295,14 +1307,10 @@ function updateStopsForDestination(routeId, destinationId) {
         item.style.animationDelay = `${index * 0.05}s`;
         item.innerHTML = `<strong>${stop.stop_name}</strong>`;
         
-        // VÉRIFIER LE STOP_ID ICI
-        console.log('Stop créé:', stop.stop_id, stop.stop_name);
-        
-        item.onclick = () => {
+        addTouchFeedback(item, () => {
             console.log('Clic sur stop:', stop.stop_id, destinationId);
             showSchedule(routeId, stop.stop_id, destinationId);
-        };
-        addTouchFeedback(item);
+        });
         list.appendChild(item);
     });
 }
@@ -1349,7 +1357,7 @@ function setupTabHandlers() {
     const datePicker = document.getElementById('date-picker');
 
     tabs.forEach((tab, index) => {
-        tab.onclick = () => {
+        const handleTabClick = () => {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             
@@ -1373,6 +1381,8 @@ function setupTabHandlers() {
                 navigator.vibrate(10);
             }
         };
+        
+        addTouchFeedback(tab, handleTabClick);
     });
 
     const activeTab = document.querySelector('.tab.active');
@@ -1965,8 +1975,7 @@ function goBack() {
 }
 
 const backBtn = document.getElementById('back-btn');
-backBtn.onclick = goBack;
-addTouchFeedback(backBtn);
+addTouchFeedback(backBtn, goBack);
 
 window.addEventListener('beforeunload', () => {
     if (state.realtimeInterval) {
