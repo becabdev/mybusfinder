@@ -1297,6 +1297,102 @@ function locateUser() {
 
 (async function() {
     map = await initMap();
+
+    let osmBuildings = null;
+    let buildingsLayer = null;
+    const BUILDINGS_MIN_ZOOM = 16; 
+
+    function initOSMBuildings() {
+        if (buildingsLayer) return;
+        
+        buildingsLayer = new OSMBuildings(map).load();
+        
+        // Configuration avancée
+        buildingsLayer.set({
+            // Couleurs
+            color: 'rgba(200, 200, 200, 0.8)',
+            wallColor: 'rgba(200, 200, 200, 0.8)',
+            roofColor: 'rgba(250, 250, 250, 0.9)',
+            
+            // Effets visuels
+            shadows: true,
+            effects: ['shadows'],
+            
+            // Brouillard de distance
+            fogColor: 'rgba(200, 200, 200, 0.2)',
+            fogDistance: 600, // Distance du brouillard en mètres
+            
+            // Performance
+            minZoom: BUILDINGS_MIN_ZOOM,
+            maxZoom: 22,
+            
+            // Hauteur des bâtiments
+            wallColorAlpha: 0.8,
+            roofColorAlpha: 0.9,
+            
+            // Qualité du rendu
+            fastMode: false // true pour de meilleures performances
+        });
+        
+        // Adapter selon le thème sombre/clair
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            buildingsLayer.set({
+                color: 'rgba(100, 100, 100, 0.6)',
+                wallColor: 'rgba(80, 80, 80, 0.7)',
+                roofColor: 'rgba(120, 120, 120, 0.8)'
+            });
+        }
+    }
+
+    function removeOSMBuildings() {
+        if (buildingsLayer) {
+            try {
+                map.removeLayer(buildingsLayer);
+                buildingsLayer = null;
+                console.log('🗑️ Bâtiments 3D supprimés');
+            } catch (error) {
+                console.error('Erreur suppression bâtiments:', error);
+            }
+        }
+    }
+
+    function handleBuildingsZoom() {
+        const currentZoom = map.getZoom();
+        
+        if (currentZoom >= BUILDINGS_MIN_ZOOM) {
+            if (!buildingsLayer) {
+                initOSMBuildings();
+                
+                if (buildingsLayer) {
+                    buildingsLayer.setStyle({
+                        opacity: 0
+                    });
+                    
+                    setTimeout(() => {
+                        buildingsLayer.setStyle({
+                            opacity: 1,
+                            transition: 'opacity 0.5s ease'
+                        });
+                    }, 100);
+                }
+            }
+        } else {
+            if (buildingsLayer) {
+                buildingsLayer.setStyle({
+                    opacity: 0,
+                    transition: 'opacity 0.3s ease'
+                });
+                
+                setTimeout(() => {
+                    removeOSMBuildings();
+                }, 300);
+            }
+        }
+    }
+
+    map.on('zoomend', handleBuildingsZoom);
+
+    handleBuildingsZoom();
 })();
 
 const sunOverlay = document.getElementById('sun-overlay');
