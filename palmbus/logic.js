@@ -1580,6 +1580,74 @@ const StyleManager = {
 };
 // ==================== FIN STYLE MANAGER ====================
 
+// ==================== OSM BUILDINGS 3D ====================
+let osmBuildings = null;
+let is3DViewActive = false;
+const MIN_ZOOM_FOR_3D = 16; // Niveau de zoom pour activer la 3D
+
+function init3DBuildings() {
+    if (osmBuildings) return osmBuildings;
+    
+    osmBuildings = new OSMBuildings(map).load();
+    
+    // Style des bâtiments
+    osmBuildings.set({
+        color: '#999999',
+        wallColor: '#cccccc',
+        roofColor: '#aaaaaa',
+        shadows: true,
+        fadeIn: true
+    });
+    
+    return osmBuildings;
+}
+
+function toggle3DView(enable) {
+    if (enable && !is3DViewActive) {
+        if (!osmBuildings) {
+            init3DBuildings();
+        }
+        
+        // Animation d'entrée en vue 3D
+        map.setZoom(map.getZoom(), { animate: true });
+        
+        // Inclinaison de la vue
+        if (osmBuildings.setTilt) {
+            osmBuildings.setTilt(45);
+        }
+        
+        is3DViewActive = true;
+        console.log('Vue 3D activée');
+        
+    } else if (!enable && is3DViewActive) {
+        // Retour à la vue 2D
+        if (osmBuildings && osmBuildings.setTilt) {
+            osmBuildings.setTilt(0);
+        }
+        
+        is3DViewActive = false;
+        console.log('Vue 2D activée');
+    }
+}
+
+function handle3DToggleOnZoom() {
+    const currentZoom = map.getZoom();
+    
+    if (currentZoom >= MIN_ZOOM_FOR_3D && !is3DViewActive) {
+        toggle3DView(true);
+    } else if (currentZoom < MIN_ZOOM_FOR_3D && is3DViewActive) {
+        toggle3DView(false);
+    }
+}
+
+// Écouteur d'événement pour le zoom
+map.on('zoomend', debounce(handle3DToggleOnZoom, 100));
+
+// Vérification initiale au chargement
+setTimeout(() => {
+    handle3DToggleOnZoom();
+}, 1000);
+// ==================== FIN OSM BUILDINGS 3D ====================
 
 function showLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
