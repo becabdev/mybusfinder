@@ -915,19 +915,20 @@ function scrollToTop() {
 }
 
 function addTouchFeedback(element) {
-    element.addEventListener('touchstart', function() {
+    element.addEventListener('touchstart', function(e) {
         this.classList.add('pressing');
     }, { passive: true });
     
-    element.addEventListener('touchend', function() {
+    element.addEventListener('touchend', function(e) {
         this.classList.remove('pressing');
     }, { passive: true });
     
     element.addEventListener('touchcancel', function() {
         this.classList.remove('pressing');
     }, { passive: true });
+    
+    element.style.touchAction = 'manipulation';
 }
-
 document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
