@@ -1127,6 +1127,11 @@ function soundsUX(soundFileName) {
     }
 }
 
+// ==================== OSM BUILDINGS INTEGRATION ====================
+let osmBuildings = null;
+let buildingsVisible = false;
+const BUILDINGS_MIN_ZOOM = 17; // Zoom minimum pour afficher les bâtiments 3D
+
 async function initMap() {
     const data = await getSetvar();
     let defaultCoords = [43.125463, 5.930077];
@@ -1164,7 +1169,6 @@ async function initMap() {
         }));
     });
 
-    
     L.popup({
         closeButton: false
     });
@@ -1196,43 +1200,162 @@ async function initMap() {
         );
     });
 
-    
-
-
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-    const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    
-    const tileLayer = L.tileLayer(tileLayerUrl, {
-        minZoom: 6,
-        maxZoom: 19,
-    }).addTo(mapInstance);
+        const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        
+        const tileLayer = L.tileLayer(tileLayerUrl, {
+            minZoom: 6,
+            maxZoom: 19,
+        }).addTo(mapInstance);
+    } else {
+        const mapPane = mapInstance.getPanes().tilePane;
+        mapPane.style.filter = 'none';
+        
+        L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+            minZoom: 6,
+            maxZoom: 19,
+            format: 'image/jpeg',
+            style: 'normal'
+        }).addTo(mapInstance);
+    }
 
-
-} else {
-    const mapPane = mapInstance.getPanes().tilePane;
-    mapPane.style.filter = 'none';
-    
-    L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 6,
-        maxZoom: 19,
-        format: 'image/jpeg',
-        style: 'normal'
-    }).addTo(mapInstance);
-
-}
-
-
-
-
-mapInstance.attributionControl.setPrefix('');
+    mapInstance.attributionControl.setPrefix('');
 
     mapInstance.on('locationfound', onLocationFound);
     mapInstance.on('locationerror', onLocationError);
 
+    // ==================== INITIALISATION OSM BUILDINGS ====================
+    initOSMBuildings(mapInstance);
+    
+    // Gestion du zoom pour afficher/masquer les bâtiments 3D
+    mapInstance.on('zoomend', function() {
+        handleBuildingsVisibility(mapInstance);
+    });
+    
+    // Vérification initiale du zoom
+    handleBuildingsVisibility(mapInstance);
+
     return mapInstance;
 }
+
+// ==================== GESTION OSM BUILDINGS ====================
+function initOSMBuildings(mapInstance) {
+    try {
+        // Vérifier si OSMBuildings est disponible
+        if (typeof OSMBuildings === 'undefined') {
+            console.warn('OSMBuildings non chargé');
+            return;
+        }
+
+        // Créer la couche OSM Buildings
+        osmBuildings = new OSMBuildings(mapInstance).load();
+        
+        // Style des bâtiments
+        osmBuildings.style({
+            color: 'rgb(255, 255, 255)',
+            wallColor: 'rgb(200, 190, 180)',
+            roofColor: 'rgb(240, 230, 220)',
+            shadows: true
+        });
+
+        console.log('OSM Buildings initialisé avec succès');
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation d\'OSM Buildings:', error);
+    }
+}
+
+function handleBuildingsVisibility(mapInstance) {
+    if (!osmBuildings) return;
+    
+    const currentZoom = mapInstance.getZoom();
+    
+    // Afficher les bâtiments si zoom >= BUILDINGS_MIN_ZOOM
+    if (currentZoom >= BUILDINGS_MIN_ZOOM && !buildingsVisible) {
+        showBuildings();
+    } 
+    // Masquer les bâtiments si zoom < BUILDINGS_MIN_ZOOM
+    else if (currentZoom < BUILDINGS_MIN_ZOOM && buildingsVisible) {
+        hideBuildings();
+    }
+}
+
+function showBuildings() {
+    if (!osmBuildings || buildingsVisible) return;
+    
+    try {
+        osmBuildings.show();
+        buildingsVisible = true;
+        console.log('Bâtiments 3D affichés');
+        
+        // Notification optionnelle pour l'utilisateur
+        if (localStorage.getItem('buildings3d_tip') !== 'true') {
+            toastBottomRight.info('🏢 Vue 3D activée !');
+            soundsUX('MBF_NotificationInfo');
+            localStorage.setItem('buildings3d_tip', 'true');
+        }
+    } catch (error) {
+        console.error('Erreur lors de l\'affichage des bâtiments:', error);
+    }
+}
+
+function hideBuildings() {
+    if (!osmBuildings || !buildingsVisible) return;
+    
+    try {
+        osmBuildings.hide();
+        buildingsVisible = false;
+        console.log('Bâtiments 3D masqués');
+    } catch (error) {
+        console.error('Erreur lors du masquage des bâtiments:', error);
+    }
+}
+
+// Fonction pour personnaliser le style des bâtiments
+function updateBuildingsStyle(options = {}) {
+    if (!osmBuildings) return;
+    
+    const defaultStyle = {
+        color: 'rgb(255, 255, 255)',
+        wallColor: 'rgb(200, 190, 180)',
+        roofColor: 'rgb(240, 230, 220)',
+        shadows: true
+    };
+    
+    const style = { ...defaultStyle, ...options };
+    osmBuildings.style(style);
+}
+
+// Fonction pour ajuster le style selon le thème
+function applyBuildingsTheme(theme) {
+    if (!osmBuildings) return;
+    
+    const themes = {
+        default: {
+            color: 'rgb(255, 255, 255)',
+            wallColor: 'rgb(200, 190, 180)',
+            roofColor: 'rgb(240, 230, 220)',
+            shadows: true
+        },
+        dark: {
+            color: 'rgb(80, 80, 80)',
+            wallColor: 'rgb(60, 60, 60)',
+            roofColor: 'rgb(50, 50, 50)',
+            shadows: true
+        },
+        vibrant: {
+            color: 'rgb(255, 255, 255)',
+            wallColor: 'rgb(180, 200, 220)',
+            roofColor: 'rgb(220, 230, 250)',
+            shadows: true
+        }
+    };
+    
+    const style = themes[theme] || themes.default;
+    osmBuildings.style(style);
+}
+// ==================== FIN OSM BUILDINGS ====================
 
 function onLocationFound(e) {
     const radius = e.accuracy / 2;
@@ -1298,8 +1421,6 @@ function locateUser() {
 (async function() {
     map = await initMap();
 })();
-
-
 
 const sunOverlay = document.getElementById('sun-overlay');
     let isSunOrientationVisible = false; 
@@ -1580,74 +1701,6 @@ const StyleManager = {
 };
 // ==================== FIN STYLE MANAGER ====================
 
-// ==================== OSM BUILDINGS 3D ====================
-let osmBuildings = null;
-let is3DViewActive = false;
-const MIN_ZOOM_FOR_3D = 16; // Niveau de zoom pour activer la 3D
-
-function init3DBuildings() {
-    if (osmBuildings) return osmBuildings;
-    
-    osmBuildings = new OSMBuildings(map).load();
-    
-    // Style des bâtiments
-    osmBuildings.set({
-        color: '#999999',
-        wallColor: '#cccccc',
-        roofColor: '#aaaaaa',
-        shadows: true,
-        fadeIn: true
-    });
-    
-    return osmBuildings;
-}
-
-function toggle3DView(enable) {
-    if (enable && !is3DViewActive) {
-        if (!osmBuildings) {
-            init3DBuildings();
-        }
-        
-        // Animation d'entrée en vue 3D
-        map.setZoom(map.getZoom(), { animate: true });
-        
-        // Inclinaison de la vue
-        if (osmBuildings.setTilt) {
-            osmBuildings.setTilt(45);
-        }
-        
-        is3DViewActive = true;
-        console.log('Vue 3D activée');
-        
-    } else if (!enable && is3DViewActive) {
-        // Retour à la vue 2D
-        if (osmBuildings && osmBuildings.setTilt) {
-            osmBuildings.setTilt(0);
-        }
-        
-        is3DViewActive = false;
-        console.log('Vue 2D activée');
-    }
-}
-
-function handle3DToggleOnZoom() {
-    const currentZoom = map.getZoom();
-    
-    if (currentZoom >= MIN_ZOOM_FOR_3D && !is3DViewActive) {
-        toggle3DView(true);
-    } else if (currentZoom < MIN_ZOOM_FOR_3D && is3DViewActive) {
-        toggle3DView(false);
-    }
-}
-
-// Écouteur d'événement pour le zoom
-map.on('zoomend', debounce(handle3DToggleOnZoom, 100));
-
-// Vérification initiale au chargement
-setTimeout(() => {
-    handle3DToggleOnZoom();
-}, 1000);
-// ==================== FIN OSM BUILDINGS 3D ====================
 
 function showLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
