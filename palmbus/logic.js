@@ -5306,6 +5306,45 @@ function updateMenu() {
     }
 }
 
+function closeMenu() {
+    safeVibrate([30], true);
+    soundsUX('MBF_SelectedVehicle_DoorClose');
+    const menu = document.getElementById('menu');
+    const menubottom1 = document.getElementById('menubtm');
+    const mapp = document.getElementById('map');
+    mapp.style.opacity = '1';
+    
+
+    const map = document.getElementById('map');
+    menu.classList.add('hidden');
+    if (localStorage.getItem('transparency') === 'true') {
+        const map = document.getElementById('map');
+        map.classList.remove('hiddennotransition');
+        map.classList.add('appearnotransition');
+        map.classList.remove('hidden');
+        map.classList.remove('appear');
+    } else {
+        const map = document.getElementById('map');
+        map.classList.remove('hidden');
+        map.classList.add('appear');
+        map.classList.remove('hiddennotransition');
+        map.classList.remove('appearnotransition');
+    }
+
+    window.isMenuShowed = false;
+    menu.addEventListener('animationend', function onAnimationEnd(event) {
+        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+            menu.style.display = 'none';
+        }
+    });
+    isMenuVisible = false;
+    menubottom1.style.display = 'flex';
+    setTimeout(() => {
+        menubottom1.classList.remove('slide-upb');
+        menubottom1.classList.add('slide-downb');
+    }, 10);
+}
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -6873,44 +6912,7 @@ animationStyle.textContent = `
 `;
 document.head.appendChild(animationStyle);
 
-function closeMenu() {
-    safeVibrate([30], true);
-    soundsUX('MBF_SelectedVehicle_DoorClose');
-    const menu = document.getElementById('menu');
-    const menubottom1 = document.getElementById('menubtm');
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
-    
 
-    const map = document.getElementById('map');
-    menu.classList.add('hidden');
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-
-    window.isMenuShowed = false;
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-    isMenuVisible = false;
-    menubottom1.style.display = 'flex';
-    setTimeout(() => {
-        menubottom1.classList.remove('slide-upb');
-        menubottom1.classList.add('slide-downb');
-    }, 10);
-}
 
 // ==================== VIRTUAL SCROLLING ====================
 class VirtualScroller {
