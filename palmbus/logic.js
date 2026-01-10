@@ -5317,254 +5317,7 @@ const ANIMATION_CONFIG = {
     ITEM_MARGIN: 10
 };
 
-function createNearbyVehiclesControl() {
-    if (window.nearbyVehiclesControlInstance) {
-        return window.nearbyVehiclesControlInstance;
-    }
 
-    const NearbyVehiclesControl = L.Control.extend({
-        options: {
-            position: 'topleft'
-        },
-
-        initialize: function(map) {
-            L.Control.prototype.initialize.call(this, { map: map });
-            this._lastUpdateCenter = null;
-        },
-
-        onAdd: function(map) {
-            if (this._container) {
-                return this._container;
-            }
-
-            this._container = L.DomUtil.create('div', 'nearby-vehicles-control');
-            this._container.style.cssText = `
-                position: absolute;
-                width: max-content;
-                font-family: 'League Spartan', sans-serif;
-                margin-left: 12px;
-                background-color: rgba(0, 0, 0, 0.3);
-                border-radius: 15px;
-                box-shadow: 0 4px 20px 4px rgba(0, 0, 0, 0.2);
-                z-index: 1000;
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
-                overflow: hidden;
-                transition: all 0.5s cubic-bezier(0.25, 1.2, 0.5, 1);
-                max-height: 60px;
-                opacity: 0;
-                display: none;
-            `;
-
-            const header = L.DomUtil.create('div', 'nearby-vehicles-header');
-            header.style.cssText = `
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 15px;
-                cursor: pointer;
-            `;
-
-            const title = L.DomUtil.create('h3', '');
-            title.textContent = 'Véhicules à proximité';
-            title.style.cssText = `
-                margin: 0;
-                font-size: 20px;
-                font-weight: 600;
-                color: white;
-                text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            `;
-
-
-            header.appendChild(title);
-            this._container.appendChild(header);
-
-            this._listContainer = L.DomUtil.create('div', 'nearby-vehicles-list');
-            this._listContainer.style.cssText = `
-                max-height: 350px;
-                overflow-y: auto;
-                padding: 10px 15px;
-                opacity: 0;
-                transform: translateY(-20px);
-                transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
-            `;
-            this._container.appendChild(this._listContainer);
-
-            this._isExpanded = false;
-            this._isVisible = false;
-
-            header.addEventListener('click', () => {
-                this.toggleExpand();
-            });
-
-
-            map.on('moveend', () => this._updateVehiclesIfNeeded(map));
-
-            return this._container;
-        },
-
-        _updateVehiclesIfNeeded: function(map) {
-            const currentCenter = map.getCenter();
-            const distanceMoved = this._lastUpdateCenter 
-                ? currentCenter.distanceTo(this._lastUpdateCenter) 
-                : Infinity;
-
-            if (!this._lastUpdateCenter || distanceMoved > 500) {
-                this._lastUpdateCenter = currentCenter;
-                
-                if (this._isExpanded) {
-                    this.show();
-                }
-            }
-        },
-
-        show: function() {
-            this._container.style.display = 'block';
-            
-            setTimeout(() => {
-                this._container.style.opacity = '1';
-            }, 10);
-
-            const userLocation = map.getCenter();
-
-            const closestVehicles = Object.values(markers)
-                .filter(marker => marker.options && marker.options.icon)
-                .map(marker => ({
-                    marker: marker,
-                    distance: userLocation.distanceTo(marker.getLatLng())
-                }))
-                .sort((a, b) => a.distance - b.distance)
-                .slice(0, 5);
-
-            this._listContainer.innerHTML = '';
-
-            closestVehicles.forEach((item) => {
-                const marker = item.marker;
-                const distance = (item.distance / 1000).toFixed(1);
-                
-                const vehicleId = marker.id;
-                const line = marker.line;
-                const backgroundColor = lineColors[line] || '#000000';
-                const textColor = 'white';
-
-                const vehicleItem = L.DomUtil.create('div', 'nearby-vehicle-item');
-                vehicleItem.style.cssText = `
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 10px;
-                    background-color: rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                    padding: 10px;
-                    cursor: pointer;
-                    transition: transform 0.3s ease, box-shadow 0.3s ease;
-                    position: relative;
-                    overflow: hidden;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    color: white;
-                `;
-
-                vehicleItem.innerHTML = `
-                    <div style="flex-grow: 1; z-index: 1; position: relative;">
-                        <strong>Ligne ${lineName[line] || 'Inconnue'}</strong>
-                        <div style="font-size: 0.8em; opacity: 0.7;">
-                            à ${distance} km
-                        </div>
-                    </div>
-                    <div style="
-                        background: transparent; 
-                        color: white; 
-                        padding: 5px 10px; 
-                        border-radius: 5px; 
-                        z-index: 1; 
-                        position: relative;
-                        border: 1px solid white;
-                    ">
-                        ${vehicleId}
-                    </div>
-                `;
-
-                vehicleItem.addEventListener('click', () => {
-                    map.setView(marker.getLatLng(), 15);
-                    marker.openPopup();
-                    this.collapse();
-                });
-
-                this._listContainer.appendChild(vehicleItem);
-            });
-
-            if (!this._isExpanded) {
-                this.expand();
-            }
-
-            this._isVisible = true;
-            return this;
-        },
-
-        hide: function() {
-            this._container.style.opacity = '0';
-            
-            setTimeout(() => {
-                this._container.style.display = 'none';
-            }, 300);
-
-            this._isVisible = false;
-            this._isExpanded = false;
-            return this;
-        },
-
-        expand: function() {
-            const header = this._container.querySelector('.nearby-vehicles-header');
-            const listContainer = this._listContainer;
-
-            this._container.style.maxHeight = '500px';
-            listContainer.style.opacity = '1';
-            listContainer.style.transform = 'translateY(0)';
-            
-
-            this._isExpanded = true;
-            return this;
-        },
-
-        collapse: function() {
-            const header = this._container.querySelector('.nearby-vehicles-header');
-            const listContainer = this._listContainer;
-
-            this._container.style.maxHeight = '60px';
-            listContainer.style.opacity = '0';
-            listContainer.style.transform = 'translateY(-20px)';
-            
-
-            this._isExpanded = false;
-            return this;
-        },
-
-        toggleExpand: function() {
-            if (this._isExpanded) {
-                this.collapse();
-            } else {
-                this.expand();
-            }
-            return this;
-        }
-    });
-
-    const nearbyVehiclesControl = new NearbyVehiclesControl(map);
-    map.addControl(nearbyVehiclesControl);
-
-    window.nearbyVehiclesControlInstance = nearbyVehiclesControl;
-
-    window.nearbyVehiclesControl = {
-        show: () => nearbyVehiclesControl.show(),
-        hide: () => nearbyVehiclesControl.hide(),
-        expand: () => nearbyVehiclesControl.expand(),
-        collapse: () => nearbyVehiclesControl.collapse(),
-        toggleExpand: () => nearbyVehiclesControl.toggleExpand()
-    };
-
-    return nearbyVehiclesControl;
-}
-
-createNearbyVehiclesControl();
 
 let isAnimating = false;
 
@@ -6953,6 +6706,255 @@ class VirtualScroller {
         return this.updateVisibleItems();
     }
 }
+
+function createNearbyVehiclesControl() {
+    if (window.nearbyVehiclesControlInstance) {
+        return window.nearbyVehiclesControlInstance;
+    }
+
+    const NearbyVehiclesControl = L.Control.extend({
+        options: {
+            position: 'topleft'
+        },
+
+        initialize: function(map) {
+            L.Control.prototype.initialize.call(this, { map: map });
+            this._lastUpdateCenter = null;
+        },
+
+        onAdd: function(map) {
+            if (this._container) {
+                return this._container;
+            }
+
+            this._container = L.DomUtil.create('div', 'nearby-vehicles-control');
+            this._container.style.cssText = `
+                position: absolute;
+                width: max-content;
+                font-family: 'League Spartan', sans-serif;
+                margin-left: 12px;
+                background-color: rgba(0, 0, 0, 0.3);
+                border-radius: 15px;
+                box-shadow: 0 4px 20px 4px rgba(0, 0, 0, 0.2);
+                z-index: 1000;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                overflow: hidden;
+                transition: all 0.5s cubic-bezier(0.25, 1.2, 0.5, 1);
+                max-height: 60px;
+                opacity: 0;
+                display: none;
+            `;
+
+            const header = L.DomUtil.create('div', 'nearby-vehicles-header');
+            header.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 15px;
+                cursor: pointer;
+            `;
+
+            const title = L.DomUtil.create('h3', '');
+            title.textContent = 'Véhicules à proximité';
+            title.style.cssText = `
+                margin: 0;
+                font-size: 20px;
+                font-weight: 600;
+                color: white;
+                text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            `;
+
+
+            header.appendChild(title);
+            this._container.appendChild(header);
+
+            this._listContainer = L.DomUtil.create('div', 'nearby-vehicles-list');
+            this._listContainer.style.cssText = `
+                max-height: 350px;
+                overflow-y: auto;
+                padding: 10px 15px;
+                opacity: 0;
+                transform: translateY(-20px);
+                transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
+            `;
+            this._container.appendChild(this._listContainer);
+
+            this._isExpanded = false;
+            this._isVisible = false;
+
+            header.addEventListener('click', () => {
+                this.toggleExpand();
+            });
+
+
+            map.on('moveend', () => this._updateVehiclesIfNeeded(map));
+
+            return this._container;
+        },
+
+        _updateVehiclesIfNeeded: function(map) {
+            const currentCenter = map.getCenter();
+            const distanceMoved = this._lastUpdateCenter 
+                ? currentCenter.distanceTo(this._lastUpdateCenter) 
+                : Infinity;
+
+            if (!this._lastUpdateCenter || distanceMoved > 500) {
+                this._lastUpdateCenter = currentCenter;
+                
+                if (this._isExpanded) {
+                    this.show();
+                }
+            }
+        },
+
+        show: function() {
+            this._container.style.display = 'block';
+            
+            setTimeout(() => {
+                this._container.style.opacity = '1';
+            }, 10);
+
+            const userLocation = map.getCenter();
+
+            const closestVehicles = Object.values(markers)
+                .filter(marker => marker.options && marker.options.icon)
+                .map(marker => ({
+                    marker: marker,
+                    distance: userLocation.distanceTo(marker.getLatLng())
+                }))
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, 5);
+
+            this._listContainer.innerHTML = '';
+
+            closestVehicles.forEach((item) => {
+                const marker = item.marker;
+                const distance = (item.distance / 1000).toFixed(1);
+                
+                const vehicleId = marker.id;
+                const line = marker.line;
+                const backgroundColor = lineColors[line] || '#000000';
+                const textColor = 'white';
+
+                const vehicleItem = L.DomUtil.create('div', 'nearby-vehicle-item');
+                vehicleItem.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border-radius: 10px;
+                    padding: 10px;
+                    cursor: pointer;
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    color: white;
+                `;
+
+                vehicleItem.innerHTML = `
+                    <div style="flex-grow: 1; z-index: 1; position: relative;">
+                        <strong>Ligne ${lineName[line] || 'Inconnue'}</strong>
+                        <div style="font-size: 0.8em; opacity: 0.7;">
+                            à ${distance} km
+                        </div>
+                    </div>
+                    <div style="
+                        background: transparent; 
+                        color: white; 
+                        padding: 5px 10px; 
+                        border-radius: 5px; 
+                        z-index: 1; 
+                        position: relative;
+                        border: 1px solid white;
+                    ">
+                        ${vehicleId}
+                    </div>
+                `;
+
+                vehicleItem.addEventListener('click', () => {
+                    map.setView(marker.getLatLng(), 15);
+                    marker.openPopup();
+                    this.collapse();
+                });
+
+                this._listContainer.appendChild(vehicleItem);
+            });
+
+            if (!this._isExpanded) {
+                this.expand();
+            }
+
+            this._isVisible = true;
+            return this;
+        },
+
+        hide: function() {
+            this._container.style.opacity = '0';
+            
+            setTimeout(() => {
+                this._container.style.display = 'none';
+            }, 300);
+
+            this._isVisible = false;
+            this._isExpanded = false;
+            return this;
+        },
+
+        expand: function() {
+            const header = this._container.querySelector('.nearby-vehicles-header');
+            const listContainer = this._listContainer;
+
+            this._container.style.maxHeight = '500px';
+            listContainer.style.opacity = '1';
+            listContainer.style.transform = 'translateY(0)';
+            
+
+            this._isExpanded = true;
+            return this;
+        },
+
+        collapse: function() {
+            const header = this._container.querySelector('.nearby-vehicles-header');
+            const listContainer = this._listContainer;
+
+            this._container.style.maxHeight = '60px';
+            listContainer.style.opacity = '0';
+            listContainer.style.transform = 'translateY(-20px)';
+            
+
+            this._isExpanded = false;
+            return this;
+        },
+
+        toggleExpand: function() {
+            if (this._isExpanded) {
+                this.collapse();
+            } else {
+                this.expand();
+            }
+            return this;
+        }
+    });
+
+    const nearbyVehiclesControl = new NearbyVehiclesControl(map);
+    map.addControl(nearbyVehiclesControl);
+
+    window.nearbyVehiclesControlInstance = nearbyVehiclesControl;
+
+    window.nearbyVehiclesControl = {
+        show: () => nearbyVehiclesControl.show(),
+        hide: () => nearbyVehiclesControl.hide(),
+        expand: () => nearbyVehiclesControl.expand(),
+        collapse: () => nearbyVehiclesControl.collapse(),
+        toggleExpand: () => nearbyVehiclesControl.toggleExpand()
+    };
+
+    return nearbyVehiclesControl;
+}
+
+createNearbyVehiclesControl();
 
 let menuScroller = null;
 // ==================== FIN VIRTUAL SCROLLING ====================
