@@ -4615,6 +4615,697 @@ function debounce(func, wait) {
     };
 }
 
+// ==================== MENU MANAGER - OPTIMISÉ ====================
+const MenuManager = {
+    container: null,
+    sections: new Map(),
+    busesByLineAndDestination: {},
+    isInitialized: false,
+    
+    init() {
+        this.container = document.getElementById('menu');
+        if (!this.container) {
+            console.error('Menu container not found');
+            return false;
+        }
+        this.isInitialized = true;
+        return true;
+    },
+    
+    // Génère la structure initiale du menu (une seule fois)
+    generateInitialStructure(busesByLineAndDestination) {
+        if (!this.isInitialized) this.init();
+        
+        this.busesByLineAndDestination = busesByLineAndDestination;
+        this.container.innerHTML = '';
+        
+        // Top bar (reste identique)
+        this._createTopBar();
+        
+        // Spacer
+        const spacer = document.createElement('div');
+        spacer.style.height = '15px';
+        this.container.appendChild(spacer);
+        
+        // Créer les sections de lignes
+        const sortedLines = this._getSortedLines();
+        const fragment = document.createDocumentFragment();
+        
+        sortedLines.forEach(line => {
+            const lineSection = this._createLineSection(line);
+            this.sections.set(line, lineSection);
+            fragment.appendChild(lineSection.element);
+        });
+        
+        this.container.appendChild(fragment);
+        this._updateStatistics();
+    },
+    
+    // Mise à jour sans régénération DOM
+    updateData(busesByLineAndDestination) {
+        if (!this.isInitialized) return;
+        
+        const newLines = new Set(Object.keys(busesByLineAndDestination));
+        const currentLines = new Set(this.sections.keys());
+        
+        // Supprimer les lignes qui n'existent plus
+        for (const line of currentLines) {
+            if (!newLines.has(line)) {
+                this._removeLine(line);
+            }
+        }
+        
+        // Ajouter nouvelles lignes ou mettre à jour existantes
+        for (const line of newLines) {
+            if (this.sections.has(line)) {
+                this._updateLine(line, busesByLineAndDestination[line]);
+            } else {
+                this._addLine(line, busesByLineAndDestination[line]);
+            }
+        }
+        
+        this.busesByLineAndDestination = busesByLineAndDestination;
+        this._updateStatistics();
+    },
+    
+    _createTopBar() {
+        const topBar = document.createElement('div');
+        topBar.id = 'menu-top-bar';
+        topBar.classList.add('menu-top-bar', 'animate-zoom-ripple', 'ripple-container');
+        topBar.style.cssText = `
+            position: sticky;
+            top: 10px;
+            left: 0;
+            background-color: #00000075;
+            color: white;
+            padding: 9px 33px 9px 9px;
+            display: flex;
+            align-items: center;
+            z-index: 1001;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(17px);
+            -webkit-backdrop-filter: blur(17px);
+            width: fit-content;
+            margin: 10px 15px 0px;
+            border-radius: 33px;
+        `;
+        
+        const backButton = document.createElement('div');
+        backButton.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 6L9 12L15 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        backButton.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 15px;
+            border-radius: 33px;
+            transition: background 0.2s ease;
+        `;
+        backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
+        backButton.onmouseout = () => backButton.style.background = 'transparent';
+        backButton.onclick = closeMenu;
+        
+        const title = document.createElement('div');
+        title.className = 'menu-title';
+        title.id = 'menu-statistics';
+        title.textContent = t("network");
+        title.style.cssText = `font-size: 20px; font-weight: 500;`;
+        
+        topBar.appendChild(backButton);
+        topBar.appendChild(title);
+        this.container.appendChild(topBar);
+        
+        // Scroll behavior
+        let lastScrollTop = 0;
+        this.container.addEventListener('scroll', () => {
+            const scrollTop = this.container.scrollTop;
+            if (scrollTop > lastScrollTop && scrollTop > 50) {
+                topBar.style.transform = 'translateY(-100%)';
+            } else {
+                topBar.style.transform = 'translateY(0)';
+            }
+            lastScrollTop = scrollTop;
+        });
+    },
+    
+    _createLineSection(line) {
+        const lineNameText = lineName[line] || t("unknown_line");
+        const lineColor = lineColors[line] || '#000000';
+        const textColor = getTextColor(lineColor);
+        
+        const lineSection = document.createElement('div');
+        lineSection.dataset.line = line;
+        lineSection.style.backgroundColor = lineColor;
+        lineSection.classList.add('linesection', 'ripple-container');
+        lineSection.style.cssText = `
+            margin-bottom: 10px;
+            margin-left: 10px;
+            margin-right: 10px;
+            padding: 10px;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+        `;
+        
+        // Beams
+        for (let i = 1; i <= 3; i++) {
+            const beam = document.createElement('div');
+            beam.classList.add('light-beam', `beam${i}`);
+            lineSection.appendChild(beam);
+        }
+        
+        // Favorite button
+        const favoriteButton = document.createElement('button');
+        favoriteButton.className = 'favorite-button';
+        favoriteButton.style.cssText = `
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: none;
+            border: none;
+            color: ${textColor};
+            font-size: 20px;
+            cursor: pointer;
+        `;
+        favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
+        favoriteButton.onclick = async (e) => {
+            e.stopPropagation();
+            const isFavorite = favoriteLines.has(line);
+            await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
+        };
+        
+        // Title
+        const lineTitle = document.createElement('div');
+        lineTitle.className = 'line-title';
+        lineTitle.textContent = `${t("line")} ${lineNameText}`;
+        lineTitle.style.cssText = `
+            font-size: 23px;
+            font-weight: 500;
+            color: ${textColor};
+            padding-right: 30px;
+            padding-left: 10px;
+        `;
+        
+        // Destinations container
+        const destinationsContainer = document.createElement('div');
+        destinationsContainer.className = 'destinations-container';
+        
+        lineSection.appendChild(lineTitle);
+        lineSection.appendChild(favoriteButton);
+        lineSection.appendChild(destinationsContainer);
+        
+        // Events
+        lineSection.onmouseover = () => {
+            lineSection.style.transform = 'scale(0.99)';
+            lineSection.style.opacity = '0.9';
+            lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
+        };
+        
+        lineSection.onmouseout = () => {
+            lineSection.style.transform = 'scale(1)';
+            lineSection.style.opacity = '1';
+            lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
+        };
+        
+        lineSection.onclick = () => {
+            if (localStorage.getItem('astuce') !== 'true') {
+                localStorage.setItem('astuce', 'true');
+                toastBottomRight.info(`${t("astuceselectligne")}`);
+            }
+            safeVibrate([50, 30, 50], true);
+            soundsUX('MBF_Menu_LineSelect');
+            selectedLine = line;
+            filterByLine(line);
+            closeMenu();
+        };
+        
+        return {
+            element: lineSection,
+            destinationsContainer: destinationsContainer,
+            destinations: new Map()
+        };
+    },
+    
+    _createDestinationSection(destination, buses, lineColor, textColor) {
+        const destinationSection = document.createElement('div');
+        destinationSection.className = 'destination-section';
+        destinationSection.dataset.destination = destination;
+        destinationSection.style.cssText = `
+            margin-top: 5px;
+            padding-left: 10px;
+        `;
+        
+        const destinationTitle = document.createElement('div');
+        destinationTitle.className = 'destination-title';
+        destinationTitle.textContent = `➜ ${destination}`;
+        destinationTitle.style.cssText = `
+            font-size: 19px;
+            font-weight: normal;
+            margin-bottom: 4px;
+            color: ${textColor};
+        `;
+        
+        const busesContainer = document.createElement('div');
+        busesContainer.className = 'buses-container';
+        
+        destinationSection.appendChild(destinationTitle);
+        destinationSection.appendChild(busesContainer);
+        
+        return {
+            element: destinationSection,
+            busesContainer: busesContainer,
+            buses: new Map()
+        };
+    },
+    
+    _createBusItem(bus, lineColor, textColor) {
+        const marker = bus.vehicle;
+        const tripId = marker.vehicleData?.trip?.tripId;
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        
+        const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
+        
+        const busItem = document.createElement('div');
+        busItem.className = 'bus-item ripple-container';
+        busItem.dataset.busId = bus.parkNumber;
+        busItem.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 7px 0px rgb(0 0 0 / 24%);
+            cursor: pointer;
+            font-family: League Spartan;
+            color: ${textColor};
+            padding: 5px 10px;
+            margin-bottom: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            position: relative;
+        `;
+        
+        // Background thumbnail
+        const vehicleLabel = bus.vehicleData?.vehicle?.label || 
+                            bus.vehicleData?.vehicle?.id || 
+                            "Véhicule inconnu";
+        const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
+        
+        const backgroundContainer = document.createElement('div');
+        backgroundContainer.className = 'background-thumbnail';
+        backgroundContainer.style.cssText = `
+            position: absolute;
+            right: 8px;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            pointer-events: none;
+            opacity: 0.2;
+            z-index: 0;
+            scale: 1.7;
+        `;
+        backgroundContainer.innerHTML = vehicleBrandHtmlLight;
+        
+        // Front content
+        const frontContent = document.createElement('div');
+        frontContent.className = 'bus-front-content';
+        frontContent.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        `;
+        
+        const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
+        const busIdBox = document.createElement('div');
+        busIdBox.className = 'bus-id';
+        busIdBox.textContent = displayLabel;
+        busIdBox.style.cssText = `
+            padding: 5px 10px;
+            background-color: #00000017;
+            border-radius: 6px;
+            font-weight: bold;
+            color: ${textColor};
+            display: inline-block;
+            text-align: center;
+        `;
+        
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'bus-info-container';
+        contentContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        `;
+        
+        const mainText = document.createElement('div');
+        mainText.className = 'bus-main-text';
+        mainText.style.cssText = `
+            font-size: 1.2em;
+            font-weight: 500;
+            color: ${textColor};
+        `;
+        mainText.textContent = nextStopInfo;
+        
+        const arrivalText = document.createElement('div');
+        arrivalText.className = 'bus-arrival-text';
+        arrivalText.textContent = terminusInfo;
+        arrivalText.style.cssText = `
+            font-size: 0.9em;
+            opacity: 0.8;
+            color: ${textColor};
+        `;
+        
+        contentContainer.appendChild(mainText);
+        contentContainer.appendChild(arrivalText);
+        
+        frontContent.appendChild(busIdBox);
+        frontContent.appendChild(contentContainer);
+        
+        busItem.appendChild(backgroundContainer);
+        busItem.appendChild(frontContent);
+        
+        // Event
+        busItem.onclick = (event) => {
+            event.stopPropagation();
+            safeVibrate([50, 300, 50, 30, 50], true);
+            soundsUX('MBF_Menu_VehicleSelect');
+            map.setView(bus.vehicle.getLatLng(), 15);
+            bus.vehicle.openPopup();
+            closeMenu();
+            if (selectedLine) resetMapView();
+        };
+        
+        return busItem;
+    },
+    
+    _updateLine(line, destinations) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const newDestinations = new Set(Object.keys(destinations));
+        const currentDestinations = new Set(lineSection.destinations.keys());
+        
+        // Supprimer destinations obsolètes
+        for (const dest of currentDestinations) {
+            if (!newDestinations.has(dest)) {
+                this._removeDestination(line, dest);
+            }
+        }
+        
+        // Ajouter/mettre à jour destinations
+        for (const dest of newDestinations) {
+            if (lineSection.destinations.has(dest)) {
+                this._updateDestination(line, dest, destinations[dest]);
+            } else {
+                this._addDestination(line, dest, destinations[dest]);
+            }
+        }
+    },
+    
+    _addLine(line, destinations) {
+        const lineSection = this._createLineSection(line);
+        this.sections.set(line, lineSection);
+        
+        // Insérer à la bonne position (tri)
+        const sortedLines = this._getSortedLines();
+        const index = sortedLines.indexOf(line);
+        
+        if (index === -1 || index === sortedLines.length - 1) {
+            this.container.appendChild(lineSection.element);
+        } else {
+            const nextLine = sortedLines[index + 1];
+            const nextElement = this.sections.get(nextLine)?.element;
+            if (nextElement) {
+                this.container.insertBefore(lineSection.element, nextElement);
+            } else {
+                this.container.appendChild(lineSection.element);
+            }
+        }
+        
+        // Ajouter toutes les destinations
+        for (const [dest, buses] of Object.entries(destinations)) {
+            this._addDestination(line, dest, buses);
+        }
+    },
+    
+    _removeLine(line) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        lineSection.element.remove();
+        this.sections.delete(line);
+    },
+    
+    _addDestination(line, destination, buses) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const lineColor = lineColors[line] || '#000000';
+        const textColor = getTextColor(lineColor);
+        
+        const destSection = this._createDestinationSection(destination, buses, lineColor, textColor);
+        lineSection.destinations.set(destination, destSection);
+        lineSection.destinationsContainer.appendChild(destSection.element);
+        
+        // Ajouter tous les bus
+        buses.forEach(bus => {
+            const busItem = this._createBusItem(bus, lineColor, textColor);
+            destSection.buses.set(bus.parkNumber, busItem);
+            destSection.busesContainer.appendChild(busItem);
+        });
+    },
+    
+    _updateDestination(line, destination, buses) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const destSection = lineSection.destinations.get(destination);
+        if (!destSection) return;
+        
+        const newBuses = new Set(buses.map(b => b.parkNumber));
+        const currentBuses = new Set(destSection.buses.keys());
+        
+        // Supprimer bus obsolètes
+        for (const busId of currentBuses) {
+            if (!newBuses.has(busId)) {
+                const busItem = destSection.buses.get(busId);
+                if (busItem) busItem.remove();
+                destSection.buses.delete(busId);
+            }
+        }
+        
+        // Ajouter/mettre à jour bus
+        const lineColor = lineColors[line] || '#000000';
+        const textColor = getTextColor(lineColor);
+        
+        buses.forEach(bus => {
+            if (destSection.buses.has(bus.parkNumber)) {
+                this._updateBusItem(destSection.buses.get(bus.parkNumber), bus);
+            } else {
+                const busItem = this._createBusItem(bus, lineColor, textColor);
+                destSection.buses.set(bus.parkNumber, busItem);
+                destSection.busesContainer.appendChild(busItem);
+            }
+        });
+    },
+    
+    _removeDestination(line, destination) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const destSection = lineSection.destinations.get(destination);
+        if (!destSection) return;
+        
+        destSection.element.remove();
+        lineSection.destinations.delete(destination);
+    },
+    
+    _updateBusItem(busItem, bus) {
+        const marker = bus.vehicle;
+        const tripId = marker.vehicleData?.trip?.tripId;
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        
+        const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
+        
+        const mainText = busItem.querySelector('.bus-main-text');
+        const arrivalText = busItem.querySelector('.bus-arrival-text');
+        
+        if (mainText) mainText.textContent = nextStopInfo;
+        if (arrivalText) arrivalText.textContent = terminusInfo;
+    },
+    
+    _getBusInfo(marker, tripId, stopId) {
+        const currentStatus = marker.vehicleData?.currentStatus;
+        const nextStops = tripUpdates[tripId]?.nextStops || [];
+        
+        let currentStopIndex = nextStops.findIndex(stop => 
+            stop.stopId.replace("0:", "") === stopId
+        );
+        
+        let filteredStops = [];
+        if (currentStopIndex !== -1) {
+            filteredStops = nextStops.slice(currentStopIndex).filter(stop => 
+                stop.delay === null || stop.delay >= -60
+            );
+        } else {
+            filteredStops = nextStops.filter(stop => 
+                stop.delay === null || stop.delay > 0
+            );
+        }
+        
+        let nextStopInfo = '';
+        let terminusInfo = '';
+        
+        if (filteredStops.length === 0) {
+            nextStopInfo = t("unavailabletrip");
+        } else {
+            const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
+            const firstStopDelay = filteredStops[0].delay || 0;
+            const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
+            
+            if (filteredStops.length === 1) {
+                nextStopInfo = minutes === 0 ? t("imminentdeparture") : `${t("departurein")} ${minutes} ${t("min")}`;
+            } else if (minutes > 3) {
+                nextStopInfo = firstStopName;
+            } else {
+                nextStopInfo = firstStopName;
+            }
+            
+            if (filteredStops.length > 1) {
+                const lastStop = filteredStops[filteredStops.length - 1];
+                const timeLeft = lastStop.delay;
+                const timeLeftText = timeLeft !== null 
+                    ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                    : '';
+                terminusInfo = `${t("arrivalat")} ${marker.destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
+            } else {
+                terminusInfo = `${t("indirectionof")} ${marker.destination}.`;
+            }
+        }
+        
+        return { nextStopInfo, terminusInfo };
+    },
+    
+    _updateStatistics() {
+        const statsElement = document.getElementById('menu-statistics');
+        if (!statsElement) return;
+        
+        let totalLines = Object.keys(this.busesByLineAndDestination).length;
+        let totalVehicles = 0;
+        let activeLines = 0;
+        
+        Object.values(this.busesByLineAndDestination).forEach(destinations => {
+            let lineVehicleCount = 0;
+            Object.values(destinations).forEach(buses => {
+                lineVehicleCount += buses.length;
+            });
+            totalVehicles += lineVehicleCount;
+            if (lineVehicleCount > 0) activeLines++;
+        });
+        
+        const sameNumber = (activeLines === totalLines);
+        
+        if (sameNumber) {
+            statsElement.innerHTML = `
+                <div>${t("network")}</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    ${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
+                </div>
+            `;
+        } else {
+            statsElement.innerHTML = `
+                <div>${t("network")}</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    ${activeLines}/${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
+                </div>
+            `;
+        }
+    },
+    
+    _getSortedLines() {
+        return Object.keys(this.busesByLineAndDestination).sort((a, b) => {
+            const aIsFavorite = favoriteLines.has(a);
+            const bIsFavorite = favoriteLines.has(b);
+            
+            if (aIsFavorite && !bIsFavorite) return -1;
+            if (!aIsFavorite && bIsFavorite) return 1;
+            
+            const getSortKey = (line) => {
+                let typeValue = 1000;
+                
+                if (/^[A-Za-z]$/.test(line)) {
+                    typeValue = 100;
+                } else if (/^\d+$/.test(line)) {
+                    typeValue = 200;
+                } else if (/^\d+[A-Za-z]+$/.test(line)) {
+                    const numPart = parseInt(line.match(/^\d+/)[0], 10);
+                    return 200 + numPart + 0.5;
+                }
+                
+                if (typeValue === 200) {
+                    return typeValue + parseInt(line, 10);
+                }
+                
+                if (typeValue === 100) {
+                    return typeValue + line.charCodeAt(0);
+                }
+                
+                return typeValue;
+            };
+            
+            const valueA = getSortKey(a);
+            const valueB = getSortKey(b);
+            
+            if (valueA !== valueB) {
+                return valueA - valueB;
+            }
+            
+            return a.localeCompare(b);
+        });
+    }
+};
+
+function updateMenu() {
+    // Construire les données
+    const busesByLineAndDestination = {};
+    
+    markerPool.active.forEach((marker, id) => {
+        const line = marker.line;
+        const destination = marker.destination || "Inconnue";
+        
+        if (!busesByLineAndDestination[line]) {
+            busesByLineAndDestination[line] = {};
+        }
+        
+        if (!busesByLineAndDestination[line][destination]) {
+            busesByLineAndDestination[line][destination] = [];
+        }
+        
+        busesByLineAndDestination[line][destination].push({
+            parkNumber: marker.id,
+            vehicle: marker,
+            vehicleData: marker.vehicleData,
+            nextStops: marker.rawData?.nextStops || []
+        });
+    });
+    
+    // Première initialisation ou mise à jour
+    if (!MenuManager.isInitialized || MenuManager.sections.size === 0) {
+        MenuManager.generateInitialStructure(busesByLineAndDestination);
+    } else {
+        MenuManager.updateData(busesByLineAndDestination);
+    }
+}
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -6261,776 +6952,6 @@ class VirtualScroller {
 
 let menuScroller = null;
 // ==================== FIN VIRTUAL SCROLLING ====================
-
-function updateMenu() {
-    const menu = document.getElementById('menu');
-    menu.innerHTML = '';
-    
-    const topBar = document.createElement('div');
-    topBar.classList.add('menu-top-bar');
-    topBar.classList.add('animate-zoom-ripple')
-    topBar.classList.add('ripple-container');
-    topBar.style.cssText = `
-        position: sticky;
-        top: 10px;
-        left: 0;
-        background-color: #00000075;
-        color: white;
-        padding: 9px 33px 9px 9px;
-        display: flex;
-        align-items: center;
-        z-index: 1001;
-        transition: transform 0.3s ease;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(17px); 
-        -webkit-backdrop-filter: blur(17px);
-        width: fit-content;
-        margin: 10px 15px 0px;
-        border-radius: 33px;
-    `;
-    menu.appendChild(topBar);
-    
-    const backButton = document.createElement('div');
-    backButton.innerHTML = `
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 6L9 12L15 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    `;
-    backButton.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 8px;
-        margin-right: 15px;
-        border-radius: 33px;
-        transition: background 0.2s ease;
-    `;
-    backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
-    backButton.onmouseout = () => backButton.style.background = 'transparent';
-
-    backButton.onclick = closeMenu;
-    topBar.appendChild(backButton);
-
-    const title = document.createElement('div');
-    title.className = 'menu-title';
-    title.textContent = t("network"); 
-    title.style.cssText = `
-        font-size: 20px;
-        font-weight: 500;
-    `;
-    topBar.appendChild(title);
-
-    function updateMenuStatistics() {
-        let totalLines = Object.keys(busesByLineAndDestination).length;
-        let totalVehicles = 0;
-        let activeLines = 0;
-        
-        Object.values(busesByLineAndDestination).forEach(destinations => {
-            let lineVehicleCount = 0;
-            Object.values(destinations).forEach(buses => {
-                lineVehicleCount += buses.length;
-            });
-            totalVehicles += lineVehicleCount;
-            if (lineVehicleCount > 0) activeLines++;
-        });
-
-        let memeNombre = (activeLines === totalLines); // Déclaration manquante
-        
-        const titleElement = document.querySelector('.menu-top-bar .menu-title');
-        if (titleElement) {
-            if (memeNombre) {
-                titleElement.innerHTML = `
-                    <div>${t("network")}</div>
-                    <div style="font-size: 12px; opacity: 0.8;">
-                        ${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
-                    </div>
-                `;
-            } else {
-                titleElement.innerHTML = `
-                    <div>${t("network")}</div>
-                    <div style="font-size: 12px; opacity: 0.8;">
-                        ${activeLines}/${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
-                    </div>
-                `;
-            }
-        }
-    }
-
-    
-    const spacer = document.createElement('div');
-    spacer.style.height = '15px'; 
-    menu.appendChild(spacer);
-
-    let lastScrollTop = 0;
-    
-    menu.addEventListener('scroll', function() {
-        const scrollTop = menu.scrollTop;
-        
-        if (scrollTop > lastScrollTop && scrollTop > 50) {
-            topBar.style.transform = 'translateY(-100%)';
-        } else {
-            topBar.style.transform = 'translateY(0)';
-        }
-        
-        lastScrollTop = scrollTop;
-    });
-
-let isStandardView = localStorage.getItem('isStandardView') === 'true';
-
-function toggleMapView(forceState) {
-    if (forceState !== undefined) {
-        isStandardView = forceState;
-    } else {
-        isStandardView = !isStandardView;
-    }
-    
-    localStorage.setItem('isStandardView', isStandardView);
-
-    const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
-    const map = document.getElementById('map');
-    menu.classList.add('hidden');
-
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-    window.isMenuShowed = false;
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-    isMenuVisible = false;
-    menubottom1.style.display = 'flex';
-    setTimeout(() => {
-        menubottom1.classList.remove('slide-upb');
-        menubottom1.classList.add('slide-downb');
-    }, 10);
-
-    applyMapView();
-}
-
-function applyMapView() {
-    const currentDate = new Date();
-    const latitude = map.getCenter().lat;  
-    const longitude = map.getCenter().lng;  
-
-    map.eachLayer(function(layer) {
-        if (layer instanceof L.TileLayer) {
-            map.removeLayer(layer);
-        }
-    });
-
-    if (!isStandardView) {
-    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        minZoom: 6,
-        maxZoom: 19,
-    }).addTo(map);
-    
-    if (localStorage.getItem('darkmap') === 'true') {
-        const mapPane = mapInstance.getPanes().tilePane;
-        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-    } else {
-        const mapPane = mapInstance.getPanes().tilePane;
-        mapPane.style.filter = 'none';
-    }
-
-} else {
-    const mapPane = map.getPanes().tilePane;
-    mapPane.style.filter = 'none';
-    
-    L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 6,
-        maxZoom: 19,
-        format: 'image/jpeg',
-        style: 'normal'
-    }).addTo(map);
-
-}
-}
-
-
-let startY;
-let endY;
-let startX;
-let endX;
-const menubtm = document.getElementById('menubtm');
-let touchStartX = null;
-let touchStartTime = null;
-let isEdgeTouch = false;
-const edgeThreshold = 10;
-const minSwipeDistance = 20; 
-
-menubtm.addEventListener('touchstart', (e) => {
-    const touchStartY = e.touches[0].clientY;
-    const menuRect = menubtm.getBoundingClientRect();
-    
-    startX = e.touches[0].clientX;
-    
-    if (touchStartY >= menuRect.bottom - 50) {
-        startY = touchStartY;
-    } else {
-        startY = null;
-    }
-});
-
-menubtm.addEventListener('touchmove', (e) => {
-    if (startY !== null) {
-        endY = e.touches[0].clientY;
-    }
-    
-    endX = e.touches[0].clientX;
-});
-
-
-function isTouchNearRightEdge(x) {
-    return window.innerWidth - x <= edgeThreshold;
-}
-
-document.addEventListener('touchstart', function(e) {
-    const touchX = e.touches[0].clientX;
-    
-    if (isTouchNearRightEdge(touchX)) {
-        touchStartX = touchX;
-        touchStartTime = Date.now();
-        isEdgeTouch = true;
-    }
-}, { passive: true }); 
-
-document.addEventListener('touchmove', function(e) {
-    if (isEdgeTouch) {
-        const currentX = e.touches[0].clientX;
-    }
-}, { passive: true });
-
-document.addEventListener('touchend', function(e) {
-    if (isEdgeTouch && touchStartX !== null) {
-        const touchEndX = e.changedTouches[0].clientX;
-        const swipeDistance = touchStartX - touchEndX;
-        const touchDuration = Date.now() - touchStartTime;
-            if (swipeDistance > minSwipeDistance && touchDuration < 300) {
-                showMenu();
-            }
-        
-        isEdgeTouch = false;
-        touchStartX = null;
-        touchStartTime = null;
-    }
-});
-
-
-
-
-
-function getNextStopInfo(vehicleId) {
-    const vehicle = markers[vehicleId];
-    if (!vehicle) return null;
-    
-    const currentStopId = vehicle.stopId ? vehicle.stopId.replace("0:", "") : null;
-    
-    for (const [tripId, tripData] of Object.entries(tripUpdates)) {
-        if (!tripData.nextStops || !tripData.nextStops.length) continue;
-        
-        const currentStopIndex = tripData.nextStops.findIndex(stop => 
-            stop.stopId.replace("0:", "") === currentStopId
-        );
-        
-        if (currentStopIndex !== -1 && tripData.nextStops[currentStopIndex + 1]) {
-            const nextStop = tripData.nextStops[currentStopIndex + 1];
-            return {
-                name: stopNameMap[nextStop.stopId] || nextStop.stopId,
-                delay: nextStop.delay,
-                departureTime: nextStop.departureTime
-            };
-        }
-    }
-    return null;
-}
-
-
-const busesByLineAndDestination = {};
-
-markerPool.active.forEach((marker, id) => {
-    const line = marker.line;
-    const destination = marker.destination || "Inconnue";
-    
-    if (!busesByLineAndDestination[line]) {
-        busesByLineAndDestination[line] = {};
-    }
-
-    if (!busesByLineAndDestination[line][destination]) {
-        busesByLineAndDestination[line][destination] = [];
-    }
-
-    busesByLineAndDestination[line][destination].push({
-        parkNumber: marker.id,
-        vehicle: marker,
-        vehicleData: marker.vehicleData,
-        nextStops: marker.rawData?.nextStops || []
-    });
-});
-
-updateMenuStatistics();
-
-
-    const sortedLines = Object.keys(busesByLineAndDestination)
-        .sort((a, b) => {
-            const aIsFavorite = favoriteLines.has(a);
-            const bIsFavorite = favoriteLines.has(b);
-            
-            if (aIsFavorite && !bIsFavorite) return -1;
-            if (!aIsFavorite && bIsFavorite) return 1;
-            
-    const getSortKey = (line) => {
-        
-        let typeValue = 1000; 
-        
-        if (/^[A-Za-z]$/.test(line)) {
-            typeValue = 100;
-        } 
-        else if (/^\d+$/.test(line)) {
-            typeValue = 200;
-        } 
-        else if (/^\d+[A-Za-z]+$/.test(line)) {
-            const numPart = parseInt(line.match(/^\d+/)[0], 10);
-            typeValue = 200; 
-            return typeValue + numPart + 0.5; 
-        }
-        
-        if (typeValue === 200) {
-            return typeValue + parseInt(line, 10);
-        }
-        
-        if (typeValue === 100) {
-            return typeValue + line.charCodeAt(0);
-        }
-        
-        return typeValue;
-    };
-
-    const valueA = getSortKey(a);
-    const valueB = getSortKey(b);
-
-    if (valueA !== valueB) {
-        return valueA - valueB;
-    }
-
-    return a.localeCompare(b);
-    });
-
-
-function hexToRgb(hex) {
-    hex = hex.replace(/^#/, '');
-    
-    if (hex.length === 3) {
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    
-    return { r, g, b };
-}
-
-
-function calculateLuminance(r, g, b) {
-    return (r * 0.299 + g * 0.587 + b * 0.114);
-}
-
-
-function getTextColor(backgroundColor) {
-    try {
-        let hexColor = backgroundColor;
-        
-        if (!hexColor.startsWith('#')) {
-            hexColor = '#' + hexColor;
-        }
-        
-        const { r, g, b } = hexToRgb(hexColor);
-        
-        const luminance = calculateLuminance(r, g, b);
-        
-        const threshold = 150;
-                
-        return luminance > threshold ? '#000000' : '#ffffff';
-    } catch (e) {
-        return '#ffffff';
-    }
-}
-
-const fragment = document.createDocumentFragment();
-
-sortedLines.forEach(line => {
-    const lineNameText = lineName[line] || t("unknown_line");
-    const lineColor = lineColors[line] || '#000000';
-    const textColor = getTextColor(lineColor);
-
-    const lineSection = document.createElement('div');
-    lineSection.dataset.line = line;
-    lineSection.style.backgroundColor = lineColor;
-    lineSection.classList.add('linesection');
-    lineSection.classList.add('ripple-container');
-    lineSection.style.marginBottom = '10px';
-    lineSection.style.marginLeft = '10px';
-    lineSection.style.marginRight = '10px';
-    lineSection.style.padding = '10px';
-    lineSection.style.borderRadius = '16px';
-    lineSection.style.position = 'relative';
-    lineSection.style.overflow = 'hidden';
-
-    const beam1 = document.createElement('div');
-    beam1.classList.add('light-beam', 'beam1');
-    lineSection.appendChild(beam1);
-
-    const beam2 = document.createElement('div');
-    beam2.classList.add('light-beam', 'beam2');
-    lineSection.appendChild(beam2);
-
-    const beam3 = document.createElement('div');
-    beam3.classList.add('light-beam', 'beam3');
-    lineSection.appendChild(beam3);
-
-    lineSection.onmouseover = () => {
-        lineSection.style.transform = 'scale(0.99,0.99)';
-        lineSection.style.opacity = '0.9';
-        lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
-        };  
-
-    lineSection.onmouseout = () => {
-        lineSection.style.transform = 'scale(1,1)';
-        lineSection.style.opacity = '1';
-        lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
-    };
-
-   
-    const favoriteButton = document.createElement('button');
-    favoriteButton.style.position = 'absolute';
-    favoriteButton.style.right = '5px';
-    favoriteButton.style.top = '5px';
-    favoriteButton.style.background = 'none';
-    favoriteButton.style.border = 'none';
-    favoriteButton.style.color = textColor;
-    favoriteButton.style.fontSize = '20px';
-    favoriteButton.style.cursor = 'pointer';
-    favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
-    favoriteButton.onclick = async (e) => {
-        e.stopPropagation();
-        const lineSection = e.target.closest('.linesection');
-        const isFavorite = favoriteLines.has(line);
-        await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
-    };
-
-    const lineTitle = document.createElement('div');
-    lineTitle.textContent = `${t("line")} ${lineNameText}`;
-    lineTitle.style.fontSize = '23px';
-    lineTitle.style.fontWeight = '500';
-    lineTitle.style.color = textColor;
-    lineTitle.style.paddingRight = '30px';
-    lineTitle.style.paddingLeft = '10px';
-
-    lineSection.appendChild(lineTitle);
-    lineSection.appendChild(favoriteButton);
-
-    Object.keys(busesByLineAndDestination[line])
-        .sort()
-        .forEach(destination => {
-            
-            const destinationSection = document.createElement('div');
-            destinationSection.style.marginTop = '5px';
-            destinationSection.style.paddingLeft = '10px';
-
-            const destinationTitle = document.createElement('div');
-            destinationTitle.textContent = `➜ ${destination}`;
-            destinationTitle.style.fontSize = '19px';
-            destinationTitle.style.fontWeight = 'normal';
-            destinationTitle.style.marginBottom = '4px';
-            destinationTitle.style.color = textColor;
-            destinationSection.appendChild(destinationTitle);
-
-       
-
-
-            busesByLineAndDestination[line][destination].forEach(bus => {
-                const busItem = document.createElement('div');
-                busItem.classList.add('ripple-container');
-                const marker = bus.vehicle;
-                
-                let nextStopInfo = '';
-                let terminusInfo = '';
-                
-                const tripId = marker.vehicleData?.trip?.tripId;
-                const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
-                const currentStatus = marker.vehicleData?.currentStatus;
-                
-                const nextStops = tripUpdates[tripId]?.nextStops || [];
-                
-                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
-                const now = Math.floor(Date.now() / 1000);
-
-                let filteredStops = [];
-                if (currentStopIndex !== -1) {
-                    filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
-                        return stop.delay === null || stop.delay >= -60;
-                    });
-                } else {
-                    filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
-                }
-                
-                let busStopsHeaderText = '';
-                const statusMap = {
-                    0: t("notinservice"),
-                    1: t("dooropen"),
-                    2: t("enservice")
-                };
-                const status = statusMap[currentStatus] || 'Inconnu';
-                
-                if (filteredStops.length === 0) {
-                    busStopsHeaderText = t("notinservicemaj");
-                    nextStopInfo = t("unavailabletrip");
-                } else {
-                    const firstStopDelay = filteredStops[0].delay || 0;
-                    const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
-
-                    if (line === 'Inconnu') {
-                        busStopsHeaderText = t("notinservicemaj");
-                        nextStopInfo = t("unknownline");
-                    } else {
-                        const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
-                        
-                        if (filteredStops.length === 1) {
-                            if (minutes === 0) {
-                                busStopsHeaderText = t("imminentdeparture");
-                            } else {
-                                busStopsHeaderText = `${t("departurein")} ${minutes} ${t("min")}`;
-                            }
-                            nextStopInfo = firstStopName;
-                        } else if (minutes > 3) {
-                            busStopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
-                            nextStopInfo = firstStopName;
-                        } else {
-                            busStopsHeaderText = t("nextstops");
-                            nextStopInfo = firstStopName;
-                        }
-                    }
-                }
-                
-                if (filteredStops.length > 1) {
-                    const lastStop = filteredStops[filteredStops.length - 1];
-                    const timeLeft = lastStop.delay;
-                    const timeLeftText = timeLeft !== null 
-                        ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                        : '';
-                    terminusInfo = `${t("arrivalat")} ${destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
-                }
-                
-                if (!terminusInfo) {
-                    terminusInfo = `${t("indirectionof")} ${destination}.`;
-                }
-
-                const mainText = document.createElement('div');
-
-                const vehicleLabel = bus.vehicleData?.vehicle?.label || 
-                                bus.vehicleData?.vehicle?.id || 
-                                "Véhicule inconnu";
-
-                const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
-                const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
-                                
-                mainText.style.display = 'flex';
-                mainText.style.alignItems = 'center';
-                mainText.style.gap = '10px';
-                mainText.style.fontSize = '1.2em';
-                mainText.style.fontWeight = '500';
-                mainText.style.color = textColor;
-
-                const busIdBox = document.createElement('div');
-                busIdBox.textContent = displayLabel;
-                busIdBox.style.padding = '2px 8px';
-                busIdBox.style.backgroundColor = '#00000017';
-                busIdBox.style.borderRadius = '6px';
-                busIdBox.style.fontWeight = 'bold';
-                busIdBox.style.color = textColor;
-                busIdBox.style.display = 'inline-block';
-                busIdBox.style.textAlign = 'center';
-                busIdBox.style.padding = '5px 10px';
-
-                // statut véc
-                const infoText = document.createElement('span');
-                infoText.textContent = `${nextStopInfo}`;
-
-                // ajout des éléments au dom
-                mainText.appendChild(infoText);
-
-                const arrivalText = document.createElement('div');
-                arrivalText.textContent = terminusInfo;
-                arrivalText.style.fontSize = '0.9em'; 
-                arrivalText.style.opacity = '0.8';  
-                arrivalText.style.color = textColor;
-
-                const contentContainer = document.createElement('div');
-                contentContainer.style.display = 'flex';
-                contentContainer.style.flexDirection = 'column';
-                contentContainer.style.flexGrow = '1';
-                contentContainer.appendChild(mainText);
-                contentContainer.appendChild(arrivalText);
-
-                busItem.style.position = 'relative';
-                
-                const backgroundContainer = document.createElement('div');
-                backgroundContainer.style.position = 'absolute';
-                backgroundContainer.style.right = '8px';
-                backgroundContainer.style.bottom = '0';
-                backgroundContainer.style.display = 'flex';
-                backgroundContainer.style.alignItems = 'center';
-                backgroundContainer.style.justifyContent = 'flex-end';
-                backgroundContainer.style.pointerEvents = 'none'; 
-                backgroundContainer.style.opacity = '0.2';
-                backgroundContainer.style.zIndex = '0'; 
-                backgroundContainer.style.scale = '1.7';
-                backgroundContainer.innerHTML = vehicleBrandHtmlLight;
-                
-                const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
-                if (thumbnailImg) {
-                    thumbnailImg.style.height = '80%';
-                    thumbnailImg.style.width = 'auto';
-                    thumbnailImg.style.maxHeight = '40px';
-                    thumbnailImg.style.objectFit = 'contain';
-                }
-
-                busItem.textContent = '';
-                busItem.style.display = 'flex';
-                busItem.style.alignItems = 'center';
-                busItem.style.gap = '10px';
-                busItem.style.overflow = 'hidden'; 
-                busItem.style.boxShadow = '0 0 7px 0px rgb(0 0 0 / 24%)';
-
-
-                
-                busItem.appendChild(backgroundContainer);
-                
-                const frontContent = document.createElement('div');
-                frontContent.style.display = 'flex';
-                frontContent.style.alignItems = 'center';
-                frontContent.style.gap = '10px';
-                frontContent.style.width = '100%';
-                frontContent.style.position = 'relative';
-                frontContent.style.zIndex = '1';
-                
-                frontContent.appendChild(busIdBox);
-                frontContent.appendChild(contentContainer);
-                busItem.appendChild(frontContent);
-
-                busItem.style.cursor = 'pointer';
-                busItem.classList.add('menu-item');
-                busItem.style.fontFamily = 'League Spartan';
-                busItem.style.color = textColor;
-                busItem.style.padding = '5px 10px';
-                busItem.style.marginBottom = '8px';
-                busItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-                busItem.style.borderRadius = '8px';
-
-                lineSection.onclick = () => {
-                    if (localStorage.getItem('astuce') !== 'true') {
-                        localStorage.setItem('astuce', 'true');
-                        toastBottomRight.info(`${t("astuceselectligne")}`);
-                    }
-                    const mapp = document.getElementById('map');
-                    mapp.style.opacity = '1';
-                    safeVibrate([50, 30, 50], true);
-                    soundsUX('MBF_Menu_LineSelect');
-                    const lineId = line;
-                    selectedLine = lineId;
-                    filterByLine(lineId);
-                    const map = document.getElementById('map');
-                    map.style.opacity = '1';
-                    menu.classList.add('hidden');
-                    if (localStorage.getItem('transparency') === 'true') {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.add('appearnotransition');
-                        map.classList.remove('hidden');
-                        map.classList.remove('appear');
-                    } else {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hidden');
-                        map.classList.add('appear');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.remove('appearnotransition');
-                    }
-                    window.isMenuShowed = false;
-                    menu.addEventListener('animationend', function onAnimationEnd(event) {
-                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                            menu.style.display = 'none';
-                        }
-                    });
-                    isMenuVisible = false;
-                    menubottom1.style.display = 'flex';
-                    setTimeout(() => {
-                        menubottom1.classList.remove('slide-upb');
-                        menubottom1.classList.add('slide-downb');
-                    }, 10);
-                    event.stopPropagation();
-
-                };
-
-                busItem.onclick = (event) => {
-                    event.stopPropagation();
-                    safeVibrate([50, 300, 50, 30, 50], true);
-                    soundsUX('MBF_Menu_VehicleSelect');
-                    map.setView(bus.vehicle.getLatLng(), 15);
-                    bus.vehicle.openPopup();
-                    const mapp = document.getElementById('map');
-                    mapp.style.opacity = '1';
-                    menu.classList.add('hidden');
-                    if (localStorage.getItem('transparency') === 'true') {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.add('appearnotransition');
-                        map.classList.remove('hidden');
-                        map.classList.remove('appear');
-                    } else {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hidden');
-                        map.classList.add('appear');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.remove('appearnotransition');
-                    }
-                    window.isMenuShowed = false;
-                    menu.addEventListener('animationend', function onAnimationEnd(event) {
-                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                            menu.style.display = 'none';
-                        }
-                    });
-                    isMenuVisible = false;
-                    if (selectedLine) {
-                        resetMapView();
-                    }
-                };
-
-                destinationSection.appendChild(busItem);
-            });
-
-            lineSection.appendChild(destinationSection);
-        });
-
-    fragment.appendChild(lineSection);
-});
-menu.appendChild(fragment);
-}
 
 const menubottom1 = document.getElementById('menubtm');
 
