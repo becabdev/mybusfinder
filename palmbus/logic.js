@@ -4746,7 +4746,6 @@ const MenuManager = {
     searchResults: null,
     isSearchActive: false,
     allBuses: [],
-    quickFilters: null,
     
     init() {
         this.container = document.getElementById('menu');
@@ -4769,9 +4768,6 @@ const MenuManager = {
         
         // Barre de recherche
         this._createSearchBar();
-        
-        // Filtres rapides
-        this._createQuickFilters();
         
         // Spacer
         const spacer = document.createElement('div');
@@ -4941,141 +4937,7 @@ const MenuManager = {
         
         this.container.appendChild(searchContainer);
     },
-    
-    _createQuickFilters() {
-        this.quickFilters = document.createElement('div');
-        this.quickFilters.id = 'quick-filters';
-        this.quickFilters.style.cssText = `
-            position: sticky;
-            top: 127px;
-            left: 0;
-            right: 0;
-            padding: 0 15px 10px;
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            z-index: 999;
-            transition: transform 0.3s ease;
-        `;
         
-        this.quickFilters.style.setProperty('::-webkit-scrollbar', 'display: none');
-        
-        const filters = [
-            { id: 'all', label: t('all') || 'Tous', icon: '🚌' },
-            { id: 'favorites', label: t('favorites') || 'Favoris', icon: '⭐' },
-            { id: 'in-service', label: t('in_service') || 'En service', icon: '✓' },
-        ];
-        
-        filters.forEach(filter => {
-            const btn = document.createElement('button');
-            btn.className = 'quick-filter-btn';
-            btn.dataset.filter = filter.id;
-            btn.innerHTML = `${filter.icon} ${filter.label}`;
-            btn.style.cssText = `
-                padding: 8px 16px;
-                background: rgba(0, 0, 0, 0.5);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 20px;
-                color: white;
-                font-size: 14px;
-                font-family: 'League Spartan', sans-serif;
-                white-space: nowrap;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                flex-shrink: 0;
-            `;
-            
-            if (filter.id === 'all') {
-                btn.style.background = 'rgba(255, 255, 255, 0.2)';
-                btn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-            }
-            
-            btn.onmouseover = () => {
-                if (!btn.classList.contains('active')) {
-                    btn.style.background = 'rgba(255, 255, 255, 0.15)';
-                    btn.style.transform = 'scale(1.05)';
-                }
-            };
-            
-            btn.onmouseout = () => {
-                if (!btn.classList.contains('active')) {
-                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
-                    btn.style.transform = 'scale(1)';
-                }
-            };
-            
-            btn.onclick = () => {
-                this._applyQuickFilter(filter.id, btn);
-            };
-            
-            this.quickFilters.appendChild(btn);
-        });
-        
-        this.container.appendChild(this.quickFilters);
-    },
-    
-    _applyQuickFilter(filterId, btn) {
-        // Réinitialiser tous les boutons
-        this.quickFilters.querySelectorAll('.quick-filter-btn').forEach(b => {
-            b.classList.remove('active');
-            b.style.background = 'rgba(0, 0, 0, 0.5)';
-            b.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-        });
-        
-        // Activer le bouton cliqué
-        btn.classList.add('active');
-        btn.style.background = 'rgba(0, 0, 0, 0.76)';
-        btn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-        
-        safeVibrate([30], true);
-        soundsUX && soundsUX('MBF_Menu_LineSelect');
-        
-        const sections = Array.from(this.sections.values());
-        
-        switch(filterId) {
-            case 'all':
-                sections.forEach(section => {
-                    section.element.style.display = '';
-                });
-                break;
-                
-            case 'favorites':
-                sections.forEach(section => {
-                    const line = section.element.dataset.line;
-                    if (favoriteLines.has(line)) {
-                        section.element.style.display = '';
-                    } else {
-                        section.element.style.display = 'none';
-                    }
-                });
-                break;
-                
-            case 'in-service':
-                sections.forEach(section => {
-                    const hasActiveBuses = Array.from(section.destinations.values()).some(dest => 
-                        Array.from(dest.buses.values()).length > 0
-                    );
-                    section.element.style.display = hasActiveBuses ? '' : 'none';
-                });
-                break;
-                
-            case 'sort-az':
-                const sortedSections = sections.sort((a, b) => {
-                    const lineA = a.element.dataset.line;
-                    const lineB = b.element.dataset.line;
-                    return lineA.localeCompare(lineB);
-                });
-                
-                const spacer = document.getElementById('menu-spacer');
-                sortedSections.forEach(section => {
-                    spacer.parentNode.insertBefore(section.element, spacer.nextSibling);
-                });
-                break;
-        }
-    },
-    
     _buildBusIndex() {
         this.allBuses = [];
         
@@ -5375,16 +5237,13 @@ const MenuManager = {
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
             const searchContainer = document.getElementById('search-container');
-            const quickFilters = this.quickFilters;
             
             if (scrollTop > lastScrollTop && scrollTop > 50) {
                 topBar.style.transform = 'translateY(-100%)';
                 if (searchContainer) searchContainer.style.transform = 'translateY(-100%)';
-                if (quickFilters) quickFilters.style.transform = 'translateY(-100%)';
             } else {
                 topBar.style.transform = 'translateY(0)';
                 if (searchContainer) searchContainer.style.transform = 'translateY(0)';
-                if (quickFilters) quickFilters.style.transform = 'translateY(0)';
             }
             lastScrollTop = scrollTop;
         });
