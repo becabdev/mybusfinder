@@ -5215,7 +5215,7 @@ const MenuManager = {
                 `;
                 destInfo.textContent = item.destination;
                 
-                // Score badge (pour debug, optionnel)
+                // Score badge debug
                 const scoreBadge = document.createElement('span');
                 scoreBadge.style.cssText = `
                     background: rgba(255, 255, 255, 0.15);
@@ -5229,13 +5229,12 @@ const MenuManager = {
                 
                 vehicleItem.appendChild(vehicleBadge);
                 vehicleItem.appendChild(destInfo);
-                vehicleItem.appendChild(scoreBadge); 
+                // vehicleItem.appendChild(scoreBadge);
                 
                 vehiclesList.appendChild(vehicleItem);
             });
             
-            // Indicateur "plus de véhicules"
-            if (items.length > 5) {
+            if (items.length > 3) {
                 const moreVehicles = document.createElement('div');
                 moreVehicles.style.cssText = `
                     color: white;
@@ -5245,7 +5244,7 @@ const MenuManager = {
                     margin-top: 4px;
                     font-style: italic;
                 `;
-                moreVehicles.textContent = `+ ${items.length - 5} ${t('other')} ${t('vehicle' + (items.length - 5 > 1 ? 's' : ''))}`;
+                moreVehicles.textContent = `+ ${items.length - 3} ${t('other')} ${t('vehicles')}`;
                 vehiclesList.appendChild(moreVehicles);
             }
             
