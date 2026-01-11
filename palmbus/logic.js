@@ -5400,6 +5400,7 @@ const MenuManager = {
         this.container.appendChild(topBar);
         
         let lastScrollTop = 0;
+        this._handleScrollAnimations();
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
             const searchContainer = document.getElementById('search-container');
