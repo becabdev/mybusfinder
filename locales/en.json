@@ -297,7 +297,8 @@
     "vehicle": "vehicle",
     "lines": "lines in service",
     "vehicles": "vehicles",
-    "langversion": "1.0.7.4"
+    "langversion": "1.0.7.4",
+    "no_results": "This bus doesn't take passengers! It seems no results were found :("
 
 
 

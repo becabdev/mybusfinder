@@ -297,6 +297,7 @@
     "other_lines": "autres lignes",
     "search_placeholder": "Rechercher une ligne, un véhicule, une destination...",
     "vehicle": "véhicule",
+    "no_results": "Ce bus ne prend pas de voyageurs ! On dirait qu'aucun résultat n'a été trouvé :(",
 
     "langversion": "1.0.7.4"
   }

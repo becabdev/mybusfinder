@@ -4902,6 +4902,7 @@ const MenuManager = {
             const value = e.target.value.trim();
             clearButton.style.display = value ? 'flex' : 'none';
             this._performSearch(value);
+            this._handleScrollAnimations();
         });
         
         this.searchInput.addEventListener('focus', () => {
@@ -4932,7 +4933,6 @@ const MenuManager = {
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             display: none;
-            margin-bottom: 20px;
         `;
         searchContainer.appendChild(this.searchResults);
         
