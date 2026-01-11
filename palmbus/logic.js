@@ -4754,14 +4754,13 @@ const MenuManager = {
         return true;
     },
     
-    // Génère la structure initiale du menu (une seule fois)
     generateInitialStructure(busesByLineAndDestination) {
         if (!this.isInitialized) this.init();
         
         this.busesByLineAndDestination = busesByLineAndDestination;
         this.container.innerHTML = '';
         
-        // Top bar (reste identique)
+        // Top bar
         this._createTopBar();
         
         // Spacer
@@ -4776,6 +4775,13 @@ const MenuManager = {
         sortedLines.forEach(line => {
             const lineSection = this._createLineSection(line);
             this.sections.set(line, lineSection);
+            
+            // Ajouter toutes les destinations dès la création
+            const destinations = busesByLineAndDestination[line];
+            Object.keys(destinations).sort().forEach(destination => {
+                this._addDestinationToSection(lineSection, line, destination, destinations[destination]);
+            });
+            
             fragment.appendChild(lineSection.element);
         });
         
@@ -4783,7 +4789,6 @@ const MenuManager = {
         this._updateStatistics();
     },
     
-    // Mise à jour sans régénération DOM
     updateData(busesByLineAndDestination) {
         if (!this.isInitialized) return;
         
@@ -4893,14 +4898,22 @@ const MenuManager = {
             border-radius: 16px;
             position: relative;
             overflow: hidden;
+            transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
         `;
         
         // Beams
-        for (let i = 1; i <= 3; i++) {
-            const beam = document.createElement('div');
-            beam.classList.add('light-beam', `beam${i}`);
-            lineSection.appendChild(beam);
-        }
+        const beam1 = document.createElement('div');
+        beam1.classList.add('light-beam', 'beam1');
+        lineSection.appendChild(beam1);
+        
+        const beam2 = document.createElement('div');
+        beam2.classList.add('light-beam', 'beam2');
+        lineSection.appendChild(beam2);
+        
+        const beam3 = document.createElement('div');
+        beam3.classList.add('light-beam', 'beam3');
+        lineSection.appendChild(beam3);
         
         // Favorite button
         const favoriteButton = document.createElement('button');
@@ -4914,6 +4927,7 @@ const MenuManager = {
             color: ${textColor};
             font-size: 20px;
             cursor: pointer;
+            z-index: 10;
         `;
         favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
         favoriteButton.onclick = async (e) => {
@@ -4932,11 +4946,17 @@ const MenuManager = {
             color: ${textColor};
             padding-right: 30px;
             padding-left: 10px;
+            position: relative;
+            z-index: 1;
         `;
         
         // Destinations container
         const destinationsContainer = document.createElement('div');
         destinationsContainer.className = 'destinations-container';
+        destinationsContainer.style.cssText = `
+            position: relative;
+            z-index: 1;
+        `;
         
         lineSection.appendChild(lineTitle);
         lineSection.appendChild(favoriteButton);
@@ -4970,11 +4990,13 @@ const MenuManager = {
         return {
             element: lineSection,
             destinationsContainer: destinationsContainer,
-            destinations: new Map()
+            destinations: new Map(),
+            lineColor: lineColor,
+            textColor: textColor
         };
     },
     
-    _createDestinationSection(destination, buses, lineColor, textColor) {
+    _addDestinationToSection(lineSection, line, destination, buses) {
         const destinationSection = document.createElement('div');
         destinationSection.className = 'destination-section';
         destinationSection.dataset.destination = destination;
@@ -4990,7 +5012,7 @@ const MenuManager = {
             font-size: 19px;
             font-weight: normal;
             margin-bottom: 4px;
-            color: ${textColor};
+            color: ${lineSection.textColor};
         `;
         
         const busesContainer = document.createElement('div');
@@ -4999,11 +5021,21 @@ const MenuManager = {
         destinationSection.appendChild(destinationTitle);
         destinationSection.appendChild(busesContainer);
         
-        return {
+        const destData = {
             element: destinationSection,
             busesContainer: busesContainer,
             buses: new Map()
         };
+        
+        // Ajouter tous les bus
+        buses.forEach(bus => {
+            const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
+            destData.buses.set(bus.parkNumber, busItem);
+            busesContainer.appendChild(busItem);
+        });
+        
+        lineSection.destinations.set(destination, destData);
+        lineSection.destinationsContainer.appendChild(destinationSection);
     },
     
     _createBusItem(bus, lineColor, textColor) {
@@ -5014,7 +5046,7 @@ const MenuManager = {
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
         const busItem = document.createElement('div');
-        busItem.className = 'bus-item ripple-container';
+        busItem.className = 'bus-item ripple-container menu-item';
         busItem.dataset.busId = bus.parkNumber;
         busItem.style.cssText = `
             display: flex;
@@ -5054,6 +5086,14 @@ const MenuManager = {
         `;
         backgroundContainer.innerHTML = vehicleBrandHtmlLight;
         
+        const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
+        if (thumbnailImg) {
+            thumbnailImg.style.height = '80%';
+            thumbnailImg.style.width = 'auto';
+            thumbnailImg.style.maxHeight = '40px';
+            thumbnailImg.style.objectFit = 'contain';
+        }
+        
         // Front content
         const frontContent = document.createElement('div');
         frontContent.className = 'bus-front-content';
@@ -5071,13 +5111,14 @@ const MenuManager = {
         busIdBox.className = 'bus-id';
         busIdBox.textContent = displayLabel;
         busIdBox.style.cssText = `
-            padding: 5px 10px;
+            padding: 2px 8px;
             background-color: #00000017;
             border-radius: 6px;
             font-weight: bold;
             color: ${textColor};
             display: inline-block;
             text-align: center;
+            padding: 5px 10px;
         `;
         
         const contentContainer = document.createElement('div');
@@ -5091,11 +5132,17 @@ const MenuManager = {
         const mainText = document.createElement('div');
         mainText.className = 'bus-main-text';
         mainText.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
             font-size: 1.2em;
             font-weight: 500;
             color: ${textColor};
         `;
-        mainText.textContent = nextStopInfo;
+        
+        const infoText = document.createElement('span');
+        infoText.textContent = nextStopInfo;
+        mainText.appendChild(infoText);
         
         const arrivalText = document.createElement('div');
         arrivalText.className = 'bus-arrival-text';
@@ -5148,7 +5195,7 @@ const MenuManager = {
             if (lineSection.destinations.has(dest)) {
                 this._updateDestination(line, dest, destinations[dest]);
             } else {
-                this._addDestination(line, dest, destinations[dest]);
+                this._addDestinationToSection(lineSection, line, dest, destinations[dest]);
             }
         }
     },
@@ -5157,7 +5204,7 @@ const MenuManager = {
         const lineSection = this._createLineSection(line);
         this.sections.set(line, lineSection);
         
-        // Insérer à la bonne position (tri)
+        // Insérer à la bonne position
         const sortedLines = this._getSortedLines();
         const index = sortedLines.indexOf(line);
         
@@ -5173,10 +5220,10 @@ const MenuManager = {
             }
         }
         
-        // Ajouter toutes les destinations
-        for (const [dest, buses] of Object.entries(destinations)) {
-            this._addDestination(line, dest, buses);
-        }
+        // Ajouter destinations
+        Object.keys(destinations).sort().forEach(dest => {
+            this._addDestinationToSection(lineSection, line, dest, destinations[dest]);
+        });
     },
     
     _removeLine(line) {
@@ -5185,25 +5232,6 @@ const MenuManager = {
         
         lineSection.element.remove();
         this.sections.delete(line);
-    },
-    
-    _addDestination(line, destination, buses) {
-        const lineSection = this.sections.get(line);
-        if (!lineSection) return;
-        
-        const lineColor = lineColors[line] || '#000000';
-        const textColor = getTextColor(lineColor);
-        
-        const destSection = this._createDestinationSection(destination, buses, lineColor, textColor);
-        lineSection.destinations.set(destination, destSection);
-        lineSection.destinationsContainer.appendChild(destSection.element);
-        
-        // Ajouter tous les bus
-        buses.forEach(bus => {
-            const busItem = this._createBusItem(bus, lineColor, textColor);
-            destSection.buses.set(bus.parkNumber, busItem);
-            destSection.busesContainer.appendChild(busItem);
-        });
     },
     
     _updateDestination(line, destination, buses) {
@@ -5226,14 +5254,11 @@ const MenuManager = {
         }
         
         // Ajouter/mettre à jour bus
-        const lineColor = lineColors[line] || '#000000';
-        const textColor = getTextColor(lineColor);
-        
         buses.forEach(bus => {
             if (destSection.buses.has(bus.parkNumber)) {
                 this._updateBusItem(destSection.buses.get(bus.parkNumber), bus);
             } else {
-                const busItem = this._createBusItem(bus, lineColor, textColor);
+                const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
                 destSection.buses.set(bus.parkNumber, busItem);
                 destSection.busesContainer.appendChild(busItem);
             }
@@ -5258,16 +5283,17 @@ const MenuManager = {
         
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
-        const mainText = busItem.querySelector('.bus-main-text');
+        const mainTextSpan = busItem.querySelector('.bus-main-text span');
         const arrivalText = busItem.querySelector('.bus-arrival-text');
         
-        if (mainText) mainText.textContent = nextStopInfo;
+        if (mainTextSpan) mainTextSpan.textContent = nextStopInfo;
         if (arrivalText) arrivalText.textContent = terminusInfo;
     },
     
     _getBusInfo(marker, tripId, stopId) {
         const currentStatus = marker.vehicleData?.currentStatus;
         const nextStops = tripUpdates[tripId]?.nextStops || [];
+        const line = marker.line;
         
         let currentStopIndex = nextStops.findIndex(stop => 
             stop.stopId.replace("0:", "") === stopId
@@ -5284,6 +5310,13 @@ const MenuManager = {
             );
         }
         
+        const statusMap = {
+            0: t("notinservice"),
+            1: t("dooropen"),
+            2: t("enservice")
+        };
+        const status = statusMap[currentStatus] || 'Inconnu';
+        
         let nextStopInfo = '';
         let terminusInfo = '';
         
@@ -5294,11 +5327,17 @@ const MenuManager = {
             const firstStopDelay = filteredStops[0].delay || 0;
             const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
             
-            if (filteredStops.length === 1) {
-                nextStopInfo = minutes === 0 ? t("imminentdeparture") : `${t("departurein")} ${minutes} ${t("min")}`;
-            } else if (minutes > 3) {
-                nextStopInfo = firstStopName;
+            if (line === 'Inconnu') {
+                nextStopInfo = t("unknownline");
             } else {
+                if (filteredStops.length === 1) {
+                    nextStopInfo = minutes === 0 ? t("imminentdeparture") : `${t("departurein")} ${minutes} ${t("min")}`;
+                } else if (minutes > 3) {
+                    nextStopInfo = `${t("departurein")} ${minutes} ${t("minutes")}`;
+                } else {
+                    nextStopInfo = t("nextstops");
+                }
+                
                 nextStopInfo = firstStopName;
             }
             
