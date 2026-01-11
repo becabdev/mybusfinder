@@ -4865,7 +4865,7 @@ const MenuManager = {
         `;
         clearButton.style.cssText = `
             position: absolute;
-            right: 12px;
+            right: 7px;
             top: 50%;
             transform: translateY(-50%);
             background: rgba(255, 255, 255, 0.1);
