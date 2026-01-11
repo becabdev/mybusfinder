@@ -5464,9 +5464,10 @@ const MenuManager = {
             overflow: hidden;
             transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            transform: scale(0.9);
         `;
+
+        lineSection.style.opacity = '0';
+        lineSection.style.transform = 'scale(0.9)';
         
         // Beams
         const beam1 = document.createElement('div');
