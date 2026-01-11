@@ -4902,7 +4902,6 @@ const MenuManager = {
             const value = e.target.value.trim();
             clearButton.style.display = value ? 'flex' : 'none';
             this._performSearch(value);
-            this._handleScrollAnimations();
         });
         
         this.searchInput.addEventListener('focus', () => {
@@ -5409,8 +5408,6 @@ const MenuManager = {
                 if (searchContainer) searchContainer.style.transform = 'translateY(0)';
             }
             lastScrollTop = scrollTop;
-            
-            this._handleScrollAnimations();
         });
     },
 
@@ -7721,7 +7718,6 @@ const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'none';
             }
             }, { once: true });
-            MenuManager._handleScrollAnimations();
 
         }
 
