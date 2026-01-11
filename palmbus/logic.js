@@ -5429,10 +5429,8 @@ const MenuManager = {
             const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
             
             if (isVisible) {
-                if (section.dataset.currentlyVisible !== 'true') {
                     section.dataset.currentlyVisible = 'true';
                     section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
-                }
             } else {
                 if (section.dataset.currentlyVisible === 'true') {
                     section.dataset.currentlyVisible = 'false';
