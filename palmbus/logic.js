@@ -4744,9 +4744,9 @@ const MenuManager = {
     isInitialized: false,
     searchInput: null,
     searchResults: null,
-    currentSearchTerm: '',
-    isSearchMode: false,
-    compactMode: false,
+    isSearchActive: false,
+    allBuses: [],
+    quickFilters: null,
     
     init() {
         this.container = document.getElementById('menu');
@@ -4755,7 +4755,6 @@ const MenuManager = {
             return false;
         }
         this.isInitialized = true;
-        this.compactMode = localStorage.getItem('menuCompactMode') === 'true';
         return true;
     },
     
@@ -4765,18 +4764,19 @@ const MenuManager = {
         this.busesByLineAndDestination = busesByLineAndDestination;
         this.container.innerHTML = '';
         
-        // Top bar
+        // Top bar avec recherche
         this._createTopBar();
         
-        // Search bar
+        // Barre de recherche
         this._createSearchBar();
         
-        // Quick filters
+        // Filtres rapides
         this._createQuickFilters();
         
         // Spacer
         const spacer = document.createElement('div');
         spacer.style.height = '15px';
+        spacer.id = 'menu-spacer';
         this.container.appendChild(spacer);
         
         const sortedLines = this._getSortedLines();
@@ -4796,6 +4796,496 @@ const MenuManager = {
         
         this.container.appendChild(fragment);
         this._updateStatistics();
+        this._buildBusIndex();
+    },
+    
+    _createSearchBar() {
+        const searchContainer = document.createElement('div');
+        searchContainer.id = 'search-container';
+        searchContainer.style.cssText = `
+            position: sticky;
+            top: 70px;
+            left: 0;
+            right: 0;
+            padding: 0 15px 10px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 80%, transparent 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        `;
+        
+        const searchWrapper = document.createElement('div');
+        searchWrapper.style.cssText = `
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        `;
+        
+        // Icône de recherche
+        const searchIcon = document.createElement('div');
+        searchIcon.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="8" stroke="white" stroke-width="2"/>
+                <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+        searchIcon.style.cssText = `
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            opacity: 0.7;
+            z-index: 2;
+        `;
+        
+        // Input de recherche
+        this.searchInput = document.createElement('input');
+        this.searchInput.type = 'text';
+        this.searchInput.placeholder = t('search_placeholder') || 'Rechercher ligne, destination, bus...';
+        this.searchInput.id = 'menu-search-input';
+        this.searchInput.style.cssText = `
+            flex: 1;
+            padding: 12px 45px 12px 45px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            color: white;
+            font-size: 15px;
+            font-family: 'League Spartan', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        `;
+        
+        // Bouton clear
+        const clearButton = document.createElement('button');
+        clearButton.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+        clearButton.style.cssText = `
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 2;
+        `;
+        
+        clearButton.onmouseover = () => {
+            clearButton.style.background = 'rgba(255, 255, 255, 0.2)';
+            clearButton.style.transform = 'translateY(-50%) scale(1.1)';
+        };
+        clearButton.onmouseout = () => {
+            clearButton.style.background = 'rgba(255, 255, 255, 0.1)';
+            clearButton.style.transform = 'translateY(-50%) scale(1)';
+        };
+        
+        clearButton.onclick = () => {
+            this.searchInput.value = '';
+            this._performSearch('');
+            this.searchInput.focus();
+        };
+        
+        // Events
+        this.searchInput.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            clearButton.style.display = value ? 'flex' : 'none';
+            this._performSearch(value);
+        });
+        
+        this.searchInput.addEventListener('focus', () => {
+            this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
+            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            this.searchInput.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.1)';
+        });
+        
+        this.searchInput.addEventListener('blur', () => {
+            this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
+            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            this.searchInput.style.boxShadow = 'none';
+        });
+        
+        searchWrapper.appendChild(searchIcon);
+        searchWrapper.appendChild(this.searchInput);
+        searchWrapper.appendChild(clearButton);
+        searchContainer.appendChild(searchWrapper);
+        
+        // Résultats de recherche
+        this.searchResults = document.createElement('div');
+        this.searchResults.id = 'search-results';
+        this.searchResults.style.cssText = `
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: none;
+        `;
+        searchContainer.appendChild(this.searchResults);
+        
+        this.container.appendChild(searchContainer);
+    },
+    
+    _createQuickFilters() {
+        this.quickFilters = document.createElement('div');
+        this.quickFilters.id = 'quick-filters';
+        this.quickFilters.style.cssText = `
+            position: sticky;
+            top: 145px;
+            left: 0;
+            right: 0;
+            padding: 0 15px 10px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
+            z-index: 999;
+            transition: transform 0.3s ease;
+        `;
+        
+        this.quickFilters.style.setProperty('::-webkit-scrollbar', 'display: none');
+        
+        const filters = [
+            { id: 'all', label: t('all') || 'Tous', icon: '🚌' },
+            { id: 'favorites', label: t('favorites') || 'Favoris', icon: '⭐' },
+            { id: 'in-service', label: t('in_service') || 'En service', icon: '✓' },
+            { id: 'sort-az', label: t('sort_az') || 'A→Z', icon: '🔤' }
+        ];
+        
+        filters.forEach(filter => {
+            const btn = document.createElement('button');
+            btn.className = 'quick-filter-btn';
+            btn.dataset.filter = filter.id;
+            btn.innerHTML = `${filter.icon} ${filter.label}`;
+            btn.style.cssText = `
+                padding: 8px 16px;
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 20px;
+                color: white;
+                font-size: 14px;
+                font-family: 'League Spartan', sans-serif;
+                white-space: nowrap;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                flex-shrink: 0;
+            `;
+            
+            if (filter.id === 'all') {
+                btn.style.background = 'rgba(255, 255, 255, 0.2)';
+                btn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            }
+            
+            btn.onmouseover = () => {
+                if (!btn.classList.contains('active')) {
+                    btn.style.background = 'rgba(255, 255, 255, 0.15)';
+                    btn.style.transform = 'scale(1.05)';
+                }
+            };
+            
+            btn.onmouseout = () => {
+                if (!btn.classList.contains('active')) {
+                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
+                    btn.style.transform = 'scale(1)';
+                }
+            };
+            
+            btn.onclick = () => {
+                this._applyQuickFilter(filter.id, btn);
+            };
+            
+            this.quickFilters.appendChild(btn);
+        });
+        
+        this.container.appendChild(this.quickFilters);
+    },
+    
+    _applyQuickFilter(filterId, btn) {
+        // Réinitialiser tous les boutons
+        this.quickFilters.querySelectorAll('.quick-filter-btn').forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'rgba(255, 255, 255, 0.1)';
+            b.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        });
+        
+        // Activer le bouton cliqué
+        btn.classList.add('active');
+        btn.style.background = 'rgba(255, 255, 255, 0.2)';
+        btn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+        
+        safeVibrate([30], true);
+        soundsUX && soundsUX('MBF_Menu_LineSelect');
+        
+        const sections = Array.from(this.sections.values());
+        
+        switch(filterId) {
+            case 'all':
+                sections.forEach(section => {
+                    section.element.style.display = '';
+                });
+                break;
+                
+            case 'favorites':
+                sections.forEach(section => {
+                    const line = section.element.dataset.line;
+                    if (favoriteLines.has(line)) {
+                        section.element.style.display = '';
+                    } else {
+                        section.element.style.display = 'none';
+                    }
+                });
+                break;
+                
+            case 'in-service':
+                sections.forEach(section => {
+                    const hasActiveBuses = Array.from(section.destinations.values()).some(dest => 
+                        Array.from(dest.buses.values()).length > 0
+                    );
+                    section.element.style.display = hasActiveBuses ? '' : 'none';
+                });
+                break;
+                
+            case 'sort-az':
+                const sortedSections = sections.sort((a, b) => {
+                    const lineA = a.element.dataset.line;
+                    const lineB = b.element.dataset.line;
+                    return lineA.localeCompare(lineB);
+                });
+                
+                const spacer = document.getElementById('menu-spacer');
+                sortedSections.forEach(section => {
+                    spacer.parentNode.insertBefore(section.element, spacer.nextSibling);
+                });
+                break;
+        }
+    },
+    
+    _buildBusIndex() {
+        this.allBuses = [];
+        
+        Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
+            Object.entries(destinations).forEach(([destination, buses]) => {
+                buses.forEach(bus => {
+                    const vehicleLabel = bus.vehicleData?.vehicle?.label || 
+                                       bus.vehicleData?.vehicle?.id || 
+                                       "inconnu";
+                    
+                    this.allBuses.push({
+                        line,
+                        destination,
+                        vehicleLabel,
+                        parkNumber: bus.parkNumber,
+                        bus,
+                        searchText: `${line} ${destination} ${vehicleLabel}`.toLowerCase()
+                    });
+                });
+            });
+        });
+    },
+    
+    _performSearch(query) {
+        if (!query) {
+            this.isSearchActive = false;
+            this.searchResults.style.display = 'none';
+            this._showAllSections();
+            return;
+        }
+        
+        this.isSearchActive = true;
+        const normalizedQuery = query.toLowerCase().trim();
+        
+        // Recherche intelligente
+        const results = this.allBuses.filter(item => 
+            item.searchText.includes(normalizedQuery) ||
+            this._fuzzyMatch(item.line, normalizedQuery) ||
+            this._fuzzyMatch(item.destination, normalizedQuery) ||
+            this._fuzzyMatch(item.vehicleLabel, normalizedQuery)
+        );
+        
+        if (results.length === 0) {
+            this._showNoResults();
+            this._hideAllSections();
+            return;
+        }
+        
+        // Grouper par ligne
+        const resultsByLine = new Map();
+        results.forEach(result => {
+            if (!resultsByLine.has(result.line)) {
+                resultsByLine.set(result.line, []);
+            }
+            resultsByLine.get(result.line).push(result);
+        });
+        
+        // Afficher les résultats
+        this._displaySearchResults(resultsByLine, normalizedQuery);
+        
+        // Filtrer les sections
+        this._filterSections(resultsByLine);
+    },
+    
+    _fuzzyMatch(text, query) {
+        if (!text) return false;
+        text = text.toLowerCase();
+        
+        // Match exact
+        if (text.includes(query)) return true;
+        
+        // Match avec caractères manquants (ex: "cnn" match "cannes")
+        let textIndex = 0;
+        for (let char of query) {
+            textIndex = text.indexOf(char, textIndex);
+            if (textIndex === -1) return false;
+            textIndex++;
+        }
+        return true;
+    },
+    
+    _displaySearchResults(resultsByLine, query) {
+        this.searchResults.innerHTML = '';
+        this.searchResults.style.display = 'block';
+        
+        const summary = document.createElement('div');
+        summary.style.cssText = `
+            color: white;
+            font-size: 14px;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        `;
+        
+        const totalResults = Array.from(resultsByLine.values()).reduce((sum, arr) => sum + arr.length, 0);
+        summary.textContent = `${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))} • ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))}`;
+        this.searchResults.appendChild(summary);
+        
+        // Afficher par ligne
+        Array.from(resultsByLine.entries()).slice(0, 5).forEach(([line, items]) => {
+            const lineColor = lineColors[line] || '#000000';
+            const textColor = getTextColor(lineColor);
+            
+            const lineResult = document.createElement('div');
+            lineResult.style.cssText = `
+                background: ${lineColor}40;
+                border-left: 3px solid ${lineColor};
+                padding: 8px 12px;
+                margin-bottom: 8px;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            `;
+            
+            lineResult.onmouseover = () => {
+                lineResult.style.background = `${lineColor}60`;
+                lineResult.style.transform = 'translateX(5px)';
+            };
+            
+            lineResult.onmouseout = () => {
+                lineResult.style.background = `${lineColor}40`;
+                lineResult.style.transform = 'translateX(0)';
+            };
+            
+            lineResult.onclick = () => {
+                this.searchInput.value = '';
+                this._performSearch('');
+                
+                const lineSection = this.sections.get(line);
+                if (lineSection) {
+                    lineSection.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    lineSection.element.style.animation = 'pulse 0.5s ease';
+                    setTimeout(() => {
+                        lineSection.element.style.animation = '';
+                    }, 500);
+                }
+            };
+            
+            const lineTitle = document.createElement('div');
+            lineTitle.style.cssText = `
+                color: white;
+                font-weight: 600;
+                margin-bottom: 4px;
+            `;
+            lineTitle.textContent = `${t('line')} ${lineName[line] || line}`;
+            
+            const itemsText = document.createElement('div');
+            itemsText.style.cssText = `
+                color: white;
+                font-size: 13px;
+                opacity: 0.9;
+            `;
+            itemsText.textContent = `${items.length} ${t('vehicle' + (items.length > 1 ? 's' : ''))} • ${[...new Set(items.map(i => i.destination))].join(', ')}`;
+            
+            lineResult.appendChild(lineTitle);
+            lineResult.appendChild(itemsText);
+            this.searchResults.appendChild(lineResult);
+        });
+        
+        if (resultsByLine.size > 5) {
+            const more = document.createElement('div');
+            more.style.cssText = `
+                color: white;
+                font-size: 13px;
+                opacity: 0.6;
+                text-align: center;
+                margin-top: 8px;
+            `;
+            more.textContent = `+ ${resultsByLine.size - 5} ${t('other_lines')}`;
+            this.searchResults.appendChild(more);
+        }
+    },
+    
+    _showNoResults() {
+        this.searchResults.innerHTML = '';
+        this.searchResults.style.display = 'block';
+        
+        const noResults = document.createElement('div');
+        noResults.style.cssText = `
+            color: white;
+            text-align: center;
+            padding: 20px;
+            opacity: 0.6;
+        `;
+        noResults.innerHTML = `
+            <div style="font-size: 40px; margin-bottom: 10px;">🔍</div>
+            <div style="font-size: 16px;">${t('no_results') || 'Aucun résultat'}</div>
+        `;
+        this.searchResults.appendChild(noResults);
+    },
+    
+    _showAllSections() {
+        this.sections.forEach(section => {
+            section.element.style.display = '';
+        });
+    },
+    
+    _hideAllSections() {
+        this.sections.forEach(section => {
+            section.element.style.display = 'none';
+        });
+    },
+    
+    _filterSections(resultsByLine) {
+        this.sections.forEach((section, line) => {
+            if (resultsByLine.has(line)) {
+                section.element.style.display = '';
+            } else {
+                section.element.style.display = 'none';
+            }
+        });
     },
     
     updateData(busesByLineAndDestination) {
@@ -4820,10 +5310,11 @@ const MenuManager = {
         
         this.busesByLineAndDestination = busesByLineAndDestination;
         this._updateStatistics();
+        this._buildBusIndex();
         
-        // Réappliquer la recherche si active
-        if (this.isSearchMode && this.currentSearchTerm) {
-            this._performSearch(this.currentSearchTerm);
+        // Re-appliquer la recherche si active
+        if (this.isSearchActive && this.searchInput) {
+            this._performSearch(this.searchInput.value);
         }
     },
     
@@ -4840,7 +5331,6 @@ const MenuManager = {
             padding: 9px 33px 9px 9px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
             z-index: 1001;
             transition: transform 0.3s ease;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -4849,11 +5339,7 @@ const MenuManager = {
             width: fit-content;
             margin: 10px 15px 0px;
             border-radius: 33px;
-            min-width: calc(100% - 30px);
         `;
-        
-        const leftSection = document.createElement('div');
-        leftSection.style.cssText = 'display: flex; align-items: center;';
         
         const backButton = document.createElement('div');
         backButton.innerHTML = `
@@ -4881,396 +5367,28 @@ const MenuManager = {
         title.textContent = t("network");
         title.style.cssText = `font-size: 20px; font-weight: 500;`;
         
-        leftSection.appendChild(backButton);
-        leftSection.appendChild(title);
-        
-        // Boutons d'action à droite
-        const rightSection = document.createElement('div');
-        rightSection.style.cssText = 'display: flex; align-items: center; gap: 8px;';
-        
-        // Bouton mode compact
-        const compactButton = document.createElement('div');
-        compactButton.innerHTML = this.compactMode ? 
-            `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 4h18M3 12h18M3 20h18" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            </svg>` :
-            `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 4h18v5H3zM3 11h18v5H3zM3 18h18v2H3z" fill="white"/>
-            </svg>`;
-        compactButton.title = this.compactMode ? t("mode_normal") : t("mode_compact");
-        compactButton.style.cssText = `
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: background 0.2s ease;
-        `;
-        compactButton.onmouseover = () => compactButton.style.background = 'rgba(255, 255, 255, 0.1)';
-        compactButton.onmouseout = () => compactButton.style.background = 'transparent';
-        compactButton.onclick = () => this._toggleCompactMode();
-        
-        rightSection.appendChild(compactButton);
-        
-        topBar.appendChild(leftSection);
-        topBar.appendChild(rightSection);
+        topBar.appendChild(backButton);
+        topBar.appendChild(title);
         this.container.appendChild(topBar);
         
-        // Scroll behavior
+        // Scroll behavior pour top bar + search bar
         let lastScrollTop = 0;
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
+            const searchContainer = document.getElementById('search-container');
+            const quickFilters = this.quickFilters;
+            
             if (scrollTop > lastScrollTop && scrollTop > 50) {
                 topBar.style.transform = 'translateY(-100%)';
+                if (searchContainer) searchContainer.style.transform = 'translateY(-100%)';
+                if (quickFilters) quickFilters.style.transform = 'translateY(-100%)';
             } else {
                 topBar.style.transform = 'translateY(0)';
+                if (searchContainer) searchContainer.style.transform = 'translateY(0)';
+                if (quickFilters) quickFilters.style.transform = 'translateY(0)';
             }
             lastScrollTop = scrollTop;
         });
-    },
-    
-    _createSearchBar() {
-        const searchContainer = document.createElement('div');
-        searchContainer.style.cssText = `
-            position: sticky;
-            top: 70px;
-            margin: 10px 15px;
-            background-color: #00000075;
-            backdrop-filter: blur(17px);
-            -webkit-backdrop-filter: blur(17px);
-            border-radius: 25px;
-            padding: 10px 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-        `;
-        
-        const searchIcon = document.createElement('div');
-        searchIcon.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="11" cy="11" r="8" stroke="white" stroke-width="2"/>
-                <path d="M21 21l-4.35-4.35" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-        `;
-        searchIcon.style.cssText = 'display: flex; align-items: center; flex-shrink: 0;';
-        
-        this.searchInput = document.createElement('input');
-        this.searchInput.type = 'text';
-        this.searchInput.placeholder = t("search_placeholder") || "Rechercher ligne, destination, véhicule...";
-        this.searchInput.style.cssText = `
-            flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: white;
-            font-size: 16px;
-            font-family: League Spartan;
-        `;
-        
-        const clearButton = document.createElement('div');
-        clearButton.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 6L6 18M6 6l12 12" stroke="white" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-        `;
-        clearButton.style.cssText = `
-            display: none;
-            align-items: center;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 50%;
-            transition: background 0.2s ease;
-            flex-shrink: 0;
-        `;
-        clearButton.onmouseover = () => clearButton.style.background = 'rgba(255, 255, 255, 0.1)';
-        clearButton.onmouseout = () => clearButton.style.background = 'transparent';
-        
-        this.searchInput.addEventListener('input', (e) => {
-            const value = e.target.value.trim();
-            this.currentSearchTerm = value;
-            
-            if (value) {
-                clearButton.style.display = 'flex';
-                this._performSearch(value);
-            } else {
-                clearButton.style.display = 'none';
-                this._clearSearch();
-            }
-        });
-        
-        clearButton.onclick = () => {
-            this.searchInput.value = '';
-            this.currentSearchTerm = '';
-            clearButton.style.display = 'none';
-            this._clearSearch();
-        };
-        
-        searchContainer.appendChild(searchIcon);
-        searchContainer.appendChild(this.searchInput);
-        searchContainer.appendChild(clearButton);
-        
-        this.container.appendChild(searchContainer);
-    },
-    
-    _createQuickFilters() {
-        const filtersContainer = document.createElement('div');
-        filtersContainer.style.cssText = `
-            display: flex;
-            gap: 8px;
-            margin: 0px 15px 10px;
-            overflow-x: auto;
-            padding: 5px 0;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        `;
-        filtersContainer.style.setProperty('&::-webkit-scrollbar', 'display: none');
-        
-        const filters = [
-            { label: t("favorites") || "★ Favoris", action: () => this._filterFavorites() },
-            { label: t("active_vehicles") || "🚌 En service", action: () => this._filterActiveVehicles() },
-            { label: t("sort_az") || "A-Z", action: () => this._sortAlphabetically() }
-        ];
-        
-        filters.forEach(filter => {
-            const filterChip = document.createElement('div');
-            filterChip.textContent = filter.label;
-            filterChip.style.cssText = `
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-size: 14px;
-                white-space: nowrap;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-            `;
-            
-            filterChip.onmouseover = () => {
-                filterChip.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-                filterChip.style.transform = 'scale(1.05)';
-            };
-            filterChip.onmouseout = () => {
-                filterChip.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                filterChip.style.transform = 'scale(1)';
-            };
-            
-            filterChip.onclick = filter.action;
-            
-            filtersContainer.appendChild(filterChip);
-        });
-        
-        this.container.appendChild(filtersContainer);
-    },
-    
-    _performSearch(searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        this.isSearchMode = true;
-        
-        let matchCount = 0;
-        
-        this.sections.forEach((lineSection, line) => {
-            const lineName = (window.lineName && window.lineName[line]) || line;
-            const lineMatches = line.toLowerCase().includes(lowerSearch) || 
-                               lineName.toLowerCase().includes(lowerSearch);
-            
-            let lineHasMatch = lineMatches;
-            
-            // Vérifier les destinations et véhicules
-            lineSection.destinations.forEach((destData, destination) => {
-                const destMatches = destination.toLowerCase().includes(lowerSearch);
-                let destHasMatch = destMatches;
-                
-                destData.buses.forEach((busItem, busId) => {
-                    const busMatches = busId.toString().toLowerCase().includes(lowerSearch);
-                    
-                    if (lineMatches || destMatches || busMatches) {
-                        busItem.style.display = '';
-                        destHasMatch = true;
-                        lineHasMatch = true;
-                        matchCount++;
-                    } else {
-                        busItem.style.display = 'none';
-                    }
-                });
-                
-                // Afficher/masquer la section destination
-                if (destHasMatch) {
-                    destData.element.style.display = '';
-                } else {
-                    destData.element.style.display = 'none';
-                }
-            });
-            
-            // Afficher/masquer la ligne complète
-            if (lineHasMatch) {
-                lineSection.element.style.display = '';
-                lineSection.element.style.opacity = '1';
-            } else {
-                lineSection.element.style.display = 'none';
-            }
-        });
-        
-        // Afficher un message si aucun résultat
-        this._showSearchResults(matchCount, searchTerm);
-    },
-    
-    _clearSearch() {
-        this.isSearchMode = false;
-        
-        this.sections.forEach((lineSection) => {
-            lineSection.element.style.display = '';
-            lineSection.element.style.opacity = '1';
-            
-            lineSection.destinations.forEach((destData) => {
-                destData.element.style.display = '';
-                destData.buses.forEach((busItem) => {
-                    busItem.style.display = '';
-                });
-            });
-        });
-        
-        this._hideSearchResults();
-    },
-    
-    _showSearchResults(count, term) {
-        let resultsDiv = document.getElementById('search-results-info');
-        
-        if (!resultsDiv) {
-            resultsDiv = document.createElement('div');
-            resultsDiv.id = 'search-results-info';
-            resultsDiv.style.cssText = `
-                margin: 10px 15px;
-                padding: 10px 15px;
-                background-color: rgba(255, 255, 255, 0.1);
-                color: white;
-                border-radius: 12px;
-                font-size: 14px;
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-            `;
-            
-            const spacer = this.container.querySelector('div[style*="height: 15px"]');
-            if (spacer) {
-                this.container.insertBefore(resultsDiv, spacer);
-            }
-        }
-        
-        if (count === 0) {
-            resultsDiv.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">🔍</div>
-                    <div style="font-weight: 500;">Aucun résultat trouvé</div>
-                    <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">
-                        Essayez avec d'autres mots-clés
-                    </div>
-                </div>
-            `;
-        } else {
-            resultsDiv.textContent = `${count} résultat${count > 1 ? 's' : ''} pour "${term}"`;
-        }
-        
-        resultsDiv.style.display = 'block';
-    },
-    
-    _hideSearchResults() {
-        const resultsDiv = document.getElementById('search-results-info');
-        if (resultsDiv) {
-            resultsDiv.style.display = 'none';
-        }
-    },
-    
-    _filterFavorites() {
-        this.sections.forEach((lineSection, line) => {
-            if (favoriteLines.has(line)) {
-                lineSection.element.style.display = '';
-                lineSection.element.style.opacity = '1';
-            } else {
-                lineSection.element.style.display = 'none';
-            }
-        });
-        
-        safeVibrate([30], true);
-        soundsUX('MBF_Menu_LineSelect');
-    },
-    
-    _filterActiveVehicles() {
-        this.sections.forEach((lineSection) => {
-            let hasActiveVehicle = false;
-            
-            lineSection.destinations.forEach((destData) => {
-                if (destData.buses.size > 0) {
-                    hasActiveVehicle = true;
-                }
-            });
-            
-            if (hasActiveVehicle) {
-                lineSection.element.style.display = '';
-                lineSection.element.style.opacity = '1';
-            } else {
-                lineSection.element.style.display = 'none';
-            }
-        });
-        
-        safeVibrate([30], true);
-        soundsUX('MBF_Menu_LineSelect');
-    },
-    
-    _sortAlphabetically() {
-        const sortedLines = Array.from(this.sections.keys()).sort((a, b) => {
-            const nameA = (window.lineName && window.lineName[a]) || a;
-            const nameB = (window.lineName && window.lineName[b]) || b;
-            return nameA.localeCompare(nameB);
-        });
-        
-        sortedLines.forEach((line, index) => {
-            const lineSection = this.sections.get(line);
-            if (lineSection) {
-                lineSection.element.style.order = index;
-            }
-        });
-        
-        safeVibrate([30], true);
-        soundsUX('MBF_Menu_LineSelect');
-    },
-    
-    _toggleCompactMode() {
-        this.compactMode = !this.compactMode;
-        localStorage.setItem('menuCompactMode', this.compactMode);
-        
-        this.sections.forEach((lineSection) => {
-            if (this.compactMode) {
-                lineSection.element.style.padding = '5px';
-                const title = lineSection.element.querySelector('.line-title');
-                if (title) title.style.fontSize = '18px';
-                
-                lineSection.destinations.forEach((destData) => {
-                    destData.buses.forEach((busItem) => {
-                        busItem.style.padding = '3px 8px';
-                        busItem.style.marginBottom = '4px';
-                    });
-                });
-            } else {
-                lineSection.element.style.padding = '10px';
-                const title = lineSection.element.querySelector('.line-title');
-                if (title) title.style.fontSize = '23px';
-                
-                lineSection.destinations.forEach((destData) => {
-                    destData.buses.forEach((busItem) => {
-                        busItem.style.padding = '5px 10px';
-                        busItem.style.marginBottom = '8px';
-                    });
-                });
-            }
-        });
-        
-        safeVibrate([30, 50], true);
-        soundsUX('MBF_Menu_LineSelect');
     },
     
     _createLineSection(line) {
@@ -5282,14 +5400,12 @@ const MenuManager = {
         lineSection.dataset.line = line;
         lineSection.classList.add('linesection', 'ripple-container');
         
-        const basePadding = this.compactMode ? '5px' : '10px';
-        
         lineSection.style.cssText = `
             background-color: ${lineColor} !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
-            padding: ${basePadding};
+            padding: 10px;
             border-radius: 16px;
             position: relative;
             overflow: hidden;
@@ -5332,12 +5448,11 @@ const MenuManager = {
         };
         
         // Title
-        const titleFontSize = this.compactMode ? '18px' : '23px';
         const lineTitle = document.createElement('div');
         lineTitle.className = 'line-title';
         lineTitle.textContent = `${t("line")} ${lineNameText}`;
         lineTitle.style.cssText = `
-            font-size: ${titleFontSize};
+            font-size: 23px;
             font-weight: 500;
             color: ${textColor};
             padding-right: 30px;
@@ -5441,9 +5556,6 @@ const MenuManager = {
         
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
-        const busMargin = this.compactMode ? '4px' : '8px';
-        const busPadding = this.compactMode ? '3px 8px' : '5px 10px';
-        
         const busItem = document.createElement('div');
         busItem.className = 'bus-item ripple-container menu-item';
         busItem.dataset.busId = bus.parkNumber;
@@ -5456,8 +5568,8 @@ const MenuManager = {
             cursor: pointer;
             font-family: League Spartan;
             color: ${textColor};
-            padding: ${busPadding};
-            margin-bottom: ${busMargin};
+            padding: 5px 10px;
+            margin-bottom: 8px;
             background-color: rgba(0, 0, 0, 0.05);
             border-radius: 8px;
             position: relative;
@@ -5847,6 +5959,7 @@ function updateMenu() {
     }
 }
 
+
 const favoriteLines = new Set(JSON.parse(localStorage.getItem('favoriteLines') || '[]'));
 
 const ANIMATION_CONFIG = {
@@ -6140,7 +6253,7 @@ async function cleanup(menu, button) {
 const animationStyle = document.createElement('style');
 animationStyle.textContent = `
     .linesection {
-        transition: transform 0.2s  cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
+        transition: transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
     
     .linesection.removing {
@@ -6162,6 +6275,15 @@ animationStyle.textContent = `
         }
     }
     
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.02);
+        }
+    }
+    
     .favorite-button {
         transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     }
@@ -6172,6 +6294,15 @@ animationStyle.textContent = `
     
     .favorite-button:active {
         transform: scale(0.9);
+    }
+    
+    #menu-search-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .quick-filter-btn.active {
+        background: rgba(255, 255, 255, 0.2) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
     }
 `;
 document.head.appendChild(animationStyle);
@@ -6184,7 +6315,6 @@ function closeMenu() {
     const mapp = document.getElementById('map');
     mapp.style.opacity = '1';
     
-    const map = document.getElementById('map');
     menu.classList.add('hidden');
     if (localStorage.getItem('transparency') === 'true') {
         const map = document.getElementById('map');
