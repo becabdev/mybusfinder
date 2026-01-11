@@ -4737,7 +4737,7 @@ function getTextColor(bgColor, options = {}) {
 }
 
 
-// ==================== MENU MANAGER - OPTIMISÉ ====================
+// ==================== MENU MANAGER - OPTIMISÉ COMPLET ====================
 const MenuManager = {
     container: null,
     sections: new Map(),
@@ -4888,9 +4888,11 @@ const MenuManager = {
         
         const lineSection = document.createElement('div');
         lineSection.dataset.line = line;
-        lineSection.style.backgroundColor = lineColor;
         lineSection.classList.add('linesection', 'ripple-container');
+        
+        // IMPORTANT: Forcer la couleur de fond
         lineSection.style.cssText = `
+            background-color: ${lineColor} !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
@@ -4962,17 +4964,21 @@ const MenuManager = {
         lineSection.appendChild(favoriteButton);
         lineSection.appendChild(destinationsContainer);
         
-        // Events
+        // Events - Avec préservation de la couleur
         lineSection.onmouseover = () => {
             lineSection.style.transform = 'scale(0.99)';
             lineSection.style.opacity = '0.9';
             lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
+            // Conserver la couleur de fond
+            lineSection.style.backgroundColor = lineColor;
         };
         
         lineSection.onmouseout = () => {
             lineSection.style.transform = 'scale(1)';
             lineSection.style.opacity = '1';
             lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
+            // Conserver la couleur de fond
+            lineSection.style.backgroundColor = lineColor;
         };
         
         lineSection.onclick = () => {
@@ -5330,14 +5336,6 @@ const MenuManager = {
             if (line === 'Inconnu') {
                 nextStopInfo = t("unknownline");
             } else {
-                if (filteredStops.length === 1) {
-                    nextStopInfo = minutes === 0 ? t("imminentdeparture") : `${t("departurein")} ${minutes} ${t("min")}`;
-                } else if (minutes > 3) {
-                    nextStopInfo = `${t("departurein")} ${minutes} ${t("minutes")}`;
-                } else {
-                    nextStopInfo = t("nextstops");
-                }
-                
                 nextStopInfo = firstStopName;
             }
             
@@ -5435,8 +5433,9 @@ const MenuManager = {
     }
 };
 
+// ==================== UPDATE MENU FUNCTION ====================
 function updateMenu() {
-    // Construire les données
+    // Construire les données depuis markerPool
     const busesByLineAndDestination = {};
     
     markerPool.active.forEach((marker, id) => {
