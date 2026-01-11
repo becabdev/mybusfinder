@@ -4974,7 +4974,7 @@ const MenuManager = {
             btn.innerHTML = `${filter.icon} ${filter.label}`;
             btn.style.cssText = `
                 padding: 8px 16px;
-                background: rgba(0, 0, 0, 0.46);
+                background: rgba(0, 0, 0, 0.5);
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 20px;
                 color: white;
@@ -5019,13 +5019,13 @@ const MenuManager = {
         // Réinitialiser tous les boutons
         this.quickFilters.querySelectorAll('.quick-filter-btn').forEach(b => {
             b.classList.remove('active');
-            b.style.background = 'rgba(255, 255, 255, 0.1)';
+            b.style.background = 'rgba(0, 0, 0, 0.5)';
             b.style.borderColor = 'rgba(255, 255, 255, 0.2)';
         });
         
         // Activer le bouton cliqué
         btn.classList.add('active');
-        btn.style.background = 'rgba(255, 255, 255, 0.2)';
+        btn.style.background = 'rgba(0, 0, 0, 0.76)';
         btn.style.borderColor = 'rgba(255, 255, 255, 0.4)';
         
         safeVibrate([30], true);
@@ -6296,7 +6296,7 @@ animationStyle.textContent = `
     }
     
     #menu-search-input::placeholder {
-        color: rgba(0, 0, 0, 0.69);
+        color: rgba(255, 255, 255, 0.75);
     }
     
     .quick-filter-btn.active {
