@@ -5067,7 +5067,7 @@ const MenuManager = {
         this.searchResults.appendChild(summary);
         
         // Afficher par ligne avec les véhicules
-        Array.from(resultsByLine.entries()).slice(0, 10).forEach(([line, items]) => {
+        Array.from(resultsByLine.entries()).slice(0, 2).forEach(([line, items]) => {
             const lineColor = lineColors[line] || '#000000';
             const textColor = getTextColor(lineColor);
             
