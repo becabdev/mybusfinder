@@ -5428,6 +5428,8 @@ const MenuManager = {
             const sectionBottom = sectionRect.bottom - containerRect.top;
             
             const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
+            section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+
             
             if (isVisible) {
                     section.dataset.currentlyVisible = 'true';
