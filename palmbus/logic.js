@@ -4820,6 +4820,71 @@ const MenuManager = {
             background-color: rgba(0, 0, 0, 0.46);
             border-radius: 100px;
         `;
+
+        // Filtres rapides
+        const quickFilters = document.createElement('div');
+        quickFilters.style.cssText = `
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            overflow-x: auto;
+            padding: 5px 0;
+            -webkit-overflow-scrolling: touch;
+        `;
+
+        const filterTypes = [
+            { id: 'all', label: t('all') || 'Tous', icon: '🔍' },
+            { id: 'vehicles', label: t('vehicles') || 'Véhicules', icon: '🚌' },
+            { id: 'lines', label: t('lines') || 'Lignes', icon: '🚏' },
+            { id: 'stops', label: t('stops') || 'Arrêts', icon: '📍' },
+            { id: 'destinations', label: t('destinations') || 'Destinations', icon: '🎯' }
+        ];
+
+        this.activeFilter = 'all';
+
+        filterTypes.forEach(filter => {
+            const filterBtn = document.createElement('button');
+            filterBtn.className = 'quick-filter-btn';
+            filterBtn.dataset.filter = filter.id;
+            filterBtn.style.cssText = `
+                padding: 6px 12px;
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                font-size: 13px;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            `;
+            
+            filterBtn.innerHTML = `${filter.icon} ${filter.label}`;
+            
+            if (filter.id === 'all') {
+                filterBtn.classList.add('active');
+            }
+            
+            filterBtn.onclick = () => {
+                document.querySelectorAll('.quick-filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
+                });
+                filterBtn.classList.add('active');
+                this.activeFilter = filter.id;
+                
+                // Re-lancer la recherche avec le nouveau filtre
+                if (this.searchInput.value.trim()) {
+                    this._performSearch(this.searchInput.value.trim());
+                }
+            };
+            
+            quickFilters.appendChild(filterBtn);
+        });
+
+        searchContainer.appendChild(quickFilters);
         
         // Icône de recherche
         const searchIcon = document.createElement('div');
@@ -4897,13 +4962,23 @@ const MenuManager = {
             this.searchInput.focus();
         };
         
-        // Events
         this.searchInput.addEventListener('input', (e) => {
             const value = e.target.value.trim();
             clearButton.style.display = value ? 'flex' : 'none';
+            
+            this._showSuggestions(value);
+            
             this._performSearch(value);
         });
-        
+
+        document.addEventListener('click', (e) => {
+            if (this.suggestionsContainer && 
+                !this.searchInput.contains(e.target) && 
+                !this.suggestionsContainer.contains(e.target)) {
+                this.suggestionsContainer.style.display = 'none';
+            }
+        });
+
         this.searchInput.addEventListener('focus', () => {
             this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
             this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
@@ -4938,16 +5013,165 @@ const MenuManager = {
         
         this.container.appendChild(searchContainer);
     },
+
+    _createSearchSuggestions() {
+        const suggestionsContainer = document.createElement('div');
+        suggestionsContainer.id = 'search-suggestions';
+        suggestionsContainer.style.cssText = `
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 0 0 12px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        `;
+        
+        return suggestionsContainer;
+    },
+
+    _showSuggestions(query) {
+        if (!this.suggestionsContainer) {
+            this.suggestionsContainer = this._createSearchSuggestions();
+            document.getElementById('search-container')
+                .querySelector('div')
+                .appendChild(this.suggestionsContainer);
+        }
+        
+        if (query.length < 2) {
+            this.suggestionsContainer.style.display = 'none';
+            return;
+        }
+        
+        const suggestions = this._generateSuggestions(query);
+        
+        if (suggestions.length === 0) {
+            this.suggestionsContainer.style.display = 'none';
+            return;
+        }
+        
+        this.suggestionsContainer.innerHTML = '';
+        this.suggestionsContainer.style.display = 'block';
+        
+        suggestions.slice(0, 5).forEach(suggestion => {
+            const item = document.createElement('div');
+            item.style.cssText = `
+                padding: 10px 15px;
+                cursor: pointer;
+                color: white;
+                font-size: 13px;
+                transition: background 0.2s ease;
+            `;
+            
+            item.innerHTML = `
+                <div style="font-weight: 500;">${this._highlightMatch(suggestion.text, query)}</div>
+                <div style="font-size: 11px; opacity: 0.7; margin-top: 2px;">${suggestion.type}</div>
+            `;
+            
+            item.onclick = () => {
+                this.searchInput.value = suggestion.text;
+                this._performSearch(suggestion.text);
+                this.suggestionsContainer.style.display = 'none';
+            };
+            
+            item.onmouseover = () => item.style.background = 'rgba(255, 255, 255, 0.1)';
+            item.onmouseout = () => item.style.background = 'transparent';
+            
+            this.suggestionsContainer.appendChild(item);
+        });
+    },
+
+    _generateSuggestions(query) {
+        const suggestions = [];
+        const lowerQuery = query.toLowerCase();
+        
+        Object.keys(lineColors).forEach(line => {
+            if (line.toLowerCase().includes(lowerQuery)) {
+                suggestions.push({
+                    text: `${t('line')} ${lineName[line] || line}`,
+                    type: t('line'),
+                    score: 100
+                });
+            }
+        });
+        
+        this.linesByStop.forEach((lines, stopName) => {
+            if (stopName.toLowerCase().includes(lowerQuery)) {
+                suggestions.push({
+                    text: stopName,
+                    type: `${t('stop')} • ${lines.size} ${t('lines')}`,
+                    score: 80
+                });
+            }
+        });
+        
+        const destinations = new Set();
+        Object.values(this.busesByLineAndDestination).forEach(dests => {
+            Object.keys(dests).forEach(dest => destinations.add(dest));
+        });
+        
+        destinations.forEach(dest => {
+            if (dest.toLowerCase().includes(lowerQuery)) {
+                suggestions.push({
+                    text: dest,
+                    type: t('destination'),
+                    score: 70
+                });
+            }
+        });
+        
+        return suggestions.sort((a, b) => b.score - a.score);
+    },
+
+    _highlightMatch(text, query) {
+        const index = text.toLowerCase().indexOf(query.toLowerCase());
+        if (index === -1) return text;
+        
+        const before = text.substring(0, index);
+        const match = text.substring(index, index + query.length);
+        const after = text.substring(index + query.length);
+        
+        return `${before}<span style="background: rgba(255, 255, 255, 0.2); padding: 1px 3px; border-radius: 3px;">${match}</span>${after}`;
+    },
         
     _buildBusIndex() {
         this.allBuses = [];
+        this.stopsByLine = new Map(); // Nouveau : arrêts par ligne
+        this.linesByStop = new Map(); // Nouveau : lignes par arrêt
         
         Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
             Object.entries(destinations).forEach(([destination, buses]) => {
                 buses.forEach(bus => {
                     const vehicleLabel = bus.vehicleData?.vehicle?.label || 
-                                       bus.vehicleData?.vehicle?.id || 
-                                       "inconnu";
+                                    bus.vehicleData?.vehicle?.id || 
+                                    "inconnu";
+                    
+                    // Récupérer les arrêts desservis par ce bus
+                    const tripId = bus.vehicleData?.trip?.tripId;
+                    const nextStops = tripUpdates[tripId]?.nextStops || [];
+                    const stopNames = nextStops.map(stop => {
+                        const stopId = stop.stopId.replace("0:", "");
+                        return stopNameMap[stopId] || stopId;
+                    });
+                    
+                    // Index arrêts par ligne
+                    if (!this.stopsByLine.has(line)) {
+                        this.stopsByLine.set(line, new Set());
+                    }
+                    stopNames.forEach(stopName => {
+                        this.stopsByLine.get(line).add(stopName);
+                        
+                        // Index lignes par arrêt
+                        if (!this.linesByStop.has(stopName)) {
+                            this.linesByStop.set(stopName, new Set());
+                        }
+                        this.linesByStop.get(stopName).add(line);
+                    });
                     
                     this.allBuses.push({
                         line,
@@ -4955,7 +5179,8 @@ const MenuManager = {
                         vehicleLabel,
                         parkNumber: bus.parkNumber,
                         bus,
-                        searchText: `${line} ${destination} ${vehicleLabel}`.toLowerCase()
+                        stops: stopNames, // Nouveau : liste des arrêts
+                        searchText: `${line} ${destination} ${vehicleLabel} ${stopNames.join(' ')}`.toLowerCase()
                     });
                 });
             });
@@ -5006,29 +5231,66 @@ const MenuManager = {
     _calculateScore(item, query) {
         let score = 0;
         
+        if (this.activeFilter !== 'all') {
+            switch(this.activeFilter) {
+                case 'vehicles':
+                    if (!item.vehicleLabel.toLowerCase().includes(query)) return 0;
+                    break;
+                case 'lines':
+                    if (!item.line.toLowerCase().includes(query)) return 0;
+                    break;
+                case 'stops':
+                    if (!item.stops.some(stop => stop.toLowerCase().includes(query))) return 0;
+                    break;
+                case 'destinations':
+                    if (!item.destination.toLowerCase().includes(query)) return 0;
+                    break;
+            }
+        }
+        
         if (item.line.toLowerCase() === query) score += 100;
         if (item.destination.toLowerCase() === query) score += 80;
         if (item.vehicleLabel.toLowerCase() === query) score += 90;
+        
+        const stopMatch = item.stops.some(stop => stop.toLowerCase() === query);
+        if (stopMatch) score += 85;
         
         if (item.line.toLowerCase().startsWith(query)) score += 50;
         if (item.destination.toLowerCase().startsWith(query)) score += 40;
         if (item.vehicleLabel.toLowerCase().startsWith(query)) score += 45;
         
+        const stopStartsWith = item.stops.some(stop => stop.toLowerCase().startsWith(query));
+        if (stopStartsWith) score += 42;
+        
         if (item.line.toLowerCase().includes(query)) score += 30;
         if (item.destination.toLowerCase().includes(query)) score += 25;
         if (item.vehicleLabel.toLowerCase().includes(query)) score += 28;
+        
+        const stopIncludes = item.stops.some(stop => stop.toLowerCase().includes(query));
+        if (stopIncludes) score += 26;
         
         if (this._fuzzyMatch(item.line, query)) score += 15;
         if (this._fuzzyMatch(item.destination, query)) score += 12;
         if (this._fuzzyMatch(item.vehicleLabel, query)) score += 13;
         
+        const stopFuzzy = item.stops.some(stop => this._fuzzyMatch(stop, query));
+        if (stopFuzzy) score += 14;
+        
         const matchCount = [
             item.line.toLowerCase().includes(query),
             item.destination.toLowerCase().includes(query),
-            item.vehicleLabel.toLowerCase().includes(query)
+            item.vehicleLabel.toLowerCase().includes(query),
+            stopIncludes
         ].filter(Boolean).length;
         
         if (matchCount > 1) score += 20 * matchCount;
+        
+        if (query.length >= 3) {
+            const partialStopMatch = item.stops.some(stop => 
+                stop.toLowerCase().split(' ').some(word => word.startsWith(query))
+            );
+            if (partialStopMatch) score += 15;
+        }
         
         return score;
     },
@@ -5049,6 +5311,38 @@ const MenuManager = {
         }
         return true;
     },
+
+    _getMatchingStops(query) {
+        const matchingStops = [];
+        
+        this.linesByStop.forEach((lines, stopName) => {
+            if (stopName.toLowerCase().includes(query)) {
+                matchingStops.push({
+                    name: stopName,
+                    lines: lines,
+                    score: this._calculateStopScore(stopName, query)
+                });
+            }
+        });
+        
+        return matchingStops.sort((a, b) => b.score - a.score);
+    },
+
+    _calculateStopScore(stopName, query) {
+        let score = 0;
+        const lowerStop = stopName.toLowerCase();
+        const lowerQuery = query.toLowerCase();
+        
+        if (lowerStop === lowerQuery) score += 100;
+        if (lowerStop.startsWith(lowerQuery)) score += 50;
+        if (lowerStop.includes(lowerQuery)) score += 30;
+        
+        const words = lowerStop.split(' ');
+        if (words.some(word => word === lowerQuery)) score += 40;
+        if (words.some(word => word.startsWith(lowerQuery))) score += 25;
+        
+        return score;
+    },
     
     _displaySearchResults(resultsByLine, query) {
         this.searchResults.innerHTML = '';
@@ -5066,6 +5360,71 @@ const MenuManager = {
         const totalResults = Array.from(resultsByLine.values()).reduce((sum, arr) => sum + arr.length, 0);
         summary.textContent = `${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))} • ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))}`;
         this.searchResults.appendChild(summary);
+
+        if (this.activeFilter === 'all' || this.activeFilter === 'stops') {
+            const matchingStops = this._getMatchingStops(query);
+            if (matchingStops.length > 0) {
+                const stopsSection = document.createElement('div');
+                stopsSection.style.cssText = `
+                    margin-bottom: 15px;
+                    padding: 12px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                `;
+                
+                const stopsTitle = document.createElement('div');
+                stopsTitle.style.cssText = `
+                    color: white;
+                    font-weight: 600;
+                    font-size: 14px;
+                    margin-bottom: 10px;
+                    opacity: 0.9;
+                `;
+                stopsTitle.textContent = `📍 ${t('stops')} (${matchingStops.length})`;
+                stopsSection.appendChild(stopsTitle);
+                
+                matchingStops.slice(0, 5).forEach(stopInfo => {
+                    const stopItem = document.createElement('div');
+                    stopItem.style.cssText = `
+                        padding: 8px 10px;
+                        background: rgba(0, 0, 0, 0.2);
+                        border-radius: 8px;
+                        margin-bottom: 6px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                    `;
+                    
+                    stopItem.innerHTML = `
+                        <div style="color: white; font-size: 13px; font-weight: 500;">
+                            ${stopInfo.name}
+                        </div>
+                        <div style="color: white; font-size: 11px; opacity: 0.7; margin-top: 2px;">
+                            ${Array.from(stopInfo.lines).slice(0, 5).map(line => 
+                                `<span style="background: ${lineColors[line] || '#666'}; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">${lineName[line] || line}</span>`
+                            ).join('')}
+                            ${stopInfo.lines.size > 5 ? `+${stopInfo.lines.size - 5}` : ''}
+                        </div>
+                    `;
+                    
+                    stopItem.onclick = () => {
+                        this.searchInput.value = stopInfo.name;
+                        this._performSearch(stopInfo.name);
+                    };
+                    
+                    stopItem.onmouseover = () => {
+                        stopItem.style.background = 'rgba(0, 0, 0, 0.35)';
+                    };
+                    
+                    stopItem.onmouseout = () => {
+                        stopItem.style.background = 'rgba(0, 0, 0, 0.2)';
+                    };
+                    
+                    stopsSection.appendChild(stopItem);
+                });
+                
+                this.searchResults.appendChild(stopsSection);
+            }
+        }
         
         // Afficher par ligne avec les véhicules
         Array.from(resultsByLine.entries()).slice(0, 2).forEach(([line, items]) => {
