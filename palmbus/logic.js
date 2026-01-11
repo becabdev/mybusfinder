@@ -4804,13 +4804,10 @@ const MenuManager = {
         searchContainer.id = 'search-container';
         searchContainer.style.cssText = `
             position: sticky;
-            top: 70px;
+            top: 78px;
             left: 0;
             right: 0;
-            padding: 0 15px 10px;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.6) 80%, transparent 100%);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            padding: 0 16px 10px;
             z-index: 1000;
             transition: transform 0.3s ease;
         `;
@@ -4821,6 +4818,10 @@ const MenuManager = {
             display: flex;
             align-items: center;
             gap: 8px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 10px;
+            backdrop-filter: blur(17px);
+            background-color: rgba(0, 0, 0, 0.46);
+            border-radius: 100px;
         `;
         
         // Icône de recherche
@@ -4945,7 +4946,7 @@ const MenuManager = {
         this.quickFilters.id = 'quick-filters';
         this.quickFilters.style.cssText = `
             position: sticky;
-            top: 145px;
+            top: 127px;
             left: 0;
             right: 0;
             padding: 0 15px 10px;
@@ -4954,7 +4955,6 @@ const MenuManager = {
             overflow-x: auto;
             scrollbar-width: none;
             -ms-overflow-style: none;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, transparent 100%);
             z-index: 999;
             transition: transform 0.3s ease;
         `;
@@ -4965,7 +4965,6 @@ const MenuManager = {
             { id: 'all', label: t('all') || 'Tous', icon: '🚌' },
             { id: 'favorites', label: t('favorites') || 'Favoris', icon: '⭐' },
             { id: 'in-service', label: t('in_service') || 'En service', icon: '✓' },
-            { id: 'sort-az', label: t('sort_az') || 'A→Z', icon: '🔤' }
         ];
         
         filters.forEach(filter => {
@@ -4975,7 +4974,7 @@ const MenuManager = {
             btn.innerHTML = `${filter.icon} ${filter.label}`;
             btn.style.cssText = `
                 padding: 8px 16px;
-                background: rgba(255, 255, 255, 0.1);
+                background: rgba(0, 0, 0, 0.46);
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 border-radius: 20px;
                 color: white;
@@ -6297,11 +6296,11 @@ animationStyle.textContent = `
     }
     
     #menu-search-input::placeholder {
-        color: rgba(255, 255, 255, 0.5);
+        color: rgba(0, 0, 0, 0.69);
     }
     
     .quick-filter-btn.active {
-        background: rgba(255, 255, 255, 0.2) !important;
+        background: rgba(0, 0, 0, 0.69) !important;
         border-color: rgba(255, 255, 255, 0.4) !important;
     }
 `;
