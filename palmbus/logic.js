@@ -5157,7 +5157,7 @@ const MenuManager = {
                 margin-top: 8px;
             `;
             
-            items.slice(0, 5).forEach((item, index) => {
+            items.slice(0, 3).forEach((item, index) => {
                 const vehicleItem = document.createElement('div');
                 vehicleItem.style.cssText = `
                     background: rgba(0, 0, 0, 0.2);
