@@ -4972,13 +4972,13 @@ const MenuManager = {
         this.isSearchActive = true;
         const normalizedQuery = query.toLowerCase().trim();
         
-        // Recherche intelligente
-        const results = this.allBuses.filter(item => 
-            item.searchText.includes(normalizedQuery) ||
-            this._fuzzyMatch(item.line, normalizedQuery) ||
-            this._fuzzyMatch(item.destination, normalizedQuery) ||
-            this._fuzzyMatch(item.vehicleLabel, normalizedQuery)
-        );
+        // Recherche avec scoring
+        const results = this.allBuses.map(item => {
+            const score = this._calculateScore(item, normalizedQuery);
+            return { ...item, score };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score);
         
         if (results.length === 0) {
             this._showNoResults();
@@ -5001,7 +5001,37 @@ const MenuManager = {
         // Filtrer les sections
         this._filterSections(resultsByLine);
     },
-    
+
+    _calculateScore(item, query) {
+        let score = 0;
+        
+        if (item.line.toLowerCase() === query) score += 100;
+        if (item.destination.toLowerCase() === query) score += 80;
+        if (item.vehicleLabel.toLowerCase() === query) score += 90;
+        
+        if (item.line.toLowerCase().startsWith(query)) score += 50;
+        if (item.destination.toLowerCase().startsWith(query)) score += 40;
+        if (item.vehicleLabel.toLowerCase().startsWith(query)) score += 45;
+        
+        if (item.line.toLowerCase().includes(query)) score += 30;
+        if (item.destination.toLowerCase().includes(query)) score += 25;
+        if (item.vehicleLabel.toLowerCase().includes(query)) score += 28;
+        
+        if (this._fuzzyMatch(item.line, query)) score += 15;
+        if (this._fuzzyMatch(item.destination, query)) score += 12;
+        if (this._fuzzyMatch(item.vehicleLabel, query)) score += 13;
+        
+        const matchCount = [
+            item.line.toLowerCase().includes(query),
+            item.destination.toLowerCase().includes(query),
+            item.vehicleLabel.toLowerCase().includes(query)
+        ].filter(Boolean).length;
+        
+        if (matchCount > 1) score += 20 * matchCount;
+        
+        return score;
+    },
+
     _fuzzyMatch(text, query) {
         if (!text) return false;
         text = text.toLowerCase();
@@ -5027,37 +5057,41 @@ const MenuManager = {
         summary.style.cssText = `
             color: white;
             font-size: 14px;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             opacity: 0.8;
+            font-weight: 500;
         `;
         
         const totalResults = Array.from(resultsByLine.values()).reduce((sum, arr) => sum + arr.length, 0);
         summary.textContent = `${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))} • ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))}`;
         this.searchResults.appendChild(summary);
         
-        // Afficher par ligne
-        Array.from(resultsByLine.entries()).slice(0, 5).forEach(([line, items]) => {
+        // Afficher par ligne avec les véhicules
+        Array.from(resultsByLine.entries()).slice(0, 10).forEach(([line, items]) => {
             const lineColor = lineColors[line] || '#000000';
             const textColor = getTextColor(lineColor);
             
             const lineResult = document.createElement('div');
             lineResult.style.cssText = `
                 background: ${lineColor}40;
-                padding: 8px 12px;
-                margin-bottom: 8px;
-                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 10px;
+                border-radius: 12px;
                 cursor: pointer;
                 transition: all 0.2s ease;
+                border: 2px solid transparent;
             `;
             
             lineResult.onmouseover = () => {
                 lineResult.style.background = `${lineColor}60`;
-                lineResult.style.transform = 'scale(0.98)';
+                lineResult.style.borderColor = `${lineColor}80`;
+                lineResult.style.transform = 'translateX(4px)';
             };
             
             lineResult.onmouseout = () => {
                 lineResult.style.background = `${lineColor}40`;
-                lineResult.style.transform = 'scale(1)';
+                lineResult.style.borderColor = 'transparent';
+                lineResult.style.transform = 'translateX(0)';
             };
             
             lineResult.onclick = () => {
@@ -5074,41 +5108,172 @@ const MenuManager = {
                 }
             };
             
+            // En-tête de ligne
+            const lineHeader = document.createElement('div');
+            lineHeader.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            `;
+            
             const lineTitle = document.createElement('div');
             lineTitle.style.cssText = `
                 color: white;
                 font-weight: 600;
-                margin-bottom: 4px;
+                font-size: 16px;
             `;
             lineTitle.textContent = `${t('line')} ${lineName[line] || line}`;
             
-            const itemsText = document.createElement('div');
-            itemsText.style.cssText = `
+            const vehicleCount = document.createElement('div');
+            vehicleCount.style.cssText = `
+                color: white;
+                font-size: 12px;
+                opacity: 0.9;
+                background: rgba(0, 0, 0, 0.2);
+                padding: 4px 8px;
+                border-radius: 12px;
+            `;
+            vehicleCount.textContent = `${items.length} ${t('vehicle' + (items.length > 1 ? 's' : ''))}`;
+            
+            lineHeader.appendChild(lineTitle);
+            lineHeader.appendChild(vehicleCount);
+            
+            // Destinations
+            const destinationsText = document.createElement('div');
+            destinationsText.style.cssText = `
                 color: white;
                 font-size: 13px;
-                opacity: 0.9;
+                opacity: 0.85;
+                margin-bottom: 10px;
             `;
-            itemsText.textContent = `${items.length} ${t('vehicle' + (items.length > 1 ? 's' : ''))} • ${[...new Set(items.map(i => i.destination))].join(', ')}`;
+            const uniqueDestinations = [...new Set(items.map(i => i.destination))];
+            destinationsText.textContent = `➜ ${uniqueDestinations.join(', ')}`;
             
-            lineResult.appendChild(lineTitle);
-            lineResult.appendChild(itemsText);
+            // Liste des véhicules (top 5 par ligne)
+            const vehiclesList = document.createElement('div');
+            vehiclesList.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                margin-top: 8px;
+            `;
+            
+            items.slice(0, 5).forEach((item, index) => {
+                const vehicleItem = document.createElement('div');
+                vehicleItem.style.cssText = `
+                    background: rgba(0, 0, 0, 0.2);
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                `;
+                
+                vehicleItem.onmouseover = () => {
+                    vehicleItem.style.background = 'rgba(0, 0, 0, 0.35)';
+                    vehicleItem.style.transform = 'scale(1.02)';
+                };
+                
+                vehicleItem.onmouseout = () => {
+                    vehicleItem.style.background = 'rgba(0, 0, 0, 0.2)';
+                    vehicleItem.style.transform = 'scale(1)';
+                };
+                
+                vehicleItem.onclick = (e) => {
+                    e.stopPropagation();
+                    safeVibrate([50, 300, 50, 30, 50], true);
+                    soundsUX('MBF_Menu_VehicleSelect');
+                    map.setView(item.bus.vehicle.getLatLng(), 15);
+                    item.bus.vehicle.openPopup();
+                    closeMenu();
+                    this.searchInput.value = '';
+                    this._performSearch('');
+                };
+                
+                // Badge véhicule
+                const vehicleBadge = document.createElement('span');
+                vehicleBadge.style.cssText = `
+                    background: rgba(255, 255, 255, 0.2);
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 12px;
+                    min-width: 50px;
+                    text-align: center;
+                `;
+                vehicleBadge.textContent = item.vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
+                
+                // Info destination
+                const destInfo = document.createElement('span');
+                destInfo.style.cssText = `
+                    color: white;
+                    font-size: 13px;
+                    opacity: 0.9;
+                    flex: 1;
+                `;
+                destInfo.textContent = item.destination;
+                
+                // Score badge (pour debug, optionnel)
+                const scoreBadge = document.createElement('span');
+                scoreBadge.style.cssText = `
+                    background: rgba(255, 255, 255, 0.15);
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    opacity: 0.7;
+                `;
+                scoreBadge.textContent = `${item.score}`;
+                
+                vehicleItem.appendChild(vehicleBadge);
+                vehicleItem.appendChild(destInfo);
+                // vehicleItem.appendChild(scoreBadge); // Décommenter pour voir les scores
+                
+                vehiclesList.appendChild(vehicleItem);
+            });
+            
+            // Indicateur "plus de véhicules"
+            if (items.length > 5) {
+                const moreVehicles = document.createElement('div');
+                moreVehicles.style.cssText = `
+                    color: white;
+                    font-size: 12px;
+                    opacity: 0.6;
+                    text-align: center;
+                    margin-top: 4px;
+                    font-style: italic;
+                `;
+                moreVehicles.textContent = `+ ${items.length - 5} ${t('other')} ${t('vehicle' + (items.length - 5 > 1 ? 's' : ''))}`;
+                vehiclesList.appendChild(moreVehicles);
+            }
+            
+            lineResult.appendChild(lineHeader);
+            lineResult.appendChild(destinationsText);
+            lineResult.appendChild(vehiclesList);
             this.searchResults.appendChild(lineResult);
         });
         
-        if (resultsByLine.size > 5) {
+        if (resultsByLine.size > 10) {
             const more = document.createElement('div');
             more.style.cssText = `
                 color: white;
                 font-size: 13px;
                 opacity: 0.6;
                 text-align: center;
-                margin-top: 8px;
+                margin-top: 10px;
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
             `;
-            more.textContent = `+ ${resultsByLine.size - 5} ${t('other_lines')}`;
+            more.textContent = `+ ${resultsByLine.size - 10} ${t('other_lines')}`;
             this.searchResults.appendChild(more);
         }
-    },
-    
+    },    
+
     _showNoResults() {
         this.searchResults.innerHTML = '';
         this.searchResults.style.display = 'block';
