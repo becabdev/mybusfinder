@@ -4745,6 +4745,7 @@ const MenuManager = {
     searchInput: null,
     searchResults: null,
     isSearchActive: false,
+    activeFilters: new Set(['lines', 'destinations', 'vehicles']),
     allBuses: [],
     
     init() {
@@ -4920,6 +4921,9 @@ const MenuManager = {
         searchWrapper.appendChild(clearButton);
         searchContainer.appendChild(searchWrapper);
         
+        // Filtres de recherche
+        this._createSearchFilters(searchContainer);
+        
         // Résultats de recherche
         this.searchResults = document.createElement('div');
         this.searchResults.id = 'search-results';
@@ -4932,10 +4936,97 @@ const MenuManager = {
             -webkit-backdrop-filter: blur(10px);
             display: none;
             margin-bottom: 20px;
+            max-height: 60vh;
+            overflow-y: auto;
         `;
         searchContainer.appendChild(this.searchResults);
         
         this.container.appendChild(searchContainer);
+    },
+
+    _createSearchFilters(searchContainer) {
+        this.activeFilters = new Set(['lines', 'destinations', 'vehicles']);
+        
+        const filtersWrapper = document.createElement('div');
+        filtersWrapper.style.cssText = `
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 0 4px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        `;
+        
+        const filters = [
+            { id: 'lines', label: t('lines') || 'Lignes', icon: '🚌' },
+            { id: 'destinations', label: t('destinations') || 'Destinations', icon: '📍' },
+            { id: 'vehicles', label: t('vehicles') || 'Véhicules', icon: '🚐' },
+            { id: 'favorites', label: t('favorites') || 'Favoris', icon: '⭐' }
+        ];
+        
+        filters.forEach(filter => {
+            const filterBtn = document.createElement('button');
+            filterBtn.dataset.filter = filter.id;
+            filterBtn.style.cssText = `
+                padding: 6px 12px;
+                background: rgba(255, 255, 255, 0.15);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 20px;
+                color: white;
+                font-size: 13px;
+                font-family: 'League Spartan', sans-serif;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            `;
+            
+            const updateFilterStyle = () => {
+                if (this.activeFilters.has(filter.id)) {
+                    filterBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+                    filterBtn.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+                } else {
+                    filterBtn.style.background = 'rgba(255, 255, 255, 0.05)';
+                    filterBtn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    filterBtn.style.opacity = '0.5';
+                }
+            };
+            
+            filterBtn.innerHTML = `<span>${filter.icon}</span><span>${filter.label}</span>`;
+            updateFilterStyle();
+            
+            filterBtn.onclick = () => {
+                if (this.activeFilters.has(filter.id)) {
+                    this.activeFilters.delete(filter.id);
+                } else {
+                    this.activeFilters.add(filter.id);
+                }
+                updateFilterStyle();
+                
+                // Re-lancer la recherche avec les nouveaux filtres
+                if (this.searchInput.value.trim()) {
+                    this._performSearch(this.searchInput.value.trim());
+                }
+            };
+            
+            filterBtn.onmouseover = () => {
+                if (!this.activeFilters.has(filter.id)) {
+                    filterBtn.style.opacity = '0.7';
+                }
+            };
+            
+            filterBtn.onmouseout = () => {
+                if (!this.activeFilters.has(filter.id)) {
+                    filterBtn.style.opacity = '0.5';
+                }
+            };
+            
+            filtersWrapper.appendChild(filterBtn);
+        });
+        
+        searchContainer.appendChild(filtersWrapper);
     },
         
     _buildBusIndex() {
@@ -4972,13 +5063,25 @@ const MenuManager = {
         this.isSearchActive = true;
         const normalizedQuery = query.toLowerCase().trim();
         
-        // Recherche intelligente
-        const results = this.allBuses.filter(item => 
-            item.searchText.includes(normalizedQuery) ||
-            this._fuzzyMatch(item.line, normalizedQuery) ||
-            this._fuzzyMatch(item.destination, normalizedQuery) ||
-            this._fuzzyMatch(item.vehicleLabel, normalizedQuery)
-        );
+        // Recherche avec filtres actifs
+        const results = this.allBuses.filter(item => {
+            const matchesQuery = 
+                item.searchText.includes(normalizedQuery) ||
+                this._fuzzyMatch(item.line, normalizedQuery) ||
+                this._fuzzyMatch(item.destination, normalizedQuery) ||
+                this._fuzzyMatch(item.vehicleLabel, normalizedQuery);
+            
+            if (!matchesQuery) return false;
+            
+            // Appliquer les filtres
+            const matchesFilters = 
+                (this.activeFilters.has('lines') && this._fuzzyMatch(item.line, normalizedQuery)) ||
+                (this.activeFilters.has('destinations') && this._fuzzyMatch(item.destination, normalizedQuery)) ||
+                (this.activeFilters.has('vehicles') && this._fuzzyMatch(item.vehicleLabel, normalizedQuery)) ||
+                (this.activeFilters.has('favorites') && favoriteLines.has(item.line));
+            
+            return matchesFilters || this.activeFilters.size === 0;
+        });
         
         if (results.length === 0) {
             this._showNoResults();
@@ -4986,22 +5089,58 @@ const MenuManager = {
             return;
         }
         
-        // Grouper par ligne
-        const resultsByLine = new Map();
-        results.forEach(result => {
-            if (!resultsByLine.has(result.line)) {
-                resultsByLine.set(result.line, []);
-            }
-            resultsByLine.get(result.line).push(result);
-        });
+        // Grouper et trier par pertinence
+        const resultsByLine = this._groupAndSortResults(results, normalizedQuery);
         
-        // Afficher les résultats
-        this._displaySearchResults(resultsByLine, normalizedQuery);
+        // Afficher les résultats détaillés
+        this._displayEnhancedSearchResults(resultsByLine, normalizedQuery);
         
         // Filtrer les sections
         this._filterSections(resultsByLine);
     },
-    
+
+    _groupAndSortResults(results, query) {
+        const resultsByLine = new Map();
+        
+        results.forEach(result => {
+            if (!resultsByLine.has(result.line)) {
+                resultsByLine.set(result.line, {
+                    buses: [],
+                    destinations: new Set(),
+                    exactMatch: false,
+                    score: 0
+                });
+            }
+            
+            const lineData = resultsByLine.get(result.line);
+            lineData.buses.push(result);
+            lineData.destinations.add(result.destination);
+            
+            // Calculer le score de pertinence
+            if (result.line.toLowerCase() === query) {
+                lineData.exactMatch = true;
+                lineData.score += 100;
+            } else if (result.line.toLowerCase().includes(query)) {
+                lineData.score += 50;
+            }
+            
+            if (result.destination.toLowerCase().includes(query)) {
+                lineData.score += 30;
+            }
+            
+            if (result.vehicleLabel.toLowerCase().includes(query)) {
+                lineData.score += 20;
+            }
+            
+            if (favoriteLines.has(result.line)) {
+                lineData.score += 10;
+            }
+        });
+        
+        // Trier par score
+        return new Map([...resultsByLine.entries()].sort((a, b) => b[1].score - a[1].score));
+    },
+
     _fuzzyMatch(text, query) {
         if (!text) return false;
         text = text.toLowerCase();
@@ -5019,45 +5158,82 @@ const MenuManager = {
         return true;
     },
     
-    _displaySearchResults(resultsByLine, query) {
+    _displayEnhancedSearchResults(resultsByLine, query) {
         this.searchResults.innerHTML = '';
         this.searchResults.style.display = 'block';
+        
+        const header = document.createElement('div');
+        header.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+        
+        const totalResults = Array.from(resultsByLine.values()).reduce((sum, data) => sum + data.buses.length, 0);
+        const totalDestinations = Array.from(resultsByLine.values()).reduce((sum, data) => sum + data.destinations.size, 0);
         
         const summary = document.createElement('div');
         summary.style.cssText = `
             color: white;
             font-size: 14px;
-            margin-bottom: 10px;
-            opacity: 0.8;
+            opacity: 0.9;
+            font-weight: 500;
+        `;
+        summary.innerHTML = `
+            <div style="font-size: 16px; margin-bottom: 2px;">
+                ${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))}
+            </div>
+            <div style="font-size: 12px; opacity: 0.7;">
+                ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))} • 
+                ${totalDestinations} ${t('destination' + (totalDestinations > 1 ? 's' : ''))}
+            </div>
         `;
         
-        const totalResults = Array.from(resultsByLine.values()).reduce((sum, arr) => sum + arr.length, 0);
-        summary.textContent = `${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))} • ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))}`;
-        this.searchResults.appendChild(summary);
+        const sortToggle = document.createElement('button');
+        sortToggle.innerHTML = '📊';
+        sortToggle.style.cssText = `
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        `;
+        sortToggle.title = t('sort_results') || 'Trier les résultats';
         
-        // Afficher par ligne
-        Array.from(resultsByLine.entries()).slice(0, 5).forEach(([line, items]) => {
+        header.appendChild(summary);
+        header.appendChild(sortToggle);
+        this.searchResults.appendChild(header);
+        
+        // Afficher les résultats par ligne avec détails
+        Array.from(resultsByLine.entries()).forEach(([line, lineData]) => {
             const lineColor = lineColors[line] || '#000000';
             const textColor = getTextColor(lineColor);
             
             const lineResult = document.createElement('div');
             lineResult.style.cssText = `
-                background: ${lineColor}40;
-                padding: 8px 12px;
-                margin-bottom: 8px;
+                background: ${lineColor}30;
+                border-left: 4px solid ${lineColor};
+                padding: 10px 12px;
+                margin-bottom: 10px;
                 border-radius: 8px;
                 cursor: pointer;
                 transition: all 0.2s ease;
             `;
             
             lineResult.onmouseover = () => {
-                lineResult.style.background = `${lineColor}60`;
-                lineResult.style.transform = 'scale(0.98)';
+                lineResult.style.background = `${lineColor}50`;
+                lineResult.style.transform = 'translateX(4px)';
             };
             
             lineResult.onmouseout = () => {
-                lineResult.style.background = `${lineColor}40`;
-                lineResult.style.transform = 'scale(1)';
+                lineResult.style.background = `${lineColor}30`;
+                lineResult.style.transform = 'translateX(0)';
             };
             
             lineResult.onclick = () => {
@@ -5074,41 +5250,111 @@ const MenuManager = {
                 }
             };
             
+            const lineHeader = document.createElement('div');
+            lineHeader.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+            `;
+            
             const lineTitle = document.createElement('div');
             lineTitle.style.cssText = `
                 color: white;
                 font-weight: 600;
-                margin-bottom: 4px;
+                font-size: 15px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
             `;
-            lineTitle.textContent = `${t('line')} ${lineName[line] || line}`;
             
-            const itemsText = document.createElement('div');
-            itemsText.style.cssText = `
+            const favIcon = favoriteLines.has(line) ? '⭐' : '';
+            const matchBadge = lineData.exactMatch ? 
+                `<span style="background: rgba(255,255,255,0.2); padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 4px;">Match exact</span>` : '';
+            
+            lineTitle.innerHTML = `
+                ${favIcon} ${t('line')} ${lineName[line] || line}
+                ${matchBadge}
+            `;
+            
+            const lineStats = document.createElement('div');
+            lineStats.style.cssText = `
+                color: white;
+                font-size: 12px;
+                opacity: 0.8;
+                background: rgba(0,0,0,0.2);
+                padding: 2px 8px;
+                border-radius: 12px;
+            `;
+            lineStats.textContent = `${lineData.buses.length} 🚐`;
+            
+            lineHeader.appendChild(lineTitle);
+            lineHeader.appendChild(lineStats);
+            
+            const destinationsList = document.createElement('div');
+            destinationsList.style.cssText = `
                 color: white;
                 font-size: 13px;
                 opacity: 0.9;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-bottom: 6px;
             `;
-            itemsText.textContent = `${items.length} ${t('vehicle' + (items.length > 1 ? 's' : ''))} • ${[...new Set(items.map(i => i.destination))].join(', ')}`;
             
-            lineResult.appendChild(lineTitle);
-            lineResult.appendChild(itemsText);
+            Array.from(lineData.destinations).forEach(dest => {
+                const destBadge = document.createElement('span');
+                destBadge.style.cssText = `
+                    background: rgba(255, 255, 255, 0.15);
+                    padding: 3px 8px;
+                    border-radius: 6px;
+                    font-size: 12px;
+                `;
+                destBadge.textContent = `📍 ${dest}`;
+                destinationsList.appendChild(destBadge);
+            });
+            
+            const vehiclesList = document.createElement('div');
+            vehiclesList.style.cssText = `
+                color: white;
+                font-size: 12px;
+                opacity: 0.7;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+            `;
+            
+            const vehicleLabels = [...new Set(lineData.buses.map(b => b.vehicleLabel))].slice(0, 5);
+            vehicleLabels.forEach(label => {
+                const vehicleBadge = document.createElement('span');
+                vehicleBadge.style.cssText = `
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-size: 11px;
+                `;
+                vehicleBadge.textContent = label;
+                vehiclesList.appendChild(vehicleBadge);
+            });
+            
+            if (lineData.buses.length > 5) {
+                const moreBadge = document.createElement('span');
+                moreBadge.style.cssText = `
+                    padding: 2px 6px;
+                    opacity: 0.6;
+                    font-size: 11px;
+                `;
+                moreBadge.textContent = `+${lineData.buses.length - 5}`;
+                vehiclesList.appendChild(moreBadge);
+            }
+            
+            lineResult.appendChild(lineHeader);
+            lineResult.appendChild(destinationsList);
+            lineResult.appendChild(vehiclesList);
             this.searchResults.appendChild(lineResult);
         });
-        
-        if (resultsByLine.size > 5) {
-            const more = document.createElement('div');
-            more.style.cssText = `
-                color: white;
-                font-size: 13px;
-                opacity: 0.6;
-                text-align: center;
-                margin-top: 8px;
-            `;
-            more.textContent = `+ ${resultsByLine.size - 5} ${t('other_lines')}`;
-            this.searchResults.appendChild(more);
-        }
     },
-    
+
     _showNoResults() {
         this.searchResults.innerHTML = '';
         this.searchResults.style.display = 'block';
