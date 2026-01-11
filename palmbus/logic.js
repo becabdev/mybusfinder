@@ -4797,7 +4797,7 @@ const MenuManager = {
 
         setTimeout(() => {
             this._handleScrollAnimations();
-        }, 50);
+        }, 100);
     },
     
     _createSearchBar() {
@@ -5426,12 +5426,20 @@ const MenuManager = {
             const sectionTop = sectionRect.top - containerRect.top;
             const sectionBottom = sectionRect.bottom - containerRect.top;
             
-            // Vérifie si la section est visible dans le viewport du container
             const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
             
-            if (isVisible && !section.dataset.animated) {
-                section.dataset.animated = 'true';
-                section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            if (isVisible) {
+                if (section.dataset.currentlyVisible !== 'true') {
+                    section.dataset.currentlyVisible = 'true';
+                    section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+                }
+            } else {
+                if (section.dataset.currentlyVisible === 'true') {
+                    section.dataset.currentlyVisible = 'false';
+                    section.style.animation = 'none';
+                    section.style.opacity = '0';
+                    section.style.transform = 'scale(0.9)';
+                }
             }
         });
     },
