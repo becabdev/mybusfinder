@@ -4935,6 +4935,7 @@ const MenuManager = {
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             display: none;
+            margin-bottom: 20px;
         `;
         searchContainer.appendChild(this.searchResults);
         
@@ -5180,7 +5181,6 @@ const MenuManager = {
             const lineResult = document.createElement('div');
             lineResult.style.cssText = `
                 background: ${lineColor}40;
-                border-left: 3px solid ${lineColor};
                 padding: 8px 12px;
                 margin-bottom: 8px;
                 border-radius: 8px;
@@ -5190,12 +5190,12 @@ const MenuManager = {
             
             lineResult.onmouseover = () => {
                 lineResult.style.background = `${lineColor}60`;
-                lineResult.style.transform = 'translateX(5px)';
+                lineResult.style.transform = 'scale(0.98)';
             };
             
             lineResult.onmouseout = () => {
                 lineResult.style.background = `${lineColor}40`;
-                lineResult.style.transform = 'translateX(0)';
+                lineResult.style.transform = 'scale(1)';
             };
             
             lineResult.onclick = () => {
