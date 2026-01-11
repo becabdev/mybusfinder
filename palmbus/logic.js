@@ -5239,8 +5239,8 @@ const MenuManager = {
             const searchContainer = document.getElementById('search-container');
             
             if (scrollTop > lastScrollTop && scrollTop > 50) {
-                topBar.style.transform = 'translateY(-100%)';
-                if (searchContainer) searchContainer.style.transform = 'translateY(-100%)';
+                topBar.style.transform = 'translateY(-130%)';
+                if (searchContainer) searchContainer.style.transform = 'translateY(-130%)';
             } else {
                 topBar.style.transform = 'translateY(0)';
                 if (searchContainer) searchContainer.style.transform = 'translateY(0)';
