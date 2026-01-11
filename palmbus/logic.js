@@ -5085,13 +5085,13 @@ const MenuManager = {
             lineResult.onmouseover = () => {
                 lineResult.style.background = `${lineColor}60`;
                 lineResult.style.borderColor = `${lineColor}80`;
-                lineResult.style.transform = 'translateX(4px)';
+                lineResult.style.transform = 'scale(0.95)';
             };
             
             lineResult.onmouseout = () => {
                 lineResult.style.background = `${lineColor}40`;
                 lineResult.style.borderColor = 'transparent';
-                lineResult.style.transform = 'translateX(0)';
+                lineResult.style.transform = 'scale(1)';
             };
             
             lineResult.onclick = () => {
@@ -5108,7 +5108,6 @@ const MenuManager = {
                 }
             };
             
-            // En-tête de ligne
             const lineHeader = document.createElement('div');
             lineHeader.style.cssText = `
                 display: flex;
@@ -5150,7 +5149,6 @@ const MenuManager = {
             const uniqueDestinations = [...new Set(items.map(i => i.destination))];
             destinationsText.textContent = `➜ ${uniqueDestinations.join(', ')}`;
             
-            // Liste des véhicules (top 5 par ligne)
             const vehiclesList = document.createElement('div');
             vehiclesList.style.cssText = `
                 display: flex;
@@ -5231,7 +5229,7 @@ const MenuManager = {
                 
                 vehicleItem.appendChild(vehicleBadge);
                 vehicleItem.appendChild(destInfo);
-                // vehicleItem.appendChild(scoreBadge); // Décommenter pour voir les scores
+                vehicleItem.appendChild(scoreBadge); 
                 
                 vehiclesList.appendChild(vehicleItem);
             });
