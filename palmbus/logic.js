@@ -185,7 +185,7 @@
         });
 
 
-        VERSION_NAME = '3.3 Nightly';
+        VERSION_NAME = '3.3';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
