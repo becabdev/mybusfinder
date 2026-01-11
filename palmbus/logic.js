@@ -7088,25 +7088,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     marker.addTo(map);
                 }
                 
-                PopupManager.getOrCreatePopup(marker, vehicleId);
-                
-                // Mettre à jour son contenu
-                PopupManager.updatePopup(
-                    vehicleId,
-                    vehicle,
-                    line,
-                    lastStopName,
-                    nextStopsHTML,
-                    vehicleOptionsBadges,
-                    vehicleBrandHtml,
-                    stopsHeaderText
-                );
-                
-                // Ajouter à la carte
-                if (!selectedLine || selectedLine === line) {
-                    marker.addTo(map);
-                }
-                
+                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
+                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                marker.bindPopup(popupContent);
                 marker._lastNextStopsHTML = nextStopsHTML;
                 
                 eventManager.on(marker, 'popupopen', function (e) {
