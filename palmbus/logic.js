@@ -4797,7 +4797,7 @@ const MenuManager = {
 
         setTimeout(() => {
             this._handleScrollAnimations();
-        }, 100);
+        }, 2000);
     },
     
     _createSearchBar() {
@@ -5400,7 +5400,6 @@ const MenuManager = {
         this.container.appendChild(topBar);
         
         let lastScrollTop = 0;
-        this._handleScrollAnimations();
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
             const searchContainer = document.getElementById('search-container');
@@ -5428,7 +5427,6 @@ const MenuManager = {
             const sectionBottom = sectionRect.bottom - containerRect.top;
             
             const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
-            section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
 
             
             if (isVisible) {
