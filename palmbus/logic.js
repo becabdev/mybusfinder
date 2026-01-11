@@ -4737,7 +4737,6 @@ function getTextColor(bgColor, options = {}) {
 }
 
 
-// ==================== MENU MANAGER - OPTIMISÉ COMPLET ====================
 const MenuManager = {
     container: null,
     sections: new Map(),
@@ -4768,7 +4767,6 @@ const MenuManager = {
         spacer.style.height = '15px';
         this.container.appendChild(spacer);
         
-        // Créer les sections de lignes
         const sortedLines = this._getSortedLines();
         const fragment = document.createDocumentFragment();
         
@@ -4776,7 +4774,6 @@ const MenuManager = {
             const lineSection = this._createLineSection(line);
             this.sections.set(line, lineSection);
             
-            // Ajouter toutes les destinations dès la création
             const destinations = busesByLineAndDestination[line];
             Object.keys(destinations).sort().forEach(destination => {
                 this._addDestinationToSection(lineSection, line, destination, destinations[destination]);
@@ -4795,14 +4792,12 @@ const MenuManager = {
         const newLines = new Set(Object.keys(busesByLineAndDestination));
         const currentLines = new Set(this.sections.keys());
         
-        // Supprimer les lignes qui n'existent plus
         for (const line of currentLines) {
             if (!newLines.has(line)) {
                 this._removeLine(line);
             }
         }
         
-        // Ajouter nouvelles lignes ou mettre à jour existantes
         for (const line of newLines) {
             if (this.sections.has(line)) {
                 this._updateLine(line, busesByLineAndDestination[line]);
@@ -4890,7 +4885,6 @@ const MenuManager = {
         lineSection.dataset.line = line;
         lineSection.classList.add('linesection', 'ripple-container');
         
-        // IMPORTANT: Forcer la couleur de fond
         lineSection.style.cssText = `
             background-color: ${lineColor} !important;
             margin-bottom: 10px;
@@ -4964,7 +4958,6 @@ const MenuManager = {
         lineSection.appendChild(favoriteButton);
         lineSection.appendChild(destinationsContainer);
         
-        // Events - Avec préservation de la couleur
         lineSection.onmouseover = () => {
             lineSection.style.transform = 'scale(0.99)';
             lineSection.style.opacity = '0.9';
@@ -5433,9 +5426,8 @@ const MenuManager = {
     }
 };
 
-// ==================== UPDATE MENU FUNCTION ====================
 function updateMenu() {
-    // Construire les données depuis markerPool
+    // construire les donnees depuis markerPool
     const busesByLineAndDestination = {};
     
     markerPool.active.forEach((marker, id) => {
@@ -5458,7 +5450,7 @@ function updateMenu() {
         });
     });
     
-    // Première initialisation ou mise à jour
+    // 1ere init ou mise à jour
     if (!MenuManager.isInitialized || MenuManager.sections.size === 0) {
         MenuManager.generateInitialStructure(busesByLineAndDestination);
     } else {
@@ -5842,6 +5834,316 @@ function closeMenu() {
         menubottom1.classList.remove('slide-upb');
         menubottom1.classList.add('slide-downb');
     }, 10);
+}
+
+// ==================== POPUP MANAGER - OPTIMISÉ COMPLET ====================
+const PopupManager = {
+    popups: new Map(), // Cache des popups par vehicleId
+    
+    // Créer ou récupérer un popup pour un marker
+    getOrCreatePopup(marker, vehicleId) {
+        if (this.popups.has(vehicleId)) {
+            return this.popups.get(vehicleId);
+        }
+        
+        const popup = this._createPopupStructure(marker, vehicleId);
+        this.popups.set(vehicleId, popup);
+        
+        marker.bindPopup(popup.container);
+        
+        return popup;
+    },
+    
+    // Créer la structure DOM du popup (une seule fois)
+    _createPopupStructure(marker, vehicleId) {
+        const container = document.createElement('div');
+        container.className = 'popup-container-managed';
+        container.dataset.vehicleId = vehicleId;
+        
+        // Structure complète du popup
+        const structure = {
+            container: container,
+            elements: {
+                shareButton: null,
+                lineTitle: null,
+                direction: null,
+                optionsContainer: null,
+                brandContainer: null,
+                stopsHeader: null,
+                nextStopsContent: null
+            }
+        };
+        
+        // Créer le contenu initial
+        this._buildPopupDOM(structure, marker);
+        
+        return structure;
+    },
+    
+    // Construire le DOM du popup
+    _buildPopupDOM(structure, marker) {
+        const vehicle = marker.vehicleData?.vehicle || {};
+        const line = marker.line || 'Inconnu';
+        const backgroundColor = lineColors[line] || '#000000';
+        const textColor = TextColorUtils.getOptimal(backgroundColor);
+        
+        structure.container.style.cssText = `
+            box-shadow: 0px 0px 20px 0px ${backgroundColor}9c;
+            background-color: ${backgroundColor}9c;
+            color: ${textColor};
+        `;
+        
+        // Bouton de partage
+        const shareButton = document.createElement('button');
+        shareButton.className = 'share-button';
+        shareButton.title = t("share");
+        shareButton.onclick = () => shareVehicleId(vehicle.id || marker.id);
+        shareButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3C10.3431 3 9 4.34315 9 6C9 7.65685 10.3431 9 12 9C13.6569 9 15 7.65685 15 6" />
+                <path d="M5.5 15C3.84315 15 2.5 16.3431 2.5 18C2.5 19.6569 3.84315 21 5.5 21C7.15685 21 8.5 19.6569 8.5 18" />
+                <path d="M18.5 21C16.8431 21 15.5 19.6569 15.5 18C15.5 16.3431 16.8431 15 18.5 15C20.1569 15 21.5 16.3431 21.5 18" />
+                <path d="M20 13C20 10.6106 18.9525 8.46589 17.2916 7M4 13C4 10.6106 5.04752 8.46589 6.70838 7M10 20.748C10.6392 20.9125 11.3094 21 12 21C12.6906 21 13.3608 20.9125 14 20.748" />
+            </svg>
+        `;
+        structure.elements.shareButton = shareButton;
+        
+        // Section infos véhicule
+        const vehicleInfoSection = document.createElement('div');
+        vehicleInfoSection.className = 'vehicle-info-section';
+        vehicleInfoSection.style.color = textColor;
+        
+        // Beams
+        for (let i = 1; i <= 3; i++) {
+            const beam = document.createElement('div');
+            beam.classList.add('light-beam', `beam${i}`);
+            vehicleInfoSection.appendChild(beam);
+        }
+        
+        // Contenu principal
+        const vehicleMainContent = document.createElement('div');
+        vehicleMainContent.className = 'vehicle-main-content';
+        
+        // Titre ligne
+        const lineTitle = document.createElement('p');
+        lineTitle.className = 'line-title';
+        structure.elements.lineTitle = lineTitle;
+        
+        // Direction
+        const direction = document.createElement('strong');
+        direction.className = 'vehicle-direction';
+        structure.elements.direction = direction;
+        
+        // Container des options
+        const optionsWrapper = document.createElement('div');
+        const optionsScrollArea = document.createElement('div');
+        optionsScrollArea.className = 'vehicle-options-container';
+        optionsScrollArea.innerHTML = `
+            <div class="options-scroll-area">
+                <div class="options custom-scrollbar"></div>
+            </div>
+        `;
+        const optionsContainer = optionsScrollArea.querySelector('.options');
+        structure.elements.optionsContainer = optionsContainer;
+        
+        // Container brand
+        const brandContainer = document.createElement('div');
+        brandContainer.className = 'vehicle-brand-container';
+        structure.elements.brandContainer = brandContainer;
+        
+        vehicleMainContent.appendChild(lineTitle);
+        vehicleMainContent.appendChild(direction);
+        vehicleMainContent.appendChild(optionsScrollArea);
+        vehicleMainContent.appendChild(brandContainer);
+        
+        // Background text
+        const backgroundText = document.createElement('div');
+        backgroundText.className = 'background-text';
+        backgroundText.style.color = textColor;
+        structure.elements.backgroundText = backgroundText;
+        
+        vehicleInfoSection.appendChild(vehicleMainContent);
+        vehicleInfoSection.appendChild(backgroundText);
+        
+        // Section stops
+        const stopsSection = document.createElement('div');
+        stopsSection.className = 'stops-section';
+        stopsSection.style.color = textColor;
+        
+        const stopsHeader = document.createElement('p');
+        stopsHeader.className = 'stops-header';
+        structure.elements.stopsHeader = stopsHeader;
+        
+        const nextStopsContent = document.createElement('div');
+        nextStopsContent.id = 'nextStopsContent';
+        nextStopsContent.className = 'next-stops-content';
+        nextStopsContent.innerHTML = `
+            <div style="position: relative; max-height: 120px;">
+                <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;"></ul>
+            </div>
+        `;
+        structure.elements.nextStopsContent = nextStopsContent;
+        
+        stopsSection.appendChild(stopsHeader);
+        stopsSection.appendChild(nextStopsContent);
+        
+        // Assemblage final
+        structure.container.appendChild(shareButton);
+        structure.container.appendChild(vehicleInfoSection);
+        structure.container.appendChild(stopsSection);
+    },
+    
+    // Mettre à jour le contenu du popup
+    updatePopup(vehicleId, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText) {
+        const popup = this.popups.get(vehicleId);
+        if (!popup) return;
+        
+        const backgroundColor = lineColors[line] || '#000000';
+        const textColor = TextColorUtils.getOptimal(backgroundColor);
+        
+        // Mise à jour des couleurs
+        popup.container.style.boxShadow = `0px 0px 20px 0px ${backgroundColor}9c`;
+        popup.container.style.backgroundColor = `${backgroundColor}9c`;
+        popup.container.style.color = textColor;
+        
+        // Mise à jour du bouton share
+        const shareSvg = popup.elements.shareButton.querySelector('svg');
+        if (shareSvg) {
+            shareSvg.querySelectorAll('path').forEach(path => {
+                path.setAttribute('stroke', textColor);
+            });
+        }
+        
+        // Mise à jour du titre ligne
+        const lineNameText = lineName[line] || t("unknown_line");
+        if (popup.elements.lineTitle) {
+            popup.elements.lineTitle.textContent = `${t("line")} ${lineNameText}`;
+        }
+        
+        // Mise à jour de la direction
+        if (popup.elements.direction) {
+            popup.elements.direction.textContent = `➜ ${lastStopName}`;
+        }
+        
+        // Mise à jour des options véhicule
+        if (popup.elements.optionsContainer) {
+            popup.elements.optionsContainer.innerHTML = vehicleOptionsBadges;
+        }
+        
+        // Mise à jour de la brand
+        if (popup.elements.brandContainer) {
+            popup.elements.brandContainer.innerHTML = vehicleBrandHtml;
+        }
+        
+        // Mise à jour du background text
+        if (popup.elements.backgroundText) {
+            popup.elements.backgroundText.textContent = `${t("line")} ${lineNameText}`;
+            popup.elements.backgroundText.style.color = textColor;
+        }
+        
+        // Mise à jour du header stops
+        if (popup.elements.stopsHeader) {
+            popup.elements.stopsHeader.innerHTML = stopsHeaderText;
+        }
+        
+        // Mise à jour des stops
+        if (popup.elements.nextStopsContent) {
+            const ul = popup.elements.nextStopsContent.querySelector('ul');
+            if (ul) {
+                ul.innerHTML = nextStopsHTML;
+            }
+        }
+        
+        // Mise à jour de la couleur de toute la section
+        const vehicleInfoSection = popup.container.querySelector('.vehicle-info-section');
+        if (vehicleInfoSection) {
+            vehicleInfoSection.style.color = textColor;
+        }
+        
+        const stopsSection = popup.container.querySelector('.stops-section');
+        if (stopsSection) {
+            stopsSection.style.color = textColor;
+        }
+    },
+    
+    getPopupContainer(vehicleId) {
+        const popup = this.popups.get(vehicleId);
+        return popup ? popup.container : null;
+    },
+    
+    removePopup(vehicleId) {
+        this.popups.delete(vehicleId);
+    },
+    
+    clear() {
+        this.popups.clear();
+    }
+};
+
+function generateStopsHTML(filteredStops, stopNameMap) {
+    if (!filteredStops || filteredStops.length === 0) return '';
+    
+    return filteredStops.map(stop => {
+        const timeLeft = stop.delay;
+        const timeLeftText = timeLeft !== null 
+            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+            : '';
+        
+        const stopName = stopNameMap[stop.stopId] || stop.stopId;
+        
+        return `
+        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
+            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
+                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
+                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
+                </div>
+            </div>
+            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
+                <div class="time-display" 
+                    data-time-left="${timeLeftText}" 
+                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                    ${timeLeftText}
+                </div>
+                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <g class="rss-waves">
+                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
+                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
+                    </g>
+                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
+                </svg>
+            </div>
+        </li>`;
+    }).join('');
+}
+
+function generateStopsHeader(filteredStops, line, currentStatus) {
+    const statusMap = {
+        0: t("notinservicemaj"),
+        1: t("dooropen"),
+        2: t("enservice")
+    };
+    const status = statusMap[currentStatus] || t("enservice");
+    
+    if (filteredStops.length === 0) {
+        return `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span> ${t("pleasewait")}<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-4px;">${t("unavailabletrip")}</small>`;
+    }
+    
+    const firstStopDelay = filteredStops[0].delay || 0;
+    const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
+    
+    if (line === 'Inconnu') {
+        return `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-4px;">${t("unknownline")}</small>`;
+    }
+    
+    if (filteredStops.length === 1) {
+        return minutes === 0
+            ? t("imminentdeparture")
+            : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+    } else if (minutes > 3) {
+        return `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+    } else {
+        return `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${status}</small> ${t("nextstops")}`;
+    }
 }
 
 async function fetchVehiclePositions() {
@@ -6697,6 +6999,16 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 }
 
 
+            if (currentStopIndex !== -1) {
+                filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
+                    return stop.delay === null || stop.delay >= -60;
+                });
+            } else {
+                filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
+            }
+
+            const stopsHeaderText = generateStopsHeader(filteredStops, line, vehicle.currentStatus);
+            
             if (markerPool.has(id)) {
                 const marker = markerPool.get(id);
                 animateMarker(marker, [latitude, longitude]);
@@ -6735,10 +7047,16 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     }
                     
                     updateLinesDisplay();
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    PopupManager.updatePopup(
+                        vehicleId,
+                        vehicle,
+                        line,
+                        lastStopName,
+                        nextStopsHTML,
+                        vehicleOptionsBadges,
+                        vehicleBrandHtml,
+                        stopsHeaderText
+                    );
                 }
                 
                 if (marker._icon) {
@@ -6770,9 +7088,25 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     marker.addTo(map);
                 }
                 
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                marker.bindPopup(popupContent);
+                PopupManager.getOrCreatePopup(marker, vehicleId);
+                
+                // Mettre à jour son contenu
+                PopupManager.updatePopup(
+                    vehicleId,
+                    vehicle,
+                    line,
+                    lastStopName,
+                    nextStopsHTML,
+                    vehicleOptionsBadges,
+                    vehicleBrandHtml,
+                    stopsHeaderText
+                );
+                
+                // Ajouter à la carte
+                if (!selectedLine || selectedLine === line) {
+                    marker.addTo(map);
+                }
+                
                 marker._lastNextStopsHTML = nextStopsHTML;
                 
                 eventManager.on(marker, 'popupopen', function (e) {
