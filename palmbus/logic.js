@@ -4794,10 +4794,6 @@ const MenuManager = {
         this.container.appendChild(fragment);
         this._updateStatistics();
         this._buildBusIndex();
-
-        setTimeout(() => {
-            this._handleScrollAnimations();
-        }, 2000);
     },
     
     _createSearchBar() {
@@ -7768,6 +7764,10 @@ const menubottom1 = document.getElementById('menubtm');
             
 
         updateMenu();
+        setTimeout(() => {
+            MenuManager._handleScrollAnimations();
+        }, 200);
+            
 
     } catch (error) {
         return;
