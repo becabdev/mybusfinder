@@ -185,7 +185,7 @@
         });
 
 
-        VERSION_NAME = '3.2';
+        VERSION_NAME = '3.3';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -1890,41 +1890,39 @@ document.getElementById('close-popup1').addEventListener('click', closeUpdatePop
 
 
 function hideLoadingScreen() {
-    setTimeout(() => {
-        const loadingScreen = document.getElementById('loading-screen');
+    const loadingScreen = document.getElementById('loading-screen');
 
-        if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
-            disparaitrelelogo();
-            const loadingtext = document.getElementById('loading-text');
-            loadingtext.textContent = 'Merci de patienter, une mise à jour est en cours ' + window.VERSION_NAME;
-            soundsUX('MBF_NotificationInfo');
-            localStorage.setItem('buildversion', window.BUILD_VERSION);
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-
-        } else {
-
-        const logoscr = document.getElementById('logoscr');
-        logoscr.classList.add('logoscrappp');
-        loadingScreen.classList.add('logoscrapppp');
-        loadingScreen.style.pointerEvents = 'none';
-        const menubottom1 = document.getElementById('menubtm');
-        menubottom1.style.display = 'flex';
-        window.isMenuShowed = false;
-    
-        if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+    if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
+        disparaitrelelogo();
+        const loadingtext = document.getElementById('loading-text');
+        loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
+        soundsUX('MBF_NotificationInfo');
+        localStorage.setItem('buildversion', window.BUILD_VERSION);
             setTimeout(() => {
-                menubottom1.classList.remove('slide-upb');
-                menubottom1.classList.add('slide-downb');
-            }, 10);
-        }
+                window.location.reload();
+            }, 3000);
 
+    } else {
+
+    const logoscr = document.getElementById('logoscr');
+    logoscr.classList.add('logoscrappp');
+    loadingScreen.classList.add('logoscrapppp');
+    loadingScreen.style.pointerEvents = 'none';
+    const menubottom1 = document.getElementById('menubtm');
+    menubottom1.style.display = 'flex';
+    window.isMenuShowed = false;
+
+    if (localStorage.getItem('nepasafficheraccueil') === 'true') {
         setTimeout(() => {
-            loadingScreen.style.display = 'none';
-        }, 300);
+            menubottom1.classList.remove('slide-upb');
+            menubottom1.classList.add('slide-downb');
+        }, 10);
     }
-    }, 100);
+
+    setTimeout(() => {
+        loadingScreen.style.display = 'none';
+    }, 300);
+}
 }
 
 
@@ -2098,33 +2096,19 @@ async function extractGTFSFiles() {
         loadingtext.textContent = 'Chargement des données dyna en cours - async... 😊';
         soundsUX('MBF_Popup');
 
-
-        const response = await fetch('proxy-cors/proxy_gtfs.php');
+        const response = await fetch('proxy-cors/proxy_gtfs.php?action=extracted');
         if (!response.ok) {
             throw new Error(`Échec téléchargement ${response.status} ${response.statusText}`);
-            toastBottomRight.warning('Oups ! Une erreur s\'est produite... avez vous actualisé la page ?');
-
         }
         
-        const zipData = await response.arrayBuffer();
+        const extractedFiles = await response.json();
         
-        const fileHash = await calculateSHA256(zipData.slice(0, Math.min(zipData.byteLength, 1024 * 50)));
-        
-        const zip = await JSZip.loadAsync(zipData);
-        
-        const extractedFiles = {};
-        
-        const filePromises = [];
-        zip.forEach((relativePath, zipEntry) => {
-            if (!zipEntry.dir) {
-                const promise = zipEntry.async("string").then(content => {
-                    extractedFiles[relativePath] = content;
-                });
-                filePromises.push(promise);
-            }
-        });
-        
-        await Promise.all(filePromises);
+        const filesString = JSON.stringify(extractedFiles);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(filesString.substring(0, Math.min(filesString.length, 1024 * 50)));
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const fileHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         
         const metadata = {
             fileHash,
@@ -2133,6 +2117,7 @@ async function extractGTFSFiles() {
         
         return { extractedFiles, metadata };
     } catch (error) {
+        console.error('Erreur lors du chargement des fichiers GTFS', error);
         throw error;
     }
 }
@@ -2309,45 +2294,208 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
-async function initializeGTFS() {
+function createLoadingOverlay() {
+    let overlay = document.getElementById('gtfs-loading-overlay');
+    
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'gtfs-loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-container">
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        const style = document.createElement('style');
+        style.textContent = `
+            #gtfs-loading-overlay {
+                position: fixed;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%) translateY(20%);
+                z-index: 999999999999999999999;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
+            }
+            
+            #gtfs-loading-overlay.visible {
+                opacity: 1;
+                visibility: visible;
+                transform: translateX(-50%) translateY(0%);
+            }
+            
+            .loading-container {
+                padding: 20px 30px;
+                border-radius: 16px;
+                min-width: 320px;
+            }
+            
+            .progress-bar-container {
+                width: 100%;
+                height: 8px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                overflow: hidden;
+                margin-bottom: 10px;
+                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            
+            .progress-bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+                border-radius: 10px;
+                width: 0%;
+                transition: width 0.4s ease;
+                box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+            }
+
+        `;
+        document.head.appendChild(style);
+    }
+    
+    return overlay;
+}
+
+function showLoadingOverlay() {
+    const overlay = createLoadingOverlay();
+    overlay.classList.add('visible');
+    window.overlayVisible = true;
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('gtfs-loading-overlay');
+    window.overlayVisible = false;
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+}
+
+function updateLoadingProgress(percentage) {
+    const progressFill = document.getElementById('progress-bar-fill');
+    const progressPercentage = document.getElementById('progress-percentage');
+    const loadingText = document.querySelector('.loading-text');
+    
+    if (progressFill) {
+        progressFill.style.width = `${percentage}%`;
+    }
+    
+    if (percentage >= 100) {
+        setTimeout(() => {
+            hideLoadingOverlay();
+        }, 500);
+    }
+}
+
+async function loadGTFSDataOptimized() {
     try {
-        Object.keys(lineColors).forEach(key => delete lineColors[key]);
-        Object.keys(lineName).forEach(key => delete lineName[key]);
-        stopIds.length = 0;
-        Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
+        setTimeout(() => {
+            showLoadingOverlay();
+        }, 200);        
         
-        let extractedFiles;
+        let progress = 0;
+        const updateProgress = (step, total) => {
+            progress = Math.round((step / total) * 100);
+            updateLoadingProgress(progress);
+        };
         
-        const { needsUpdate, fileHash, metadata } = await checkGTFSUpdate();
+        updateProgress(0, 3);
+        soundsUX('MBF_Popup');
+
+        console.log('Vérification des endpoints...');
+        const infoResponse = await fetch('proxy-cors/proxy_gtfs.php?action=info', {
+            cache: 'no-store'
+        });
         
-        if (needsUpdate) {
-            const result = await extractGTFSFiles();
-            apparaitrelelogo();
-            extractedFiles = result.extractedFiles;
+        if (!infoResponse.ok) {
+            const errorText = await infoResponse.text();
+            console.error('Erreur info endpoint', errorText);
+            throw new Error(`Endpoint info invalide ${infoResponse.status}`);
+        }
+        
+        const serverInfo = await infoResponse.json();
+        console.log('📊 Info serveur:', serverInfo);
+        
+        if (!serverInfo.routes_exists) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        updateProgress(1, 3);
+        updateLoadingProgress(33);
+
+        console.log('Chargement des lignes...');
+        const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
+        if (!routesResponse.ok) {
+            const errorText = await routesResponse.text();
+            console.error('Erreur routes', errorText);
             
-            await saveToCache(extractedFiles, result.metadata);
-            
-        } else {
-            extractedFiles = await getFromCache();
-            if (!extractedFiles) {
-                const result = await extractGTFSFiles();
-                extractedFiles = result.extractedFiles;
-                await saveToCache(extractedFiles, result.metadata);
-                toastBottomRight.success('Données téléchargées avec succès !');
-                soundsUX('MBF_Success');
-            } 
+            try {
+                const errorJson = JSON.parse(errorText);
+                throw new Error(`Erreur routes (${routesResponse.status}): ${errorJson.error || errorText}`);
+            } catch (e) {
+                throw new Error(`Erreur routes (${routesResponse.status}): ${errorText}`);
+            }
         }
         
-        if (extractedFiles['routes.txt']) {
-            await loadLineColors(extractedFiles['routes.txt']);
+        const contentType = routesResponse.headers.get('Content-Type');
+        console.log('Content-Type routes :', contentType);
+        
+        const routesData = await routesResponse.json();
+        console.log('Routes chargées', Object.keys(routesData).length, 'lignes');
+        
+        Object.entries(routesData).forEach(([routeId, data]) => {
+            lineColors[routeId] = data.c ? `#${data.c}` : '#FFFFFF';
+            lineName[routeId] = data.s || data.l || routeId;
+        });
+        
+        updateProgress(2, 3);
+        updateLoadingProgress(66);
+        
+        console.log('Chargement des stops...');
+        const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        });
+        
+        if (!stopsResponse.ok) {
+            const errorText = await stopsResponse.text();
+            console.error('Erreur stops:', errorText);
+            throw new Error(`Erreur stops (${stopsResponse.status}): ${errorText}`);
         }
         
-        if (extractedFiles['stops.txt']) {
-            await loadStopIds(extractedFiles['stops.txt']);
-            await loadLineTerminusData(extractedFiles['stops.txt']);
-        } else {
-            console.error('Fichier stops.txt non trouvé');
-        }
+        const stopsData = await stopsResponse.json();
+        console.log('Stops chargés:', Object.keys(stopsData).length, 'arrêts');
+        
+        Object.entries(stopsData).forEach(([stopId, data]) => {
+            stopIds.push(stopId);
+            stopNameMap[stopId] = data.n || stopId;
+        });
+        
+        updateProgress(3, 3);
+        updateLoadingProgress(100);
+        
+        apparaitrelelogo();
+        
+        console.log('Données GTFS chargées', {
+            routes: Object.keys(lineColors).length,
+            stops: stopIds.length,
+            memoryUsed: performance.memory ? 
+                `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB` : 
+                'N/A'
+        });
         
         return {
             lineColors,
@@ -2357,10 +2505,114 @@ async function initializeGTFS() {
         };
         
     } catch (error) {
-        console.error('Erreur lors de l\'initialisation data théorique gtfs', error);
+        console.error('Erreur lors du chargement gtfs', error);
+        console.error('Stack:', error.stack);
+        
+        // Masquer l'overlay en cas d'erreur
+        hideLoadingOverlay();
+        
+        const errorMessage = error.message || 'Erreur inconnue';
+        toastBottomRight.error(`Erreur de chargement ${errorMessage}`);
+        soundsUX('MBF_NotificationError');
+        
         throw error;
     }
 }
+
+async function getServerCacheInfo() {
+    try {
+        const response = await fetch('proxy-cors/proxy_gtfs.php?action=info');
+        const info = await response.json();
+        
+        console.log('📊 Info cache serveur:', {
+            totalSize: `${(info.total_size / 1024).toFixed(2)} KB`,
+            coreSize: `${(info.core_size / 1024).toFixed(2)} KB`,
+            routesSize: `${(info.routes_size / 1024).toFixed(2)} KB`,
+            stopsSize: `${(info.stops_size / 1024).toFixed(2)} KB`,
+            cacheAge: `${info.cache_age_hours}h`
+        });
+        
+        return info;
+    } catch (error) {
+        console.warn('Impossible de récupérer les infos cache:', error);
+        return null;
+    }
+}
+
+async function initializeGTFS() {
+    try {
+        Object.keys(lineColors).forEach(key => delete lineColors[key]);
+        Object.keys(lineName).forEach(key => delete lineName[key]);
+        stopIds.length = 0;
+        Object.keys(stopNameMap).forEach(key => delete stopNameMap[key]);
+        
+        const startTime = performance.now();
+        const data = await loadGTFSDataOptimized();
+        const loadTime = ((performance.now() - startTime) / 1000).toFixed(2);
+        
+        console.log(`GTFS chargé en ${loadTime}s`);
+        
+        if (window.location.search.includes('debug')) {
+            await getServerCacheInfo();
+        }
+        
+        return data;
+        
+    } catch (error) {
+        console.error('Erreur lors de l\'initialisation GTFS', error);
+        throw error;
+    }
+}
+
+async function checkGTFSUpdate() {
+    try {
+        const db = await initDB();
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        const storedMetadata = await new Promise((resolve, reject) => {
+            const request = store.get('gtfsMetadata');
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        
+        if (!storedMetadata || !storedMetadata.fileHash) {
+            return { needsUpdate: true };
+        }
+        
+        const lastUpdate = new Date(storedMetadata.lastUpdate);
+        const now = new Date();
+        const ageInDays = (now - lastUpdate) / (1000 * 60 * 60 * 24);
+        
+        if (ageInDays > 4) {
+            console.log('Cache expiré (> 4 jours), mise à jour nécessaire');
+            return { needsUpdate: true };
+        }
+        
+        try {
+            const response = await fetch('proxy-cors/proxy_gtfs.php?action=extracted', {
+                method: 'HEAD'
+            });
+            
+            const lastModified = response.headers.get('Last-Modified');
+            if (lastModified) {
+                const serverDate = new Date(lastModified);
+                if (serverDate > lastUpdate) {
+                    console.log('Nouvelle version disponible sur le serveur');
+                    return { needsUpdate: true };
+                }
+            }
+        } catch (error) {
+            console.warn('Impossible de vérifier la version serveur', error);
+        }
+        
+        return { needsUpdate: false, metadata: storedMetadata };
+    } catch (error) {
+        console.error('Erreur vérif maj GTFS', error);
+        return { needsUpdate: true };
+    }
+}
+
 
 async function clearGTFSCache() {
     try {
@@ -2950,29 +3202,32 @@ async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    currentZoomLevel = map.getZoom();
-
-    const busLines = L.geoJSON(geoJsonData, {
-        filter: function(feature) {
-            return feature.geometry.type === 'LineString';
-        },
-        style: function(feature) {
-            return {
-                color: lineColors[feature.properties.route_id] || '#3388ff',
-                weight: 6,
-                opacity: 0.7,  
-                lineJoin: 'round',
-                lineCap: 'round',
-                className: 'bus-line', 
-                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
-            };
-        },
-        onEachFeature: function(feature, layer) {
-            if (feature.properties && feature.properties.route_id) {
-                geoJsonLines.push(layer);
+    setTimeout(() => {
+        currentZoomLevel = map.getZoom();
+            const busLines = L.geoJSON(geoJsonData, {
+            filter: function(feature) {
+                return feature.geometry.type === 'LineString';
+            },
+            style: function(feature) {
+                return {
+                    color: lineColors[feature.properties.route_id] || '#3388ff',
+                    weight: 6,
+                    opacity: 0.7,  
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                    className: 'bus-line', 
+                    dashArray: feature.properties.route_type === '3' ? '5, 5' : null
+                };
+            },
+            onEachFeature: function(feature, layer) {
+                if (feature.properties && feature.properties.route_id) {
+                    geoJsonLines.push(layer);
+                }
             }
-        }
-    }).addTo(map);
+        }).addTo(map);
+    }, 500);
+
+
 
     busStopsData = geoJsonData.features.filter(feature => 
         feature.geometry && feature.geometry.type === 'Point'
@@ -4361,6 +4616,1797 @@ function debounce(func, wait) {
     };
 }
 
+function getTextColor(bgColor, options = {}) {
+    const {
+        contrastRatio = 4.5,
+        darkColor = '#1a1a1a',
+        lightColor = '#f8f9fa',
+        useGradient = false 
+    } = options;
+
+    let r, g, b, a = 1;
+
+    if (!bgColor) return darkColor;
+
+    bgColor = bgColor.trim();
+
+    if (bgColor.startsWith('rgb')) {
+        const values = bgColor.match(/\d+(\.\d+)?/g);
+        if (values) {
+            r = parseInt(values[0]);
+            g = parseInt(values[1]);
+            b = parseInt(values[2]);
+            a = values[3] ? parseFloat(values[3]) : 1;
+        } else {
+            return darkColor;
+        }
+    } else {
+        // Parse hex colors
+        if (/^#([a-f\d])([a-f\d])([a-f\d])$/i.test(bgColor)) {
+            bgColor = bgColor.replace(/^#([a-f\d])([a-f\d])([a-f\d])$/i,
+                (_, r, g, b) => '#' + r + r + g + g + b + b);
+        }
+
+        if (bgColor.length === 7) {
+            r = parseInt(bgColor.slice(1, 3), 16);
+            g = parseInt(bgColor.slice(3, 5), 16);
+            b = parseInt(bgColor.slice(5, 7), 16);
+        } else if (bgColor.length === 9) {
+            r = parseInt(bgColor.slice(1, 3), 16);
+            g = parseInt(bgColor.slice(3, 5), 16);
+            b = parseInt(bgColor.slice(5, 7), 16);
+            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+        } else if (bgColor.length === 8 && bgColor.startsWith('#')) {
+            r = parseInt(bgColor.slice(1, 3), 16);
+            g = parseInt(bgColor.slice(3, 5), 16);
+            b = parseInt(bgColor.slice(5, 7), 16);
+            a = parseInt(bgColor.slice(7, 9), 16) / 255;
+        } else {
+            return darkColor;
+        }
+    }
+
+    // Clamp values
+    r = Math.max(0, Math.min(255, r));
+    g = Math.max(0, Math.min(255, g));
+    b = Math.max(0, Math.min(255, b));
+
+    // Calculate luminance of background
+    const srgb = [r, g, b].map(c => {
+        const val = c / 255;
+        return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+    });
+    const luminance = 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+
+    // Helper function to calculate luminance from hex
+    const getLuminance = (color) => {
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16) / 255;
+        const g = parseInt(hex.substr(2, 2), 16) / 255;
+        const b = parseInt(hex.substr(4, 2), 16) / 255;
+        const srgb = [r, g, b].map(c => 
+            c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+        );
+        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+    };
+
+    // Calculate contrast ratios
+    const darkLuminance = getLuminance(darkColor);
+    const lightLuminance = getLuminance(lightColor);
+
+    const contrastWithDark = luminance > darkLuminance 
+        ? (luminance + 0.05) / (darkLuminance + 0.05)
+        : (darkLuminance + 0.05) / (luminance + 0.05);
+    
+    const contrastWithLight = luminance > lightLuminance 
+        ? (luminance + 0.05) / (lightLuminance + 0.05)
+        : (lightLuminance + 0.05) / (luminance + 0.05);
+
+    const isMediumDark = luminance >= 0.12 && luminance <= 0.35;
+
+    if (contrastWithDark >= contrastRatio && contrastWithLight >= contrastRatio) {
+        if (isMediumDark) {
+            return lightColor;
+        }
+        return luminance > 0.18 ? darkColor : lightColor;
+    } 
+    else if (contrastWithDark >= contrastRatio) {
+        if (isMediumDark) {
+            return lightColor;
+        }
+        return darkColor;
+    } 
+    // Si seule la couleur claire passe
+    else if (contrastWithLight >= contrastRatio) {
+        return lightColor;
+    } 
+    // Aucune ne passe vraiment le test
+    else {
+        // Pour les couleurs moyennes-foncées, forcer le clair
+        if (isMediumDark) {
+            return lightColor;
+        }
+        
+        // Seuil abaissé à 0.15 pour préférer le clair sur les fonds sombres
+        if (luminance < 0.15) {
+            return lightColor; 
+        }
+        
+        // Sinon prendre le meilleur contraste disponible
+        return contrastWithDark > contrastWithLight ? darkColor : lightColor;
+    }
+}
+
+
+const MenuManager = {
+    container: null,
+    sections: new Map(),
+    busesByLineAndDestination: {},
+    isInitialized: false,
+    searchInput: null,
+    searchResults: null,
+    isSearchActive: false,
+    allBuses: [],
+    
+    init() {
+        this.container = document.getElementById('menu');
+        if (!this.container) {
+            console.error('Menu container not found');
+            return false;
+        }
+        this.isInitialized = true;
+        return true;
+    },
+    
+    generateInitialStructure(busesByLineAndDestination) {
+        if (!this.isInitialized) this.init();
+        
+        this.busesByLineAndDestination = busesByLineAndDestination;
+        this.container.innerHTML = '';
+        
+        // Top bar avec recherche
+        this._createTopBar();
+        
+        // Barre de recherche
+        this._createSearchBar();
+        
+        // Spacer
+        const spacer = document.createElement('div');
+        spacer.style.height = '15px';
+        spacer.id = 'menu-spacer';
+        this.container.appendChild(spacer);
+        
+        const sortedLines = this._getSortedLines();
+        const fragment = document.createDocumentFragment();
+        
+        sortedLines.forEach(line => {
+            const lineSection = this._createLineSection(line);
+            this.sections.set(line, lineSection);
+            
+            const destinations = busesByLineAndDestination[line];
+            Object.keys(destinations).sort().forEach(destination => {
+                this._addDestinationToSection(lineSection, line, destination, destinations[destination]);
+            });
+            
+            fragment.appendChild(lineSection.element);
+        });
+        
+        this.container.appendChild(fragment);
+        this._updateStatistics();
+        this._buildBusIndex();
+    },
+    
+    _createSearchBar() {
+        const searchContainer = document.createElement('div');
+        searchContainer.id = 'search-container';
+        searchContainer.style.cssText = `
+            position: sticky;
+            top: 78px;
+            left: 0;
+            right: 0;
+            padding: 0 16px 10px;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        `;
+        
+        const searchWrapper = document.createElement('div');
+        searchWrapper.style.cssText = `
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 2px 10px;
+            backdrop-filter: blur(17px);
+            background-color: rgba(0, 0, 0, 0.46);
+            border-radius: 100px;
+        `;
+        
+        // Icône de recherche
+        const searchIcon = document.createElement('div');
+        searchIcon.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="11" cy="11" r="8" stroke="white" stroke-width="2"/>
+                <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+        searchIcon.style.cssText = `
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            opacity: 0.7;
+            z-index: 2;
+        `;
+        
+        // Input de recherche
+        this.searchInput = document.createElement('input');
+        this.searchInput.type = 'text';
+        this.searchInput.placeholder = t('search_placeholder') || 'Rechercher ligne, destination, bus...';
+        this.searchInput.id = 'menu-search-input';
+        this.searchInput.style.cssText = `
+            flex: 1;
+            padding: 12px 45px 12px 45px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            color: white;
+            font-size: 15px;
+            font-family: 'League Spartan', sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+        `;
+        
+        // Bouton clear
+        const clearButton = document.createElement('button');
+        clearButton.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 6L6 18M6 6L18 18" stroke="white" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+        clearButton.style.cssText = `
+            position: absolute;
+            right: 7px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 2;
+        `;
+        
+        clearButton.onmouseover = () => {
+            clearButton.style.background = 'rgba(255, 255, 255, 0.2)';
+            clearButton.style.transform = 'translateY(-50%) scale(1.1)';
+        };
+        clearButton.onmouseout = () => {
+            clearButton.style.background = 'rgba(255, 255, 255, 0.1)';
+            clearButton.style.transform = 'translateY(-50%) scale(1)';
+        };
+        
+        clearButton.onclick = () => {
+            this.searchInput.value = '';
+            this._performSearch('');
+            this.searchInput.focus();
+        };
+        
+        // Events
+        this.searchInput.addEventListener('input', (e) => {
+            const value = e.target.value.trim();
+            clearButton.style.display = value ? 'flex' : 'none';
+            this._performSearch(value);
+            this._handleScrollAnimations();
+        });
+        
+        this.searchInput.addEventListener('focus', () => {
+            this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
+            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            this.searchInput.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.1)';
+        });
+        
+        this.searchInput.addEventListener('blur', () => {
+            this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
+            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            this.searchInput.style.boxShadow = 'none';
+        });
+        
+        searchWrapper.appendChild(searchIcon);
+        searchWrapper.appendChild(this.searchInput);
+        searchWrapper.appendChild(clearButton);
+        searchContainer.appendChild(searchWrapper);
+        
+        // Résultats de recherche
+        this.searchResults = document.createElement('div');
+        this.searchResults.id = 'search-results';
+        this.searchResults.style.cssText = `
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            display: none;
+            position: sticky;
+        `;
+        searchContainer.appendChild(this.searchResults);
+        
+        this.container.appendChild(searchContainer);
+    },
+        
+    _buildBusIndex() {
+        this.allBuses = [];
+        
+        Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
+            Object.entries(destinations).forEach(([destination, buses]) => {
+                buses.forEach(bus => {
+                    const vehicleLabel = bus.vehicleData?.vehicle?.label || 
+                                       bus.vehicleData?.vehicle?.id || 
+                                       "inconnu";
+                    
+                    this.allBuses.push({
+                        line,
+                        destination,
+                        vehicleLabel,
+                        parkNumber: bus.parkNumber,
+                        bus,
+                        searchText: `${line} ${destination} ${vehicleLabel}`.toLowerCase()
+                    });
+                });
+            });
+        });
+    },
+    
+    _performSearch(query) {
+        if (!query) {
+            this.isSearchActive = false;
+            this.searchResults.style.display = 'none';
+            this._showAllSections();
+            return;
+        }
+        
+        this.isSearchActive = true;
+        const normalizedQuery = query.toLowerCase().trim();
+        
+        // Recherche avec scoring
+        const results = this.allBuses.map(item => {
+            const score = this._calculateScore(item, normalizedQuery);
+            return { ...item, score };
+        })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score);
+        
+        if (results.length === 0) {
+            this._showNoResults();
+            this._hideAllSections();
+            return;
+        }
+        
+        // Grouper par ligne
+        const resultsByLine = new Map();
+        results.forEach(result => {
+            if (!resultsByLine.has(result.line)) {
+                resultsByLine.set(result.line, []);
+            }
+            resultsByLine.get(result.line).push(result);
+        });
+        
+        // Afficher les résultats
+        this._displaySearchResults(resultsByLine, normalizedQuery);
+        
+        // Filtrer les sections
+        this._filterSections(resultsByLine);
+    },
+
+    _calculateScore(item, query) {
+        let score = 0;
+        
+        if (item.line.toLowerCase() === query) score += 100;
+        if (item.destination.toLowerCase() === query) score += 80;
+        if (item.vehicleLabel.toLowerCase() === query) score += 90;
+        
+        if (item.line.toLowerCase().startsWith(query)) score += 50;
+        if (item.destination.toLowerCase().startsWith(query)) score += 40;
+        if (item.vehicleLabel.toLowerCase().startsWith(query)) score += 45;
+        
+        if (item.line.toLowerCase().includes(query)) score += 30;
+        if (item.destination.toLowerCase().includes(query)) score += 25;
+        if (item.vehicleLabel.toLowerCase().includes(query)) score += 28;
+        
+        if (this._fuzzyMatch(item.line, query)) score += 15;
+        if (this._fuzzyMatch(item.destination, query)) score += 12;
+        if (this._fuzzyMatch(item.vehicleLabel, query)) score += 13;
+        
+        const matchCount = [
+            item.line.toLowerCase().includes(query),
+            item.destination.toLowerCase().includes(query),
+            item.vehicleLabel.toLowerCase().includes(query)
+        ].filter(Boolean).length;
+        
+        if (matchCount > 1) score += 20 * matchCount;
+        
+        return score;
+    },
+
+    _fuzzyMatch(text, query) {
+        if (!text) return false;
+        text = text.toLowerCase();
+        
+        // Match exact
+        if (text.includes(query)) return true;
+        
+        // Match avec caractères manquants (ex: "cnn" match "cannes")
+        let textIndex = 0;
+        for (let char of query) {
+            textIndex = text.indexOf(char, textIndex);
+            if (textIndex === -1) return false;
+            textIndex++;
+        }
+        return true;
+    },
+    
+    _displaySearchResults(resultsByLine, query) {
+        this.searchResults.innerHTML = '';
+        this.searchResults.style.display = 'block';
+        
+        const summary = document.createElement('div');
+        summary.style.cssText = `
+            color: white;
+            font-size: 14px;
+            margin-bottom: 15px;
+            opacity: 0.8;
+            font-weight: 500;
+        `;
+        
+        const totalResults = Array.from(resultsByLine.values()).reduce((sum, arr) => sum + arr.length, 0);
+        summary.textContent = `${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))} • ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))}`;
+        this.searchResults.appendChild(summary);
+        
+        // Afficher par ligne avec les véhicules
+        Array.from(resultsByLine.entries()).slice(0, 2).forEach(([line, items]) => {
+            const lineColor = lineColors[line] || '#000000';
+            const textColor = getTextColor(lineColor);
+            
+            const lineResult = document.createElement('div');
+            lineResult.style.cssText = `
+                background: ${lineColor}40;
+                padding: 12px;
+                margin-bottom: 10px;
+                border-radius: 12px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                border: 2px solid transparent;
+            `;
+            
+            lineResult.onmouseover = () => {
+                lineResult.style.background = `${lineColor}60`;
+                lineResult.style.borderColor = `${lineColor}80`;
+                lineResult.style.transform = 'scale(0.98)';
+            };
+            
+            lineResult.onmouseout = () => {
+                lineResult.style.background = `${lineColor}40`;
+                lineResult.style.borderColor = 'transparent';
+                lineResult.style.transform = 'scale(1)';
+            };
+            
+            lineResult.onclick = () => {
+                this.searchInput.value = '';
+                this._performSearch('');
+                
+                const lineSection = this.sections.get(line);
+                if (lineSection) {
+                    lineSection.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    lineSection.element.style.animation = 'pulse 0.5s ease';
+                    setTimeout(() => {
+                        lineSection.element.style.animation = '';
+                    }, 500);
+                }
+            };
+            
+            const lineHeader = document.createElement('div');
+            lineHeader.style.cssText = `
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+            `;
+            
+            const lineTitle = document.createElement('div');
+            lineTitle.style.cssText = `
+                color: white;
+                font-weight: 600;
+                font-size: 16px;
+            `;
+            lineTitle.textContent = `${t('line')} ${lineName[line] || line}`;
+            
+            const vehicleCount = document.createElement('div');
+            vehicleCount.style.cssText = `
+                color: white;
+                font-size: 12px;
+                opacity: 0.9;
+                background: rgba(0, 0, 0, 0.2);
+                padding: 4px 8px;
+                border-radius: 12px;
+            `;
+            vehicleCount.textContent = `${items.length} ${t('vehicle' + (items.length > 1 ? 's' : ''))}`;
+            
+            lineHeader.appendChild(lineTitle);
+            lineHeader.appendChild(vehicleCount);
+            
+            // Destinations
+            const destinationsText = document.createElement('div');
+            destinationsText.style.cssText = `
+                color: white;
+                font-size: 13px;
+                opacity: 0.85;
+                margin-bottom: 10px;
+            `;
+            const uniqueDestinations = [...new Set(items.map(i => i.destination))];
+            destinationsText.textContent = `➜ ${uniqueDestinations.join(', ')}`;
+            
+            const vehiclesList = document.createElement('div');
+            vehiclesList.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                margin-top: 8px;
+            `;
+            
+            items.slice(0, 3).forEach((item, index) => {
+                const vehicleItem = document.createElement('div');
+                vehicleItem.style.cssText = `
+                    background: rgba(0, 0, 0, 0.2);
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                `;
+                
+                vehicleItem.onmouseover = () => {
+                    vehicleItem.style.background = 'rgba(0, 0, 0, 0.35)';
+                    vehicleItem.style.transform = 'scale(1.02)';
+                };
+                
+                vehicleItem.onmouseout = () => {
+                    vehicleItem.style.background = 'rgba(0, 0, 0, 0.2)';
+                    vehicleItem.style.transform = 'scale(1)';
+                };
+                
+                vehicleItem.onclick = (e) => {
+                    e.stopPropagation();
+                    safeVibrate([50, 300, 50, 30, 50], true);
+                    soundsUX('MBF_Menu_VehicleSelect');
+                    map.setView(item.bus.vehicle.getLatLng(), 15);
+                    item.bus.vehicle.openPopup();
+                    closeMenu();
+                    this.searchInput.value = '';
+                    this._performSearch('');
+                };
+                
+                // Badge véhicule
+                const vehicleBadge = document.createElement('span');
+                vehicleBadge.style.cssText = `
+                    background: rgba(255, 255, 255, 0.2);
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 12px;
+                    min-width: 50px;
+                    text-align: center;
+                `;
+                vehicleBadge.textContent = item.vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
+                
+                // Info destination
+                const destInfo = document.createElement('span');
+                destInfo.style.cssText = `
+                    color: white;
+                    font-size: 13px;
+                    opacity: 0.9;
+                    flex: 1;
+                `;
+                destInfo.textContent = item.destination;
+                
+                // Score badge debug
+                const scoreBadge = document.createElement('span');
+                scoreBadge.style.cssText = `
+                    background: rgba(255, 255, 255, 0.15);
+                    color: white;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-size: 10px;
+                    opacity: 0.7;
+                `;
+                scoreBadge.textContent = `${item.score}`;
+                
+                vehicleItem.appendChild(vehicleBadge);
+                vehicleItem.appendChild(destInfo);
+                // vehicleItem.appendChild(scoreBadge);
+                
+                vehiclesList.appendChild(vehicleItem);
+            });
+            
+            if (items.length > 3) {
+                const moreVehicles = document.createElement('div');
+                moreVehicles.style.cssText = `
+                    color: white;
+                    font-size: 12px;
+                    opacity: 0.6;
+                    text-align: center;
+                    margin-top: 4px;
+                    font-style: italic;
+                `;
+                moreVehicles.textContent = `+ ${items.length - 3} ${t('other')} ${t('vehicles')}`;
+                vehiclesList.appendChild(moreVehicles);
+            }
+            
+            lineResult.appendChild(lineHeader);
+            lineResult.appendChild(destinationsText);
+            lineResult.appendChild(vehiclesList);
+            this.searchResults.appendChild(lineResult);
+        });
+        
+        if (resultsByLine.size > 10) {
+            const more = document.createElement('div');
+            more.style.cssText = `
+                color: white;
+                font-size: 13px;
+                opacity: 0.6;
+                text-align: center;
+                margin-top: 10px;
+                padding: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 8px;
+            `;
+            more.textContent = `+ ${resultsByLine.size - 10} ${t('other_lines')}`;
+            this.searchResults.appendChild(more);
+        }
+    },    
+
+    _showNoResults() {
+        this.searchResults.innerHTML = '';
+        this.searchResults.style.display = 'block';
+        
+        const noResults = document.createElement('div');
+        noResults.style.cssText = `
+            color: white;
+            text-align: center;
+            padding: 20px;
+            opacity: 0.6;
+        `;
+        noResults.innerHTML = `
+            <div style="font-size: 40px; margin-bottom: 10px;">🔍</div>
+            <div style="font-size: 16px;">${t('no_results') || 'Aucun résultat'}</div>
+        `;
+        this.searchResults.appendChild(noResults);
+    },
+    
+    _showAllSections() {
+        this.sections.forEach(section => {
+            section.element.style.display = '';
+        });
+    },
+    
+    _hideAllSections() {
+        this.sections.forEach(section => {
+            section.element.style.display = 'none';
+        });
+    },
+    
+    _filterSections(resultsByLine) {
+        this.sections.forEach((section, line) => {
+            if (resultsByLine.has(line)) {
+                section.element.style.display = '';
+            } else {
+                section.element.style.display = 'none';
+            }
+        });
+    },
+    
+    updateData(busesByLineAndDestination) {
+        if (!this.isInitialized) return;
+        
+        const newLines = new Set(Object.keys(busesByLineAndDestination));
+        const currentLines = new Set(this.sections.keys());
+        
+        for (const line of currentLines) {
+            if (!newLines.has(line)) {
+                this._removeLine(line);
+            }
+        }
+        
+        for (const line of newLines) {
+            if (this.sections.has(line)) {
+                this._updateLine(line, busesByLineAndDestination[line]);
+            } else {
+                this._addLine(line, busesByLineAndDestination[line]);
+            }
+        }
+        
+        this.busesByLineAndDestination = busesByLineAndDestination;
+        this._updateStatistics();
+        this._buildBusIndex();
+        
+        // Re-appliquer la recherche si active
+        if (this.isSearchActive && this.searchInput) {
+            this._performSearch(this.searchInput.value);
+        }
+    },
+    
+    _createTopBar() {
+        const topBar = document.createElement('div');
+        topBar.id = 'menu-top-bar';
+        topBar.classList.add('menu-top-bar', 'animate-zoom-ripple', 'ripple-container');
+        topBar.style.cssText = `
+            position: sticky;
+            top: 10px;
+            left: 0;
+            background-color: #00000075;
+            color: white;
+            padding: 9px 33px 9px 9px;
+            display: flex;
+            align-items: center;
+            z-index: 1001;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(17px);
+            -webkit-backdrop-filter: blur(17px);
+            width: fit-content;
+            margin: 10px 15px 0px;
+            border-radius: 33px;
+        `;
+        
+        const backButton = document.createElement('div');
+        backButton.innerHTML = `
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 6L9 12L15 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        backButton.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 8px;
+            margin-right: 15px;
+            border-radius: 33px;
+            transition: background 0.2s ease;
+        `;
+        backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
+        backButton.onmouseout = () => backButton.style.background = 'transparent';
+        backButton.onclick = closeMenu;
+        
+        const title = document.createElement('div');
+        title.className = 'menu-title';
+        title.id = 'menu-statistics';
+        title.textContent = t("network");
+        title.style.cssText = `font-size: 20px; font-weight: 500;`;
+        
+        topBar.appendChild(backButton);
+        topBar.appendChild(title);
+        this.container.appendChild(topBar);
+        
+        let lastScrollTop = 0;
+        this.container.addEventListener('scroll', () => {
+            const scrollTop = this.container.scrollTop;
+            const searchContainer = document.getElementById('search-container');
+            
+            if (scrollTop > lastScrollTop && scrollTop > 50) {
+                topBar.style.transform = 'translateY(-130%)';
+                if (searchContainer) searchContainer.style.transform = 'translateY(-130%)';
+            } else {
+                topBar.style.transform = 'translateY(0)';
+                if (searchContainer) searchContainer.style.transform = 'translateY(0)';
+            }
+            lastScrollTop = scrollTop;
+            
+            this._handleScrollAnimations();
+        });
+    },
+
+    _handleScrollAnimations() {
+        const containerRect = this.container.getBoundingClientRect();
+        const sections = this.container.querySelectorAll('.linesection');
+        
+        sections.forEach(section => {
+            const sectionRect = section.getBoundingClientRect();
+            const sectionTop = sectionRect.top - containerRect.top;
+            const sectionBottom = sectionRect.bottom - containerRect.top;
+            
+            const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
+
+            
+            if (isVisible) {
+                    section.dataset.currentlyVisible = 'true';
+                    section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            } else {
+                if (section.dataset.currentlyVisible === 'true') {
+                    section.dataset.currentlyVisible = 'false';
+                    section.style.animation = 'none';
+                    section.style.opacity = '0';
+                    section.style.transform = 'scale(0.9)';
+                }
+            }
+        });
+    },
+    
+    _createLineSection(line) {
+        const lineNameText = lineName[line] || t("unknown_line");
+        const lineColor = lineColors[line] || '#000000';
+        const textColor = getTextColor(lineColor);
+        
+        const lineSection = document.createElement('div');
+        lineSection.dataset.line = line;
+        lineSection.classList.add('linesection', 'ripple-container');
+        
+        lineSection.style.cssText = `
+            background-color: ${lineColor} !important;
+            margin-bottom: 10px;
+            margin-left: 10px;
+            margin-right: 10px;
+            padding: 10px;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
+        `;
+
+        
+        // Beams
+        const beam1 = document.createElement('div');
+        beam1.classList.add('light-beam', 'beam1');
+        lineSection.appendChild(beam1);
+        
+        const beam2 = document.createElement('div');
+        beam2.classList.add('light-beam', 'beam2');
+        lineSection.appendChild(beam2);
+        
+        const beam3 = document.createElement('div');
+        beam3.classList.add('light-beam', 'beam3');
+        lineSection.appendChild(beam3);
+        
+        // Favorite button
+        const favoriteButton = document.createElement('button');
+        favoriteButton.className = 'favorite-button';
+        favoriteButton.style.cssText = `
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: none;
+            border: none;
+            color: ${textColor};
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 10;
+        `;
+        favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
+        favoriteButton.onclick = async (e) => {
+            e.stopPropagation();
+            const isFavorite = favoriteLines.has(line);
+            await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
+        };
+        
+        // Title
+        const lineTitle = document.createElement('div');
+        lineTitle.className = 'line-title';
+        lineTitle.textContent = `${t("line")} ${lineNameText}`;
+        lineTitle.style.cssText = `
+            font-size: 23px;
+            font-weight: 500;
+            color: ${textColor};
+            padding-right: 30px;
+            padding-left: 10px;
+            position: relative;
+            z-index: 1;
+        `;
+        
+        // Destinations container
+        const destinationsContainer = document.createElement('div');
+        destinationsContainer.className = 'destinations-container';
+        destinationsContainer.style.cssText = `
+            position: relative;
+            z-index: 1;
+        `;
+        
+        lineSection.appendChild(lineTitle);
+        lineSection.appendChild(favoriteButton);
+        lineSection.appendChild(destinationsContainer);
+        
+        lineSection.onmouseover = () => {
+            lineSection.style.transform = 'scale(0.99)';
+            lineSection.style.opacity = '0.9';
+            lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
+            lineSection.style.backgroundColor = lineColor;
+        };
+        
+        lineSection.onmouseout = () => {
+            lineSection.style.transform = 'scale(1)';
+            lineSection.style.opacity = '1';
+            lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
+            lineSection.style.backgroundColor = lineColor;
+        };
+        
+        lineSection.onclick = () => {
+            if (localStorage.getItem('astuce') !== 'true') {
+                localStorage.setItem('astuce', 'true');
+                toastBottomRight.info(`${t("astuceselectligne")}`);
+            }
+            safeVibrate([50, 30, 50], true);
+            soundsUX('MBF_Menu_LineSelect');
+            selectedLine = line;
+            filterByLine(line);
+            closeMenu();
+        };
+        
+        return {
+            element: lineSection,
+            destinationsContainer: destinationsContainer,
+            destinations: new Map(),
+            lineColor: lineColor,
+            textColor: textColor
+        };
+    },
+    
+    _addDestinationToSection(lineSection, line, destination, buses) {
+        const destinationSection = document.createElement('div');
+        destinationSection.className = 'destination-section';
+        destinationSection.dataset.destination = destination;
+        destinationSection.style.cssText = `
+            margin-top: 5px;
+            padding-left: 10px;
+        `;
+        
+        const destinationTitle = document.createElement('div');
+        destinationTitle.className = 'destination-title';
+        destinationTitle.textContent = `➜ ${destination}`;
+        destinationTitle.style.cssText = `
+            font-size: 19px;
+            font-weight: normal;
+            margin-bottom: 4px;
+            color: ${lineSection.textColor};
+        `;
+        
+        const busesContainer = document.createElement('div');
+        busesContainer.className = 'buses-container';
+        
+        destinationSection.appendChild(destinationTitle);
+        destinationSection.appendChild(busesContainer);
+        
+        const destData = {
+            element: destinationSection,
+            busesContainer: busesContainer,
+            buses: new Map()
+        };
+        
+        buses.forEach(bus => {
+            const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
+            destData.buses.set(bus.parkNumber, busItem);
+            busesContainer.appendChild(busItem);
+        });
+        
+        lineSection.destinations.set(destination, destData);
+        lineSection.destinationsContainer.appendChild(destinationSection);
+    },
+    
+    _createBusItem(bus, lineColor, textColor) {
+        const marker = bus.vehicle;
+        const tripId = marker.vehicleData?.trip?.tripId;
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        
+        const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
+        
+        const busItem = document.createElement('div');
+        busItem.className = 'bus-item ripple-container menu-item';
+        busItem.dataset.busId = bus.parkNumber;
+        busItem.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 7px 0px rgb(0 0 0 / 24%);
+            cursor: pointer;
+            font-family: League Spartan;
+            color: ${textColor};
+            padding: 5px 10px;
+            margin-bottom: 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            position: relative;
+        `;
+        
+        const vehicleLabel = bus.vehicleData?.vehicle?.label || 
+                            bus.vehicleData?.vehicle?.id || 
+                            "Véhicule inconnu";
+        const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
+        
+        const backgroundContainer = document.createElement('div');
+        backgroundContainer.className = 'background-thumbnail';
+        backgroundContainer.style.cssText = `
+            position: absolute;
+            right: 8px;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            pointer-events: none;
+            opacity: 0.2;
+            z-index: 0;
+            scale: 1.7;
+        `;
+        backgroundContainer.innerHTML = vehicleBrandHtmlLight;
+        
+        const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
+        if (thumbnailImg) {
+            thumbnailImg.style.height = '80%';
+            thumbnailImg.style.width = 'auto';
+            thumbnailImg.style.maxHeight = '40px';
+            thumbnailImg.style.objectFit = 'contain';
+        }
+        
+        const frontContent = document.createElement('div');
+        frontContent.className = 'bus-front-content';
+        frontContent.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        `;
+        
+        const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
+        const busIdBox = document.createElement('div');
+        busIdBox.className = 'bus-id';
+        busIdBox.textContent = displayLabel;
+        busIdBox.style.cssText = `
+            padding: 2px 8px;
+            background-color: #00000017;
+            border-radius: 6px;
+            font-weight: bold;
+            color: ${textColor};
+            display: inline-block;
+            text-align: center;
+            padding: 5px 10px;
+        `;
+        
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'bus-info-container';
+        contentContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        `;
+        
+        const mainText = document.createElement('div');
+        mainText.className = 'bus-main-text';
+        mainText.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2em;
+            font-weight: 500;
+            color: ${textColor};
+        `;
+        
+        const infoText = document.createElement('span');
+        infoText.textContent = nextStopInfo;
+        mainText.appendChild(infoText);
+        
+        const arrivalText = document.createElement('div');
+        arrivalText.className = 'bus-arrival-text';
+        arrivalText.textContent = terminusInfo;
+        arrivalText.style.cssText = `
+            font-size: 0.9em;
+            opacity: 0.8;
+            color: ${textColor};
+        `;
+        
+        contentContainer.appendChild(mainText);
+        contentContainer.appendChild(arrivalText);
+        
+        frontContent.appendChild(busIdBox);
+        frontContent.appendChild(contentContainer);
+        
+        busItem.appendChild(backgroundContainer);
+        busItem.appendChild(frontContent);
+        
+        busItem.onclick = (event) => {
+            event.stopPropagation();
+            safeVibrate([50, 300, 50, 30, 50], true);
+            soundsUX('MBF_Menu_VehicleSelect');
+            map.setView(bus.vehicle.getLatLng(), 15);
+            bus.vehicle.openPopup();
+            closeMenu();
+            if (selectedLine) resetMapView();
+        };
+        
+        return busItem;
+    },
+    
+    _updateLine(line, destinations) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const newDestinations = new Set(Object.keys(destinations));
+        const currentDestinations = new Set(lineSection.destinations.keys());
+        
+        for (const dest of currentDestinations) {
+            if (!newDestinations.has(dest)) {
+                this._removeDestination(line, dest);
+            }
+        }
+        
+        for (const dest of newDestinations) {
+            if (lineSection.destinations.has(dest)) {
+                this._updateDestination(line, dest, destinations[dest]);
+            } else {
+                this._addDestinationToSection(lineSection, line, dest, destinations[dest]);
+            }
+        }
+    },
+    
+    _addLine(line, destinations) {
+        const lineSection = this._createLineSection(line);
+        this.sections.set(line, lineSection);
+        
+        const sortedLines = this._getSortedLines();
+        const index = sortedLines.indexOf(line);
+        
+        if (index === -1 || index === sortedLines.length - 1) {
+            this.container.appendChild(lineSection.element);
+        } else {
+            const nextLine = sortedLines[index + 1];
+            const nextElement = this.sections.get(nextLine)?.element;
+            if (nextElement) {
+                this.container.insertBefore(lineSection.element, nextElement);
+            } else {
+                this.container.appendChild(lineSection.element);
+            }
+        }
+        
+        Object.keys(destinations).sort().forEach(dest => {
+            this._addDestinationToSection(lineSection, line, dest, destinations[dest]);
+        });
+    },
+    
+    _removeLine(line) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        lineSection.element.remove();
+        this.sections.delete(line);
+    },
+    
+    _updateDestination(line, destination, buses) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const destSection = lineSection.destinations.get(destination);
+        if (!destSection) return;
+        
+        const newBuses = new Set(buses.map(b => b.parkNumber));
+        const currentBuses = new Set(destSection.buses.keys());
+        
+        for (const busId of currentBuses) {
+            if (!newBuses.has(busId)) {
+                const busItem = destSection.buses.get(busId);
+                if (busItem) busItem.remove();
+                destSection.buses.delete(busId);
+            }
+        }
+        
+        buses.forEach(bus => {
+            if (destSection.buses.has(bus.parkNumber)) {
+                this._updateBusItem(destSection.buses.get(bus.parkNumber), bus);
+            } else {
+                const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
+                destSection.buses.set(bus.parkNumber, busItem);
+                destSection.busesContainer.appendChild(busItem);
+            }
+        });
+    },
+    
+    _removeDestination(line, destination) {
+        const lineSection = this.sections.get(line);
+        if (!lineSection) return;
+        
+        const destSection = lineSection.destinations.get(destination);
+        if (!destSection) return;
+        
+        destSection.element.remove();
+        lineSection.destinations.delete(destination);
+    },
+    
+    _updateBusItem(busItem, bus) {
+        const marker = bus.vehicle;
+        const tripId = marker.vehicleData?.trip?.tripId;
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        
+        const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
+        
+        const mainTextSpan = busItem.querySelector('.bus-main-text span');
+        const arrivalText = busItem.querySelector('.bus-arrival-text');
+        
+        if (mainTextSpan) mainTextSpan.textContent = nextStopInfo;
+        if (arrivalText) arrivalText.textContent = terminusInfo;
+    },
+    
+    _getBusInfo(marker, tripId, stopId) {
+        const currentStatus = marker.vehicleData?.currentStatus;
+        const nextStops = tripUpdates[tripId]?.nextStops || [];
+        const line = marker.line;
+        
+        let currentStopIndex = nextStops.findIndex(stop => 
+            stop.stopId.replace("0:", "") === stopId
+        );
+        
+        let filteredStops = [];
+        if (currentStopIndex !== -1) {
+            filteredStops = nextStops.slice(currentStopIndex).filter(stop => 
+                stop.delay === null || stop.delay >= -60
+            );
+        } else {
+            filteredStops = nextStops.filter(stop => 
+                stop.delay === null || stop.delay > 0
+            );
+        }
+        
+        const statusMap = {
+            0: t("notinservice"),
+            1: t("dooropen"),
+            2: t("enservice")
+        };
+        const status = statusMap[currentStatus] || 'Inconnu';
+        
+        let nextStopInfo = '';
+        let terminusInfo = '';
+        
+        if (filteredStops.length === 0) {
+            nextStopInfo = t("unavailabletrip");
+        } else {
+            const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
+            const firstStopDelay = filteredStops[0].delay || 0;
+            const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
+            
+            if (line === 'Inconnu') {
+                nextStopInfo = t("unknownline");
+            } else {
+                nextStopInfo = firstStopName;
+            }
+            
+            if (filteredStops.length > 1) {
+                const lastStop = filteredStops[filteredStops.length - 1];
+                const timeLeft = lastStop.delay;
+                const timeLeftText = timeLeft !== null 
+                    ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                    : '';
+                terminusInfo = `${t("arrivalat")} ${marker.destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
+            } else {
+                terminusInfo = `${t("indirectionof")} ${marker.destination}.`;
+            }
+        }
+        
+        return { nextStopInfo, terminusInfo };
+    },
+    
+    _updateStatistics() {
+        const statsElement = document.getElementById('menu-statistics');
+        if (!statsElement) return;
+        
+        let totalLines = Object.keys(this.busesByLineAndDestination).length;
+        let totalVehicles = 0;
+        let activeLines = 0;
+        
+        Object.values(this.busesByLineAndDestination).forEach(destinations => {
+            let lineVehicleCount = 0;
+            Object.values(destinations).forEach(buses => {
+                lineVehicleCount += buses.length;
+            });
+            totalVehicles += lineVehicleCount;
+            if (lineVehicleCount > 0) activeLines++;
+        });
+        
+        const sameNumber = (activeLines === totalLines);
+        
+        if (sameNumber) {
+            statsElement.innerHTML = `
+                <div>${t("network")}</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    ${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
+                </div>
+            `;
+        } else {
+            statsElement.innerHTML = `
+                <div>${t("network")}</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    ${activeLines}/${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
+                </div>
+            `;
+        }
+    },
+    
+    _getSortedLines() {
+        return Object.keys(this.busesByLineAndDestination).sort((a, b) => {
+            const aIsFavorite = favoriteLines.has(a);
+            const bIsFavorite = favoriteLines.has(b);
+            
+            if (aIsFavorite && !bIsFavorite) return -1;
+            if (!aIsFavorite && bIsFavorite) return 1;
+            
+            const getSortKey = (line) => {
+                let typeValue = 1000;
+                
+                if (/^[A-Za-z]$/.test(line)) {
+                    typeValue = 100;
+                } else if (/^\d+$/.test(line)) {
+                    typeValue = 200;
+                } else if (/^\d+[A-Za-z]+$/.test(line)) {
+                    const numPart = parseInt(line.match(/^\d+/)[0], 10);
+                    return 200 + numPart + 0.5;
+                }
+                
+                if (typeValue === 200) {
+                    return typeValue + parseInt(line, 10);
+                }
+                
+                if (typeValue === 100) {
+                    return typeValue + line.charCodeAt(0);
+                }
+                
+                return typeValue;
+            };
+            
+            const valueA = getSortKey(a);
+            const valueB = getSortKey(b);
+            
+            if (valueA !== valueB) {
+                return valueA - valueB;
+            }
+            
+            return a.localeCompare(b);
+        });
+    }
+};
+
+function updateMenu() {
+    const busesByLineAndDestination = {};
+    
+    markerPool.active.forEach((marker, id) => {
+        const line = marker.line;
+        const destination = marker.destination || "Inconnue";
+        
+        if (!busesByLineAndDestination[line]) {
+            busesByLineAndDestination[line] = {};
+        }
+        
+        if (!busesByLineAndDestination[line][destination]) {
+            busesByLineAndDestination[line][destination] = [];
+        }
+        
+        busesByLineAndDestination[line][destination].push({
+            parkNumber: marker.id,
+            vehicle: marker,
+            vehicleData: marker.vehicleData,
+            nextStops: marker.rawData?.nextStops || []
+        });
+    });
+    
+    if (!MenuManager.isInitialized || MenuManager.sections.size === 0) {
+        MenuManager.generateInitialStructure(busesByLineAndDestination);
+    } else {
+        MenuManager.updateData(busesByLineAndDestination);
+    }
+}
+
+
+const favoriteLines = new Set(JSON.parse(localStorage.getItem('favoriteLines') || '[]'));
+
+const ANIMATION_CONFIG = {
+    DURATION: 400,
+    POP_DURATION: 100,
+    SPRING_TIMING: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    SCALE_UP: 1.03,
+    ITEM_MARGIN: 10
+};
+
+let isAnimating = false;
+
+function getAbsolutePositions(menu) {
+    const sections = Array.from(menu.querySelectorAll('.linesection'));
+    const positions = new Map();
+    let accumulatedHeight = 0;
+    
+    sections.forEach(section => {
+        const rect = section.getBoundingClientRect();
+        positions.set(section, {
+            top: accumulatedHeight,
+            height: rect.height,
+            index: sections.indexOf(section)
+        });
+        accumulatedHeight += rect.height + ANIMATION_CONFIG.ITEM_MARGIN;
+    });
+    
+    return { sections, positions };
+}
+
+function getTargetIndex(sections, movingSection, isFavorite, favoriteLines) {
+    const movingLine = movingSection.dataset.line;
+    
+    if (isFavorite) {
+        const firstNonFavoriteIndex = sections.findIndex(section => 
+            !favoriteLines.has(section.dataset.line)
+        );
+        
+        if (firstNonFavoriteIndex === sections.indexOf(movingSection)) {
+            return -1;
+        }
+        
+        return firstNonFavoriteIndex === -1 ? sections.length : firstNonFavoriteIndex;
+    } else {
+        let targetIndex = 0; 
+        
+        for (let i = 0; i < sections.length; i++) {
+            const sectionLine = sections[i].dataset.line;
+            
+            if (favoriteLines.has(sectionLine)) {
+                const movingNum = parseInt(movingLine);
+                const sectionNum = parseInt(sectionLine);
+                
+                if (!isNaN(movingNum) && !isNaN(sectionNum)) {
+                    if (movingNum < sectionNum) {
+                        return i;
+                    }
+                } else if (movingLine.localeCompare(sectionLine) < 0) {
+                    return i;
+                }
+            } else {
+                return i; 
+            }
+        }
+        
+        return sections.length;
+    }
+}
+
+function prepareSectionsForAnimation(sections) {
+    sections.forEach(section => {
+        section.style.transition = 'none';
+        section.style.position = 'relative';
+        section.style.zIndex = '1';
+        section.style.transform = 'translateY(0)';
+    });
+    
+    sections[0].offsetHeight;
+}
+
+async function animateFavoriteTransition(button, lineSection, line, isFavorite) {
+    if (isAnimating) return;
+    isAnimating = true;
+    
+    const menu = document.getElementById('menu');
+    if (!menu || !lineSection) return;
+    
+    try {
+        menu.style.pointerEvents = 'none';
+        button.style.pointerEvents = 'none';
+        
+        const { sections, positions } = getAbsolutePositions(menu);
+        const currentIndex = sections.indexOf(lineSection);
+        
+        if (isFavorite) {
+            favoriteLines.delete(line);
+        } else {
+            favoriteLines.add(line);
+        }
+        
+        const targetIndex = getTargetIndex(sections, lineSection, isFavorite, favoriteLines);
+        
+        if (targetIndex === -1 || currentIndex === -1 || targetIndex === currentIndex) {
+            await animateRemoveFavorite(button, lineSection, sections, positions, currentIndex, targetIndex);
+            try {
+                localStorage.setItem('favoriteLines', JSON.stringify([...favoriteLines]));
+            } catch (error) {
+                console.error('Error saving favorite', error);
+            }
+            await cleanup(menu, button);
+            return;
+        }
+        
+        if (isFavorite) {
+            await animateRemoveFavorite(button, lineSection, sections, positions, currentIndex, targetIndex);
+            button.innerHTML = '☆';
+        } else {
+            await animateAddFavorite(button, lineSection, sections, positions, currentIndex, targetIndex);
+        }
+        
+        try {
+            localStorage.setItem('favoriteLines', JSON.stringify([...favoriteLines]));
+        } catch (error) {
+            console.error('Error saving favorite', error);
+        }
+        
+    } catch (error) {
+        console.error('Animation err', error);
+    } finally {
+        await cleanup(menu, button);
+    }
+}
+
+async function animateAddFavorite(button, lineSection, sections, positions, currentIndex, targetIndex) {
+    prepareSectionsForAnimation(sections);
+    
+    lineSection.style.zIndex = '2';
+    lineSection.style.transition = `all ${ANIMATION_CONFIG.DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+    
+    const currentPos = positions.get(lineSection);
+    let targetY = 0;
+    
+    for (let i = 0; i < targetIndex; i++) {
+        if (i !== currentIndex) {
+            const section = sections[i];
+            const sectionPos = positions.get(section);
+            targetY += sectionPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
+        }
+    }
+    
+    const deltaY = targetY - currentPos.top;
+    
+    sections.forEach((section, index) => {
+        if (section !== lineSection) {
+            let displacement = 0;
+            
+            if (currentIndex < targetIndex) {
+                if (index > currentIndex && index <= targetIndex) {
+                    displacement = -(currentPos.height + ANIMATION_CONFIG.ITEM_MARGIN);
+                }
+            } else {
+                if (index >= targetIndex && index < currentIndex) {
+                    displacement = currentPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
+                }
+            }
+            
+            if (displacement !== 0) {
+                section.style.transition = `transform ${ANIMATION_CONFIG.DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
+                section.style.transform = `translateY(${displacement}px)`;
+            }
+        }
+    });
+    
+    lineSection.style.transform = `scale(0.95)`;
+    await new Promise(r => setTimeout(r, 100));
+    lineSection.style.transform = `translateY(${deltaY}px) scale(0.95)`;
+    await new Promise(r => setTimeout(r, ANIMATION_CONFIG.DURATION - 150));
+    lineSection.style.transform = `translateY(${deltaY}px) scale(1)`;
+    
+    button.innerHTML = '★';
+    button.style.transform = 'scale(1.2)';
+    await new Promise(r => setTimeout(r, 100));
+    button.style.transform = 'scale(1)';
+}
+
+async function animateRemoveFavorite(button, lineSection, sections, positions, currentIndex, targetIndex) {
+    prepareSectionsForAnimation(sections);
+    
+    lineSection.style.zIndex = '2';
+    lineSection.style.transition = `all ${ANIMATION_CONFIG.DURATION}ms ${ANIMATION_CONFIG.SPRING_TIMING}`;
+    
+    const currentPos = positions.get(lineSection);
+    let targetY = 0;
+    
+    if (targetIndex === -1) {
+        targetIndex = sections.length;
+        sections.forEach((section, idx) => {
+            if (idx !== currentIndex) {
+                const sectionPos = positions.get(section);
+                targetY += sectionPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
+            }
+        });
+    } else {
+        for (let i = 0; i < targetIndex; i++) {
+            if (i !== currentIndex) {
+                const section = sections[i];
+                const sectionPos = positions.get(section);
+                targetY += sectionPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
+            }
+        }
+    }
+    
+    const deltaY = targetY - currentPos.top;
+    
+    sections.forEach((section, index) => {
+        if (section !== lineSection) {
+            let displacement = calculateDisplacement(index, currentIndex, targetIndex, 
+                currentPos.height + ANIMATION_CONFIG.ITEM_MARGIN);
+            
+            if (displacement !== 0) {
+                section.style.transition = `transform ${ANIMATION_CONFIG.DURATION}ms ${ANIMATION_CONFIG.SPRING_TIMING}`;
+                section.style.transform = `translateY(${displacement}px)`;
+            }
+        }
+    });
+    
+    await animateMovingSection(lineSection, deltaY);
+    
+    button.style.transform = 'scale(0.8)';
+    button.innerHTML = '☆';
+    await new Promise(r => setTimeout(r, 100));
+    button.style.transform = 'scale(1)';
+}
+
+function calculateDisplacement(index, currentIndex, targetIndex, sectionHeight) {
+    if (targetIndex === -1) {
+        return index > currentIndex ? -sectionHeight : 0;
+    }
+    
+    if (currentIndex < targetIndex) {
+        return (index > currentIndex && index <= targetIndex) ? -sectionHeight : 0;
+    } else {
+        return (index >= targetIndex && index < currentIndex) ? sectionHeight : 0;
+    }
+}
+
+async function animateMovingSection(section, deltaY) {
+    section.style.transform = `scale(${ANIMATION_CONFIG.SCALE_UP})`;
+    await new Promise(r => setTimeout(r, ANIMATION_CONFIG.POP_DURATION));
+    
+    section.style.transform = `translateY(${deltaY}px) scale(${ANIMATION_CONFIG.SCALE_UP})`;
+    await new Promise(r => setTimeout(r, ANIMATION_CONFIG.DURATION - 150));
+    
+    section.style.transform = `translateY(${deltaY}px) scale(1)`;
+}
+
+function updateFavoriteState(button, line, isFavorite) {
+    if (isFavorite) {
+        favoriteLines.delete(line);
+        button.innerHTML = '☆';
+    } else {
+        favoriteLines.add(line);
+        button.innerHTML = '★';
+    }
+    
+    try {
+        localStorage.setItem('favoriteLines', JSON.stringify([...favoriteLines]));
+    } catch (error) {
+        console.error('Error saving favorite', error);
+    }
+}
+
+async function cleanup(menu, button) {
+    await new Promise(r => setTimeout(r, 50));
+    
+    const sections = menu.querySelectorAll('.linesection');
+    sections.forEach(section => {
+        section.style.transform = '';
+        section.style.transition = '';
+        section.style.zIndex = '';
+        section.style.position = '';
+    });
+    
+    menu.style.pointerEvents = 'auto';
+    button.style.pointerEvents = 'auto';
+    
+    updateMenu();
+    isAnimating = false;
+}
+
+const animationStyle = document.createElement('style');
+animationStyle.textContent = `
+    .linesection {
+        transition: transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
+    }
+    
+    .linesection.removing {
+        animation: remove-favorite 0.3s ease-out forwards;
+    }
+    
+    @keyframes remove-favorite {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        50% {
+            transform: scale(1.05);
+            opacity: 0.8;
+        }
+        100% {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.02);
+        }
+    }
+    
+    .favorite-button {
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    }
+    
+    .favorite-button:hover {
+        transform: scale(1.1);
+    }
+    
+    .favorite-button:active {
+        transform: scale(0.9);
+    }
+    
+    #menu-search-input::placeholder {
+        color: rgba(255, 255, 255, 0.75);
+    }
+    
+    .quick-filter-btn.active {
+        background: rgba(0, 0, 0, 0.69) !important;
+        border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+
+    @keyframes scaleIn {
+    0% {
+        opacity: 0;
+        filter: blur(8px);
+        transform: scale(0.85) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0px);
+        transform: scale(1) translateY(0);
+    }
+}
+`;
+document.head.appendChild(animationStyle);
+
+function closeMenu() {
+    safeVibrate([30], true);
+    soundsUX('MBF_SelectedVehicle_DoorClose');
+    const menu = document.getElementById('menu');
+    const menubottom1 = document.getElementById('menubtm');
+    const mapp = document.getElementById('map');
+    mapp.style.opacity = '1';
+    
+    menu.classList.add('hidden');
+    if (localStorage.getItem('transparency') === 'true') {
+        const map = document.getElementById('map');
+        map.classList.remove('hiddennotransition');
+        map.classList.add('appearnotransition');
+        map.classList.remove('hidden');
+        map.classList.remove('appear');
+    } else {
+        const map = document.getElementById('map');
+        map.classList.remove('hidden');
+        map.classList.add('appear');
+        map.classList.remove('hiddennotransition');
+        map.classList.remove('appearnotransition');
+    }
+
+    window.isMenuShowed = false;
+    menu.addEventListener('animationend', function onAnimationEnd(event) {
+        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
+            menu.style.display = 'none';
+        }
+    });
+    isMenuVisible = false;
+    menubottom1.style.display = 'flex';
+    setTimeout(() => {
+        menubottom1.classList.remove('slide-upb');
+        menubottom1.classList.add('slide-downb');
+    }, 10);
+}
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -5115,7 +7161,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             fn: clickHandler
                         });
                     }
-                }, 150); 
+                }, 10); 
                 
                 marker.minimalPopup = minimalTooltip;
                 TooltipManager.active.set(markerId, minimalTooltip);
@@ -5146,7 +7192,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             console.error('Erreur suppression tooltip Safari:', error);
                         }
                     }
-                }, 300); // Délai plus long pour Safari
+                }, 20); // Délai plus long pour Safari
             }
         } else {
             const tooltipToRemove = marker.minimalPopup;
@@ -5327,8 +7373,8 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
             }
 
 
-            map.on('zoomend', debounce(updateMinimalPopups, 100));
-            map.on('moveend', debounce(updateMinimalPopups, 150));
+            map.on('zoomend', debounce(updateMinimalPopups, 10));
+            map.on('moveend', debounce(updateMinimalPopups, 30));
 
         }
 });
@@ -5343,24 +7389,46 @@ activeIds.forEach(id => {
     }
 });
 
-setInterval(() => {
-    if (textColorCache.size > 20) {
-        textColorCache.clear();
-    }
-}, 180000);
-
         
 let isMenuVisible = true;
 
-const favoriteLines = new Set(JSON.parse(localStorage.getItem('favoriteLines') || '[]'));
-
-const ANIMATION_CONFIG = {
-    DURATION: 400,
-    POP_DURATION: 100,
-    SPRING_TIMING: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-    SCALE_UP: 1.03,
-    ITEM_MARGIN: 10
-};
+// ==================== VIRTUAL SCROLLING ====================
+class VirtualScroller {
+    constructor(container, itemHeight = 80) {
+        this.container = container;
+        this.itemHeight = itemHeight;
+        this.visibleItems = [];
+        this.allItems = [];
+        this.scrollTop = 0;
+        this.containerHeight = 0;
+    }
+    
+    setItems(items) {
+        this.allItems = items;
+        this.updateVisibleItems();
+    }
+    
+    updateVisibleItems() {
+        this.containerHeight = this.container.clientHeight;
+        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
+        const endIndex = Math.ceil((this.scrollTop + this.containerHeight) / this.itemHeight);
+        
+        this.visibleItems = this.allItems.slice(
+            Math.max(0, startIndex - 2),
+            Math.min(this.allItems.length, endIndex + 2)
+        );
+        
+        return {
+            items: this.visibleItems,
+            offsetTop: Math.max(0, (startIndex - 2) * this.itemHeight)
+        };
+    }
+    
+    onScroll(scrollTop) {
+        this.scrollTop = scrollTop;
+        return this.updateVisibleItems();
+    }
+}
 
 function createNearbyVehiclesControl() {
     if (window.nearbyVehiclesControlInstance) {
@@ -5611,1178 +7679,8 @@ function createNearbyVehiclesControl() {
 
 createNearbyVehiclesControl();
 
-let isAnimating = false;
-
-function getAbsolutePositions(menu) {
-    const sections = Array.from(menu.querySelectorAll('.linesection'));
-    const positions = new Map();
-    let accumulatedHeight = 0;
-    
-    sections.forEach(section => {
-        const rect = section.getBoundingClientRect();
-        positions.set(section, {
-            top: accumulatedHeight,
-            height: rect.height,
-            index: sections.indexOf(section)
-        });
-        accumulatedHeight += rect.height + ANIMATION_CONFIG.ITEM_MARGIN;
-    });
-    
-    return { sections, positions };
-}
-
-function getTargetIndex(sections, movingSection, isFavorite, favoriteLines) {
-    const movingLine = movingSection.dataset.line;
-    
-    if (isFavorite) {
-        const firstNonFavoriteIndex = sections.findIndex(section => 
-            !favoriteLines.has(section.dataset.line)
-        );
-        
-        if (firstNonFavoriteIndex === sections.indexOf(movingSection)) {
-            return -1;
-        }
-        
-        return firstNonFavoriteIndex === -1 ? sections.length : firstNonFavoriteIndex;
-    } else {
-        let targetIndex = 0; 
-        
-        for (let i = 0; i < sections.length; i++) {
-            const sectionLine = sections[i].dataset.line;
-            
-            if (favoriteLines.has(sectionLine)) {
-                const movingNum = parseInt(movingLine);
-                const sectionNum = parseInt(sectionLine);
-                
-                if (!isNaN(movingNum) && !isNaN(sectionNum)) {
-                    if (movingNum < sectionNum) {
-                        return i;
-                    }
-                } else if (movingLine.localeCompare(sectionLine) < 0) {
-                    return i;
-                }
-            } else {
-                return i; 
-            }
-        }
-        
-        return sections.length;
-    }
-}
-
-function prepareSectionsForAnimation(sections) {
-    sections.forEach(section => {
-        section.style.transition = 'none';
-        section.style.position = 'relative';
-        section.style.zIndex = '1';
-        section.style.transform = 'translateY(0)';
-    });
-    
-    // Force reflow
-    sections[0].offsetHeight;
-}
-
-async function animateFavoriteTransition(button, lineSection, line, isFavorite) {
-    if (isAnimating) return;
-    isAnimating = true;
-    
-    const menu = document.getElementById('menu');
-    if (!menu || !lineSection) return;
-    
-    try {
-        menu.style.pointerEvents = 'none';
-        button.style.pointerEvents = 'none';
-        
-        const { sections, positions } = getAbsolutePositions(menu);
-        const currentIndex = sections.indexOf(lineSection);
-        
-        if (isFavorite) {
-            favoriteLines.delete(line);
-        } else {
-            favoriteLines.add(line);
-        }
-        
-        const targetIndex = getTargetIndex(sections, lineSection, isFavorite, favoriteLines);
-        
-        if (targetIndex === -1 || currentIndex === -1 || targetIndex === currentIndex) {
-            await animateRemoveFavorite(button, lineSection, sections, positions, currentIndex, targetIndex);
-            try {
-                localStorage.setItem('favoriteLines', JSON.stringify([...favoriteLines]));
-            } catch (error) {
-                console.error('Error saving favorite', error);
-            }
-            await cleanup(menu, button);
-            return;
-        }
-        
-        if (isFavorite) {
-            await animateRemoveFavorite(button, lineSection, sections, positions, currentIndex, targetIndex);
-            button.innerHTML = '☆';
-        } else {
-            await animateAddFavorite(button, lineSection, sections, positions, currentIndex, targetIndex);
-        }
-        
-        try {
-            localStorage.setItem('favoriteLines', JSON.stringify([...favoriteLines]));
-        } catch (error) {
-            console.error('Error saving favorite', error);
-        }
-        
-    } catch (error) {
-        console.error('Animation err', error);
-    } finally {
-        await cleanup(menu, button);
-    }
-}
-
-async function animateAddFavorite(button, lineSection, sections, positions, currentIndex, targetIndex) {
-    prepareSectionsForAnimation(sections);
-    
-    lineSection.style.zIndex = '2';
-    lineSection.style.transition = `all ${ANIMATION_CONFIG.DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
-    
-    const currentPos = positions.get(lineSection);
-    let targetY = 0;
-    
-    for (let i = 0; i < targetIndex; i++) {
-        if (i !== currentIndex) {
-            const section = sections[i];
-            const sectionPos = positions.get(section);
-            targetY += sectionPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
-        }
-    }
-    
-    const deltaY = targetY - currentPos.top;
-    
-    sections.forEach((section, index) => {
-        if (section !== lineSection) {
-            let displacement = 0;
-            
-            if (currentIndex < targetIndex) {
-                if (index > currentIndex && index <= targetIndex) {
-                    displacement = -(currentPos.height + ANIMATION_CONFIG.ITEM_MARGIN);
-                }
-            } else {
-                if (index >= targetIndex && index < currentIndex) {
-                    displacement = currentPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
-                }
-            }
-            
-            if (displacement !== 0) {
-                section.style.transition = `transform ${ANIMATION_CONFIG.DURATION}ms cubic-bezier(0.34, 1.56, 0.64, 1)`;
-                section.style.transform = `translateY(${displacement}px)`;
-            }
-        }
-    });
-    
-    lineSection.style.transform = `scale(0.95)`;
-    await new Promise(r => setTimeout(r, 100));
-    lineSection.style.transform = `translateY(${deltaY}px) scale(0.95)`;
-    await new Promise(r => setTimeout(r, ANIMATION_CONFIG.DURATION - 150));
-    lineSection.style.transform = `translateY(${deltaY}px) scale(1)`;
-    
-    button.innerHTML = '★';
-    button.style.transform = 'scale(1.2)';
-    await new Promise(r => setTimeout(r, 100));
-    button.style.transform = 'scale(1)';
-}
-
-async function animateRemoveFavorite(button, lineSection, sections, positions, currentIndex, targetIndex) {
-    prepareSectionsForAnimation(sections);
-    
-    lineSection.style.zIndex = '2';
-    lineSection.style.transition = `all ${ANIMATION_CONFIG.DURATION}ms ${ANIMATION_CONFIG.SPRING_TIMING}`;
-    
-    const currentPos = positions.get(lineSection);
-    let targetY = 0;
-    
-    if (targetIndex === -1) {
-        targetIndex = sections.length;
-        sections.forEach((section, idx) => {
-            if (idx !== currentIndex) {
-                const sectionPos = positions.get(section);
-                targetY += sectionPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
-            }
-        });
-    } else {
-        for (let i = 0; i < targetIndex; i++) {
-            if (i !== currentIndex) {
-                const section = sections[i];
-                const sectionPos = positions.get(section);
-                targetY += sectionPos.height + ANIMATION_CONFIG.ITEM_MARGIN;
-            }
-        }
-    }
-    
-    const deltaY = targetY - currentPos.top;
-    
-    sections.forEach((section, index) => {
-        if (section !== lineSection) {
-            let displacement = calculateDisplacement(index, currentIndex, targetIndex, 
-                currentPos.height + ANIMATION_CONFIG.ITEM_MARGIN);
-            
-            if (displacement !== 0) {
-                section.style.transition = `transform ${ANIMATION_CONFIG.DURATION}ms ${ANIMATION_CONFIG.SPRING_TIMING}`;
-                section.style.transform = `translateY(${displacement}px)`;
-            }
-        }
-    });
-    
-    await animateMovingSection(lineSection, deltaY);
-    
-    button.style.transform = 'scale(0.8)';
-    button.innerHTML = '☆';
-    await new Promise(r => setTimeout(r, 100));
-    button.style.transform = 'scale(1)';
-}
-
-function calculateDisplacement(index, currentIndex, targetIndex, sectionHeight) {
-    if (targetIndex === -1) {
-        return index > currentIndex ? -sectionHeight : 0;
-    }
-    
-    if (currentIndex < targetIndex) {
-        return (index > currentIndex && index <= targetIndex) ? -sectionHeight : 0;
-    } else {
-        return (index >= targetIndex && index < currentIndex) ? sectionHeight : 0;
-    }
-}
-
-async function animateMovingSection(section, deltaY) {
-    section.style.transform = `scale(${ANIMATION_CONFIG.SCALE_UP})`;
-    await new Promise(r => setTimeout(r, ANIMATION_CONFIG.POP_DURATION));
-    
-    section.style.transform = `translateY(${deltaY}px) scale(${ANIMATION_CONFIG.SCALE_UP})`;
-    await new Promise(r => setTimeout(r, ANIMATION_CONFIG.DURATION - 150));
-    
-    section.style.transform = `translateY(${deltaY}px) scale(1)`;
-}
-
-
-function updateFavoriteState(button, line, isFavorite) {
-    if (isFavorite) {
-        favoriteLines.delete(line);
-        button.innerHTML = '☆';
-    } else {
-        favoriteLines.add(line);
-        button.innerHTML = '★';
-    }
-    
-    try {
-        localStorage.setItem('favoriteLines', JSON.stringify([...favoriteLines]));
-    } catch (error) {
-        console.error('Error saving favorite', error);
-    }
-}
-
-
-
-async function cleanup(menu, button) {
-    await new Promise(r => setTimeout(r, 50));
-    
-    const sections = menu.querySelectorAll('.linesection');
-    sections.forEach(section => {
-        section.style.transform = '';
-        section.style.transition = '';
-        section.style.zIndex = '';
-        section.style.position = '';
-    });
-    
-    menu.style.pointerEvents = 'auto';
-    button.style.pointerEvents = 'auto';
-    
-    updateMenu();
-    isAnimating = false;
-}
-
-const animationStyle = document.createElement('style');
-animationStyle.textContent = `
-    .linesection {
-        transition: transform 0.2s  cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
-    }
-    
-    .linesection.removing {
-        animation: remove-favorite 0.3s ease-out forwards;
-    }
-    
-    @keyframes remove-favorite {
-        0% {
-            transform: scale(1);
-            opacity: 1;
-        }
-        50% {
-            transform: scale(1.05);
-            opacity: 0.8;
-        }
-        100% {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-    
-    .favorite-button {
-        transition: transform 0.2s ease-out, opacity 0.2s ease-out;
-    }
-    
-    .favorite-button:hover {
-        transform: scale(1.1);
-    }
-    
-    .favorite-button:active {
-        transform: scale(0.9);
-    }
-`;
-document.head.appendChild(animationStyle);
-
-function closeMenu() {
-    safeVibrate([30], true);
-    soundsUX('MBF_SelectedVehicle_DoorClose');
-    const menu = document.getElementById('menu');
-    const menubottom1 = document.getElementById('menubtm');
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
-    
-
-    const map = document.getElementById('map');
-    menu.classList.add('hidden');
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-
-    window.isMenuShowed = false;
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-    isMenuVisible = false;
-    menubottom1.style.display = 'flex';
-    setTimeout(() => {
-        menubottom1.classList.remove('slide-upb');
-        menubottom1.classList.add('slide-downb');
-    }, 10);
-}
-
-// ==================== VIRTUAL SCROLLING ====================
-class VirtualScroller {
-    constructor(container, itemHeight = 80) {
-        this.container = container;
-        this.itemHeight = itemHeight;
-        this.visibleItems = [];
-        this.allItems = [];
-        this.scrollTop = 0;
-        this.containerHeight = 0;
-    }
-    
-    setItems(items) {
-        this.allItems = items;
-        this.updateVisibleItems();
-    }
-    
-    updateVisibleItems() {
-        this.containerHeight = this.container.clientHeight;
-        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
-        const endIndex = Math.ceil((this.scrollTop + this.containerHeight) / this.itemHeight);
-        
-        this.visibleItems = this.allItems.slice(
-            Math.max(0, startIndex - 2),
-            Math.min(this.allItems.length, endIndex + 2)
-        );
-        
-        return {
-            items: this.visibleItems,
-            offsetTop: Math.max(0, (startIndex - 2) * this.itemHeight)
-        };
-    }
-    
-    onScroll(scrollTop) {
-        this.scrollTop = scrollTop;
-        return this.updateVisibleItems();
-    }
-}
-
 let menuScroller = null;
 // ==================== FIN VIRTUAL SCROLLING ====================
-
-function updateMenu() {
-    const menu = document.getElementById('menu');
-    menu.innerHTML = '';
-    
-    const topBar = document.createElement('div');
-    topBar.classList.add('menu-top-bar');
-    topBar.classList.add('animate-zoom-ripple')
-    topBar.classList.add('ripple-container');
-    topBar.style.cssText = `
-        position: sticky;
-        top: 10px;
-        left: 0;
-        background-color: #00000075;
-        color: white;
-        padding: 9px 33px 9px 9px;
-        display: flex;
-        align-items: center;
-        z-index: 1001;
-        transition: transform 0.3s ease;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        backdrop-filter: blur(17px); 
-        -webkit-backdrop-filter: blur(17px);
-        width: fit-content;
-        margin: 10px 15px 0px;
-        border-radius: 33px;
-    `;
-    menu.appendChild(topBar);
-    
-    const backButton = document.createElement('div');
-    backButton.innerHTML = `
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M15 6L9 12L15 18" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-    `;
-    backButton.style.cssText = `
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 8px;
-        margin-right: 15px;
-        border-radius: 33px;
-        transition: background 0.2s ease;
-    `;
-    backButton.onmouseover = () => backButton.style.background = 'rgba(255, 255, 255, 0.1)';
-    backButton.onmouseout = () => backButton.style.background = 'transparent';
-
-    backButton.onclick = closeMenu;
-    topBar.appendChild(backButton);
-
-    const title = document.createElement('div');
-    title.className = 'menu-title';
-    title.textContent = t("network"); 
-    title.style.cssText = `
-        font-size: 20px;
-        font-weight: 500;
-    `;
-    topBar.appendChild(title);
-
-    function updateMenuStatistics() {
-        let totalLines = Object.keys(busesByLineAndDestination).length;
-        let totalVehicles = 0;
-        let activeLines = 0;
-        
-        Object.values(busesByLineAndDestination).forEach(destinations => {
-            let lineVehicleCount = 0;
-            Object.values(destinations).forEach(buses => {
-                lineVehicleCount += buses.length;
-            });
-            totalVehicles += lineVehicleCount;
-            if (lineVehicleCount > 0) activeLines++;
-        });
-
-        let memeNombre = (activeLines === totalLines); // Déclaration manquante
-        
-        const titleElement = document.querySelector('.menu-top-bar .menu-title');
-        if (titleElement) {
-            if (memeNombre) {
-                titleElement.innerHTML = `
-                    <div>${t("network")}</div>
-                    <div style="font-size: 12px; opacity: 0.8;">
-                        ${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
-                    </div>
-                `;
-            } else {
-                titleElement.innerHTML = `
-                    <div>${t("network")}</div>
-                    <div style="font-size: 12px; opacity: 0.8;">
-                        ${activeLines}/${totalLines} ${t('lines')} • ${totalVehicles} ${t('vehicles')}
-                    </div>
-                `;
-            }
-        }
-    }
-
-    
-    const spacer = document.createElement('div');
-    spacer.style.height = '15px'; 
-    menu.appendChild(spacer);
-
-    let lastScrollTop = 0;
-    
-    menu.addEventListener('scroll', function() {
-        const scrollTop = menu.scrollTop;
-        
-        if (scrollTop > lastScrollTop && scrollTop > 50) {
-            topBar.style.transform = 'translateY(-100%)';
-        } else {
-            topBar.style.transform = 'translateY(0)';
-        }
-        
-        lastScrollTop = scrollTop;
-    });
-
-let isStandardView = localStorage.getItem('isStandardView') === 'true';
-
-function toggleMapView(forceState) {
-    if (forceState !== undefined) {
-        isStandardView = forceState;
-    } else {
-        isStandardView = !isStandardView;
-    }
-    
-    localStorage.setItem('isStandardView', isStandardView);
-
-    const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
-    const map = document.getElementById('map');
-    menu.classList.add('hidden');
-
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-    window.isMenuShowed = false;
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-    isMenuVisible = false;
-    menubottom1.style.display = 'flex';
-    setTimeout(() => {
-        menubottom1.classList.remove('slide-upb');
-        menubottom1.classList.add('slide-downb');
-    }, 10);
-
-    applyMapView();
-}
-
-function applyMapView() {
-    const currentDate = new Date();
-    const latitude = map.getCenter().lat;  
-    const longitude = map.getCenter().lng;  
-
-    map.eachLayer(function(layer) {
-        if (layer instanceof L.TileLayer) {
-            map.removeLayer(layer);
-        }
-    });
-
-    if (!isStandardView) {
-    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        minZoom: 6,
-        maxZoom: 19,
-    }).addTo(map);
-    
-    if (localStorage.getItem('darkmap') === 'true') {
-        const mapPane = mapInstance.getPanes().tilePane;
-        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-    } else {
-        const mapPane = mapInstance.getPanes().tilePane;
-        mapPane.style.filter = 'none';
-    }
-
-} else {
-    const mapPane = map.getPanes().tilePane;
-    mapPane.style.filter = 'none';
-    
-    L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 6,
-        maxZoom: 19,
-        format: 'image/jpeg',
-        style: 'normal'
-    }).addTo(map);
-
-}
-}
-
-
-let startY;
-let endY;
-let startX;
-let endX;
-const menubtm = document.getElementById('menubtm');
-let touchStartX = null;
-let touchStartTime = null;
-let isEdgeTouch = false;
-const edgeThreshold = 10;
-const minSwipeDistance = 20; 
-
-menubtm.addEventListener('touchstart', (e) => {
-    const touchStartY = e.touches[0].clientY;
-    const menuRect = menubtm.getBoundingClientRect();
-    
-    startX = e.touches[0].clientX;
-    
-    if (touchStartY >= menuRect.bottom - 50) {
-        startY = touchStartY;
-    } else {
-        startY = null;
-    }
-});
-
-menubtm.addEventListener('touchmove', (e) => {
-    if (startY !== null) {
-        endY = e.touches[0].clientY;
-    }
-    
-    endX = e.touches[0].clientX;
-});
-
-
-function isTouchNearRightEdge(x) {
-    return window.innerWidth - x <= edgeThreshold;
-}
-
-document.addEventListener('touchstart', function(e) {
-    const touchX = e.touches[0].clientX;
-    
-    if (isTouchNearRightEdge(touchX)) {
-        touchStartX = touchX;
-        touchStartTime = Date.now();
-        isEdgeTouch = true;
-    }
-}, { passive: true }); 
-
-document.addEventListener('touchmove', function(e) {
-    if (isEdgeTouch) {
-        const currentX = e.touches[0].clientX;
-    }
-}, { passive: true });
-
-document.addEventListener('touchend', function(e) {
-    if (isEdgeTouch && touchStartX !== null) {
-        const touchEndX = e.changedTouches[0].clientX;
-        const swipeDistance = touchStartX - touchEndX;
-        const touchDuration = Date.now() - touchStartTime;
-            if (swipeDistance > minSwipeDistance && touchDuration < 300) {
-                showMenu();
-            }
-        
-        isEdgeTouch = false;
-        touchStartX = null;
-        touchStartTime = null;
-    }
-});
-
-
-
-
-
-function getNextStopInfo(vehicleId) {
-    const vehicle = markers[vehicleId];
-    if (!vehicle) return null;
-    
-    const currentStopId = vehicle.stopId ? vehicle.stopId.replace("0:", "") : null;
-    
-    for (const [tripId, tripData] of Object.entries(tripUpdates)) {
-        if (!tripData.nextStops || !tripData.nextStops.length) continue;
-        
-        const currentStopIndex = tripData.nextStops.findIndex(stop => 
-            stop.stopId.replace("0:", "") === currentStopId
-        );
-        
-        if (currentStopIndex !== -1 && tripData.nextStops[currentStopIndex + 1]) {
-            const nextStop = tripData.nextStops[currentStopIndex + 1];
-            return {
-                name: stopNameMap[nextStop.stopId] || nextStop.stopId,
-                delay: nextStop.delay,
-                departureTime: nextStop.departureTime
-            };
-        }
-    }
-    return null;
-}
-
-
-const busesByLineAndDestination = {};
-
-markerPool.active.forEach((marker, id) => {
-    const line = marker.line;
-    const destination = marker.destination || "Inconnue";
-    
-    if (!busesByLineAndDestination[line]) {
-        busesByLineAndDestination[line] = {};
-    }
-
-    if (!busesByLineAndDestination[line][destination]) {
-        busesByLineAndDestination[line][destination] = [];
-    }
-
-    busesByLineAndDestination[line][destination].push({
-        parkNumber: marker.id,
-        vehicle: marker,
-        vehicleData: marker.vehicleData,
-        nextStops: marker.rawData?.nextStops || []
-    });
-});
-
-updateMenuStatistics();
-
-
-    const sortedLines = Object.keys(busesByLineAndDestination)
-        .sort((a, b) => {
-            const aIsFavorite = favoriteLines.has(a);
-            const bIsFavorite = favoriteLines.has(b);
-            
-            if (aIsFavorite && !bIsFavorite) return -1;
-            if (!aIsFavorite && bIsFavorite) return 1;
-            
-    const getSortKey = (line) => {
-        
-        let typeValue = 1000; 
-        
-        if (/^[A-Za-z]$/.test(line)) {
-            typeValue = 100;
-        } 
-        else if (/^\d+$/.test(line)) {
-            typeValue = 200;
-        } 
-        else if (/^\d+[A-Za-z]+$/.test(line)) {
-            const numPart = parseInt(line.match(/^\d+/)[0], 10);
-            typeValue = 200; 
-            return typeValue + numPart + 0.5; 
-        }
-        
-        if (typeValue === 200) {
-            return typeValue + parseInt(line, 10);
-        }
-        
-        if (typeValue === 100) {
-            return typeValue + line.charCodeAt(0);
-        }
-        
-        return typeValue;
-    };
-
-    const valueA = getSortKey(a);
-    const valueB = getSortKey(b);
-
-    if (valueA !== valueB) {
-        return valueA - valueB;
-    }
-
-    return a.localeCompare(b);
-    });
-
-
-function hexToRgb(hex) {
-    hex = hex.replace(/^#/, '');
-    
-    if (hex.length === 3) {
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    
-    return { r, g, b };
-}
-
-
-function calculateLuminance(r, g, b) {
-    return (r * 0.299 + g * 0.587 + b * 0.114);
-}
-
-
-function getTextColor(backgroundColor) {
-    try {
-        let hexColor = backgroundColor;
-        
-        if (!hexColor.startsWith('#')) {
-            hexColor = '#' + hexColor;
-        }
-        
-        const { r, g, b } = hexToRgb(hexColor);
-        
-        const luminance = calculateLuminance(r, g, b);
-        
-        const threshold = 150;
-                
-        return luminance > threshold ? '#000000' : '#ffffff';
-    } catch (e) {
-        return '#ffffff';
-    }
-}
-
-const fragment = document.createDocumentFragment();
-
-sortedLines.forEach(line => {
-    const lineNameText = lineName[line] || t("unknown_line");
-    const lineColor = lineColors[line] || '#000000';
-    const textColor = getTextColor(lineColor);
-
-    const lineSection = document.createElement('div');
-    lineSection.dataset.line = line;
-    lineSection.style.backgroundColor = lineColor;
-    lineSection.classList.add('linesection');
-    lineSection.classList.add('ripple-container');
-    lineSection.style.marginBottom = '10px';
-    lineSection.style.marginLeft = '10px';
-    lineSection.style.marginRight = '10px';
-    lineSection.style.padding = '10px';
-    lineSection.style.borderRadius = '16px';
-    lineSection.style.position = 'relative';
-    lineSection.style.overflow = 'hidden';
-
-    const beam1 = document.createElement('div');
-    beam1.classList.add('light-beam', 'beam1');
-    lineSection.appendChild(beam1);
-
-    const beam2 = document.createElement('div');
-    beam2.classList.add('light-beam', 'beam2');
-    lineSection.appendChild(beam2);
-
-    const beam3 = document.createElement('div');
-    beam3.classList.add('light-beam', 'beam3');
-    lineSection.appendChild(beam3);
-
-    lineSection.onmouseover = () => {
-        lineSection.style.transform = 'scale(0.99,0.99)';
-        lineSection.style.opacity = '0.9';
-        lineSection.style.boxShadow = '0 0px 20px 11px rgba(0, 0, 0, 0.1)';
-        };  
-
-    lineSection.onmouseout = () => {
-        lineSection.style.transform = 'scale(1,1)';
-        lineSection.style.opacity = '1';
-        lineSection.style.boxShadow = '0 0px 20px 3px rgba(0, 0, 0, 0.1)';
-    };
-
-   
-    const favoriteButton = document.createElement('button');
-    favoriteButton.style.position = 'absolute';
-    favoriteButton.style.right = '5px';
-    favoriteButton.style.top = '5px';
-    favoriteButton.style.background = 'none';
-    favoriteButton.style.border = 'none';
-    favoriteButton.style.color = textColor;
-    favoriteButton.style.fontSize = '20px';
-    favoriteButton.style.cursor = 'pointer';
-    favoriteButton.innerHTML = favoriteLines.has(line) ? '★' : '☆';
-    favoriteButton.onclick = async (e) => {
-        e.stopPropagation();
-        const lineSection = e.target.closest('.linesection');
-        const isFavorite = favoriteLines.has(line);
-        await animateFavoriteTransition(e.target, lineSection, line, isFavorite);
-    };
-
-    const lineTitle = document.createElement('div');
-    lineTitle.textContent = `${t("line")} ${lineNameText}`;
-    lineTitle.style.fontSize = '23px';
-    lineTitle.style.fontWeight = '500';
-    lineTitle.style.color = textColor;
-    lineTitle.style.paddingRight = '30px';
-    lineTitle.style.paddingLeft = '10px';
-
-    lineSection.appendChild(lineTitle);
-    lineSection.appendChild(favoriteButton);
-
-    Object.keys(busesByLineAndDestination[line])
-        .sort()
-        .forEach(destination => {
-            
-            const destinationSection = document.createElement('div');
-            destinationSection.style.marginTop = '5px';
-            destinationSection.style.paddingLeft = '10px';
-
-            const destinationTitle = document.createElement('div');
-            destinationTitle.textContent = `➜ ${destination}`;
-            destinationTitle.style.fontSize = '19px';
-            destinationTitle.style.fontWeight = 'normal';
-            destinationTitle.style.marginBottom = '4px';
-            destinationTitle.style.color = textColor;
-            destinationSection.appendChild(destinationTitle);
-
-       
-
-
-            busesByLineAndDestination[line][destination].forEach(bus => {
-                const busItem = document.createElement('div');
-                busItem.classList.add('ripple-container');
-                const marker = bus.vehicle;
-                
-                let nextStopInfo = '';
-                let terminusInfo = '';
-                
-                const tripId = marker.vehicleData?.trip?.tripId;
-                const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
-                const currentStatus = marker.vehicleData?.currentStatus;
-                
-                const nextStops = tripUpdates[tripId]?.nextStops || [];
-                
-                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
-                const now = Math.floor(Date.now() / 1000);
-
-                let filteredStops = [];
-                if (currentStopIndex !== -1) {
-                    filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
-                        return stop.delay === null || stop.delay >= -60;
-                    });
-                } else {
-                    filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
-                }
-                
-                let busStopsHeaderText = '';
-                const statusMap = {
-                    0: t("notinservice"),
-                    1: t("dooropen"),
-                    2: t("enservice")
-                };
-                const status = statusMap[currentStatus] || 'Inconnu';
-                
-                if (filteredStops.length === 0) {
-                    busStopsHeaderText = t("notinservicemaj");
-                    nextStopInfo = t("unavailabletrip");
-                } else {
-                    const firstStopDelay = filteredStops[0].delay || 0;
-                    const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
-
-                    if (line === 'Inconnu') {
-                        busStopsHeaderText = t("notinservicemaj");
-                        nextStopInfo = t("unknownline");
-                    } else {
-                        const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
-                        
-                        if (filteredStops.length === 1) {
-                            if (minutes === 0) {
-                                busStopsHeaderText = t("imminentdeparture");
-                            } else {
-                                busStopsHeaderText = `${t("departurein")} ${minutes} ${t("min")}`;
-                            }
-                            nextStopInfo = firstStopName;
-                        } else if (minutes > 3) {
-                            busStopsHeaderText = `${t("departurein")} ${minutes} ${t("minutes")}`;
-                            nextStopInfo = firstStopName;
-                        } else {
-                            busStopsHeaderText = t("nextstops");
-                            nextStopInfo = firstStopName;
-                        }
-                    }
-                }
-                
-                if (filteredStops.length > 1) {
-                    const lastStop = filteredStops[filteredStops.length - 1];
-                    const timeLeft = lastStop.delay;
-                    const timeLeftText = timeLeft !== null 
-                        ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                        : '';
-                    terminusInfo = `${t("arrivalat")} ${destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
-                }
-                
-                if (!terminusInfo) {
-                    terminusInfo = `${t("indirectionof")} ${destination}.`;
-                }
-
-                const mainText = document.createElement('div');
-
-                const vehicleLabel = bus.vehicleData?.vehicle?.label || 
-                                bus.vehicleData?.vehicle?.id || 
-                                "Véhicule inconnu";
-
-                const vehicleBrandHtmlLight = getVehicleBrandHtmlLight(vehicleLabel);
-                const displayLabel = vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
-                                
-                mainText.style.display = 'flex';
-                mainText.style.alignItems = 'center';
-                mainText.style.gap = '10px';
-                mainText.style.fontSize = '1.2em';
-                mainText.style.fontWeight = '500';
-                mainText.style.color = textColor;
-
-                const busIdBox = document.createElement('div');
-                busIdBox.textContent = displayLabel;
-                busIdBox.style.padding = '2px 8px';
-                busIdBox.style.backgroundColor = '#00000017';
-                busIdBox.style.borderRadius = '6px';
-                busIdBox.style.fontWeight = 'bold';
-                busIdBox.style.color = textColor;
-                busIdBox.style.display = 'inline-block';
-                busIdBox.style.textAlign = 'center';
-                busIdBox.style.padding = '5px 10px';
-
-                // statut véc
-                const infoText = document.createElement('span');
-                infoText.textContent = `${nextStopInfo}`;
-
-                // ajout des éléments au dom
-                mainText.appendChild(infoText);
-
-                const arrivalText = document.createElement('div');
-                arrivalText.textContent = terminusInfo;
-                arrivalText.style.fontSize = '0.9em'; 
-                arrivalText.style.opacity = '0.8';  
-                arrivalText.style.color = textColor;
-
-                const contentContainer = document.createElement('div');
-                contentContainer.style.display = 'flex';
-                contentContainer.style.flexDirection = 'column';
-                contentContainer.style.flexGrow = '1';
-                contentContainer.appendChild(mainText);
-                contentContainer.appendChild(arrivalText);
-
-                busItem.style.position = 'relative';
-                
-                const backgroundContainer = document.createElement('div');
-                backgroundContainer.style.position = 'absolute';
-                backgroundContainer.style.right = '8px';
-                backgroundContainer.style.bottom = '0';
-                backgroundContainer.style.display = 'flex';
-                backgroundContainer.style.alignItems = 'center';
-                backgroundContainer.style.justifyContent = 'flex-end';
-                backgroundContainer.style.pointerEvents = 'none'; 
-                backgroundContainer.style.opacity = '0.2';
-                backgroundContainer.style.zIndex = '0'; 
-                backgroundContainer.style.scale = '1.7';
-                backgroundContainer.innerHTML = vehicleBrandHtmlLight;
-                
-                const thumbnailImg = backgroundContainer.querySelector('.vehicle-thumbnaill');
-                if (thumbnailImg) {
-                    thumbnailImg.style.height = '80%';
-                    thumbnailImg.style.width = 'auto';
-                    thumbnailImg.style.maxHeight = '40px';
-                    thumbnailImg.style.objectFit = 'contain';
-                }
-
-                busItem.textContent = '';
-                busItem.style.display = 'flex';
-                busItem.style.alignItems = 'center';
-                busItem.style.gap = '10px';
-                busItem.style.overflow = 'hidden'; 
-                busItem.style.boxShadow = '0 0 7px 0px rgb(0 0 0 / 24%)';
-
-
-                
-                busItem.appendChild(backgroundContainer);
-                
-                const frontContent = document.createElement('div');
-                frontContent.style.display = 'flex';
-                frontContent.style.alignItems = 'center';
-                frontContent.style.gap = '10px';
-                frontContent.style.width = '100%';
-                frontContent.style.position = 'relative';
-                frontContent.style.zIndex = '1';
-                
-                frontContent.appendChild(busIdBox);
-                frontContent.appendChild(contentContainer);
-                busItem.appendChild(frontContent);
-
-                busItem.style.cursor = 'pointer';
-                busItem.classList.add('menu-item');
-                busItem.style.fontFamily = 'League Spartan';
-                busItem.style.color = textColor;
-                busItem.style.padding = '5px 10px';
-                busItem.style.marginBottom = '8px';
-                busItem.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-                busItem.style.borderRadius = '8px';
-
-                lineSection.onclick = () => {
-                    if (localStorage.getItem('astuce') !== 'true') {
-                        localStorage.setItem('astuce', 'true');
-                        toastBottomRight.info(`${t("astuceselectligne")}`);
-                    }
-                    const mapp = document.getElementById('map');
-                    mapp.style.opacity = '1';
-                    safeVibrate([50, 30, 50], true);
-                    soundsUX('MBF_Menu_LineSelect');
-                    const lineId = line;
-                    selectedLine = lineId;
-                    filterByLine(lineId);
-                    const map = document.getElementById('map');
-                    map.style.opacity = '1';
-                    menu.classList.add('hidden');
-                    if (localStorage.getItem('transparency') === 'true') {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.add('appearnotransition');
-                        map.classList.remove('hidden');
-                        map.classList.remove('appear');
-                    } else {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hidden');
-                        map.classList.add('appear');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.remove('appearnotransition');
-                    }
-                    window.isMenuShowed = false;
-                    menu.addEventListener('animationend', function onAnimationEnd(event) {
-                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                            menu.style.display = 'none';
-                        }
-                    });
-                    isMenuVisible = false;
-                    menubottom1.style.display = 'flex';
-                    setTimeout(() => {
-                        menubottom1.classList.remove('slide-upb');
-                        menubottom1.classList.add('slide-downb');
-                    }, 10);
-                    event.stopPropagation();
-
-                };
-
-                busItem.onclick = (event) => {
-                    event.stopPropagation();
-                    safeVibrate([50, 300, 50, 30, 50], true);
-                    soundsUX('MBF_Menu_VehicleSelect');
-                    map.setView(bus.vehicle.getLatLng(), 15);
-                    bus.vehicle.openPopup();
-                    const mapp = document.getElementById('map');
-                    mapp.style.opacity = '1';
-                    menu.classList.add('hidden');
-                    if (localStorage.getItem('transparency') === 'true') {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.add('appearnotransition');
-                        map.classList.remove('hidden');
-                        map.classList.remove('appear');
-                    } else {
-                        const map = document.getElementById('map');
-                        map.classList.remove('hidden');
-                        map.classList.add('appear');
-                        map.classList.remove('hiddennotransition');
-                        map.classList.remove('appearnotransition');
-                    }
-                    window.isMenuShowed = false;
-                    menu.addEventListener('animationend', function onAnimationEnd(event) {
-                        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-                            menu.style.display = 'none';
-                        }
-                    });
-                    isMenuVisible = false;
-                    if (selectedLine) {
-                        resetMapView();
-                    }
-                };
-
-                destinationSection.appendChild(busItem);
-            });
-
-            lineSection.appendChild(destinationSection);
-        });
-
-    fragment.appendChild(lineSection);
-});
-menu.appendChild(fragment);
-}
 
 const menubottom1 = document.getElementById('menubtm');
 
@@ -6823,6 +7721,7 @@ const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'none';
             }
             }, { once: true });
+            MenuManager._handleScrollAnimations();
 
         }
 
@@ -6865,9 +7764,7 @@ const menubottom1 = document.getElementById('menubtm');
                 isMenuVisible = false; 
             };
             
-
-        updateMenu();
-
+        updateMenu();      
     } catch (error) {
         return;
     }
@@ -7845,7 +8742,7 @@ setTimeout(() => {
         const mapPane = map.getPanes().tilePane;
         mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
     }
-}, 2000);
+}, 300);
 
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
@@ -8127,11 +9024,6 @@ setInterval(() => {
             const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
             keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
         }
-    }
-    
-    if (contentCache && contentCache.size > 50) {
-        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
-        keysToDelete.forEach(key => contentCache.delete(key));
     }
     
     // Forcer le garbage collection si disponible

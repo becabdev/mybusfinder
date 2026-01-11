@@ -292,6 +292,12 @@
   "threetimestitle": "Non mostrare più il menu iniziale?",
   "threetimesinfo": "Abbiamo notato che accedi generalmente alla mappa My Bus Finder. Desideri disattivare definitivamente la pagina iniziale all’avvio dell’applicazione? Potrai sempre riattivarla nelle impostazioni se necessario.",
 
-  "langversion": "1.0.7.4"
+  "results": "risultati",
+  "other": "altri",
+  "other_lines": "altre linee",
+  "search_placeholder": "Cerca una linea, un veicolo, una destinazione...",
+  "vehicle": "veicolo",
+  "langversion": "1.0.7.4",
+  "no_results": "Questo autobus non prende passeggeri! Sembra che non siano stati trovati risultati :("
 
 }

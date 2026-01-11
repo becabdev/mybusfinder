@@ -290,9 +290,15 @@
   "threetimestitle": "Stop showing the home menu?",
   "threetimesinfo": "We noticed that you usually access the My Bus Finder map. Would you like to permanently disable the home page when the application starts? You can always re-enable it in the settings if needed.",
 
+    "results": "results",
+    "other": "other",
+    "other_lines": "other lines",
+    "search_placeholder": "Search for a line, a vehicle, a destination...",
+    "vehicle": "vehicle",
     "lines": "lines in service",
     "vehicles": "vehicles",
-    "langversion": "1.0.7.4"
+    "langversion": "1.0.7.4",
+    "no_results": "This bus doesn't take passengers! It seems no results were found :("
 
 
 
