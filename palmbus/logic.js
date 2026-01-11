@@ -7720,6 +7720,7 @@ const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'none';
             }
             }, { once: true });
+            MenuManager._handleScrollAnimations();
 
         }
 
@@ -7762,13 +7763,7 @@ const menubottom1 = document.getElementById('menubtm');
                 isMenuVisible = false; 
             };
             
-
-        updateMenu();
-        setTimeout(() => {
-            MenuManager._handleScrollAnimations();
-        }, 200);
-            
-
+        updateMenu();      
     } catch (error) {
         return;
     }
