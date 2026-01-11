@@ -292,6 +292,11 @@
     "threetimestitle": "Ne plus afficher le menu d'accueil ?",
     "threetimesinfo": "Nous avons remarqué que vous accédez généralement à la carte My Bus Finder. Souhaitez-vous désactiver définitivement la page d'accueil au démarrage de l'application ? Vous pourrez toujours le réactiver dans les paramètres si besoin.",
 
+    "results": "résultats",
+    "other": "autres",
+    "other_lines": "autres lignes",
+    "search_placeholder": "Rechercher une ligne, un véhicule, une destination...",
+    "vehicle": "véhicule",
 
     "langversion": "1.0.7.4"
   }

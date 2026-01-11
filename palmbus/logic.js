@@ -3204,29 +3204,30 @@ async function loadGeoJsonLines() {
 
     setTimeout(() => {
         currentZoomLevel = map.getZoom();
-    }, 200);
-
-    const busLines = L.geoJSON(geoJsonData, {
-        filter: function(feature) {
-            return feature.geometry.type === 'LineString';
-        },
-        style: function(feature) {
-            return {
-                color: lineColors[feature.properties.route_id] || '#3388ff',
-                weight: 6,
-                opacity: 0.7,  
-                lineJoin: 'round',
-                lineCap: 'round',
-                className: 'bus-line', 
-                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
-            };
-        },
-        onEachFeature: function(feature, layer) {
-            if (feature.properties && feature.properties.route_id) {
-                geoJsonLines.push(layer);
+            const busLines = L.geoJSON(geoJsonData, {
+            filter: function(feature) {
+                return feature.geometry.type === 'LineString';
+            },
+            style: function(feature) {
+                return {
+                    color: lineColors[feature.properties.route_id] || '#3388ff',
+                    weight: 6,
+                    opacity: 0.7,  
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                    className: 'bus-line', 
+                    dashArray: feature.properties.route_type === '3' ? '5, 5' : null
+                };
+            },
+            onEachFeature: function(feature, layer) {
+                if (feature.properties && feature.properties.route_id) {
+                    geoJsonLines.push(layer);
+                }
             }
-        }
-    }).addTo(map);
+        }).addTo(map);
+    }, 500);
+
+
 
     busStopsData = geoJsonData.features.filter(feature => 
         feature.geometry && feature.geometry.type === 'Point'
@@ -4793,6 +4794,10 @@ const MenuManager = {
         this.container.appendChild(fragment);
         this._updateStatistics();
         this._buildBusIndex();
+
+        setTimeout(() => {
+            this._handleScrollAnimations();
+        }, 50);
     },
     
     _createSearchBar() {
@@ -5085,7 +5090,7 @@ const MenuManager = {
             lineResult.onmouseover = () => {
                 lineResult.style.background = `${lineColor}60`;
                 lineResult.style.borderColor = `${lineColor}80`;
-                lineResult.style.transform = 'scale(0.95)';
+                lineResult.style.transform = 'scale(0.98)';
             };
             
             lineResult.onmouseout = () => {
@@ -5394,7 +5399,6 @@ const MenuManager = {
         topBar.appendChild(title);
         this.container.appendChild(topBar);
         
-        // Scroll behavior pour top bar + search bar
         let lastScrollTop = 0;
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
@@ -5408,6 +5412,27 @@ const MenuManager = {
                 if (searchContainer) searchContainer.style.transform = 'translateY(0)';
             }
             lastScrollTop = scrollTop;
+            
+            this._handleScrollAnimations();
+        });
+    },
+
+    _handleScrollAnimations() {
+        const containerRect = this.container.getBoundingClientRect();
+        const sections = this.container.querySelectorAll('.linesection');
+        
+        sections.forEach(section => {
+            const sectionRect = section.getBoundingClientRect();
+            const sectionTop = sectionRect.top - containerRect.top;
+            const sectionBottom = sectionRect.bottom - containerRect.top;
+            
+            // Vérifie si la section est visible dans le viewport du container
+            const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
+            
+            if (isVisible && !section.dataset.animated) {
+                section.dataset.animated = 'true';
+                section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            }
         });
     },
     
@@ -5431,6 +5456,8 @@ const MenuManager = {
             overflow: hidden;
             transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transform: scale(0.9);
         `;
         
         // Beams
@@ -6324,6 +6351,19 @@ animationStyle.textContent = `
         background: rgba(0, 0, 0, 0.69) !important;
         border-color: rgba(255, 255, 255, 0.4) !important;
     }
+
+    @keyframes scaleIn {
+    0% {
+        opacity: 0;
+        filter: blur(8px);
+        transform: scale(0.85) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0px);
+        transform: scale(1) translateY(0);
+    }
+}
 `;
 document.head.appendChild(animationStyle);
 
