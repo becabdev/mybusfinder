@@ -3957,70 +3957,6 @@ function getVehicleBrandHtml(parkNumber) {
     return ``;
 }
 
-/**
- * Calcule le retard d'un véhicule en comparant GTFS statique et GTFS-RT
- * @param {Object} vehicle - Données du véhicule GTFS-RT
- * @param {string} tripId - ID du trajet
- * @param {string} stopId - ID de l'arrêt actuel
- * @returns {Object} {delayMinutes: number, status: 'ontime'|'early'|'late', text: string}
- */
-function calculateVehicleDelay(vehicle, tripId, stopId) {
-    const result = {
-        delayMinutes: 0,
-        delaySeconds: 0,
-        status: 'ontime',
-        text: t("ontime") || "À l'heure",
-        color: '#4CAF50' 
-    };
-    
-    if (!tripUpdates[tripId] || !tripUpdates[tripId].stopUpdates) {
-        return result;
-    }
-    
-    const cleanStopId = stopId.replace("0:", "");
-    
-    const stopUpdate = tripUpdates[tripId].stopUpdates.find(update => 
-        update.stopId.replace("0:", "") === cleanStopId
-    );
-    
-    if (!stopUpdate) {
-        return result;
-    }
-    
-    const delaySeconds = stopUpdate.arrivalDelay || stopUpdate.departureDelay || 0;
-    const delayMinutes = Math.round(delaySeconds / 60);
-    
-    result.delaySeconds = delaySeconds;
-    result.delayMinutes = delayMinutes;
-    
-    if (delaySeconds > 60) { 
-        result.status = 'late';
-        result.color = '#FF5252'; 
-        
-        if (delayMinutes === 1) {
-            result.text = `${t("late")} ${delayMinutes} ${t("minute")}`;
-        } else {
-            result.text = `${t("late")} ${delayMinutes} ${t("minutes")}`;
-        }
-    } else if (delaySeconds < -60) { 
-        result.status = 'early';
-        result.color = '#2196F3'; 
-        
-        const earlyMinutes = Math.abs(delayMinutes);
-        if (earlyMinutes === 1) {
-            result.text = `${t("early")} ${earlyMinutes} ${t("minute")}`;
-        } else {
-            result.text = `${t("early")} ${earlyMinutes} ${t("minutes")}`;
-        }
-    } else { 
-        result.status = 'ontime';
-        result.color = '#4CAF50'; 
-        result.text = t("ontime") || "À l'heure";
-    }
-    
-    return result;
-}
-
 function getVehicleBrandHtmlLight(parkNumber) {
     const model = getVehicleModel(parkNumber);
     const defaultImagePath = "src/generic.png";
@@ -5727,8 +5663,6 @@ const MenuManager = {
             2: t("enservice")
         };
         const status = statusMap[currentStatus] || 'Inconnu';
-
-        const delayInfo = calculateVehicleDelay(vehicle, tripId, stopId);
         
         let nextStopInfo = '';
         let terminusInfo = '';
@@ -6354,6 +6288,170 @@ function closeMenu() {
     }, 10);
 }
 
+// ==================== GESTIONNAIRE DE RETARDS ====================
+class DelayManager {
+    constructor() {
+        this.scheduleCache = new Map();
+        this.maxCacheSize = 100;
+        this.cacheDuration = 3600000; // 1 heure
+    }
+    
+    // Convertir temps GTFS (HH:MM:SS) en secondes depuis minuit
+    timeToSeconds(timeStr) {
+        if (!timeStr || typeof timeStr !== 'string') return null;
+        
+        const parts = timeStr.split(':');
+        if (parts.length !== 3) return null;
+        
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        const seconds = parseInt(parts[2], 10);
+        
+        if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null;
+        
+        return (hours * 3600) + (minutes * 60) + seconds;
+    }
+    
+    getCurrentTimeInSeconds() {
+        const now = new Date();
+        return (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+    }
+    
+    async loadSchedule(tripId) {
+        const cached = this.scheduleCache.get(tripId);
+        if (cached && (Date.now() - cached.timestamp) < this.cacheDuration) {
+            return cached.data;
+        }
+        
+        try {
+            const response = await fetch(`proxy-cors/proxy_gtfs.php?action=schedule&trip_id=${encodeURIComponent(tripId)}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            
+            if (this.scheduleCache.size >= this.maxCacheSize) {
+                const oldestKey = this.scheduleCache.keys().next().value;
+                this.scheduleCache.delete(oldestKey);
+            }
+            
+            this.scheduleCache.set(tripId, {
+                data: data.stops || [],
+                timestamp: Date.now()
+            });
+            
+            return data.stops || [];
+        } catch (error) {
+            console.error(`Erreur chargement horaires pour ${tripId}:`, error);
+            return [];
+        }
+    }
+    
+    // Calculer le retard pour un arrêt spécifique
+    async calculateDelay(tripId, currentStopId, rtDelay) {
+        if (rtDelay !== null && rtDelay !== undefined) {
+            return Math.round(rtDelay / 60); 
+        }
+        
+        const schedule = await this.loadSchedule(tripId);
+        if (!schedule || schedule.length === 0) return null;
+        
+        const cleanStopId = currentStopId.replace(/^0:/, '');
+        
+        const currentStop = schedule.find(stop => 
+            stop.stop_id.replace(/^0:/, '') === cleanStopId
+        );
+        
+        if (!currentStop) return null;
+        
+        const scheduledSeconds = this.timeToSeconds(currentStop.arrival_time);
+        if (scheduledSeconds === null) return null;
+        
+        const currentSeconds = this.getCurrentTimeInSeconds();
+        
+        const delaySeconds = currentSeconds - scheduledSeconds;
+        const delayMinutes = Math.round(delaySeconds / 60);
+        
+        return delayMinutes;
+    }
+    
+    async calculateDelaysForNextStops(tripId, nextStops, currentStopId) {
+        const schedule = await this.loadSchedule(tripId);
+        if (!schedule || schedule.length === 0) return nextStops;
+        
+        const cleanCurrentStopId = currentStopId.replace(/^0:/, '');
+        const currentTime = this.getCurrentTimeInSeconds();
+        
+        const currentIndex = schedule.findIndex(stop => 
+            stop.stop_id.replace(/^0:/, '') === cleanCurrentStopId
+        );
+        
+        if (currentIndex === -1) return nextStops;
+        
+        return nextStops.map(stop => {
+            const cleanStopId = stop.stopId.replace(/^0:/, '');
+            const scheduleStop = schedule.find(s => 
+                s.stop_id.replace(/^0:/, '') === cleanStopId
+            );
+            
+            if (!scheduleStop) return stop;
+            
+            const scheduledSeconds = this.timeToSeconds(scheduleStop.arrival_time);
+            if (scheduledSeconds === null) return stop;
+            
+            if (stop.delay !== null && stop.delay !== undefined) {
+                return {
+                    ...stop,
+                    delayMinutes: Math.round(stop.delay / 60),
+                    scheduledTime: scheduleStop.arrival_time
+                };
+            }
+            
+            const estimatedArrival = scheduledSeconds;
+            const delaySeconds = currentTime - estimatedArrival;
+            
+            return {
+                ...stop,
+                delayMinutes: Math.round(delaySeconds / 60),
+                scheduledTime: scheduleStop.arrival_time,
+                estimatedSeconds: estimatedArrival
+            };
+        });
+    }
+    
+    formatDelay(delayMinutes) {
+        if (delayMinutes === null || delayMinutes === undefined) {
+            return { text: '', class: '', icon: '' };
+        }
+        
+        if (delayMinutes > 2) {
+            return {
+                text: `+${delayMinutes} min`,
+                class: 'delay-late',
+                icon: '🔴',
+                color: '#ff4444'
+            };
+        } else if (delayMinutes < -2) {
+            return {
+                text: `${delayMinutes} min`,
+                class: 'delay-early',
+                icon: '🟢',
+                color: '#44ff44'
+            };
+        } else {
+            return {
+                text: t('ontime') || 'À l\'heure',
+                class: 'delay-ontime',
+                icon: '🟢',
+                color: '#44ff44'
+            };
+        }
+    }
+}
+
+// Instance globale
+const delayManager = new DelayManager();
+// ==================== FIN GESTIONNAIRE DE RETARDS ====================
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -6498,25 +6596,48 @@ async function fetchVehiclePositions() {
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    stopsListHTML = filteredStops.map(stop => {
+                    const enrichedStops = delayManager.calculateDelaysForNextStops(
+                        tripId, 
+                        filteredStops, 
+                        stopId
+                    );
+                    
+                    stopsListHTML = enrichedStops.map(stop => {
                         const timeLeft = stop.delay;
                         const timeLeftText = timeLeft !== null 
                             ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
                             : '';
                         
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                                                
+                        
+                        const delayInfo = delayManager.formatDelay(stop.delayMinutes);
+                        const delayBadge = delayInfo.text ? `
+                            <span class="delay-badge ${delayInfo.class}" style="
+                                background: ${delayInfo.color}20;
+                                color: ${delayInfo.color};
+                                padding: 2px 6px;
+                                border-radius: 4px;
+                                font-size: 10px;
+                                font-weight: 600;
+                                margin-left: 6px;
+                                border: 1px solid ${delayInfo.color}40;
+                            ">
+                                ${delayInfo.icon} ${delayInfo.text}
+                            </span>
+                        ` : '';
+                        
                         return `
-                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
-                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
+                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 60%; white-space: nowrap;">
                                 <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
                                     <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
                                 </div>
+                                ${delayBadge}
                             </div>
                             <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
                                 <div class="time-display" 
                                     data-time-left="${timeLeftText}" 
-                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                                    data-departure-time="${stop.scheduledTime || stop.arrivalTime || stop.departureTime || "Inconnu"}">
                                     ${timeLeftText}
                                 </div>
                                 <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -6876,31 +6997,10 @@ async function fetchVehiclePositions() {
                                 <div class="light-beam beam2"></div>
                                 <div class="light-beam beam3"></div>
 
+                                <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
                                     <strong class="vehicle-direction">➜ ${lastStopName}</strong>
-                                    
-                                    <div style="
-                                        display: flex;
-                                        align-items: center;
-                                        gap: 8px;
-                                        margin-top: 8px;
-                                        padding: 6px 10px;
-                                        background: rgba(0, 0, 0, 0.2);
-                                        border-radius: 8px;
-                                        font-size: 13px;
-                                    ">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <circle cx="12" cy="12" r="10" stroke="${delayInfo.color}" stroke-width="2"/>
-                                            <path d="M12 6V12L16 14" stroke="${delayInfo.color}" stroke-width="2" stroke-linecap="round"/>
-                                        </svg>
-                                        <span style="
-                                            font-weight: 500;
-                                            color: ${delayInfo.color};
-                                        ">
-                                            ${delayInfo.text}
-                                        </span>
-                                    </div>
                                     <div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">

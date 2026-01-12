@@ -512,6 +512,71 @@ if (isset($_GET['action'])) {
                     }
                     break;
                 
+            case 'schedule':
+                $tripId = $_GET['trip_id'] ?? null;
+                $stopId = $_GET['stop_id'] ?? null;
+                
+                if (!$tripId) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'trip_id manquant']);
+                    exit;
+                }
+                
+                $scheduleCacheFile = $cacheDir . '/schedule_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $tripId) . '.json';
+                
+                if (file_exists($scheduleCacheFile) && (time() - filemtime($scheduleCacheFile)) < 3600) {
+                    header("Content-Type: application/json");
+                    readfile($scheduleCacheFile);
+                    exit;
+                }
+                
+                if (!file_exists($extractDir . '/stop_times.txt')) {
+                    $zip = new ZipArchive();
+                    if ($zip->open($zipCacheFile) !== TRUE) {
+                        throw new Exception('Impossible ouvrir ZIP');
+                    }
+                    $zip->extractTo($extractDir, 'stop_times.txt');
+                    $zip->close();
+                }
+                
+                $scheduleStops = [];
+                $stopTimesFile = $extractDir . '/stop_times.txt';
+                $fh = fopen($stopTimesFile, 'r');
+                $headers = fgetcsv($fh);
+                
+                $tripIdIdx = array_search('trip_id', $headers);
+                $stopIdIdx = array_search('stop_id', $headers);
+                $arrivalIdx = array_search('arrival_time', $headers);
+                $departureIdx = array_search('departure_time', $headers);
+                $sequenceIdx = array_search('stop_sequence', $headers);
+                
+                while (($row = fgetcsv($fh)) !== false) {
+                    if (($row[$tripIdIdx] ?? '') === $tripId) {
+                        $stopIdValue = $row[$stopIdIdx] ?? '';
+                        $arrivalTime = $row[$arrivalIdx] ?? '';
+                        $departureTime = $row[$departureIdx] ?? '';
+                        $sequence = (int)($row[$sequenceIdx] ?? 0);
+                        
+                        $scheduleStops[] = [
+                            'stop_id' => $stopIdValue,
+                            'arrival_time' => $arrivalTime,
+                            'departure_time' => $departureTime,
+                            'stop_sequence' => $sequence
+                        ];
+                    }
+                }
+                fclose($fh);
+                
+                usort($scheduleStops, function($a, $b) {
+                    return $a['stop_sequence'] - $b['stop_sequence'];
+                });
+                
+                $result = json_encode(['stops' => $scheduleStops]);
+                file_put_contents($scheduleCacheFile, $result);
+                
+                header("Content-Type: application/json");
+                echo $result;
+                break;        
             default:
                 error_log("Action invalide: " . $action);
                 header("Content-Type: application/json");
