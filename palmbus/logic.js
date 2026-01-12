@@ -4906,6 +4906,8 @@ const MenuManager = {
 
     this.searchInput.addEventListener('focus', () => {
         searchWrapper.classList.add('search-active');
+        var soundAi = new Audio('../soundsUX/becabintell.wav');
+        soundAi.play();
         
         this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
         this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
