@@ -6486,13 +6486,13 @@ animationStyle.textContent = `
 
     @keyframes explosion {
         0% {
-            transform: scaleY(1);
+            transform: scaleX(1);
         } 
         50% {
-            transform: scaleY(0.9);
+            transform: scaleX(0.9);
         }
         100% {
-            transform: scaleY(1);
+            transform: scaleX(1);
         }
     }     
 
