@@ -5726,8 +5726,10 @@ const MenuManager = {
             soundsUX('MBF_Menu_LineSelect');
             selectedLine = line;
             filterByLine(line);
-            updateLinesDisplay();
             closeMenu();
+            setTimeout(() => {
+                updateLinesDisplay();
+            }, 50);
         };
         
         return {
@@ -6747,7 +6749,7 @@ async function fetchVehiclePositions() {
                 const vehicleOptionsBadges = getVehicleOptionsBadges(id);
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
-                if (line !== 'Inconnu') activeRoutes.add(line);
+                activeRoutes.add(line);
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
                 activeVehicleIds.add(id);
 
