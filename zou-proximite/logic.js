@@ -3225,8 +3225,13 @@ async function loadGeoJsonLines() {
                 }
             }
         }).addTo(map);
-        
-        busStopsData = geoJsonData.features.filter(feature => 
+
+        updateBusStopsVisibility();
+    }, 500);
+
+
+
+    busStopsData = geoJsonData.features.filter(feature => 
         feature.geometry && feature.geometry.type === 'Point'
     );
 
@@ -3249,12 +3254,9 @@ async function loadGeoJsonLines() {
         });
     }
 
-    updateBusStopsVisibility();
 
     map.on('zoomend', handleZoomChange);
     map.on('moveend', handleMapMove);
-
-    }, 500);
 }
 
 function handleZoomChange() {
@@ -4804,7 +4806,7 @@ const MenuManager = {
             left: 0;
             right: 0;
             padding: 0 16px 10px;
-            z-index: 1000;
+            z-index: 0;
             transition: transform 0.3s ease;
         `;
         
@@ -4896,25 +4898,31 @@ const MenuManager = {
             this.searchInput.focus();
         };
         
-        // Events
-        this.searchInput.addEventListener('input', (e) => {
-            const value = e.target.value.trim();
-            clearButton.style.display = value ? 'flex' : 'none';
-            this._performSearch(value);
-            this._handleScrollAnimations();
-        });
+    this.searchInput.addEventListener('input', (e) => {
+        const value = e.target.value.trim();
+        clearButton.style.display = value ? 'flex' : 'none';
+        this._performSearch(value);
+    });
+
+    this.searchInput.addEventListener('focus', () => {
+        searchWrapper.classList.add('search-active');
+        var soundAi = new Audio('../soundsUX/becabintell.wav');
+        soundAi.play();
         
-        this.searchInput.addEventListener('focus', () => {
-            this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
-            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-            this.searchInput.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.1)';
-        });
+        this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
+        this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+        this.searchInput.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.1)';
+    });
+
+    this.searchInput.addEventListener('blur', () => {
+        if (!this.searchInput.value.trim()) {
+            searchWrapper.classList.remove('search-active');
+        }
         
-        this.searchInput.addEventListener('blur', () => {
-            this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
-            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-            this.searchInput.style.boxShadow = 'none';
-        });
+        this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
+        this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        this.searchInput.style.boxShadow = 'none';
+    });
         
         searchWrapper.appendChild(searchIcon);
         searchWrapper.appendChild(this.searchInput);
@@ -4946,8 +4954,14 @@ const MenuManager = {
             Object.entries(destinations).forEach(([destination, buses]) => {
                 buses.forEach(bus => {
                     const vehicleLabel = bus.vehicleData?.vehicle?.label || 
-                                       bus.vehicleData?.vehicle?.id || 
-                                       "inconnu";
+                                    bus.vehicleData?.vehicle?.id || 
+                                    "inconnu";
+                    
+                    const tripId = bus.vehicleData?.trip?.tripId;
+                    const stops = tripUpdates[tripId]?.nextStops || [];
+                    const stopNames = stops.map(stop => 
+                        stopNameMap[stop.stopId] || stop.stopId
+                    ).join(' ');
                     
                     this.allBuses.push({
                         line,
@@ -4955,7 +4969,9 @@ const MenuManager = {
                         vehicleLabel,
                         parkNumber: bus.parkNumber,
                         bus,
-                        searchText: `${line} ${destination} ${vehicleLabel}`.toLowerCase()
+                        stops: stops, 
+                        stopNames: stopNames, 
+                        searchText: `${line} ${destination} ${vehicleLabel} ${stopNames}`.toLowerCase()
                     });
                 });
             });
@@ -4963,9 +4979,16 @@ const MenuManager = {
     },
     
     _performSearch(query) {
+        const searchWrapper = document.querySelector('#search-container > div');
+        
         if (!query) {
             this.isSearchActive = false;
             this.searchResults.style.display = 'none';
+            
+            if (searchWrapper) {
+                searchWrapper.classList.remove('search-active');
+            }
+            
             this._showAllSections();
             return;
         }
@@ -4973,7 +4996,6 @@ const MenuManager = {
         this.isSearchActive = true;
         const normalizedQuery = query.toLowerCase().trim();
         
-        // Recherche avec scoring
         const results = this.allBuses.map(item => {
             const score = this._calculateScore(item, normalizedQuery);
             return { ...item, score };
@@ -4987,7 +5009,6 @@ const MenuManager = {
             return;
         }
         
-        // Grouper par ligne
         const resultsByLine = new Map();
         results.forEach(result => {
             if (!resultsByLine.has(result.line)) {
@@ -4996,10 +5017,8 @@ const MenuManager = {
             resultsByLine.get(result.line).push(result);
         });
         
-        // Afficher les résultats
         this._displaySearchResults(resultsByLine, normalizedQuery);
         
-        // Filtrer les sections
         this._filterSections(resultsByLine);
     },
 
@@ -5010,13 +5029,30 @@ const MenuManager = {
         if (item.destination.toLowerCase() === query) score += 80;
         if (item.vehicleLabel.toLowerCase() === query) score += 90;
         
+        if (item.stops) {
+            const exactStopMatch = item.stops.some(stop => {
+                const stopName = (stopNameMap[stop.stopId] || stop.stopId).toLowerCase();
+                return stopName === query;
+            });
+            if (exactStopMatch) score += 85;
+        }
+        
         if (item.line.toLowerCase().startsWith(query)) score += 50;
         if (item.destination.toLowerCase().startsWith(query)) score += 40;
         if (item.vehicleLabel.toLowerCase().startsWith(query)) score += 45;
         
+        if (item.stops) {
+            const startsWithStopMatch = item.stops.some(stop => {
+                const stopName = (stopNameMap[stop.stopId] || stop.stopId).toLowerCase();
+                return stopName.startsWith(query);
+            });
+            if (startsWithStopMatch) score += 42;
+        }
+        
         if (item.line.toLowerCase().includes(query)) score += 30;
         if (item.destination.toLowerCase().includes(query)) score += 25;
         if (item.vehicleLabel.toLowerCase().includes(query)) score += 28;
+        if (item.stopNames && item.stopNames.toLowerCase().includes(query)) score += 27;
         
         if (this._fuzzyMatch(item.line, query)) score += 15;
         if (this._fuzzyMatch(item.destination, query)) score += 12;
@@ -5025,7 +5061,8 @@ const MenuManager = {
         const matchCount = [
             item.line.toLowerCase().includes(query),
             item.destination.toLowerCase().includes(query),
-            item.vehicleLabel.toLowerCase().includes(query)
+            item.vehicleLabel.toLowerCase().includes(query),
+            item.stopNames && item.stopNames.toLowerCase().includes(query)
         ].filter(Boolean).length;
         
         if (matchCount > 1) score += 20 * matchCount;
@@ -5192,7 +5229,6 @@ const MenuManager = {
                     this._performSearch('');
                 };
                 
-                // Badge véhicule
                 const vehicleBadge = document.createElement('span');
                 vehicleBadge.style.cssText = `
                     background: rgba(255, 255, 255, 0.2);
@@ -5206,7 +5242,6 @@ const MenuManager = {
                 `;
                 vehicleBadge.textContent = item.vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
                 
-                // Info destination
                 const destInfo = document.createElement('span');
                 destInfo.style.cssText = `
                     color: white;
@@ -5216,25 +5251,12 @@ const MenuManager = {
                 `;
                 destInfo.textContent = item.destination;
                 
-                // Score badge debug
-                const scoreBadge = document.createElement('span');
-                scoreBadge.style.cssText = `
-                    background: rgba(255, 255, 255, 0.15);
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-size: 10px;
-                    opacity: 0.7;
-                `;
-                scoreBadge.textContent = `${item.score}`;
-                
                 vehicleItem.appendChild(vehicleBadge);
                 vehicleItem.appendChild(destInfo);
-                // vehicleItem.appendChild(scoreBadge);
                 
                 vehiclesList.appendChild(vehicleItem);
             });
-            
+                
             if (items.length > 3) {
                 const moreVehicles = document.createElement('div');
                 moreVehicles.style.cssText = `
@@ -5291,23 +5313,56 @@ const MenuManager = {
     },
     
     _showAllSections() {
-        this.sections.forEach(section => {
+        this.sections.forEach((section, index) => {
             section.element.style.display = '';
+            section.element.style.opacity = '0';
+            section.element.style.transform = 'translateY(20px)';
+            
+            // Animation échelonnée
+            setTimeout(() => {
+                section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                section.element.style.opacity = '1';
+                section.element.style.transform = 'translateY(0)';
+            }, index * 50);
         });
     },
-    
+
     _hideAllSections() {
-        this.sections.forEach(section => {
-            section.element.style.display = 'none';
+        this.sections.forEach((section, index) => {
+            section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            section.element.style.opacity = '0';
+            section.element.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                section.element.style.display = 'none';
+            }, 200);
         });
     },
-    
+
     _filterSections(resultsByLine) {
+        let visibleIndex = 0;
+        
         this.sections.forEach((section, line) => {
             if (resultsByLine.has(line)) {
                 section.element.style.display = '';
+                section.element.style.opacity = '0';
+                section.element.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    section.element.style.opacity = '1';
+                    section.element.style.transform = 'translateY(0)';
+                }, visibleIndex * 50);
+                
+                visibleIndex++;
             } else {
-                section.element.style.display = 'none';
+                section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                section.element.style.opacity = '0';
+                section.element.style.transform = 'translateY(-10px)';
+                
+                setTimeout(() => {
+                    section.element.style.display = 'none';
+                }, 200);
             }
         });
     },
@@ -5402,10 +5457,8 @@ const MenuManager = {
             
             if (scrollTop > lastScrollTop && scrollTop > 50) {
                 topBar.style.transform = 'translateY(-130%)';
-                if (searchContainer) searchContainer.style.transform = 'translateY(-130%)';
             } else {
                 topBar.style.transform = 'translateY(0)';
-                if (searchContainer) searchContainer.style.transform = 'translateY(0)';
             }
             lastScrollTop = scrollTop;
             
@@ -6355,17 +6408,103 @@ animationStyle.textContent = `
     }
 
     @keyframes scaleIn {
-    0% {
-        opacity: 0;
-        filter: blur(8px);
-        transform: scale(0.85) translateY(20px);
+        0% {
+            opacity: 0;
+            filter: blur(8px);
+            transform: scale(0.85) translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            filter: blur(0px);
+            transform: scale(1) translateY(0);
+        }
     }
-    100% {
-        opacity: 1;
-        filter: blur(0px);
-        transform: scale(1) translateY(0);
+
+    @keyframes borderExplosion {
+        0% {
+            box-shadow: 
+                0 0 0 0 rgba(255, 0, 0, 0) inset,
+                0 0 0 0 rgba(255, 255, 0, 0) inset,
+                0 0 0 0 rgba(0, 255, 0, 0) inset,
+                0 0 0 0 rgba(0, 255, 255, 0) inset,
+                0 0 0 0 rgba(0, 0, 255, 0) inset,
+                0 0 0 0 rgba(255, 0, 255, 0) inset;
+        }
+        33% {
+            box-shadow: 
+                0 0 0 0 rgba(255, 0, 0, 0) inset,
+                0 0 0 0 rgba(255, 255, 0, 0) inset,
+                0 0 10px 0 rgba(0, 255, 0, 0.7) inset,
+                2px 0 10px 0 rgba(0, 255, 255, 0.6) inset,
+                0 0 0 0 rgba(0, 0, 255, 0) inset,
+                0 0 0 0 rgba(255, 0, 255, 0) inset;
+        }
+        66% {
+            box-shadow: 
+                0 0 0 0 rgba(255, 0, 0, 0) inset,
+                -2px 0 10px 0 rgba(255, 255, 0, 0.6) inset,
+                0 0 10px 0 rgba(0, 255, 0, 0.7) inset,
+                2px 0 10px 0 rgba(0, 255, 255, 0.6) inset,
+                5px 0 10px 0 rgba(0, 0, 255, 0.7) inset,
+                0 0 0 0 rgba(255, 0, 255, 0) inset;
+        }
+        100% {
+            box-shadow: 
+                -5px 0 10px 0 rgba(255, 0, 0, 0.7) inset,
+                -2px 0 10px 0 rgba(255, 255, 0, 0.6) inset,
+                0 0 10px 0 rgba(0, 255, 0, 0.7) inset,
+                2px 0 10px 0 rgba(0, 255, 255, 0.6) inset,
+                5px 0 10px 0 rgba(0, 0, 255, 0.7) inset,
+                3px 0 10px 0 rgba(255, 0, 255, 0.6) inset;
+        }
     }
-}
+
+    @keyframes borderPulse {
+        0%, 100% {
+            box-shadow: 
+                -5px 0 10px 0 rgba(255, 0, 0, 0.7) inset,
+                -2px 0 10px 0 rgba(255, 255, 0, 0.6) inset,
+                0 0 10px 0 rgba(0, 255, 0, 0.7) inset,
+                2px 0 10px 0 rgba(0, 255, 255, 0.6) inset,
+                5px 0 10px 0 rgba(0, 0, 255, 0.7) inset,
+                3px 0 10px 0 rgba(255, 0, 255, 0.6) inset;
+        }
+        50% {
+            box-shadow: 
+                -6px 0 14px 0 rgba(255, 0, 128, 0.8) inset,
+                -3px 0 14px 0 rgba(255, 128, 0, 0.7) inset,
+                0 0 14px 0 rgba(128, 255, 0, 0.8) inset,
+                3px 0 14px 0 rgba(0, 255, 128, 0.7) inset,
+                6px 0 14px 0 rgba(128, 0, 255, 0.8) inset,
+                4px 0 14px 0 rgba(255, 0, 255, 0.7) inset;
+        }
+    }
+
+    @keyframes explosion {
+        0% {
+            transform: scaleX(1);
+        } 
+        33% {
+            transform: scaleX(0.98);
+        }
+        66% {
+            transform: scaleX(1.02);
+        }
+        100% {
+            transform: scaleX(1);
+        }
+    }     
+
+    .search-active {
+        animation: borderExplosion 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                borderPulse 2s ease-in-out 0.6s infinite !important;
+        border-color: transparent !important;
+    }
+
+    .search-clique {
+        animation: explosion 0.6s cubic-bezier(0.25, 1.5, 0.5, 1);
+    }
+
 `;
 document.head.appendChild(animationStyle);
 
