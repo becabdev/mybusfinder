@@ -3204,12 +3204,30 @@ class GeoJSONManager {
         this.allLines = [];
         this.visibleLayers = new Map();
         this.currentZoom = map.getZoom();
+        this.activeRouteIds = new Set(); 
         
         this.ZOOM_THRESHOLDS = {
             FULL_DETAIL: 14, 
             MEDIUM_DETAIL: 12,
             LOW_DETAIL: 10 
         };
+    }
+    
+    updateActiveRoutes(activeRouteIds) {
+        const previousActive = new Set(this.activeRouteIds);
+        this.activeRouteIds = new Set(activeRouteIds);
+        
+        if (!this.areSetsEqual(previousActive, this.activeRouteIds)) {
+            this.updateVisibleLines();
+        }
+    }
+    
+    areSetsEqual(setA, setB) {
+        if (setA.size !== setB.size) return false;
+        for (let item of setA) {
+            if (!setB.has(item)) return false;
+        }
+        return true;
     }
     
     async loadGeoJSON(url) {
@@ -3272,16 +3290,14 @@ class GeoJSONManager {
         const zoom = this.currentZoom;
         const category = this.getZoomCategory(zoom);
         
-        let linesToShow = this.allLines;
+        let linesToShow = this.allLines.filter(line => 
+            this.activeRouteIds.has(line.routeId)
+        );
         
         if (category === 'minimal') {
-            linesToShow = this.allLines.filter(l => l.priority === 'high');
+            linesToShow = linesToShow.filter(l => l.priority === 'high');
         } else if (category === 'low') {
-            linesToShow = this.allLines.filter(l => l.priority !== 'low');
-        } else if (category === 'medium') {
-            linesToShow = this.allLines;
-        } else {
-            linesToShow = this.allLines;
+            linesToShow = linesToShow.filter(l => l.priority !== 'low');
         }
         
         if (zoom >= 12) {
@@ -6731,6 +6747,7 @@ async function fetchVehiclePositions() {
                 const vehicleOptionsBadges = getVehicleOptionsBadges(id);
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
+                if (line !== 'Inconnu') activeRoutes.add(line);
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
                 activeVehicleIds.add(id);
 
@@ -7630,7 +7647,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
         }
 });
 
-
+if (geoJSONManager) {
+    geoJSONManager.updateActiveRoutes(activeRoutes);
+}
 
 const activeIds = Array.from(markerPool.active.keys());
 activeIds.forEach(id => {
