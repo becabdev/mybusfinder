@@ -3957,6 +3957,70 @@ function getVehicleBrandHtml(parkNumber) {
     return ``;
 }
 
+/**
+ * Calcule le retard d'un véhicule en comparant GTFS statique et GTFS-RT
+ * @param {Object} vehicle - Données du véhicule GTFS-RT
+ * @param {string} tripId - ID du trajet
+ * @param {string} stopId - ID de l'arrêt actuel
+ * @returns {Object} {delayMinutes: number, status: 'ontime'|'early'|'late', text: string}
+ */
+function calculateVehicleDelay(vehicle, tripId, stopId) {
+    const result = {
+        delayMinutes: 0,
+        delaySeconds: 0,
+        status: 'ontime',
+        text: t("ontime") || "À l'heure",
+        color: '#4CAF50' 
+    };
+    
+    if (!tripUpdates[tripId] || !tripUpdates[tripId].stopUpdates) {
+        return result;
+    }
+    
+    const cleanStopId = stopId.replace("0:", "");
+    
+    const stopUpdate = tripUpdates[tripId].stopUpdates.find(update => 
+        update.stopId.replace("0:", "") === cleanStopId
+    );
+    
+    if (!stopUpdate) {
+        return result;
+    }
+    
+    const delaySeconds = stopUpdate.arrivalDelay || stopUpdate.departureDelay || 0;
+    const delayMinutes = Math.round(delaySeconds / 60);
+    
+    result.delaySeconds = delaySeconds;
+    result.delayMinutes = delayMinutes;
+    
+    if (delaySeconds > 60) { 
+        result.status = 'late';
+        result.color = '#FF5252'; 
+        
+        if (delayMinutes === 1) {
+            result.text = `${t("late")} ${delayMinutes} ${t("minute")}`;
+        } else {
+            result.text = `${t("late")} ${delayMinutes} ${t("minutes")}`;
+        }
+    } else if (delaySeconds < -60) { 
+        result.status = 'early';
+        result.color = '#2196F3'; 
+        
+        const earlyMinutes = Math.abs(delayMinutes);
+        if (earlyMinutes === 1) {
+            result.text = `${t("early")} ${earlyMinutes} ${t("minute")}`;
+        } else {
+            result.text = `${t("early")} ${earlyMinutes} ${t("minutes")}`;
+        }
+    } else { 
+        result.status = 'ontime';
+        result.color = '#4CAF50'; 
+        result.text = t("ontime") || "À l'heure";
+    }
+    
+    return result;
+}
+
 function getVehicleBrandHtmlLight(parkNumber) {
     const model = getVehicleModel(parkNumber);
     const defaultImagePath = "src/generic.png";
@@ -5663,6 +5727,8 @@ const MenuManager = {
             2: t("enservice")
         };
         const status = statusMap[currentStatus] || 'Inconnu';
+
+        const delayInfo = calculateVehicleDelay(vehicle, tripId, stopId);
         
         let nextStopInfo = '';
         let terminusInfo = '';
@@ -6288,159 +6354,6 @@ function closeMenu() {
     }, 10);
 }
 
-function calculateVehicleDelay(tripId, stopId, tripUpdates) {
-    if (!tripUpdates || !tripUpdates[tripId]) {
-        return {
-            delay: null,
-            status: t("nodatadelay") || "Aucune donnée",
-            color: "#999999",
-            displayText: "—"
-        };
-    }
-    
-    const tripUpdate = tripUpdates[tripId];
-    
-    // Chercher l'arrêt actuel dans les mises à jour
-    const stopUpdate = tripUpdate.stopUpdates?.find(update => 
-        update.stopId.replace("0:", "") === stopId.replace("0:", "")
-    );
-    
-    if (!stopUpdate) {
-        return {
-            delay: null,
-            status: t("nodatadelay") || "Aucune donnée",
-            color: "#999999",
-            displayText: "—"
-        };
-    }
-    
-    // Récupérer le retard (en secondes)
-    const delaySeconds = stopUpdate.arrivalDelay || stopUpdate.departureDelay || 0;
-    
-    // Déterminer le statut et la couleur selon le retard
-    let status, color, displayText;
-    
-    if (delaySeconds === 0) {
-        status = t("ontime") || "À l'heure";
-        color = "#4CAF50"; // Vert
-        displayText = t("ontime") || "À l'heure";
-    } else if (delaySeconds > 0) {
-        // En retard
-        const minutes = Math.floor(delaySeconds / 60);
-        const seconds = delaySeconds % 60;
-        
-        if (delaySeconds <= 60) {
-            status = t("slightdelay") || "Léger retard";
-            color = "#FF9800"; // Orange
-        } else if (delaySeconds <= 300) { // 5 min
-            status = t("delay") || "En retard";
-            color = "#FF5722"; // Orange foncé
-        } else {
-            status = t("majordelay") || "Retard important";
-            color = "#F44336"; // Rouge
-        }
-        
-        displayText = `+${minutes} min`;
-        if (seconds > 0 && minutes < 2) {
-            displayText += ` ${seconds}s`;
-        }
-    } else {
-        // En avance
-        const minutes = Math.abs(Math.floor(delaySeconds / 60));
-        const seconds = Math.abs(delaySeconds % 60);
-        
-        status = t("early") || "En avance";
-        color = "#2196F3"; // Bleu
-        displayText = `-${minutes} min`;
-        if (seconds > 0 && minutes < 2) {
-            displayText += ` ${seconds}s`;
-        }
-    }
-    
-    return {
-        delay: delaySeconds,
-        status: status,
-        color: color,
-        displayText: displayText,
-        minutes: Math.floor(Math.abs(delaySeconds) / 60)
-    };
-}
-
-/**
- * Génère le HTML du badge de retard
- * @param {object} delayInfo - Informations du retard
- * @param {string} textColor - Couleur du texte pour contraste
- * @returns {string} HTML du badge
- */
-function generateDelayBadgeHTML(delayInfo, textColor) {
-    if (!delayInfo || delayInfo.delay === null) {
-        return `
-            <div class="delay-badge" style="
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 6px 12px;
-                background: rgba(153, 153, 153, 0.2);
-                border-radius: 20px;
-                font-size: 13px;
-                color: ${textColor};
-                border: 1px solid rgba(153, 153, 153, 0.3);
-            ">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <path d="M12 6v6l4 2"/>
-                </svg>
-                <span>${t("nodatadelay") || "Aucune donnée"}</span>
-            </div>
-        `;
-    }
-    
-    // Icône selon le statut
-    let icon;
-    if (delayInfo.delay === 0) {
-        // À l'heure - check
-        icon = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                <polyline points="20 6 9 17 4 12"/>
-            </svg>
-        `;
-    } else if (delayInfo.delay > 0) {
-        // En retard - flèche haut
-        icon = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                <path d="M12 19V5M5 12l7-7 7 7"/>
-            </svg>
-        `;
-    } else {
-        // En avance - flèche bas
-        icon = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-                <path d="M12 5v14M19 12l-7 7-7-7"/>
-            </svg>
-        `;
-    }
-    
-    return `
-        <div class="delay-badge" style="
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: ${delayInfo.color};
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-            color: white;
-            box-shadow: 0 2px 8px ${delayInfo.color}40;
-            border: 1px solid ${delayInfo.color};
-            transition: all 0.3s ease;
-        ">
-            ${icon}
-            <span>${delayInfo.displayText}</span>
-        </div>
-    `;
-}
-
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -6518,14 +6431,11 @@ async function fetchVehiclePositions() {
                 activeVehicleIds.add(id);
 
                 const statusMap = {
-                    0: t("notinservicemaj"),
-                    1: t("dooropen"),
-                    2: t("enservice")
+                    0: t("notinservicemaj"), // ❌ Hors service commercial
+                    1: t("dooropen"), // En service - Portes ouvertes
+                    2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || t("enservice");
-
-                const delayInfo = calculateVehicleDelay(tripId, stopId, tripUpdates);
-                const delayBadgeHTML = generateDelayBadgeHTML(delayInfo, textColor);
                 
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
@@ -6677,6 +6587,11 @@ async function fetchVehiclePositions() {
                     }
                     window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
                 }
+
+                const delayInfo = tripUpdates[tripId] ? tripUpdates[tripId].stopUpdates.find(update => update.stopId === stopId) : null;
+
+                const arrivalDelay = delayInfo ? delayInfo.arrivalDelay : 0; 
+                const scheduledArrival = delayInfo ? delayInfo.scheduledArrival : null; 
 
                                 
                 function getTextColorForBackground(bgColor, options = {}) {
@@ -6942,13 +6857,8 @@ async function fetchVehiclePositions() {
                         return contentCache.get(cacheKey);
                     }
                     
-                    const tripId = vehicle.trip?.tripId;
-                    const stopId = vehicle.stopId?.replace("0:", "") || '';
-                    const delayInfo = calculateVehicleDelay(tripId, stopId, tripUpdates);
-                    const delayBadgeHTML = generateDelayBadgeHTML(delayInfo, textColor);
-                    
-                    const majorDelayAttr = delayInfo.delay > 300 ? 'data-major-delay="true"' : '';
 
+                    // nouvelle version
                     const popupContent = `
                         <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
@@ -6969,15 +6879,41 @@ async function fetchVehiclePositions() {
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
                                     <strong class="vehicle-direction">➜ ${lastStopName}</strong>
+                                    
+                                    <div style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 8px;
+                                        margin-top: 8px;
+                                        padding: 6px 10px;
+                                        background: rgba(0, 0, 0, 0.2);
+                                        border-radius: 8px;
+                                        font-size: 13px;
+                                    ">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="12" r="10" stroke="${delayInfo.color}" stroke-width="2"/>
+                                            <path d="M12 6V12L16 14" stroke="${delayInfo.color}" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                        <span style="
+                                            font-weight: 500;
+                                            color: ${delayInfo.color};
+                                        ">
+                                            ${delayInfo.text}
+                                        </span>
+                                    </div>
                                     <div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
+                                                <!-- Contenu défilant horizontalement -->
                                                 <div class="options custom-scrollbar">
+                                                    <!-- Numéro de parc -->
                                                     <span class="parc-badge">
                                                         <svg class="parc-icon" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path> <path d="M20 13H16M4 13H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M15.5 16H17" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M7 16H8.5" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4.5 5H8.25M19.5 5H12" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path> </g></svg>
                                                         <span class="parc-number">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc")).toString().padStart(3, '0')}</span>
                                                         <span class="parc-number-hidden">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc"))}</span>
                                                     </span>
+                                                    
+                                                    <!-- Badges des options du véhicule -->
                                                     ${vehicleOptionsBadges}
                                                 </div>
                                             </div>
@@ -6988,27 +6924,24 @@ async function fetchVehiclePositions() {
                                     </div>
                                 </div>
 
+                                <!-- Texte en arrière-plan -->
                                 <div class="background-text" style="color: ${textColor};">
                                     ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
                                 </div>
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                                    <p class="stops-header" style="margin: 0; flex: 1; min-width: 150px;">${stopsHeaderText}</p>
-                                    <div ${majorDelayAttr} style="flex-shrink: 0;">
-                                        ${delayBadgeHTML}
-                                    </div>
-                                </div>
+                                <p class="stops-header">${stopsHeaderText}</p>
                                 <ul>
                                     <div id="nextStopsContent" class="next-stops-content">
                                         ${nextStopsHTML}
                                     </div>   
-                                </ul>
+                                </div>
                             </div>
                         </div>
                     `;
                     
+                    // limite la taille cache
                     if (contentCache.size > 50) {
                         const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
                         keysToDelete.forEach(key => contentCache.delete(key));
