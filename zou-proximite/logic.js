@@ -3198,65 +3198,194 @@ const MIN_ZOOM_FOR_STOPS = 14;
 let busStopsData = []; 
 let visibleBusStops = new Set(); 
 
-async function loadGeoJsonLines() {
-    const response = await fetch('proxy-cors/proxy_geojson.php');
-    const geoJsonData = await response.json();
-
-    setTimeout(() => {
-        currentZoomLevel = map.getZoom();
-            const busLines = L.geoJSON(geoJsonData, {
-            filter: function(feature) {
-                return feature.geometry.type === 'LineString';
-            },
-            style: function(feature) {
-                return {
-                    color: lineColors[feature.properties.route_id] || '#3388ff',
-                    weight: 6,
-                    opacity: 0.7,  
-                    lineJoin: 'round',
-                    lineCap: 'round',
-                    className: 'bus-line', 
-                    dashArray: feature.properties.route_type === '3' ? '5, 5' : null
-                };
-            },
-            onEachFeature: function(feature, layer) {
-                if (feature.properties && feature.properties.route_id) {
-                    geoJsonLines.push(layer);
-                }
+class GeoJSONManager {
+    constructor(map) {
+        this.map = map;
+        this.allLines = [];
+        this.visibleLayers = new Map();
+        this.currentZoom = map.getZoom();
+        
+        this.ZOOM_THRESHOLDS = {
+            FULL_DETAIL: 14, 
+            MEDIUM_DETAIL: 12,
+            LOW_DETAIL: 10 
+        };
+    }
+    
+    async loadGeoJSON(url) {
+        const response = await fetch(url);
+        const geoJsonData = await response.json();
+        
+        this.categorizeLines(geoJsonData);
+        
+        this.updateVisibleLines();
+        
+        this.map.on('zoomend', () => this.handleZoomChange());
+        this.map.on('moveend', () => this.updateVisibleLines());
+    }
+    
+    categorizeLines(geoJsonData) {
+        const features = geoJsonData.features.filter(f => f.geometry.type === 'LineString');
+        
+        features.forEach(feature => {
+            const routeId = feature.properties.route_id;
+            const routeName = lineName[routeId] || routeId;
+            
+            let priority = 'low';
+                if (/^\d+$/.test(routeName) && parseInt(routeName) <= 20) {
+                priority = 'high';
             }
-        }).addTo(map);
-
-        updateBusStopsVisibility();
-    }, 500);
-
-
-
-    busStopsData = geoJsonData.features.filter(feature => 
-        feature.geometry && feature.geometry.type === 'Point'
-    );
-
-    busStopsLayerGroup = L.layerGroup();
-
-    if (typeof adjustProximityDistance !== 'undefined' && typeof allBusLines !== 'undefined') {
-        const proximityDistance = 50; 
-        busStopsData.forEach((feature, index) => {
-            const stopLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
-            const routeIds = [];
+            else if (/^\d+$/.test(routeName)) {
+                priority = 'medium';
+            }
             
-            allBusLines.forEach(lineInfo => {
-                const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
-                if (distance <= proximityDistance) {
-                    routeIds.push(lineInfo.routeId);
-                }
+            this.allLines.push({
+                feature,
+                priority,
+                routeId,
+                layer: null
             });
-            
-            feature.routeIds = routeIds;
         });
     }
+    
+    handleZoomChange() {
+        const newZoom = this.map.getZoom();
+        const oldCategory = this.getZoomCategory(this.currentZoom);
+        const newCategory = this.getZoomCategory(newZoom);
+        
+        this.currentZoom = newZoom;
+        
+        if (oldCategory !== newCategory) {
+            this.updateVisibleLines();
+        }
+    }
+    
+    getZoomCategory(zoom) {
+        if (zoom >= this.ZOOM_THRESHOLDS.FULL_DETAIL) return 'full';
+        if (zoom >= this.ZOOM_THRESHOLDS.MEDIUM_DETAIL) return 'medium';
+        if (zoom >= this.ZOOM_THRESHOLDS.LOW_DETAIL) return 'low';
+        return 'minimal';
+    }
+    
+    updateVisibleLines() {
+        const bounds = this.map.getBounds();
+        const zoom = this.currentZoom;
+        const category = this.getZoomCategory(zoom);
+        
+        let linesToShow = this.allLines;
+        
+        if (category === 'minimal') {
+            linesToShow = this.allLines.filter(l => l.priority === 'high');
+        } else if (category === 'low') {
+            linesToShow = this.allLines.filter(l => l.priority !== 'low');
+        } else if (category === 'medium') {
+            linesToShow = this.allLines;
+        } else {
+            linesToShow = this.allLines;
+        }
+        
+        if (zoom >= 12) {
+            linesToShow = linesToShow.filter(line => {
+                const coords = line.feature.geometry.coordinates;
+                return coords.some(coord => 
+                    bounds.contains(L.latLng(coord[1], coord[0]))
+                );
+            });
+        }
+        
+        requestAnimationFrame(() => {
+            this.updateLayers(linesToShow);
+        });
+    }
+    
+    updateLayers(linesToShow) {
+        const toShowIds = new Set(linesToShow.map(l => l.routeId));
+        
+        this.visibleLayers.forEach((layer, routeId) => {
+            if (!toShowIds.has(routeId)) {
+                this.map.removeLayer(layer);
+                this.visibleLayers.delete(routeId);
+            }
+        });
+        
+        linesToShow.forEach(line => {
+            if (!this.visibleLayers.has(line.routeId)) {
+                const layer = this.createLayer(line.feature);
+                layer.addTo(this.map);
+                this.visibleLayers.set(line.routeId, layer);
+            }
+        });
+    }
+    
+    createLayer(feature) {
+        const routeId = feature.properties.route_id;
+        const color = lineColors[routeId] || '#3388ff';
+        
+        return L.geoJSON(feature, {
+            style: {
+                color: color,
+                weight: 4, 
+                opacity: 0.6, 
+                lineJoin: 'round',
+                lineCap: 'round',
+                className: 'bus-line'
+            },
+            renderer: L.canvas()
+        });
+    }
+    
+    filterByLines(lineIds) {
+        if (!lineIds || lineIds.length === 0) {
+            this.updateVisibleLines();
+            return;
+        }
+        
+        const lineIdSet = new Set(lineIds);
+        
+        this.visibleLayers.forEach((layer, routeId) => {
+            if (!lineIdSet.has(routeId)) {
+                this.map.removeLayer(layer);
+                this.visibleLayers.delete(routeId);
+            }
+        });
+        
+        const linesToShow = this.allLines.filter(l => lineIdSet.has(l.routeId));
+        this.updateLayers(linesToShow);
+    }
+    
+    clear() {
+        this.visibleLayers.forEach(layer => this.map.removeLayer(layer));
+        this.visibleLayers.clear();
+    }
+}
 
+let geoJSONManager = null;
 
-    map.on('zoomend', handleZoomChange);
-    map.on('moveend', handleMapMove);
+async function loadGeoJsonLines() {
+    geoJSONManager = new GeoJSONManager(map);
+    await geoJSONManager.loadGeoJSON('proxy-cors/proxy_geojson.php');
+}
+
+function filterByLine(lineId) {
+    const lineIndex = selectedLines.indexOf(lineId);
+
+    if (lineIndex !== -1) {
+        selectedLines.splice(lineIndex, 1);
+    } else {
+        selectedLines.push(lineId);
+    }
+
+    if (geoJSONManager) {
+        geoJSONManager.filterByLines(selectedLines);
+    }
+
+    if (selectedLines.length === 0) {
+        resetMapView();
+    } else if (selectedLines.length === 1) {
+        zoomToSelectedLine(selectedLines[0]);
+    } else if (selectedLines.length > 1) {
+        zoomToMultipleLines(selectedLines);
+    }
 }
 
 function handleZoomChange() {
@@ -3474,25 +3603,6 @@ function distanceToSegment(point, segmentStart, segmentEnd) {
     return earthRadius * c;
 }
 
-function filterByLine(lineId) {
-    const lineIndex = selectedLines.indexOf(lineId);
-
-    if (lineIndex !== -1) {
-        selectedLines.splice(lineIndex, 1);
-    } else {
-        selectedLines.push(lineId);
-    }
-
-    updateLinesDisplay();
-
-    if (selectedLines.length === 0) {
-        resetMapView();
-    } else if (selectedLines.length === 1) {
-        zoomToSelectedLine(selectedLines[0]);
-    } else if (selectedLines.length > 1) {
-        zoomToMultipleLines(selectedLines);
-    }
-}
 
 function zoomToSelectedLine(lineId) {
     const bounds = L.latLngBounds();
