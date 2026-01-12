@@ -6289,167 +6289,278 @@ function closeMenu() {
 }
 
 // ==================== GESTIONNAIRE DE RETARDS ====================
-class DelayManager {
-    constructor() {
-        this.scheduleCache = new Map();
-        this.maxCacheSize = 100;
-        this.cacheDuration = 3600000; // 1 heure
-    }
+const DelayManager = {
+    theoreticalTimesCache: new Map(),
+    maxCacheSize: 100,
+    cacheDuration: 3600000, // 1 heure
     
-    // Convertir temps GTFS (HH:MM:SS) en secondes depuis minuit
-    timeToSeconds(timeStr) {
-        if (!timeStr || typeof timeStr !== 'string') return null;
+    /**
+     * Convertit un horaire GTFS (HH:MM:SS) en timestamp du jour
+     */
+    gtfsTimeToTimestamp(gtfsTime, referenceDate = new Date()) {
+        if (!gtfsTime || typeof gtfsTime !== 'string') return null;
         
-        const parts = timeStr.split(':');
+        const parts = gtfsTime.split(':');
         if (parts.length !== 3) return null;
         
-        const hours = parseInt(parts[0], 10);
+        let hours = parseInt(parts[0], 10);
         const minutes = parseInt(parts[1], 10);
         const seconds = parseInt(parts[2], 10);
         
         if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) return null;
         
-        return (hours * 3600) + (minutes * 60) + seconds;
-    }
+        // Gérer les horaires > 24h (service de nuit)
+        const dayOffset = Math.floor(hours / 24);
+        hours = hours % 24;
+        
+        const date = new Date(referenceDate);
+        date.setHours(hours, minutes, seconds, 0);
+        
+        if (dayOffset > 0) {
+            date.setDate(date.getDate() + dayOffset);
+        }
+        
+        return Math.floor(date.getTime() / 1000);
+    },
     
-    getCurrentTimeInSeconds() {
-        const now = new Date();
-        return (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
-    }
-    
-    async loadSchedule(tripId) {
-        const cached = this.scheduleCache.get(tripId);
+    /**
+     * Récupère les horaires théoriques pour un trip
+     */
+    async fetchTheoreticalTimes(tripId) {
+        if (!tripId || tripId === 'Inconnu') return null;
+        
+        // Vérifier le cache
+        const cached = this.theoreticalTimesCache.get(tripId);
         if (cached && (Date.now() - cached.timestamp) < this.cacheDuration) {
             return cached.data;
         }
         
         try {
-            const response = await fetch(`proxy-cors/proxy_gtfs.php?action=schedule&trip_id=${encodeURIComponent(tripId)}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const response = await fetch(
+                `proxy-cors/proxy_gtfs.php?action=theoretical_times&trip_id=${encodeURIComponent(tripId)}`,
+                { cache: 'no-store' }
+            );
+            
+            if (!response.ok) {
+                console.warn(`Erreur récupération horaires théoriques pour ${tripId}`);
+                return null;
+            }
             
             const data = await response.json();
             
-            if (this.scheduleCache.size >= this.maxCacheSize) {
-                const oldestKey = this.scheduleCache.keys().next().value;
-                this.scheduleCache.delete(oldestKey);
-            }
-            
-            this.scheduleCache.set(tripId, {
-                data: data.stops || [],
+            // Mettre en cache
+            this.theoreticalTimesCache.set(tripId, {
+                data,
                 timestamp: Date.now()
             });
             
-            return data.stops || [];
+            // Limiter la taille du cache
+            if (this.theoreticalTimesCache.size > this.maxCacheSize) {
+                const firstKey = this.theoreticalTimesCache.keys().next().value;
+                this.theoreticalTimesCache.delete(firstKey);
+            }
+            
+            return data;
+            
         } catch (error) {
-            console.error(`Erreur chargement horaires pour ${tripId}:`, error);
-            return [];
+            console.error('Erreur fetch horaires théoriques:', error);
+            return null;
         }
-    }
+    },
     
-    // Calculer le retard pour un arrêt spécifique
-    async calculateDelay(tripId, currentStopId, rtDelay) {
-        if (rtDelay !== null && rtDelay !== undefined) {
-            return Math.round(rtDelay / 60); 
-        }
+    /**
+     * Calcule le retard réel en minutes
+     */
+    calculateDelay(theoreticalTime, realTime) {
+        if (!theoreticalTime || !realTime) return null;
         
-        const schedule = await this.loadSchedule(tripId);
-        if (!schedule || schedule.length === 0) return null;
+        const theoreticalTimestamp = this.gtfsTimeToTimestamp(theoreticalTime);
+        if (!theoreticalTimestamp) return null;
         
-        const cleanStopId = currentStopId.replace(/^0:/, '');
-        
-        const currentStop = schedule.find(stop => 
-            stop.stop_id.replace(/^0:/, '') === cleanStopId
-        );
-        
-        if (!currentStop) return null;
-        
-        const scheduledSeconds = this.timeToSeconds(currentStop.arrival_time);
-        if (scheduledSeconds === null) return null;
-        
-        const currentSeconds = this.getCurrentTimeInSeconds();
-        
-        const delaySeconds = currentSeconds - scheduledSeconds;
+        // realTime est déjà un timestamp en secondes
+        const delaySeconds = realTime - theoreticalTimestamp;
         const delayMinutes = Math.round(delaySeconds / 60);
         
         return delayMinutes;
-    }
+    },
     
-    async calculateDelaysForNextStops(tripId, nextStops, currentStopId) {
-        const schedule = await this.loadSchedule(tripId);
-        if (!schedule || schedule.length === 0) return nextStops;
+    /**
+     * Calcule les retards pour tous les arrêts d'un trip
+     */
+    async calculateDelaysForTrip(tripId, stopTimeUpdates) {
+        const theoreticalTimes = await this.fetchTheoreticalTimes(tripId);
+        if (!theoreticalTimes) return {};
         
-        const cleanCurrentStopId = currentStopId.replace(/^0:/, '');
-        const currentTime = this.getCurrentTimeInSeconds();
+        const delays = {};
         
-        const currentIndex = schedule.findIndex(stop => 
-            stop.stop_id.replace(/^0:/, '') === cleanCurrentStopId
-        );
-        
-        if (currentIndex === -1) return nextStops;
-        
-        return nextStops.map(stop => {
-            const cleanStopId = stop.stopId.replace(/^0:/, '');
-            const scheduleStop = schedule.find(s => 
-                s.stop_id.replace(/^0:/, '') === cleanStopId
-            );
+        stopTimeUpdates.forEach(stopUpdate => {
+            const stopId = stopUpdate.stopId || stopUpdate.stop_id;
+            if (!stopId) return;
             
-            if (!scheduleStop) return stop;
+            const normalizedStopId = stopId.replace(/^0:/, '');
+            const theoretical = theoreticalTimes[normalizedStopId] || theoreticalTimes[stopId];
             
-            const scheduledSeconds = this.timeToSeconds(scheduleStop.arrival_time);
-            if (scheduledSeconds === null) return stop;
+            if (!theoretical) return;
             
-            if (stop.delay !== null && stop.delay !== undefined) {
-                return {
-                    ...stop,
-                    delayMinutes: Math.round(stop.delay / 60),
-                    scheduledTime: scheduleStop.arrival_time
+            // Priorité à l'heure d'arrivée
+            const realTime = stopUpdate.arrival?.time || 
+                           stopUpdate.arrival?.timestamp ||
+                           stopUpdate.departure?.time || 
+                           stopUpdate.departure?.timestamp;
+            
+            if (!realTime) return;
+            
+            const theoreticalTime = theoretical.arrival_time || theoretical.departure_time;
+            const delay = this.calculateDelay(theoreticalTime, realTime);
+            
+            if (delay !== null) {
+                delays[normalizedStopId] = {
+                    delayMinutes: delay,
+                    theoreticalTime: theoreticalTime,
+                    realTime: realTime,
+                    stopSequence: theoretical.stop_sequence
                 };
             }
-            
-            const estimatedArrival = scheduledSeconds;
-            const delaySeconds = currentTime - estimatedArrival;
-            
-            return {
-                ...stop,
-                delayMinutes: Math.round(delaySeconds / 60),
-                scheduledTime: scheduleStop.arrival_time,
-                estimatedSeconds: estimatedArrival
-            };
         });
-    }
+        
+        return delays;
+    },
     
+    /**
+     * Formatte un retard pour l'affichage
+     */
     formatDelay(delayMinutes) {
         if (delayMinutes === null || delayMinutes === undefined) {
-            return { text: '', class: '', icon: '' };
+            return { text: '', cssClass: '', icon: '' };
         }
         
-        if (delayMinutes > 2) {
+        const absDelay = Math.abs(delayMinutes);
+        
+        if (delayMinutes === 0) {
+            return {
+                text: t('ontime') || 'À l\'heure',
+                cssClass: 'delay-ontime',
+                icon: '✓',
+                color: '#4CAF50'
+            };
+        } else if (delayMinutes > 0) {
             return {
                 text: `+${delayMinutes} min`,
-                class: 'delay-late',
-                icon: '🔴',
-                color: '#ff4444'
-            };
-        } else if (delayMinutes < -2) {
-            return {
-                text: `${delayMinutes} min`,
-                class: 'delay-early',
-                icon: '🟢',
-                color: '#44ff44'
+                cssClass: 'delay-late',
+                icon: '⚠',
+                color: delayMinutes > 10 ? '#F44336' : '#FF9800'
             };
         } else {
             return {
-                text: t('ontime') || 'À l\'heure',
-                class: 'delay-ontime',
-                icon: '🟢',
-                color: '#44ff44'
+                text: `${delayMinutes} min`,
+                cssClass: 'delay-early',
+                icon: '↗',
+                color: '#2196F3'
             };
         }
+    },
+    
+    /**
+     * Génère le HTML pour afficher le retard
+     */
+    generateDelayHTML(delayMinutes) {
+        const formatted = this.formatDelay(delayMinutes);
+        if (!formatted.text) return '';
+        
+        return `
+            <div class="delay-badge" style="
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                background: ${formatted.color}20;
+                color: ${formatted.color};
+                border: 1px solid ${formatted.color}40;
+            ">
+                <span>${formatted.icon}</span>
+                <span>${formatted.text}</span>
+            </div>
+        `;
+    },
+    
+    /**
+     * Génère le HTML pour une liste d'arrêts avec retards
+     */
+    generateStopsWithDelaysHTML(stops, delays) {
+        if (!stops || stops.length === 0) return '';
+        
+        return stops.map(stop => {
+            const stopId = (stop.stopId || stop.stop_id || '').replace(/^0:/, '');
+            const stopName = stopNameMap[stopId] || stopId;
+            const delay = delays[stopId];
+            
+            const timeLeft = stop.delay;
+            const timeLeftText = timeLeft !== null 
+                ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
+                : '';
+            
+            const delayHTML = delay ? this.generateDelayHTML(delay.delayMinutes) : '';
+            
+            return `
+                <li style="list-style: none; padding: 6px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div class="stop-name-container" style="flex: 1; overflow: hidden;">
+                        <div class="stop-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${stopName}
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        ${delayHTML}
+                        <div class="time-display" style="min-width: 50px; text-align: right;">
+                            ${timeLeftText}
+                        </div>
+                    </div>
+                </li>
+            `;
+        }).join('');
+    },
+    
+    clearCache() {
+        this.theoreticalTimesCache.clear();
     }
-}
+};
 
-// Instance globale
-const delayManager = new DelayManager();
+// Ajouter les styles CSS pour les badges de retard
+if (!document.getElementById('delay-badge-styles')) {
+    const style = document.createElement('style');
+    style.id = 'delay-badge-styles';
+    style.textContent = `
+        .delay-badge {
+            transition: all 0.3s ease;
+        }
+        
+        .delay-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .delay-ontime {
+            animation: pulse-ontime 2s infinite;
+        }
+        
+        .delay-late {
+            animation: pulse-late 2s infinite;
+        }
+        
+        @keyframes pulse-ontime {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        @keyframes pulse-late {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.85; }
+        }
+    `;
+    document.head.appendChild(style);
+}
 // ==================== FIN GESTIONNAIRE DE RETARDS ====================
 
 async function fetchVehiclePositions() {
@@ -6516,7 +6627,7 @@ async function fetchVehiclePositions() {
             return bounds.contains(L.latLng(lat, lng));
         }
 
-            data.entity.forEach(async entity => {
+            data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
                 if (vehicle) {
 
@@ -6596,13 +6707,18 @@ async function fetchVehiclePositions() {
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    const enrichedStops = await delayManager.calculateDelaysForNextStops(
-                        tripId, 
-                        filteredStops, 
-                        stopId
-                    );
+                    DelayManager.calculateDelaysForTrip(tripId, filteredStops).then(delays => {
+                        const updatedHTML = DelayManager.generateStopsWithDelaysHTML(filteredStops, delays);
+                        
+                        const popupContent = document.querySelector(`[data-trip-id="${tripId}"] #nextStopsContent`);
+                        if (popupContent) {
+                            popupContent.innerHTML = `<ul style="padding: 0; margin: 0; list-style-type: none;">${updatedHTML}</ul>`;
+                        }
+                    }).catch(error => {
+                        console.warn('Erreur calcul retards:', error);
+                    });
                     
-                    stopsListHTML = enrichedStops.map(stop => {
+                    stopsListHTML = filteredStops.map(stop => {
                         const timeLeft = stop.delay;
                         const timeLeftText = timeLeft !== null 
                             ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
@@ -6610,55 +6726,41 @@ async function fetchVehiclePositions() {
                         
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
                         
-                        const delayInfo = delayManager.formatDelay(stop.delayMinutes);
-                        const delayBadge = delayInfo.text ? `
-                            <span class="delay-badge ${delayInfo.class}" style="
-                                background: ${delayInfo.color}20;
-                                color: ${delayInfo.color};
-                                padding: 2px 6px;
-                                border-radius: 4px;
-                                font-size: 10px;
-                                font-weight: 600;
-                                margin-left: 6px;
-                                border: 1px solid ${delayInfo.color}40;
-                            ">
-                                ${delayInfo.icon} ${delayInfo.text}
-                            </span>
-                        ` : '';
-                        
                         return `
-                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between; align-items: center;">
-                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 60%; white-space: nowrap;">
-                                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
-                                </div>
-                                ${delayBadge}
+                        <li style="list-style: none; padding: 6px 0; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="stop-name-container" style="flex: 1;">
+                                <div class="stop-name">${stopName}</div>
                             </div>
-                            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                                <div class="time-display" 
-                                    data-time-left="${timeLeftText}" 
-                                    data-departure-time="${stop.scheduledTime || stop.arrivalTime || stop.departureTime || "Inconnu"}">
-                                    ${timeLeftText}
-                                </div>
-                                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <g class="rss-waves">
-                                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
-                                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
-                                    </g>
-                                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
-                                </svg>
+                            <div class="time-display" style="min-width: 50px; text-align: right;">
+                                ${timeLeftText}
                             </div>
                         </li>`;
                     }).join('');
                 }
 
                 const nextStopsHTML = `
-                    <div style="position: relative; max-height: 120px;">
-                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
+                    <div style="position: relative; max-height: 120px;" data-trip-id="${tripId}">
+                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;" id="nextStopsContent">
                             ${stopsListHTML}
                         </ul>
                     </div>
                 `;
+
+                if (filteredStops.length > 0) {
+                    DelayManager.calculateDelaysForTrip(tripId, filteredStops).then(delays => {
+                        const delayValues = Object.values(delays).map(d => d.delayMinutes);
+                        if (delayValues.length > 0) {
+                            const avgDelay = Math.round(
+                                delayValues.reduce((a, b) => a + b, 0) / delayValues.length
+                            );
+                            
+                            const globalDelayElement = document.getElementById(`global-delay-${tripId}`);
+                            if (globalDelayElement) {
+                                globalDelayElement.innerHTML = DelayManager.generateDelayHTML(avgDelay);
+                            }
+                        }
+                    });
+                }
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
@@ -7031,7 +7133,10 @@ async function fetchVehiclePositions() {
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header">${stopsHeaderText}</p>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <p class="stops-header" style="margin: 0;">${stopsHeaderText}</p>
+                                    <div id="global-delay-${tripId}" style="font-size: 0.9em;"></div>
+                                </div>
                                 <ul>
                                     <div id="nextStopsContent" class="next-stops-content">
                                         ${nextStopsHTML}
@@ -9065,6 +9170,7 @@ function startFetchUpdates() {
 
 async function main() {
     try {
+        DelayManager.clearCache();
         initWorker();
         
         const gtfsData = await initializeGTFS();
