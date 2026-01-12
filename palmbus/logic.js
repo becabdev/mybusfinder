@@ -4916,7 +4916,7 @@ const MenuManager = {
     this.searchInput.addEventListener('blur', () => {
         if (!this.searchInput.value.trim()) {
             searchWrapper.classList.remove('search-active');
-            searchWrapper.classList.add('search-clique');
+            searchWrapper.classList.remove('search-clique');
         }
         
         this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
@@ -6504,7 +6504,7 @@ animationStyle.textContent = `
     }
 
     .search-clique {
-        animation: explosion 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
+        animation: explosion 0.6s cubic-bezier(0.25, 1.5, 0.5, 1);
         border-color: transparent !important;
     }
 
