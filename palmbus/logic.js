@@ -3313,7 +3313,7 @@ function updateLinesDisplay() {
         }
     });
 
-    updateBusStopsFiltering();
+    //updateBusStopsFiltering();
 
     if (typeof markerPool !== 'undefined' && markerPool.active) {
         markerPool.active.forEach((marker, id) => {
@@ -3407,34 +3407,6 @@ function restoreFilterState() {
 }
 
 
-function adjustProximityDistance(newDistance) {
-    
-    busStopsByLine = {};
-    
-    busStopLayers.forEach(stopLayer => {
-        const stopLatLng = stopLayer.getLatLng();
-        const routeIds = [];
-        
-        allBusLines.forEach(lineInfo => {
-            const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
-            if (distance <= newDistance) {
-                routeIds.push(lineInfo.routeId);
-            }
-        });
-        
-        stopLayer.routeIds = routeIds;
-        
-        routeIds.forEach(routeId => {
-            if (!busStopsByLine[routeId]) {
-                busStopsByLine[routeId] = [];
-            }
-            busStopsByLine[routeId].push(stopLayer);
-        });
-    });
-    
-    updateLinesDisplay();
-    updateBusStopsFiltering();
-}
 
 function showPopup() {
     const popup2 = document.getElementById('popup2');
@@ -7707,55 +7679,9 @@ function updateActiveLines() {
         }
     });
     
-    updateBusStopsForActiveLines(activeLinesSet);
+    //updateBusStopsForActiveLines(activeLinesSet);
 }
 
-function updateBusStopsForActiveLines(activeLinesSet) {
-    if (currentZoomLevel < MIN_ZOOM_FOR_STOPS) {
-        return;
-    }
-    
-    const bounds = map.getBounds();
-    
-    busStopLayers.forEach((marker) => {
-        if (!marker.routeIds || marker.routeIds.length === 0) {
-            if (busStopsLayerGroup.hasLayer(marker)) {
-                busStopsLayerGroup.removeLayer(marker);
-            }
-            return;
-        }
-        
-        const markerLatLng = marker.getLatLng();
-        if (!bounds.contains(markerLatLng)) {
-            if (busStopsLayerGroup.hasLayer(marker)) {
-                busStopsLayerGroup.removeLayer(marker);
-            }
-            return;
-        }
-        
-        const hasActiveAndFilteredLine = marker.routeIds.some(routeId => {
-            const isActive = activeLinesSet.has(routeId);
-            const isFilteredIn = selectedLines.length === 0 || selectedLines.includes(routeId);
-            return isActive && isFilteredIn;
-        });
-        
-        if (hasActiveAndFilteredLine) {
-            marker.setStyle({
-                opacity: 0.7, 
-                fillOpacity: 0.6,
-                radius: 3
-            });
-            
-            if (!busStopsLayerGroup.hasLayer(marker)) {
-                busStopsLayerGroup.addLayer(marker);
-            }
-        } else {
-            if (busStopsLayerGroup.hasLayer(marker)) {
-                busStopsLayerGroup.removeLayer(marker);
-            }
-        }
-    });
-}
 
 const FluentSettingsMenu = (function() {
   let menuElement = null;
