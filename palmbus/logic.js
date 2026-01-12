@@ -6292,53 +6292,8 @@ async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
     }
-    
-    // Throttling basé sur la visibilité
     if (document.hidden) {
-        console.log('Page cachée, skip fetch');
         return;
-    }
-
-        if (!window.timeAnimationStyleAdded) {
-        const timeAnimationStyle = `
-        <style id="time-animation-styles">
-            .time-display {
-                transition: opacity 0.3s ease-out;
-            }
-            
-            .time-display.fade-out {
-                opacity: 0;
-            }
-            
-            @keyframes radiateWaves {
-                0% { transform: scale(0.7); opacity: 0.5; }
-                50% { transform: scale(1.2); opacity: 1; }
-                100% { transform: scale(1); opacity: 0.7; }
-            }
-            
-            .time-indicator .rss-waves {
-                transform-origin: 5px 19px; 
-            }
-            
-            .time-indicator.animate .rss-waves {
-                animation: radiateWaves 0.6s ease-out;
-            }
-            
-            @keyframes scrollText {
-                0% { transform: translateX(0); }
-                10% { transform: translateX(0); }
-                60% { transform: translateX(calc(-100% + 70px)); }
-                90% { transform: translateX(calc(-100% + 70px)); }
-                100% { transform: translateX(0); }
-            }
-            
-            .stop-name-container:hover .stop-name-wrapper[style*="animation"] {
-                animation-play-state: running !important;
-            }
-        </style>
-        `;
-        document.head.insertAdjacentHTML('beforeend', timeAnimationStyle);
-        window.timeAnimationStyleAdded = true;
     }
     try {
         const response = await fetch('proxy-cors/proxy_vehpos.php');
