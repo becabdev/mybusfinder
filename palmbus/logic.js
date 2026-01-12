@@ -4904,6 +4904,10 @@ const MenuManager = {
         this._performSearch(value);
     });
 
+    this.searchInput.addEventListener('click', (e) => {
+        searchWrapper.classList.add('search-clique');
+    });
+
     this.searchInput.addEventListener('focus', () => {
         searchWrapper.classList.add('search-active');
         
@@ -6494,10 +6498,15 @@ animationStyle.textContent = `
 
     .search-active {
         animation: borderExplosion 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-                borderPulse 2s ease-in-out 0.6s infinite !important,
-                explosion 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
+                borderPulse 2s ease-in-out 0.6s infinite !important;
         border-color: transparent !important;
     }
+
+    .search-clique {
+        animation: explosion 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
+        border-color: transparent !important;
+    }
+
 `;
 document.head.appendChild(animationStyle);
 
