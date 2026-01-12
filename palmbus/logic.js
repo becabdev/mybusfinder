@@ -4820,71 +4820,6 @@ const MenuManager = {
             background-color: rgba(0, 0, 0, 0.46);
             border-radius: 100px;
         `;
-
-        // Filtres rapides
-        const quickFilters = document.createElement('div');
-        quickFilters.style.cssText = `
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-            overflow-x: auto;
-            padding: 5px 0;
-            -webkit-overflow-scrolling: touch;
-        `;
-
-        const filterTypes = [
-            { id: 'all', label: t('all') || 'Tous', icon: '🔍' },
-            { id: 'vehicles', label: t('vehicles') || 'Véhicules', icon: '🚌' },
-            { id: 'lines', label: t('lines') || 'Lignes', icon: '🚏' },
-            { id: 'stops', label: t('stops') || 'Arrêts', icon: '📍' },
-            { id: 'destinations', label: t('destinations') || 'Destinations', icon: '🎯' }
-        ];
-
-        this.activeFilter = 'all';
-
-        filterTypes.forEach(filter => {
-            const filterBtn = document.createElement('button');
-            filterBtn.className = 'quick-filter-btn';
-            filterBtn.dataset.filter = filter.id;
-            filterBtn.style.cssText = `
-                padding: 6px 12px;
-                border-radius: 20px;
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                background: rgba(255, 255, 255, 0.1);
-                color: white;
-                font-size: 13px;
-                cursor: pointer;
-                white-space: nowrap;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            `;
-            
-            filterBtn.innerHTML = `${filter.icon} ${filter.label}`;
-            
-            if (filter.id === 'all') {
-                filterBtn.classList.add('active');
-            }
-            
-            filterBtn.onclick = () => {
-                document.querySelectorAll('.quick-filter-btn').forEach(btn => {
-                    btn.classList.remove('active');
-                    btn.style.background = 'rgba(255, 255, 255, 0.1)';
-                });
-                filterBtn.classList.add('active');
-                this.activeFilter = filter.id;
-                
-                // Re-lancer la recherche avec le nouveau filtre
-                if (this.searchInput.value.trim()) {
-                    this._performSearch(this.searchInput.value.trim());
-                }
-            };
-            
-            quickFilters.appendChild(filterBtn);
-        });
-
-        searchContainer.appendChild(quickFilters);
         
         // Icône de recherche
         const searchIcon = document.createElement('div');
@@ -4962,34 +4897,29 @@ const MenuManager = {
             this.searchInput.focus();
         };
         
-        this.searchInput.addEventListener('input', (e) => {
-            const value = e.target.value.trim();
-            clearButton.style.display = value ? 'flex' : 'none';
-            
-            this._showSuggestions(value);
-            
-            this._performSearch(value);
-        });
+    this.searchInput.addEventListener('input', (e) => {
+        const value = e.target.value.trim();
+        clearButton.style.display = value ? 'flex' : 'none';
+        this._performSearch(value);
+    });
 
-        document.addEventListener('click', (e) => {
-            if (this.suggestionsContainer && 
-                !this.searchInput.contains(e.target) && 
-                !this.suggestionsContainer.contains(e.target)) {
-                this.suggestionsContainer.style.display = 'none';
-            }
-        });
-
-        this.searchInput.addEventListener('focus', () => {
-            this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
-            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
-            this.searchInput.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.1)';
-        });
+    this.searchInput.addEventListener('focus', () => {
+        searchWrapper.classList.add('search-active');
         
-        this.searchInput.addEventListener('blur', () => {
-            this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
-            this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-            this.searchInput.style.boxShadow = 'none';
-        });
+        this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
+        this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+        this.searchInput.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.1)';
+    });
+
+    this.searchInput.addEventListener('blur', () => {
+        if (!this.searchInput.value.trim()) {
+            searchWrapper.classList.remove('search-active');
+        }
+        
+        this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
+        this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        this.searchInput.style.boxShadow = 'none';
+    });
         
         searchWrapper.appendChild(searchIcon);
         searchWrapper.appendChild(this.searchInput);
@@ -5013,136 +4943,9 @@ const MenuManager = {
         
         this.container.appendChild(searchContainer);
     },
-
-    _createSearchSuggestions() {
-        const suggestionsContainer = document.createElement('div');
-        suggestionsContainer.id = 'search-suggestions';
-        suggestionsContainer.style.cssText = `
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 0 0 12px 12px;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            z-index: 10;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        `;
-        
-        return suggestionsContainer;
-    },
-
-    _showSuggestions(query) {
-        if (!this.suggestionsContainer) {
-            this.suggestionsContainer = this._createSearchSuggestions();
-            document.getElementById('search-container')
-                .querySelector('div')
-                .appendChild(this.suggestionsContainer);
-        }
-        
-        if (query.length < 2) {
-            this.suggestionsContainer.style.display = 'none';
-            return;
-        }
-        
-        const suggestions = this._generateSuggestions(query);
-        
-        if (suggestions.length === 0) {
-            this.suggestionsContainer.style.display = 'none';
-            return;
-        }
-        
-        this.suggestionsContainer.innerHTML = '';
-        this.suggestionsContainer.style.display = 'block';
-        
-        suggestions.slice(0, 5).forEach(suggestion => {
-            const item = document.createElement('div');
-            item.style.cssText = `
-                padding: 10px 15px;
-                cursor: pointer;
-                color: white;
-                font-size: 13px;
-                transition: background 0.2s ease;
-            `;
-            
-            item.innerHTML = `
-                <div style="font-weight: 500;">${this._highlightMatch(suggestion.text, query)}</div>
-                <div style="font-size: 11px; opacity: 0.7; margin-top: 2px;">${suggestion.type}</div>
-            `;
-            
-            item.onclick = () => {
-                this.searchInput.value = suggestion.text;
-                this._performSearch(suggestion.text);
-                this.suggestionsContainer.style.display = 'none';
-            };
-            
-            item.onmouseover = () => item.style.background = 'rgba(255, 255, 255, 0.1)';
-            item.onmouseout = () => item.style.background = 'transparent';
-            
-            this.suggestionsContainer.appendChild(item);
-        });
-    },
-
-    _generateSuggestions(query) {
-        const suggestions = [];
-        const lowerQuery = query.toLowerCase();
-        
-        Object.keys(lineColors).forEach(line => {
-            if (line.toLowerCase().includes(lowerQuery)) {
-                suggestions.push({
-                    text: `${t('line')} ${lineName[line] || line}`,
-                    type: t('line'),
-                    score: 100
-                });
-            }
-        });
-        
-        this.linesByStop.forEach((lines, stopName) => {
-            if (stopName.toLowerCase().includes(lowerQuery)) {
-                suggestions.push({
-                    text: stopName,
-                    type: `${t('stop')} • ${lines.size} ${t('lines')}`,
-                    score: 80
-                });
-            }
-        });
-        
-        const destinations = new Set();
-        Object.values(this.busesByLineAndDestination).forEach(dests => {
-            Object.keys(dests).forEach(dest => destinations.add(dest));
-        });
-        
-        destinations.forEach(dest => {
-            if (dest.toLowerCase().includes(lowerQuery)) {
-                suggestions.push({
-                    text: dest,
-                    type: t('destination'),
-                    score: 70
-                });
-            }
-        });
-        
-        return suggestions.sort((a, b) => b.score - a.score);
-    },
-
-    _highlightMatch(text, query) {
-        const index = text.toLowerCase().indexOf(query.toLowerCase());
-        if (index === -1) return text;
-        
-        const before = text.substring(0, index);
-        const match = text.substring(index, index + query.length);
-        const after = text.substring(index + query.length);
-        
-        return `${before}<span style="background: rgba(255, 255, 255, 0.2); padding: 1px 3px; border-radius: 3px;">${match}</span>${after}`;
-    },
         
     _buildBusIndex() {
         this.allBuses = [];
-        this.stopsByLine = new Map(); // Nouveau : arrêts par ligne
-        this.linesByStop = new Map(); // Nouveau : lignes par arrêt
         
         Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
             Object.entries(destinations).forEach(([destination, buses]) => {
@@ -5151,27 +4954,11 @@ const MenuManager = {
                                     bus.vehicleData?.vehicle?.id || 
                                     "inconnu";
                     
-                    // Récupérer les arrêts desservis par ce bus
                     const tripId = bus.vehicleData?.trip?.tripId;
-                    const nextStops = tripUpdates[tripId]?.nextStops || [];
-                    const stopNames = nextStops.map(stop => {
-                        const stopId = stop.stopId.replace("0:", "");
-                        return stopNameMap[stopId] || stopId;
-                    });
-                    
-                    // Index arrêts par ligne
-                    if (!this.stopsByLine.has(line)) {
-                        this.stopsByLine.set(line, new Set());
-                    }
-                    stopNames.forEach(stopName => {
-                        this.stopsByLine.get(line).add(stopName);
-                        
-                        // Index lignes par arrêt
-                        if (!this.linesByStop.has(stopName)) {
-                            this.linesByStop.set(stopName, new Set());
-                        }
-                        this.linesByStop.get(stopName).add(line);
-                    });
+                    const stops = tripUpdates[tripId]?.nextStops || [];
+                    const stopNames = stops.map(stop => 
+                        stopNameMap[stop.stopId] || stop.stopId
+                    ).join(' ');
                     
                     this.allBuses.push({
                         line,
@@ -5179,8 +4966,9 @@ const MenuManager = {
                         vehicleLabel,
                         parkNumber: bus.parkNumber,
                         bus,
-                        stops: stopNames, // Nouveau : liste des arrêts
-                        searchText: `${line} ${destination} ${vehicleLabel} ${stopNames.join(' ')}`.toLowerCase()
+                        stops: stops, 
+                        stopNames: stopNames, 
+                        searchText: `${line} ${destination} ${vehicleLabel} ${stopNames}`.toLowerCase()
                     });
                 });
             });
@@ -5188,9 +4976,16 @@ const MenuManager = {
     },
     
     _performSearch(query) {
+        const searchWrapper = document.querySelector('#search-container > div');
+        
         if (!query) {
             this.isSearchActive = false;
             this.searchResults.style.display = 'none';
+            
+            if (searchWrapper) {
+                searchWrapper.classList.remove('search-active');
+            }
+            
             this._showAllSections();
             return;
         }
@@ -5198,7 +4993,6 @@ const MenuManager = {
         this.isSearchActive = true;
         const normalizedQuery = query.toLowerCase().trim();
         
-        // Recherche avec scoring
         const results = this.allBuses.map(item => {
             const score = this._calculateScore(item, normalizedQuery);
             return { ...item, score };
@@ -5212,7 +5006,6 @@ const MenuManager = {
             return;
         }
         
-        // Grouper par ligne
         const resultsByLine = new Map();
         results.forEach(result => {
             if (!resultsByLine.has(result.line)) {
@@ -5221,76 +5014,55 @@ const MenuManager = {
             resultsByLine.get(result.line).push(result);
         });
         
-        // Afficher les résultats
         this._displaySearchResults(resultsByLine, normalizedQuery);
         
-        // Filtrer les sections
         this._filterSections(resultsByLine);
     },
 
     _calculateScore(item, query) {
         let score = 0;
         
-        if (this.activeFilter !== 'all') {
-            switch(this.activeFilter) {
-                case 'vehicles':
-                    if (!item.vehicleLabel.toLowerCase().includes(query)) return 0;
-                    break;
-                case 'lines':
-                    if (!item.line.toLowerCase().includes(query)) return 0;
-                    break;
-                case 'stops':
-                    if (!item.stops.some(stop => stop.toLowerCase().includes(query))) return 0;
-                    break;
-                case 'destinations':
-                    if (!item.destination.toLowerCase().includes(query)) return 0;
-                    break;
-            }
-        }
-        
         if (item.line.toLowerCase() === query) score += 100;
         if (item.destination.toLowerCase() === query) score += 80;
         if (item.vehicleLabel.toLowerCase() === query) score += 90;
         
-        const stopMatch = item.stops.some(stop => stop.toLowerCase() === query);
-        if (stopMatch) score += 85;
+        if (item.stops) {
+            const exactStopMatch = item.stops.some(stop => {
+                const stopName = (stopNameMap[stop.stopId] || stop.stopId).toLowerCase();
+                return stopName === query;
+            });
+            if (exactStopMatch) score += 85;
+        }
         
         if (item.line.toLowerCase().startsWith(query)) score += 50;
         if (item.destination.toLowerCase().startsWith(query)) score += 40;
         if (item.vehicleLabel.toLowerCase().startsWith(query)) score += 45;
         
-        const stopStartsWith = item.stops.some(stop => stop.toLowerCase().startsWith(query));
-        if (stopStartsWith) score += 42;
+        if (item.stops) {
+            const startsWithStopMatch = item.stops.some(stop => {
+                const stopName = (stopNameMap[stop.stopId] || stop.stopId).toLowerCase();
+                return stopName.startsWith(query);
+            });
+            if (startsWithStopMatch) score += 42;
+        }
         
         if (item.line.toLowerCase().includes(query)) score += 30;
         if (item.destination.toLowerCase().includes(query)) score += 25;
         if (item.vehicleLabel.toLowerCase().includes(query)) score += 28;
-        
-        const stopIncludes = item.stops.some(stop => stop.toLowerCase().includes(query));
-        if (stopIncludes) score += 26;
+        if (item.stopNames && item.stopNames.toLowerCase().includes(query)) score += 27;
         
         if (this._fuzzyMatch(item.line, query)) score += 15;
         if (this._fuzzyMatch(item.destination, query)) score += 12;
         if (this._fuzzyMatch(item.vehicleLabel, query)) score += 13;
         
-        const stopFuzzy = item.stops.some(stop => this._fuzzyMatch(stop, query));
-        if (stopFuzzy) score += 14;
-        
         const matchCount = [
             item.line.toLowerCase().includes(query),
             item.destination.toLowerCase().includes(query),
             item.vehicleLabel.toLowerCase().includes(query),
-            stopIncludes
+            item.stopNames && item.stopNames.toLowerCase().includes(query)
         ].filter(Boolean).length;
         
         if (matchCount > 1) score += 20 * matchCount;
-        
-        if (query.length >= 3) {
-            const partialStopMatch = item.stops.some(stop => 
-                stop.toLowerCase().split(' ').some(word => word.startsWith(query))
-            );
-            if (partialStopMatch) score += 15;
-        }
         
         return score;
     },
@@ -5311,38 +5083,6 @@ const MenuManager = {
         }
         return true;
     },
-
-    _getMatchingStops(query) {
-        const matchingStops = [];
-        
-        this.linesByStop.forEach((lines, stopName) => {
-            if (stopName.toLowerCase().includes(query)) {
-                matchingStops.push({
-                    name: stopName,
-                    lines: lines,
-                    score: this._calculateStopScore(stopName, query)
-                });
-            }
-        });
-        
-        return matchingStops.sort((a, b) => b.score - a.score);
-    },
-
-    _calculateStopScore(stopName, query) {
-        let score = 0;
-        const lowerStop = stopName.toLowerCase();
-        const lowerQuery = query.toLowerCase();
-        
-        if (lowerStop === lowerQuery) score += 100;
-        if (lowerStop.startsWith(lowerQuery)) score += 50;
-        if (lowerStop.includes(lowerQuery)) score += 30;
-        
-        const words = lowerStop.split(' ');
-        if (words.some(word => word === lowerQuery)) score += 40;
-        if (words.some(word => word.startsWith(lowerQuery))) score += 25;
-        
-        return score;
-    },
     
     _displaySearchResults(resultsByLine, query) {
         this.searchResults.innerHTML = '';
@@ -5360,71 +5100,6 @@ const MenuManager = {
         const totalResults = Array.from(resultsByLine.values()).reduce((sum, arr) => sum + arr.length, 0);
         summary.textContent = `${totalResults} ${t('result' + (totalResults > 1 ? 's' : ''))} • ${resultsByLine.size} ${t('line' + (resultsByLine.size > 1 ? 's' : ''))}`;
         this.searchResults.appendChild(summary);
-
-        if (this.activeFilter === 'all' || this.activeFilter === 'stops') {
-            const matchingStops = this._getMatchingStops(query);
-            if (matchingStops.length > 0) {
-                const stopsSection = document.createElement('div');
-                stopsSection.style.cssText = `
-                    margin-bottom: 15px;
-                    padding: 12px;
-                    background: rgba(255, 255, 255, 0.05);
-                    border-radius: 12px;
-                `;
-                
-                const stopsTitle = document.createElement('div');
-                stopsTitle.style.cssText = `
-                    color: white;
-                    font-weight: 600;
-                    font-size: 14px;
-                    margin-bottom: 10px;
-                    opacity: 0.9;
-                `;
-                stopsTitle.textContent = `📍 ${t('stops')} (${matchingStops.length})`;
-                stopsSection.appendChild(stopsTitle);
-                
-                matchingStops.slice(0, 5).forEach(stopInfo => {
-                    const stopItem = document.createElement('div');
-                    stopItem.style.cssText = `
-                        padding: 8px 10px;
-                        background: rgba(0, 0, 0, 0.2);
-                        border-radius: 8px;
-                        margin-bottom: 6px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                    `;
-                    
-                    stopItem.innerHTML = `
-                        <div style="color: white; font-size: 13px; font-weight: 500;">
-                            ${stopInfo.name}
-                        </div>
-                        <div style="color: white; font-size: 11px; opacity: 0.7; margin-top: 2px;">
-                            ${Array.from(stopInfo.lines).slice(0, 5).map(line => 
-                                `<span style="background: ${lineColors[line] || '#666'}; padding: 2px 6px; border-radius: 4px; margin-right: 4px;">${lineName[line] || line}</span>`
-                            ).join('')}
-                            ${stopInfo.lines.size > 5 ? `+${stopInfo.lines.size - 5}` : ''}
-                        </div>
-                    `;
-                    
-                    stopItem.onclick = () => {
-                        this.searchInput.value = stopInfo.name;
-                        this._performSearch(stopInfo.name);
-                    };
-                    
-                    stopItem.onmouseover = () => {
-                        stopItem.style.background = 'rgba(0, 0, 0, 0.35)';
-                    };
-                    
-                    stopItem.onmouseout = () => {
-                        stopItem.style.background = 'rgba(0, 0, 0, 0.2)';
-                    };
-                    
-                    stopsSection.appendChild(stopItem);
-                });
-                
-                this.searchResults.appendChild(stopsSection);
-            }
-        }
         
         // Afficher par ligne avec les véhicules
         Array.from(resultsByLine.entries()).slice(0, 2).forEach(([line, items]) => {
@@ -5524,8 +5199,8 @@ const MenuManager = {
                     padding: 8px 10px;
                     border-radius: 8px;
                     display: flex;
-                    align-items: center;
-                    gap: 10px;
+                    flex-direction: column;
+                    gap: 4px;
                     transition: all 0.2s ease;
                     cursor: pointer;
                 `;
@@ -5551,7 +5226,13 @@ const MenuManager = {
                     this._performSearch('');
                 };
                 
-                // Badge véhicule
+                const topRow = document.createElement('div');
+                topRow.style.cssText = `
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                `;
+                
                 const vehicleBadge = document.createElement('span');
                 vehicleBadge.style.cssText = `
                     background: rgba(255, 255, 255, 0.2);
@@ -5565,7 +5246,6 @@ const MenuManager = {
                 `;
                 vehicleBadge.textContent = item.vehicleLabel.replace(/Véhicule inconnu\.?/, "inconnu");
                 
-                // Info destination
                 const destInfo = document.createElement('span');
                 destInfo.style.cssText = `
                     color: white;
@@ -5575,21 +5255,37 @@ const MenuManager = {
                 `;
                 destInfo.textContent = item.destination;
                 
-                // Score badge debug
-                const scoreBadge = document.createElement('span');
-                scoreBadge.style.cssText = `
-                    background: rgba(255, 255, 255, 0.15);
-                    color: white;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-size: 10px;
-                    opacity: 0.7;
-                `;
-                scoreBadge.textContent = `${item.score}`;
+                topRow.appendChild(vehicleBadge);
+                topRow.appendChild(destInfo);
                 
-                vehicleItem.appendChild(vehicleBadge);
-                vehicleItem.appendChild(destInfo);
-                // vehicleItem.appendChild(scoreBadge);
+                if (item.stops && item.stops.length > 0) {
+                    const stopsRow = document.createElement('div');
+                    stopsRow.style.cssText = `
+                        color: white;
+                        font-size: 11px;
+                        opacity: 0.7;
+                        font-style: italic;
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                    `;
+                    
+                    const stopIcon = document.createElement('span');
+                    stopIcon.textContent = '📍';
+                    stopIcon.style.fontSize = '10px';
+                    
+                    const stopsText = document.createElement('span');
+                    const stopCount = item.stops.length;
+                    stopsText.textContent = `${stopCount} ${stopCount > 1 ? t('stops') : t('stop')}`;
+                    
+                    stopsRow.appendChild(stopIcon);
+                    stopsRow.appendChild(stopsText);
+                    
+                    vehicleItem.appendChild(topRow);
+                    vehicleItem.appendChild(stopsRow);
+                } else {
+                    vehicleItem.appendChild(topRow);
+                }
                 
                 vehiclesList.appendChild(vehicleItem);
             });
@@ -5650,23 +5346,56 @@ const MenuManager = {
     },
     
     _showAllSections() {
-        this.sections.forEach(section => {
+        this.sections.forEach((section, index) => {
             section.element.style.display = '';
+            section.element.style.opacity = '0';
+            section.element.style.transform = 'translateY(20px)';
+            
+            // Animation échelonnée
+            setTimeout(() => {
+                section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                section.element.style.opacity = '1';
+                section.element.style.transform = 'translateY(0)';
+            }, index * 50);
         });
     },
-    
+
     _hideAllSections() {
-        this.sections.forEach(section => {
-            section.element.style.display = 'none';
+        this.sections.forEach((section, index) => {
+            section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            section.element.style.opacity = '0';
+            section.element.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                section.element.style.display = 'none';
+            }, 200);
         });
     },
-    
+
     _filterSections(resultsByLine) {
+        let visibleIndex = 0;
+        
         this.sections.forEach((section, line) => {
             if (resultsByLine.has(line)) {
                 section.element.style.display = '';
+                section.element.style.opacity = '0';
+                section.element.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    section.element.style.opacity = '1';
+                    section.element.style.transform = 'translateY(0)';
+                }, visibleIndex * 50);
+                
+                visibleIndex++;
             } else {
-                section.element.style.display = 'none';
+                section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                section.element.style.opacity = '0';
+                section.element.style.transform = 'translateY(-10px)';
+                
+                setTimeout(() => {
+                    section.element.style.display = 'none';
+                }, 200);
             }
         });
     },
@@ -5767,6 +5496,8 @@ const MenuManager = {
                 if (searchContainer) searchContainer.style.transform = 'translateY(0)';
             }
             lastScrollTop = scrollTop;
+            
+            this._handleScrollAnimations();
         });
     },
 
@@ -6712,17 +6443,70 @@ animationStyle.textContent = `
     }
 
     @keyframes scaleIn {
-    0% {
-        opacity: 0;
-        filter: blur(8px);
-        transform: scale(0.85) translateY(20px);
+        0% {
+            opacity: 0;
+            filter: blur(8px);
+            transform: scale(0.85) translateY(20px);
+        }
+        100% {
+            opacity: 1;
+            filter: blur(0px);
+            transform: scale(1) translateY(0);
+        }
     }
-    100% {
-        opacity: 1;
-        filter: blur(0px);
-        transform: scale(1) translateY(0);
+
+    @keyframes borderExplosion {
+        0% {
+            box-shadow: 
+                0 0 0 0 rgba(255, 0, 0, 0.7),
+                0 0 0 0 rgba(0, 255, 0, 0.7),
+                0 0 0 0 rgba(0, 0, 255, 0.7);
+        }
+        25% {
+            box-shadow: 
+                0 0 20px 5px rgba(255, 0, 0, 0.5),
+                0 0 20px 5px rgba(255, 255, 0, 0.5),
+                0 0 20px 5px rgba(0, 255, 255, 0.5);
+        }
+        50% {
+            box-shadow: 
+                0 0 30px 10px rgba(255, 0, 255, 0.4),
+                0 0 30px 10px rgba(0, 255, 0, 0.4),
+                0 0 30px 10px rgba(255, 128, 0, 0.4);
+        }
+        75% {
+            box-shadow: 
+                0 0 25px 8px rgba(128, 0, 255, 0.3),
+                0 0 25px 8px rgba(255, 0, 128, 0.3),
+                0 0 25px 8px rgba(0, 255, 255, 0.3);
+        }
+        100% {
+            box-shadow: 
+                0 0 15px 3px rgba(255, 0, 0, 0.2),
+                0 0 15px 3px rgba(0, 255, 0, 0.2),
+                0 0 15px 3px rgba(0, 0, 255, 0.2);
+        }
     }
-}
+    
+    @keyframes borderPulse {
+        0%, 100% {
+            box-shadow: 
+                0 0 15px 3px rgba(255, 0, 0, 0.3),
+                0 0 15px 3px rgba(0, 255, 0, 0.3),
+                0 0 15px 3px rgba(0, 0, 255, 0.3);
+        }
+        50% {
+            box-shadow: 
+                0 0 20px 5px rgba(255, 0, 255, 0.4),
+                0 0 20px 5px rgba(0, 255, 255, 0.4),
+                0 0 20px 5px rgba(255, 255, 0, 0.4);
+        }
+    }
+    
+    .search-active {
+        animation: borderExplosion 0.6s ease-out, borderPulse 2s ease-in-out 0.6s infinite !important;
+        border-color: transparent !important;
+    }
 `;
 document.head.appendChild(animationStyle);
 
@@ -8077,6 +7861,7 @@ const menubottom1 = document.getElementById('menubtm');
             menubottom1.style.display = 'none';
             }
             }, { once: true });
+            MenuManager._handleScrollAnimations();
 
         }
 
