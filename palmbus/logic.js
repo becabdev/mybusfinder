@@ -3197,41 +3197,39 @@ async function loadGeoJsonLines() {
     const response = await fetch('proxy-cors/proxy_geojson.php');
     const geoJsonData = await response.json();
 
-    setTimeout(() => {
-        currentZoomLevel = map.getZoom();
-        
-        const activeLinesSet = new Set();
-        markerPool.active.forEach((marker) => {
-            if (marker.line) {
-                activeLinesSet.add(marker.line);
+    currentZoomLevel = map.getZoom();
+    
+    const activeLinesSet = new Set();
+    markerPool.active.forEach((marker) => {
+        if (marker.line) {
+            activeLinesSet.add(marker.line);
+        }
+    });
+    
+    const busLines = L.geoJSON(geoJsonData, {
+        filter: function(feature) {
+            if (feature.geometry.type === 'LineString') {
+                return activeLinesSet.has(feature.properties.route_id);
             }
-        });
-        
-        const busLines = L.geoJSON(geoJsonData, {
-            filter: function(feature) {
-                if (feature.geometry.type === 'LineString') {
-                    return activeLinesSet.has(feature.properties.route_id);
-                }
-                return false; 
-            },
-            style: function(feature) {
-                return {
-                    color: lineColors[feature.properties.route_id] || '#3388ff',
-                    weight: 6,
-                    opacity: 0.7,  
-                    lineJoin: 'round',
-                    lineCap: 'round',
-                    className: 'bus-line', 
-                    dashArray: feature.properties.route_type === '3' ? '5, 5' : null
-                };
-            },
-            onEachFeature: function(feature, layer) {
-                if (feature.properties && feature.properties.route_id) {
-                    geoJsonLines.push(layer);
-                }
+            return false; 
+        },
+        style: function(feature) {
+            return {
+                color: lineColors[feature.properties.route_id] || '#3388ff',
+                weight: 6,
+                opacity: 0.7,  
+                lineJoin: 'round',
+                lineCap: 'round',
+                className: 'bus-line', 
+                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
+            };
+        },
+        onEachFeature: function(feature, layer) {
+            if (feature.properties && feature.properties.route_id) {
+                geoJsonLines.push(layer);
             }
-        }).addTo(map);
-    }, 500);
+        }
+    }).addTo(map);
 }
 
 function filterByLine(lineId) {
