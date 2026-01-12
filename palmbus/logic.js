@@ -6482,20 +6482,20 @@ animationStyle.textContent = `
 
     @keyframes explosion {
         0% {
-            transform: scale(1);
+            transform: scaleY(1);
         } 
         50% {
-            transform: scale(0.9);
+            transform: scaleY(0.9);
         }
         100% {
-            transform: scale(1);
+            transform: scaleY(1);
         }
     }     
 
     .search-active {
         animation: borderExplosion 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
-                borderPulse 2s ease-in-out 0.6s infinite !important;,
-                explosion 0.3s cubic-bezier(0.25, 1.5, 0.5, 1)
+                borderPulse 2s ease-in-out 0.6s infinite !important,
+                explosion 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
         border-color: transparent !important;
     }
 `;
