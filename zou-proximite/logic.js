@@ -5729,6 +5729,7 @@ const MenuManager = {
             closeMenu();
             setTimeout(() => {
                 updateLinesDisplay();
+                updateBusStopsFiltering();
             }, 50);
         };
         
