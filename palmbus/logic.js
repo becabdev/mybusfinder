@@ -3239,13 +3239,11 @@ async function loadGeoJsonLines() {
 
     }, 500);
 
-    map.on('zoomend', handleZoomChange);
     map.on('moveend', handleMapMove);
 }
 
 function cleanupMap() {
     if (map) {
-        map.off('zoomend', handleZoomChange);
         map.off('moveend', handleMapMove);
         if (busStopsLayerGroup) {
             busStopsLayerGroup.clearLayers();
