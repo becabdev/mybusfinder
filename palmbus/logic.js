@@ -8831,12 +8831,9 @@ function startFetchUpdates() {
 
 async function main() {
     try {
-        initWorker();
-        
-        const gtfsData = await initializeGTFS();
-        gtfsInitialized = true;
-        
         await Promise.all([
+            initializeGTFS(),
+            gtfsInitialized = true,
             fetchTripUpdates().catch(console.error),
             hideLoadingScreen(),
             fetchVehiclePositions(),
