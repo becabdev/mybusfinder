@@ -6516,7 +6516,7 @@ async function fetchVehiclePositions() {
             return bounds.contains(L.latLng(lat, lng));
         }
 
-            data.entity.forEach(entity => {
+            data.entity.forEach(async entity => {
                 const vehicle = entity.vehicle;
                 if (vehicle) {
 
@@ -6596,7 +6596,7 @@ async function fetchVehiclePositions() {
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    const enrichedStops = delayManager.calculateDelaysForNextStops(
+                    const enrichedStops = await delayManager.calculateDelaysForNextStops(
                         tripId, 
                         filteredStops, 
                         stopId
