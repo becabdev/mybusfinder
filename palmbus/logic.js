@@ -3225,6 +3225,8 @@ async function loadGeoJsonLines() {
                 }
             }
         }).addTo(map);
+
+        updateBusStopsVisibility();
     }, 500);
 
 
@@ -3252,7 +3254,6 @@ async function loadGeoJsonLines() {
         });
     }
 
-    updateBusStopsVisibility();
 
     map.on('zoomend', handleZoomChange);
     map.on('moveend', handleMapMove);
@@ -5199,8 +5200,8 @@ const MenuManager = {
                     padding: 8px 10px;
                     border-radius: 8px;
                     display: flex;
-                    flex-direction: column;
-                    gap: 4px;
+                    align-items: center;
+                    gap: 10px;
                     transition: all 0.2s ease;
                     cursor: pointer;
                 `;
@@ -5226,13 +5227,6 @@ const MenuManager = {
                     this._performSearch('');
                 };
                 
-                const topRow = document.createElement('div');
-                topRow.style.cssText = `
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                `;
-                
                 const vehicleBadge = document.createElement('span');
                 vehicleBadge.style.cssText = `
                     background: rgba(255, 255, 255, 0.2);
@@ -5255,41 +5249,12 @@ const MenuManager = {
                 `;
                 destInfo.textContent = item.destination;
                 
-                topRow.appendChild(vehicleBadge);
-                topRow.appendChild(destInfo);
-                
-                if (item.stops && item.stops.length > 0) {
-                    const stopsRow = document.createElement('div');
-                    stopsRow.style.cssText = `
-                        color: white;
-                        font-size: 11px;
-                        opacity: 0.7;
-                        font-style: italic;
-                        display: flex;
-                        align-items: center;
-                        gap: 4px;
-                    `;
-                    
-                    const stopIcon = document.createElement('span');
-                    stopIcon.textContent = '📍';
-                    stopIcon.style.fontSize = '10px';
-                    
-                    const stopsText = document.createElement('span');
-                    const stopCount = item.stops.length;
-                    stopsText.textContent = `${stopCount} ${stopCount > 1 ? t('stops') : t('stop')}`;
-                    
-                    stopsRow.appendChild(stopIcon);
-                    stopsRow.appendChild(stopsText);
-                    
-                    vehicleItem.appendChild(topRow);
-                    vehicleItem.appendChild(stopsRow);
-                } else {
-                    vehicleItem.appendChild(topRow);
-                }
+                vehicleItem.appendChild(vehicleBadge);
+                vehicleItem.appendChild(destInfo);
                 
                 vehiclesList.appendChild(vehicleItem);
             });
-            
+                
             if (items.length > 3) {
                 const moreVehicles = document.createElement('div');
                 moreVehicles.style.cssText = `
@@ -6458,53 +6423,48 @@ animationStyle.textContent = `
     @keyframes borderExplosion {
         0% {
             box-shadow: 
-                0 0 0 0 rgba(255, 0, 0, 0.7),
-                0 0 0 0 rgba(0, 255, 0, 0.7),
-                0 0 0 0 rgba(0, 0, 255, 0.7);
-        }
-        25% {
-            box-shadow: 
-                0 0 20px 5px rgba(255, 0, 0, 0.5),
-                0 0 20px 5px rgba(255, 255, 0, 0.5),
-                0 0 20px 5px rgba(0, 255, 255, 0.5);
-        }
-        50% {
-            box-shadow: 
-                0 0 30px 10px rgba(255, 0, 255, 0.4),
-                0 0 30px 10px rgba(0, 255, 0, 0.4),
-                0 0 30px 10px rgba(255, 128, 0, 0.4);
-        }
-        75% {
-            box-shadow: 
-                0 0 25px 8px rgba(128, 0, 255, 0.3),
-                0 0 25px 8px rgba(255, 0, 128, 0.3),
-                0 0 25px 8px rgba(0, 255, 255, 0.3);
+                0 0 0 0 rgba(255, 0, 0, 0) inset,
+                0 0 0 0 rgba(255, 255, 0, 0) inset,
+                0 0 0 0 rgba(0, 255, 0, 0) inset,
+                0 0 0 0 rgba(0, 255, 255, 0) inset,
+                0 0 0 0 rgba(0, 0, 255, 0) inset,
+                0 0 0 0 rgba(255, 0, 255, 0) inset;
         }
         100% {
             box-shadow: 
-                0 0 15px 3px rgba(255, 0, 0, 0.2),
-                0 0 15px 3px rgba(0, 255, 0, 0.2),
-                0 0 15px 3px rgba(0, 0, 255, 0.2);
+                -5px 0 10px 0 rgba(255, 0, 0, 0.7) inset,
+                -2px 0 10px 0 rgba(255, 255, 0, 0.6) inset,
+                0 0 10px 0 rgba(0, 255, 0, 0.7) inset,
+                2px 0 10px 0 rgba(0, 255, 255, 0.6) inset,
+                5px 0 10px 0 rgba(0, 0, 255, 0.7) inset,
+                3px 0 10px 0 rgba(255, 0, 255, 0.6) inset;
         }
     }
-    
+
     @keyframes borderPulse {
         0%, 100% {
             box-shadow: 
-                0 0 15px 3px rgba(255, 0, 0, 0.3),
-                0 0 15px 3px rgba(0, 255, 0, 0.3),
-                0 0 15px 3px rgba(0, 0, 255, 0.3);
+                -5px 0 10px 0 rgba(255, 0, 0, 0.7) inset,
+                -2px 0 10px 0 rgba(255, 255, 0, 0.6) inset,
+                0 0 10px 0 rgba(0, 255, 0, 0.7) inset,
+                2px 0 10px 0 rgba(0, 255, 255, 0.6) inset,
+                5px 0 10px 0 rgba(0, 0, 255, 0.7) inset,
+                3px 0 10px 0 rgba(255, 0, 255, 0.6) inset;
         }
         50% {
             box-shadow: 
-                0 0 20px 5px rgba(255, 0, 255, 0.4),
-                0 0 20px 5px rgba(0, 255, 255, 0.4),
-                0 0 20px 5px rgba(255, 255, 0, 0.4);
+                -6px 0 14px 0 rgba(255, 0, 128, 0.8) inset,
+                -3px 0 14px 0 rgba(255, 128, 0, 0.7) inset,
+                0 0 14px 0 rgba(128, 255, 0, 0.8) inset,
+                3px 0 14px 0 rgba(0, 255, 128, 0.7) inset,
+                6px 0 14px 0 rgba(128, 0, 255, 0.8) inset,
+                4px 0 14px 0 rgba(255, 0, 255, 0.7) inset;
         }
     }
-    
+
     .search-active {
-        animation: borderExplosion 0.6s ease-out, borderPulse 2s ease-in-out 0.6s infinite !important;
+        animation: borderExplosion 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                borderPulse 2s ease-in-out 0.6s infinite !important;
         border-color: transparent !important;
     }
 `;
