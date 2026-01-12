@@ -1,30 +1,30 @@
-//Provides beautifully animated and designed toast notifications for your websites 
-//Usage : toastBottomRight.error/info/warning/success('Insert here your info...');
-
-//Setvars has been added to match your website preferences ; they can be edited using : 
-//     const toastName = new ToastNotification({
-//         position: 'bottom-right',       (top-right/top-left/bottom-right/bottom-left)
-//         duration: 3000,                 Duration when the toast popup will be displayed
-//         maxToasts: 5,                   Maximum toasts that can be displayed
-//         blurAmount: '8px'               Determines the amount of background blur
+// Apple-Style Toast Notifications
+// Elegant, animated toast notifications inspired by Apple's design language
+// Usage: toastBottomRight.error/info/warning/success('Your message here');
+//
+// Configuration options:
+//     const toast = new ToastNotification({
+//         position: 'bottom-right',    // top-right/top-left/bottom-right/bottom-left
+//         duration: 4000,              // Display duration in milliseconds
+//         maxToasts: 4,                // Maximum simultaneous toasts
+//         blurAmount: '20px'           // Background blur intensity
 //     });
-
-//Default settings are already made for you and working right now, you can already use them !
-//By Becab Systems - Bechir Abidi
-
+//
+// By Becab Systems - Bechir Abidi
+// Enhanced with Apple-inspired design
 
 class ToastNotification {
   constructor(options = {}) {
     this.options = {
-      duration: options.duration || 3000,
-      maxToasts: options.maxToasts || 5,
-      containerClass: options.containerClass || 'toast-container',
-      toastClass: options.toastClass || 'toast',
-      blurAmount: options.blurAmount || '8px',
+      duration: options.duration || 4000,
+      maxToasts: options.maxToasts || 4,
+      containerClass: options.containerClass || 'apple-toast-container',
+      toastClass: options.toastClass || 'apple-toast',
+      blurAmount: options.blurAmount || '20px',
       transition: {
-        bezier: 'cubic-bezier(0.25, 1.5, 0.5, 1)',
-        duration: '0.5s',
-        filterDuration: '0.3s'
+        springBezier: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        duration: '0.6s',
+        exitDuration: '0.35s'
       },
       ...options
     };
@@ -43,11 +43,12 @@ class ToastNotification {
       
       Object.assign(this.container.style, {
         position: 'fixed',
-        zIndex: '9999',
+        zIndex: '10000',
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        padding: '15px'
+        gap: '10px',
+        padding: '20px',
+        pointerEvents: 'none'
       });
       
       switch (this.options.position) {
@@ -55,32 +56,28 @@ class ToastNotification {
           Object.assign(this.container.style, {
             top: '0',
             right: '0',
-            alignItems: 'flex-end',
-            zIndex: '4000000'
+            alignItems: 'flex-end'
           });
           break;
         case 'top-left':
           Object.assign(this.container.style, {
             top: '0',
             left: '0',
-            alignItems: 'flex-start',
-            zIndex: '4000000'
+            alignItems: 'flex-start'
           });
           break;
         case 'bottom-left':
           Object.assign(this.container.style, {
             bottom: '0',
             left: '0',
-            alignItems: 'flex-start',
-            zIndex: '4000000'
+            alignItems: 'flex-start'
           });
           break;
         case 'bottom-right':
           Object.assign(this.container.style, {
             bottom: '0',
             right: '0',
-            alignItems: 'flex-end',
-            zIndex: '4000000'
+            alignItems: 'flex-end'
           });
           break;
       }
@@ -94,28 +91,32 @@ class ToastNotification {
   getTypeConfig(type) {
     const typeConfigs = {
       'success': {
-        backgroundColor: 'rgba(16, 185, 129, 0.35)',
-        progressColor: '#05966947',
+        backgroundColor: 'rgba(52, 199, 89, 0.95)',
+        iconColor: '#ffffff',
         textColor: '#ffffff',
-        shadowColor: 'rgba(16, 185, 129, 0.3)'
+        shadowColor: 'rgba(52, 199, 89, 0.4)',
+        icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
       },
       'error': {
-        backgroundColor: 'rgba(239, 68, 68, 0.35)',
-        progressColor: '#DC262647',
+        backgroundColor: 'rgba(255, 59, 48, 0.95)',
+        iconColor: '#ffffff',
         textColor: '#ffffff',
-        shadowColor: 'rgba(239, 68, 68, 0.3)'
+        shadowColor: 'rgba(255, 59, 48, 0.4)',
+        icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`
       },
       'warning': {
-        backgroundColor: 'rgba(245, 158, 11, 0.35)',
-        progressColor: '#D9770647',
+        backgroundColor: 'rgba(255, 149, 0, 0.95)',
+        iconColor: '#ffffff',
         textColor: '#ffffff',
-        shadowColor: 'rgba(245, 158, 11, 0.3)'
+        shadowColor: 'rgba(255, 149, 0, 0.4)',
+        icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`
       },
       'info': {
-        backgroundColor: 'rgba(44, 44, 44, 0.35)',
-        progressColor: '#2563EB47',
+        backgroundColor: 'rgba(0, 122, 255, 0.95)',
+        iconColor: '#ffffff',
         textColor: '#ffffff',
-        shadowColor: 'rgba(44, 44, 44, 0.3)'
+        shadowColor: 'rgba(0, 122, 255, 0.4)',
+        icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`
       }
     };
 
@@ -136,52 +137,40 @@ class ToastNotification {
       position: 'relative',
       cursor: 'default',
       padding: '0',
-      borderRadius: '10px',
-      maxWidth: '320px',
-      transform: 'translateY(50px)', 
-      opacity: '0', 
+      borderRadius: '14px',
+      minWidth: '300px',
+      maxWidth: '380px',
+      transform: this.options.position.includes('top') ? 'translateY(-20px) scale(0.95)' : 'translateY(20px) scale(0.95)',
+      opacity: '0',
       overflow: 'hidden',
       color: config.textColor,
-      boxShadow: `0 8px 20px ${config.shadowColor}`
+      boxShadow: `0 10px 40px ${config.shadowColor}, 0 2px 8px rgba(0, 0, 0, 0.1)`,
+      pointerEvents: 'auto',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
+      WebkitFontSmoothing: 'antialiased',
+      MozOsxFontSmoothing: 'grayscale'
     });
-    
-    let iconHtml = '';
-    switch (type) {
-      case 'success':
-        iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
-        break;
-      case 'error':
-        iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
-        break;
-      case 'warning':
-        iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
-        break;
-      case 'info':
-      default:
-        iconHtml = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
-        break;
-    }
     
     const toastContent = `
       <div class="toast-blur-bg"></div>
       <div class="toast-content">
-        <div class="toast-icon">${iconHtml}</div>
+        <div class="toast-icon">${config.icon}</div>
         <div class="toast-message">${message}</div>
         <div class="toast-close">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </div>
       </div>
-      <div class="toast-progress"></div>
     `;
     
     toast.innerHTML = toastContent;
     
     Object.assign(toast.style, {
-      transition: `transform ${this.options.transition.duration} ${this.options.transition.bezier}, 
-                   opacity ${this.options.transition.duration} ${this.options.transition.bezier}`
+      transition: `transform ${this.options.transition.duration} ${this.options.transition.springBezier}, 
+                   opacity ${this.options.transition.duration} ${this.options.transition.springBezier},
+                   box-shadow 0.3s ease`
     });
     
     const blurBg = toast.querySelector('.toast-blur-bg');
@@ -192,13 +181,10 @@ class ToastNotification {
       right: '0',
       bottom: '0',
       backgroundColor: config.backgroundColor,
-      backdropFilter: `blur(${this.options.blurAmount})`,
-      WebkitBackdropFilter: `blur(${this.options.blurAmount})`,
+      backdropFilter: `blur(${this.options.blurAmount}) saturate(180%)`,
+      WebkitBackdropFilter: `blur(${this.options.blurAmount}) saturate(180%)`,
       borderRadius: 'inherit',
-      zIndex: '0',
-      opacity: '1',
-      transition: `opacity ${this.options.transition.duration} ${this.options.transition.bezier}, 
-                   backdrop-filter ${this.options.transition.filterDuration} ease`
+      zIndex: '0'
     });
     
     const contentElement = toast.querySelector('.toast-content');
@@ -206,9 +192,9 @@ class ToastNotification {
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
-      padding: '12px 16px',
-      gap: '10px',
-      zIndex: '1' 
+      padding: '14px 16px',
+      gap: '12px',
+      zIndex: '1'
     });
     
     const iconElement = toast.querySelector('.toast-icon');
@@ -216,15 +202,17 @@ class ToastNotification {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      flexShrink: '0'
+      flexShrink: '0',
+      color: config.iconColor
     });
     
     const messageElement = toast.querySelector('.toast-message');
     Object.assign(messageElement.style, {
       flex: '1',
-      fontSize: '14px',
-      fontWeight: '500',
-      lineHeight: '1.4'
+      fontSize: '15px',
+      fontWeight: '510',
+      lineHeight: '1.45',
+      letterSpacing: '-0.015em'
     });
     
     const closeElement = toast.querySelector('.toast-close');
@@ -232,44 +220,24 @@ class ToastNotification {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      marginLeft: '8px',
-      opacity: '0.7',
+      width: '24px',
+      height: '24px',
+      marginLeft: '4px',
+      opacity: '0',
       cursor: 'pointer',
       flexShrink: '0',
-      transition: 'opacity 0.2s ease'
+      transition: 'opacity 0.2s ease, transform 0.15s ease',
+      borderRadius: '6px'
     });
     
-    const progressElement = toast.querySelector('.toast-progress');
-    Object.assign(progressElement.style, {
-      position: 'relative',
-      height: '3px',
-      width: '100%',
-      backgroundColor: config.progressColor,
-      transform: 'scaleX(1)',
-      transformOrigin: 'left',
-      transition: `transform ${(customOptions.duration !== undefined ? customOptions.duration : this.options.duration) / 1000}s linear`,
-      zIndex: '1'
-    });
-    
-    const fragment = document.createDocumentFragment();
-    fragment.appendChild(toast);
-    
-    void toast.offsetWidth;
     this.container.appendChild(toast);
-    void toast.offsetWidth;
     
     setTimeout(() => {
       Object.assign(toast.style, {
-        transform: 'translateY(0)',
+        transform: 'translateY(0) scale(1)',
         opacity: '1'
       });
-      
-      setTimeout(() => {
-        if (progressElement && progressElement.style) {
-          progressElement.style.transform = 'scaleX(0)';
-        }
-      }, 30);
-    }, 50); 
+    }, 10);
     
     const duration = customOptions.duration !== undefined ? 
       customOptions.duration : 
@@ -295,7 +263,6 @@ class ToastNotification {
     }, duration + 1000);
 
     toastInfo.backupTimeout = backupTimeout;
-    
     this.toasts.push(toastInfo);
     
     const closeButton = toast.querySelector('.toast-close');
@@ -307,22 +274,23 @@ class ToastNotification {
           this.removeToast(toastElement, true);
         }
       });
+      
+      closeButton.addEventListener('mousedown', () => {
+        closeButton.style.transform = 'scale(0.9)';
+      });
+      
+      closeButton.addEventListener('mouseup', () => {
+        closeButton.style.transform = 'scale(1)';
+      });
     }
     
     toast.addEventListener('mouseenter', () => {
       const close = toast.querySelector('.toast-close');
-      if (close) close.style.opacity = '1';
-      
-      const blurBg = toast.querySelector('.toast-blur-bg');
-      if (blurBg) {
-        blurBg.style.backdropFilter = `blur(${parseInt(this.options.blurAmount) + 2}px)`;
-        blurBg.style.WebkitBackdropFilter = `blur(${parseInt(this.options.blurAmount) + 2}px)`;
+      if (close) {
+        close.style.opacity = '0.6';
       }
       
-      const progress = toast.querySelector('.toast-progress');
-      if (progress) {
-        progress.style.transitionProperty = 'none';
-      }
+      toast.style.boxShadow = `0 12px 50px ${config.shadowColor}, 0 4px 12px rgba(0, 0, 0, 0.15)`;
       
       clearTimeout(toastInfo.timeout);
       clearTimeout(toastInfo.backupTimeout);
@@ -330,26 +298,14 @@ class ToastNotification {
     
     toast.addEventListener('mouseleave', () => {
       const close = toast.querySelector('.toast-close');
-      if (close) close.style.opacity = '0.7';
-      
-      const blurBg = toast.querySelector('.toast-blur-bg');
-      if (blurBg) {
-        blurBg.style.backdropFilter = `blur(${this.options.blurAmount})`;
-        blurBg.style.WebkitBackdropFilter = `blur(${this.options.blurAmount})`;
+      if (close) {
+        close.style.opacity = '0';
       }
       
-      const progress = toast.querySelector('.toast-progress');
-      if (progress) {
-        const computedStyle = window.getComputedStyle(progress);
-        const scaleX = parseFloat(computedStyle.transform.split(',')[0].split('(')[1]) || 0;
-        const remainingTime = duration * scaleX;
-        
-        progress.style.transitionProperty = 'transform';
-        progress.style.transitionDuration = `${remainingTime / 1000}s`;
-      }
+      toast.style.boxShadow = `0 10px 40px ${config.shadowColor}, 0 2px 8px rgba(0, 0, 0, 0.1)`;
       
       if (!toastInfo.removing) {
-        const remainingTime = Math.max(500, duration * (progress ? parseFloat(window.getComputedStyle(progress).transform.split(',')[0].split('(')[1]) || 0 : 0.2));
+        const remainingTime = 1000;
         
         toastInfo.timeout = setTimeout(() => {
           this.removeToast(toast, false);
@@ -362,6 +318,16 @@ class ToastNotification {
           }
         }, remainingTime + 1000);
       }
+    });
+    
+    closeButton.addEventListener('mouseenter', () => {
+      closeButton.style.opacity = '1';
+      closeButton.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+    });
+    
+    closeButton.addEventListener('mouseleave', () => {
+      closeButton.style.opacity = '0.6';
+      closeButton.style.backgroundColor = 'transparent';
     });
     
     return toastInfo;
@@ -382,23 +348,21 @@ class ToastNotification {
     if (index === -1) return;
     
     this.toasts[index].removing = true;
-
     clearTimeout(this.toasts[index].timeout);
     clearTimeout(this.toasts[index].backupTimeout);
     
     const toastElement = this.toasts[index].element;
     
-    const blurBg = toastElement.querySelector('.toast-blur-bg');
-    if (blurBg) {
-      blurBg.style.opacity = '0.5';
-    }
-    
     Object.assign(toastElement.style, {
-      transform: 'translateY(50px)',
+      transition: `transform ${this.options.transition.exitDuration} ${this.options.transition.springBezier}, 
+                   opacity ${this.options.transition.exitDuration} ease`,
+      transform: this.options.position.includes('top') ? 
+        'translateY(-20px) scale(0.9)' : 
+        'translateY(20px) scale(0.9)',
       opacity: '0'
     });
     
-    const removeDelay = force ? 50 : 500;
+    const removeDelay = force ? 50 : 350;
     
     setTimeout(() => {
       if (toastElement && toastElement.parentNode) {
@@ -442,30 +406,31 @@ class ToastNotification {
   }
 }
 
+// Pre-configured instances for each position
 const toastTopRight = new ToastNotification({
   position: 'top-right', 
-  duration: 3000,           
-  maxToasts: 5,
-  blurAmount: '8px'
+  duration: 4000,           
+  maxToasts: 4,
+  blurAmount: '20px'
 });
 
 const toastTopLeft = new ToastNotification({
   position: 'top-left', 
-  duration: 3000,           
-  maxToasts: 5,
-  blurAmount: '8px'
+  duration: 4000,           
+  maxToasts: 4,
+  blurAmount: '20px'
 });
 
 const toastBottomRight = new ToastNotification({
   position: 'bottom-right', 
-  duration: 3000,           
-  maxToasts: 5,
-  blurAmount: '8px'
+  duration: 4000,           
+  maxToasts: 4,
+  blurAmount: '20px'
 });
 
 const toastBottomLeft = new ToastNotification({
   position: 'bottom-left', 
-  duration: 3000,           
-  maxToasts: 5,
-  blurAmount: '8px'
+  duration: 4000,           
+  maxToasts: 4,
+  blurAmount: '20px'
 });
