@@ -3225,11 +3225,8 @@ async function loadGeoJsonLines() {
                 }
             }
         }).addTo(map);
-    }, 500);
-
-
-
-    busStopsData = geoJsonData.features.filter(feature => 
+        
+        busStopsData = geoJsonData.features.filter(feature => 
         feature.geometry && feature.geometry.type === 'Point'
     );
 
@@ -3256,6 +3253,8 @@ async function loadGeoJsonLines() {
 
     map.on('zoomend', handleZoomChange);
     map.on('moveend', handleMapMove);
+
+    }, 500);
 }
 
 function handleZoomChange() {
