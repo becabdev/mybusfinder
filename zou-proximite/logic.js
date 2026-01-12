@@ -5710,6 +5710,7 @@ const MenuManager = {
             soundsUX('MBF_Menu_LineSelect');
             selectedLine = line;
             filterByLine(line);
+            updateLinesDisplay();
             closeMenu();
         };
         
