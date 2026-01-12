@@ -8831,6 +8831,7 @@ function startFetchUpdates() {
 
 async function main() {
     try {
+        initWorker();
         await initializeGTFS();
         gtfsInitialized = true;
         
