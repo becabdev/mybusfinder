@@ -4904,12 +4904,9 @@ const MenuManager = {
         this._performSearch(value);
     });
 
-    this.searchInput.addEventListener('click', (e) => {
-        searchWrapper.classList.add('search-clique');
-    });
-
     this.searchInput.addEventListener('focus', () => {
         searchWrapper.classList.add('search-active');
+        searchWrapper.classList.add('search-clique');
         
         this.searchInput.style.background = 'rgba(255, 255, 255, 0.15)';
         this.searchInput.style.borderColor = 'rgba(255, 255, 255, 0.4)';
@@ -4919,6 +4916,7 @@ const MenuManager = {
     this.searchInput.addEventListener('blur', () => {
         if (!this.searchInput.value.trim()) {
             searchWrapper.classList.remove('search-active');
+            searchWrapper.classList.add('search-clique');
         }
         
         this.searchInput.style.background = 'rgba(255, 255, 255, 0.1)';
@@ -6488,8 +6486,11 @@ animationStyle.textContent = `
         0% {
             transform: scaleX(1);
         } 
-        50% {
-            transform: scaleX(0.9);
+        33% {
+            transform: scaleX(0.98);
+        }
+        66% {
+            transform: scaleX(1.02);
         }
         100% {
             transform: scaleX(1);
