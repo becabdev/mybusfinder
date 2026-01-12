@@ -512,9 +512,8 @@ if (isset($_GET['action'])) {
                     }
                     break;
                 
-            case 'schedule':
+            case 'theoretical_times':
                 $tripId = $_GET['trip_id'] ?? null;
-                $stopId = $_GET['stop_id'] ?? null;
                 
                 if (!$tripId) {
                     http_response_code(400);
@@ -522,14 +521,16 @@ if (isset($_GET['action'])) {
                     exit;
                 }
                 
-                $scheduleCacheFile = $cacheDir . '/schedule_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $tripId) . '.json';
+                $theoreticalCacheFile = $cacheDir . '/theoretical_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $tripId) . '.json';
                 
-                if (file_exists($scheduleCacheFile) && (time() - filemtime($scheduleCacheFile)) < 3600) {
+                // Cache de 1 heure
+                if (file_exists($theoreticalCacheFile) && (time() - filemtime($theoreticalCacheFile)) < 3600) {
                     header("Content-Type: application/json");
-                    readfile($scheduleCacheFile);
+                    readfile($theoreticalCacheFile);
                     exit;
                 }
                 
+                // Extraire stop_times.txt si nécessaire
                 if (!file_exists($extractDir . '/stop_times.txt')) {
                     $zip = new ZipArchive();
                     if ($zip->open($zipCacheFile) !== TRUE) {
@@ -539,7 +540,7 @@ if (isset($_GET['action'])) {
                     $zip->close();
                 }
                 
-                $scheduleStops = [];
+                $theoreticalTimes = [];
                 $stopTimesFile = $extractDir . '/stop_times.txt';
                 $fh = fopen($stopTimesFile, 'r');
                 $headers = fgetcsv($fh);
@@ -552,31 +553,26 @@ if (isset($_GET['action'])) {
                 
                 while (($row = fgetcsv($fh)) !== false) {
                     if (($row[$tripIdIdx] ?? '') === $tripId) {
-                        $stopIdValue = $row[$stopIdIdx] ?? '';
+                        $stopId = $row[$stopIdIdx] ?? '';
                         $arrivalTime = $row[$arrivalIdx] ?? '';
                         $departureTime = $row[$departureIdx] ?? '';
-                        $sequence = (int)($row[$sequenceIdx] ?? 0);
                         
-                        $scheduleStops[] = [
-                            'stop_id' => $stopIdValue,
+                        $theoreticalTimes[$stopId] = [
                             'arrival_time' => $arrivalTime,
                             'departure_time' => $departureTime,
-                            'stop_sequence' => $sequence
+                            'stop_sequence' => (int)($row[$sequenceIdx] ?? 0)
                         ];
                     }
                 }
                 fclose($fh);
                 
-                usort($scheduleStops, function($a, $b) {
-                    return $a['stop_sequence'] - $b['stop_sequence'];
-                });
-                
-                $result = json_encode(['stops' => $scheduleStops]);
-                file_put_contents($scheduleCacheFile, $result);
+                $result = json_encode($theoreticalTimes);
+                file_put_contents($theoreticalCacheFile, $result);
                 
                 header("Content-Type: application/json");
                 echo $result;
-                break;        
+                break;
+        
             default:
                 error_log("Action invalide: " . $action);
                 header("Content-Type: application/json");
