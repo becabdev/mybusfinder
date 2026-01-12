@@ -3204,9 +3204,20 @@ async function loadGeoJsonLines() {
 
     setTimeout(() => {
         currentZoomLevel = map.getZoom();
-            const busLines = L.geoJSON(geoJsonData, {
+        
+        const activeLinesSet = new Set();
+        markerPool.active.forEach((marker) => {
+            if (marker.line) {
+                activeLinesSet.add(marker.line);
+            }
+        });
+        
+        const busLines = L.geoJSON(geoJsonData, {
             filter: function(feature) {
-                return feature.geometry.type === 'LineString';
+                if (feature.geometry.type === 'LineString') {
+                    return activeLinesSet.has(feature.properties.route_id);
+                }
+                return false; 
             },
             style: function(feature) {
                 return {
@@ -3229,31 +3240,38 @@ async function loadGeoJsonLines() {
         updateBusStopsVisibility();
     }, 500);
 
-
-
-    busStopsData = geoJsonData.features.filter(feature => 
-        feature.geometry && feature.geometry.type === 'Point'
-    );
-
-    busStopsLayerGroup = L.layerGroup();
-
-    if (typeof adjustProximityDistance !== 'undefined' && typeof allBusLines !== 'undefined') {
-        const proximityDistance = 50; 
-        busStopsData.forEach((feature, index) => {
-            const stopLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
-            const routeIds = [];
-            
-            allBusLines.forEach(lineInfo => {
-                const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
-                if (distance <= proximityDistance) {
-                    routeIds.push(lineInfo.routeId);
+    busStopsData = geoJsonData.features.filter(feature => {
+        if (feature.geometry && feature.geometry.type === 'Point') {
+            const activeLinesSet = new Set();
+            markerPool.active.forEach((marker) => {
+                if (marker.line) {
+                    activeLinesSet.add(marker.line);
                 }
             });
             
-            feature.routeIds = routeIds;
-        });
-    }
+            if (typeof adjustProximityDistance !== 'undefined' && typeof allBusLines !== 'undefined') {
+                const stopLatLng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+                const routeIds = [];
+                const proximityDistance = 50;
+                
+                allBusLines.forEach(lineInfo => {
+                    const distance = calculateDistanceToLine(stopLatLng, lineInfo.geometry);
+                    if (distance <= proximityDistance) {
+                        routeIds.push(lineInfo.routeId);
+                    }
+                });
+                
+                feature.routeIds = routeIds;
+                
+                return routeIds.some(routeId => activeLinesSet.has(routeId));
+            }
+            
+            return false;
+        }
+        return false;
+    });
 
+    busStopsLayerGroup = L.layerGroup();
 
     map.on('zoomend', handleZoomChange);
     map.on('moveend', handleMapMove);
@@ -7904,10 +7922,56 @@ const menubottom1 = document.getElementById('menubtm');
                 isMenuVisible = false; 
             };
             
-        updateMenu();      
+        updateMenu();    
+        updateActiveLines();  
     } catch (error) {
         return;
     }
+}
+
+
+function updateActiveLines() {
+    const activeLinesSet = new Set();
+    
+    markerPool.active.forEach((marker) => {
+        if (marker.line) {
+            activeLinesSet.add(marker.line);
+        }
+    });
+    
+    geoJsonLines.forEach(layer => {
+        const routeId = layer.feature.properties.route_id;
+        
+        if (activeLinesSet.has(routeId)) {
+            if (!map.hasLayer(layer)) {
+                map.addLayer(layer);
+            }
+        } else {
+            if (map.hasLayer(layer)) {
+                map.removeLayer(layer);
+            }
+        }
+    });
+    
+    updateBusStopsForActiveLines(activeLinesSet);
+}
+
+function updateBusStopsForActiveLines(activeLinesSet) {
+    busStopLayers.forEach((marker, index) => {
+        if (marker.routeIds && marker.routeIds.length > 0) {
+            const shouldShow = marker.routeIds.some(routeId => activeLinesSet.has(routeId));
+            
+            if (shouldShow) {
+                if (!busStopsLayerGroup.hasLayer(marker)) {
+                    busStopsLayerGroup.addLayer(marker);
+                }
+            } else {
+                if (busStopsLayerGroup.hasLayer(marker)) {
+                    busStopsLayerGroup.removeLayer(marker);
+                }
+            }
+        }
+    });
 }
 
 const FluentSettingsMenu = (function() {
