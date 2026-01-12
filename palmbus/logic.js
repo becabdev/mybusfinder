@@ -3545,9 +3545,11 @@ function updateLinesDisplay() {
 
     updateBusStopsFiltering();
 
-    if (typeof markers !== 'undefined') {
-        Object.entries(markers).forEach(([id, marker]) => {
-            if (selectedLines.length === 0 || selectedLines.includes(marker.line)) {
+    if (typeof markerPool !== 'undefined' && markerPool.active) {
+        markerPool.active.forEach((marker, id) => {
+            const shouldShow = selectedLines.length === 0 || selectedLines.includes(marker.line);
+            
+            if (shouldShow) {
                 if (!map.hasLayer(marker)) {
                     map.addLayer(marker);
                 }

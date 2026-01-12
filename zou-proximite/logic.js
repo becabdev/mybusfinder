@@ -3204,30 +3204,12 @@ class GeoJSONManager {
         this.allLines = [];
         this.visibleLayers = new Map();
         this.currentZoom = map.getZoom();
-        this.activeRouteIds = new Set(); 
         
         this.ZOOM_THRESHOLDS = {
             FULL_DETAIL: 14, 
             MEDIUM_DETAIL: 12,
             LOW_DETAIL: 10 
         };
-    }
-    
-    updateActiveRoutes(activeRouteIds) {
-        const previousActive = new Set(this.activeRouteIds);
-        this.activeRouteIds = new Set(activeRouteIds);
-        
-        if (!this.areSetsEqual(previousActive, this.activeRouteIds)) {
-            this.updateVisibleLines();
-        }
-    }
-    
-    areSetsEqual(setA, setB) {
-        if (setA.size !== setB.size) return false;
-        for (let item of setA) {
-            if (!setB.has(item)) return false;
-        }
-        return true;
     }
     
     async loadGeoJSON(url) {
@@ -3290,14 +3272,16 @@ class GeoJSONManager {
         const zoom = this.currentZoom;
         const category = this.getZoomCategory(zoom);
         
-        let linesToShow = this.allLines.filter(line => 
-            this.activeRouteIds.has(line.routeId)
-        );
+        let linesToShow = this.allLines;
         
         if (category === 'minimal') {
-            linesToShow = linesToShow.filter(l => l.priority === 'high');
+            linesToShow = this.allLines.filter(l => l.priority === 'high');
         } else if (category === 'low') {
-            linesToShow = linesToShow.filter(l => l.priority !== 'low');
+            linesToShow = this.allLines.filter(l => l.priority !== 'low');
+        } else if (category === 'medium') {
+            linesToShow = this.allLines;
+        } else {
+            linesToShow = this.allLines;
         }
         
         if (zoom >= 12) {
@@ -3671,15 +3655,18 @@ function updateLinesDisplay() {
 
     updateBusStopsFiltering();
 
+    // CORRECTION ICI : Utiliser markerPool.active au lieu de markers
     if (typeof markerPool !== 'undefined' && markerPool.active) {
         markerPool.active.forEach((marker, id) => {
             const shouldShow = selectedLines.length === 0 || selectedLines.includes(marker.line);
             
             if (shouldShow) {
+                // Ajouter le marqueur s'il n'est pas sur la carte
                 if (!map.hasLayer(marker)) {
                     map.addLayer(marker);
                 }
             } else {
+                // Retirer le marqueur s'il est sur la carte
                 if (map.hasLayer(marker)) {
                     if (marker.isPopupOpen()) {
                         marker.closePopup();
@@ -5727,10 +5714,6 @@ const MenuManager = {
             selectedLine = line;
             filterByLine(line);
             closeMenu();
-            setTimeout(() => {
-                updateLinesDisplay();
-                updateBusStopsFiltering();
-            }, 50);
         };
         
         return {
@@ -6750,7 +6733,6 @@ async function fetchVehiclePositions() {
                 const vehicleOptionsBadges = getVehicleOptionsBadges(id);
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
-                activeRoutes.add(line);
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
                 activeVehicleIds.add(id);
 
@@ -7650,9 +7632,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
         }
 });
 
-if (geoJSONManager) {
-    geoJSONManager.updateActiveRoutes(activeRoutes);
-}
+
 
 const activeIds = Array.from(markerPool.active.keys());
 activeIds.forEach(id => {
