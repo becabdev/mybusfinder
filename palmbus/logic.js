@@ -1113,6 +1113,48 @@ function soundsUX(soundFileName) {
     }
 }
 
+function initMapLibre(mapInstance) {
+  const center = mapInstance.getCenter();
+  const zoom = mapInstance.getZoom();
+
+  const mlMap = new maplibregl.Map({
+    container: 'maplibre',
+    style: 'https://demotiles.maplibre.org/style.json',
+    center: [center.lng, center.lat],
+    zoom: zoom,
+    pitch: 60,
+    bearing: 0,
+    interactive: false
+  });
+
+  mlMap.on('load', () => {
+    const layers = mlMap.getStyle().layers;
+    const labelLayerId = layers.find(
+      l => l.type === 'symbol' && l.layout?.['text-field']
+    )?.id;
+
+    mlMap.addLayer(
+      {
+        id: '3d-buildings',
+        source: 'openmaptiles',
+        'source-layer': 'building',
+        type: 'fill-extrusion',
+        minzoom: 15,
+        paint: {
+          'fill-extrusion-color': '#aaa',
+          'fill-extrusion-height': ['get', 'height'],
+          'fill-extrusion-base': ['get', 'min_height'],
+          'fill-extrusion-opacity': 0.85
+        }
+      },
+      labelLayerId
+    );
+  });
+
+  return mlMap;
+}
+
+
 async function initMap() {
     const data = await getSetvar();
     let defaultCoords = [43.125463, 5.930077];
@@ -1140,6 +1182,16 @@ async function initMap() {
         savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
+
+    const mlMap = initMapLibre(mapInstance);
+
+    mapInstance.on('move zoom', () => {
+        const c = mapInstance.getCenter();
+        mlMap.jumpTo({
+            center: [c.lng, c.lat],
+            zoom: mapInstance.getZoom()
+        });
+    });
 
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
@@ -1181,7 +1233,7 @@ async function initMap() {
             { once: true }
         );
     });
-    
+
     
 
 
@@ -1209,19 +1261,7 @@ async function initMap() {
 
 }
 
-const osmb = new OSMBuildings(mapInstance, {
-    minZoom: 15,
-    maxZoom: 20,
-    style: {
-        color: 'rgb(200, 200, 200)',
-        roofColor: 'rgb(220, 220, 220)',
-        opacity: 0.9
-    }
-});
 
-osmb.load(
-    'https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json'
-);
 
 
 mapInstance.attributionControl.setPrefix('');

@@ -20,7 +20,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <script defer src="https://cdn.osmbuildings.org/classic/0.2.2b/OSMBuildings-Leaflet.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script defer src="https://unpkg.com/maplibre-gl@3.6.1/dist/maplibre-gl.js"></script>
+
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5815761294049475"
      crossorigin="anonymous"></script>
     <link rel="stylesheet" href="style.css">
@@ -54,8 +56,11 @@
 </div>
 
 
-    <div id="map"></div>
-    <div id="osmb"></div>
+    <div id="map-wrapper">
+        <div id="map"></div>
+        <div id="maplibre"></div>
+    </div>
+
 
     <svg id="sun-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
 
