@@ -627,6 +627,8 @@
             const findlinetext = t("findlinetext");
             const nepasafficheraccueil = t("nepasafficheraccueil");
             const nepasafficheraccueiltext = t("nepasafficheraccueiltext");
+            const hardwareaccelerationtitle = t("hardwareaccelerationtitle");
+            const hardwareaccelerationtext = t("hardwareaccelerationtext");
 
                    
 
@@ -790,13 +792,13 @@
                 }
             });
 
-            FluentSettingsMenu.addToggle("advanced", "spottingmode", {
-                icon: "📸",
-                label: spottingmode,
-                description: spottingmodetext,
-                value: false,
+            FluentSettingsMenu.addToggle("general", "performancesmode", {
+                icon: "📱",
+                label: hardwareaccelerationtitle,
+                description: hardwareaccelerationtext,
+                value: localStorage.getItem('hardware_acceleration') === 'true',
                 onChange: function (value) {
-                toggleSunOrientation(value);
+                localStorage.setItem('hardware_acceleration', value);
                 if (value) {
                     soundsUX('MBF_SettingOn');
                 } else {
@@ -2838,6 +2840,257 @@ const TextColorUtils = {
 // ==================== FIN TEXT COLOR UTILS ====================
 
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
+    if (localStorage.getItem('hardware_acceleration') === 'true') {
+        return createColoredMarkerPerformance(lat, lon, route_id, bearing);
+    } else {
+        return createColoredMarkerClassic(lat, lon, route_id, bearing);
+    }
+}
+
+function createColoredMarkerClassic(lat, lon, route_id, bearing = 0) {
+    const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const color = lineColors[route_id] || '#000000';
+    
+    const lighterColor = adjustBrightness(color, 30);
+    const darkerColor = adjustBrightness(color, -20);
+    
+    const markerHtmlStyles = `
+        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
+        width: 12px;
+        height: 12px;
+        display: block;
+        left: -6px;
+        top: -6px;
+        position: relative;
+        border-radius: 50%;
+        border: 2px solid white;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        backdrop-filter: blur(4px);
+    `;
+
+    const pulseAnimation = `
+        @keyframes pulse-${route_id} {
+            0% { 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                           0 2px 6px rgba(0, 0, 0, 0.15),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                           0 0 0 0 ${color}40;
+            }
+            50% {
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 
+                           0 3px 8px rgba(0, 0, 0, 0.2),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                           0 0 0 8px ${color}20;
+            }
+            100% { 
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
+                           0 2px 6px rgba(0, 0, 0, 0.15),
+                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
+                           0 0 0 0 ${color}00;
+            }
+        }
+    `;
+
+    const arrowSvg = `
+        <svg class="marker-arrow" style="
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 4px;
+            top: -2px;
+            transform-origin: 2px; 
+            transform: rotate(${bearing - 90}deg);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"
+            viewBox="0 0 24 24">
+            
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="rgba(0, 0, 0, 0.3)"
+                stroke-width="5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                transform="translate(1, 1)"
+            />
+            
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="white"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+            
+            <defs>
+                <linearGradient id="arrow-gradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:${lighterColor};stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:${darkerColor};stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            <path 
+                d="M8 4 L16 12 L8 20"
+                fill="none"
+                stroke="url(#arrow-gradient-${route_id})"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="marker-arrow-path"
+            />
+        </svg>
+    `;
+
+    if (!document.getElementById(`pulse-style-${route_id}`)) {
+        const style = document.createElement('style');
+        style.id = `pulse-style-${route_id}`;
+        style.textContent = pulseAnimation;
+        document.head.appendChild(style);
+    }
+
+    const icon = L.divIcon({
+        className: "my-custom-pin-enhanced",
+        iconAnchor: [0, 0],
+        popupAnchor: [0, -5],
+        html: `
+            <div style="position: relative;" class="marker-container">
+                <span style="${markerHtmlStyles}" 
+                      class="marker-icon enhanced-marker" 
+                      onmouseover="this.style.transform='scale(1.2)'; this.style.animation='pulse-${route_id} 1.5s infinite';"
+                      onmouseout="this.style.transform='scale(1)'; this.style.animation='none';" />
+                ${arrowSvg}
+            </div>
+        `
+    });
+
+    const marker = L.marker([lat, lon], { icon });
+    const styleId = generateUniqueId();
+    
+    marker.on('popupopen', function(e) {
+        const menubtm = document.getElementById('menubtm');
+            safeVibrate([50]);
+            soundsUX('MBF_VehicleOpen');
+            saveAndFilterSingleLine(route_id);
+
+
+        if (menubtm) {
+            const markerId = marker.id;
+            const color = lineColors[route_id] || '#000000';
+            
+
+            if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
+                menubtm.style.backgroundColor = `${color}9c`;
+
+                const textColor = TextColorUtils.getOptimal(color);
+                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(1)';
+                        });
+                } else {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(0)';
+                        });
+                }
+
+
+
+                
+                const styleId = StyleManager.applyMenuStyle(textColor);
+                marker.styleId = styleId;
+            } else {
+                const currentColor = window.getComputedStyle(menubtm).backgroundColor;
+                const textColor = TextColorUtils.getOptimal(color);
+                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(1)';
+                        });
+                } else {
+                    document
+                        .querySelectorAll('#menubtm img')
+                        .forEach(img => {
+                            img.style.filter = 'invert(0)';
+                        });
+                }
+                
+                menubtm.style.backgroundColor = `${color}9c`;
+                const styleId = StyleManager.applyMenuStyle(textColor);
+                marker.styleId = styleId;
+            }
+            
+            lastActiveMarkerId = markerId;
+            lastActiveColor = color;
+        }
+    });
+
+marker.on('popupclose', async function(e) {
+    const menubtm = document.getElementById('menubtm');
+    safeVibrate([50]);
+    soundsUX('MBF_VehicleClose');
+    restoreFilterState();
+    
+    if (menubtm) {
+        try {
+            setTimeout(async () => {
+                if (lastActiveMarkerId === marker.id) {
+                    const data = await getSetvar();
+                    
+                    if (data) {
+                        const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
+                        
+                        if (!menubtmCurrentTransition.includes('background-color')) {
+                            menubtm.style.transition = menubtmCurrentTransition 
+                                ? `${menubtmCurrentTransition}, background-color 0.5s ease` 
+                                : 'background-color 0.5s ease';
+                        }
+                        
+                        menubtm.style.backgroundColor = `${window.colorbkg9c}`;
+                        
+                        document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                        const styleSheet = document.createElement('style');
+                        styleSheet.id = styleId;
+                        styleSheet.classList.add('menu-color-style');
+                        
+                        styleSheet.textContent = `
+                            #menubtm * {
+                                color: white !important;
+                            }
+                        `;
+                        
+                        document.querySelectorAll('#menubtm img').forEach(img => {
+                            img.style.filter = 'invert(0)';
+                        });
+                        
+                        document.head.appendChild(styleSheet);
+                        
+                        lastActiveMarkerId = null;
+                        lastActiveColor = null;
+                        
+                        if (marker.styleId) {
+                            const oldStyle = document.getElementById(marker.styleId);
+                            if (oldStyle) {
+                                oldStyle.remove();
+                            }
+                        }
+                    }
+                }
+            }, 50);
+        } catch (error) {
+            return false;
+        }
+    }
+});
+    return marker;
+}
+
+
+function createColoredMarkerPerformance(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
     const color = lineColors[route_id] || '#000000';
@@ -2852,7 +3105,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         willReadFrequently: false 
     });
     
-    // Dessiner le cercle avec dégradé
     ctx.save();
     ctx.translate(20, 20);
     
@@ -2861,24 +3113,20 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     gradient.addColorStop(0.5, color);
     gradient.addColorStop(1, darkerColor);
     
-    // Ombre du cercle
     ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
     ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 3;
     
-    // Cercle principal avec dégradé
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
-    // Bordure blanche
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2.5;
     ctx.stroke();
     
-    // Reflet interne (highlight)
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     const highlightGradient = ctx.createRadialGradient(-2.5, -2.5, 0, 0, 0, 8);
@@ -2889,15 +3137,14 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
-    // Dessiner la flèche
     ctx.rotate((bearing - 90) * Math.PI / 180);
+    updateMarkerBearing(marker, (bearing - 90) * Math.PI / 180, route_id);
     
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
     ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     
-    // Ombre de la flèche
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.lineWidth = 5;
     ctx.lineCap = 'round';
@@ -2908,7 +3155,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     ctx.lineTo(10, -6);
     ctx.stroke();
     
-    // Contour blanc de la flèche
     ctx.shadowColor = 'transparent';
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 6;
@@ -2918,7 +3164,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     ctx.lineTo(10, -6);
     ctx.stroke();
     
-    // Flèche principale avec dégradé
     const arrowGradient = ctx.createLinearGradient(10, -6, 18, 6);
     arrowGradient.addColorStop(0, lighterColor);
     arrowGradient.addColorStop(1, darkerColor);
@@ -3082,7 +3327,6 @@ function updateMarkerBearing(marker, bearing, route_id) {
     
     ctx.clearRect(0, 0, 40, 40);
     
-    // Dessiner le cercle avec dégradé
     ctx.save();
     ctx.translate(20, 20);
     
@@ -3091,24 +3335,20 @@ function updateMarkerBearing(marker, bearing, route_id) {
     gradient.addColorStop(0.5, color);
     gradient.addColorStop(1, darkerColor);
     
-    // Ombre du cercle
     ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
     ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 3;
     
-    // Cercle principal avec dégradé
     ctx.fillStyle = gradient;
     ctx.beginPath();
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
-    // Bordure blanche
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2.5;
     ctx.stroke();
     
-    // Reflet interne (highlight)
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     const highlightGradient = ctx.createRadialGradient(-2.5, -2.5, 0, 0, 0, 8);
@@ -3119,7 +3359,6 @@ function updateMarkerBearing(marker, bearing, route_id) {
     ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
-    // Dessiner la flèche
     ctx.rotate((bearing - 90) * Math.PI / 180);
     
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
@@ -3127,7 +3366,6 @@ function updateMarkerBearing(marker, bearing, route_id) {
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     
-    // Ombre de la flèche
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
     ctx.lineWidth = 5;
     ctx.lineCap = 'round';
@@ -3138,7 +3376,6 @@ function updateMarkerBearing(marker, bearing, route_id) {
     ctx.lineTo(10, -6);
     ctx.stroke();
     
-    // Contour blanc de la flèche
     ctx.shadowColor = 'transparent';
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 6;
@@ -3148,7 +3385,6 @@ function updateMarkerBearing(marker, bearing, route_id) {
     ctx.lineTo(10, -6);
     ctx.stroke();
     
-    // Flèche principale avec dégradé
     const arrowGradient = ctx.createLinearGradient(10, -6, 18, 6);
     arrowGradient.addColorStop(0, lighterColor);
     arrowGradient.addColorStop(1, darkerColor);
