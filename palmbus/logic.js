@@ -2823,14 +2823,12 @@ const TextColorUtils = {
 // ==================== FIN TEXT COLOR UTILS ====================
 
 
-// Cache pour éviter les recalculs
 const markerCache = {
     colors: new Map(),
     icons: new Map(),
     styles: new Set()
 };
 
-// Optimisation: Pré-calculer et mettre en cache les couleurs
 function getCachedColors(route_id) {
     if (markerCache.colors.has(route_id)) {
         return markerCache.colors.get(route_id);
@@ -2845,7 +2843,6 @@ function getCachedColors(route_id) {
     return colors;
 }
 
-// Optimisation: Créer les styles d'animation une seule fois par route
 function ensurePulseStyle(route_id) {
     const styleId = `pulse-style-${route_id}`;
     
@@ -2885,9 +2882,8 @@ function ensurePulseStyle(route_id) {
     markerCache.styles.add(styleId);
 }
 
-// Optimisation: Créer l'icône avec un identifiant unique pour le cache
 function createCachedIcon(route_id, bearing = 0) {
-    const cacheKey = `${route_id}-${Math.floor(bearing / 5) * 5}`; // Cache par tranche de 5°
+    const cacheKey = `${route_id}-${Math.floor(bearing / 5) * 5}`; 
     
     if (markerCache.icons.has(cacheKey)) {
         return markerCache.icons.get(cacheKey);
