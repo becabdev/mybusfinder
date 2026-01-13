@@ -8835,9 +8835,9 @@ async function main() {
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),
-            hideLoadingScreen(),
             fetchVehiclePositions(),
-            loadGeoJsonLines()
+            loadGeoJsonLines(),
+            hideLoadingScreen()
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
