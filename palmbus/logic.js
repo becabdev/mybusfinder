@@ -1181,39 +1181,8 @@ async function initMap() {
             { once: true }
         );
     });
-
-
-    const osmb = new OSMBuildings({
-        container: 'osmb',
-        position: { latitude: 48.8566, longitude: 2.3522 },
-        zoom: 16,
-        tilt: 45,
-        rotation: 0
-        });
-
-        osmb.addMapTiles(
-        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-        );
-
-        osmb.addGeoJSONTiles(
-        'https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json'
-    );
-
     
-    function syncOSMB() {
-    const center = mapInstance.getCenter();
-    const zoom = mapInstance.getZoom();
-
-    osmb.setPosition({
-        latitude: center.lat,
-        longitude: center.lng
-    });
-
-    osmb.setZoom(zoom);
-    }
-
-    mapInstance.on('move', syncOSMB);
-    mapInstance.on('zoom', syncOSMB);
+    
 
 
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
@@ -1240,7 +1209,19 @@ async function initMap() {
 
 }
 
+const osmb = new OSMBuildings(mapInstance, {
+    minZoom: 15,
+    maxZoom: 20,
+    style: {
+        color: 'rgb(200, 200, 200)',
+        roofColor: 'rgb(220, 220, 220)',
+        opacity: 0.9
+    }
+});
 
+osmb.load(
+    'https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json'
+);
 
 
 mapInstance.attributionControl.setPrefix('');
@@ -1250,8 +1231,6 @@ mapInstance.attributionControl.setPrefix('');
 
     return mapInstance;
 }
-
-
 
 function onLocationFound(e) {
     const radius = e.accuracy / 2;
