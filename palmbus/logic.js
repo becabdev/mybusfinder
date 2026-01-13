@@ -1149,11 +1149,51 @@ async function initMap() {
     const savedPosition = JSON.parse(localStorage.getItem(storageKey) || "null");
 
     const mapInstance = L.map('map', {
-        zoomControl: false
+        zoomControl: false,
+        preferCanvas: true, 
+        renderer: L.canvas({ padding: 0.5 })
     }).setView(
         savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
+
+    window.clusterGroup = L.markerClusterGroup({
+        disableClusteringAtZoom: 15,
+        spiderfyOnMaxZoom: false,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        maxClusterRadius: 60,
+        animate: true,
+        animateAddingMarkers: false,
+        removeOutsideVisibleBounds: true,
+        iconCreateFunction: function(cluster) {
+            const count = cluster.getChildCount();
+            const color = window.colorbkg || '#005A9E';
+            
+            return L.divIcon({
+                html: `<div style="
+                    background: ${color};
+                    color: white;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-weight: bold;
+                    font-family: 'League Spartan', sans-serif;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    will-change: transform;
+                    transform: translateZ(0);
+                    border: 2px solid white;
+                ">${count}</div>`,
+                className: 'marker-cluster-custom',
+                iconSize: [40, 40]
+            });
+        }
+    });
+    
+    mapInstance.addLayer(window.clusterGroup);
 
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
@@ -1164,7 +1204,6 @@ async function initMap() {
         }));
     });
 
-    
     L.popup({
         closeButton: false
     });
@@ -1196,37 +1235,29 @@ async function initMap() {
         );
     });
 
-    
-
-
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-    const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    
-    const tileLayer = L.tileLayer(tileLayerUrl, {
-        minZoom: 6,
-        maxZoom: 19,
-    }).addTo(mapInstance);
+        const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        
+        const tileLayer = L.tileLayer(tileLayerUrl, {
+            minZoom: 6,
+            maxZoom: 19,
+        }).addTo(mapInstance);
 
+    } else {
+        const mapPane = mapInstance.getPanes().tilePane;
+        mapPane.style.filter = 'none';
+        
+        L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+            minZoom: 6,
+            maxZoom: 19,
+            format: 'image/jpeg',
+            style: 'normal'
+        }).addTo(mapInstance);
+    }
 
-} else {
-    const mapPane = mapInstance.getPanes().tilePane;
-    mapPane.style.filter = 'none';
-    
-    L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-        minZoom: 6,
-        maxZoom: 19,
-        format: 'image/jpeg',
-        style: 'normal'
-    }).addTo(mapInstance);
-
-}
-
-
-
-
-mapInstance.attributionControl.setPrefix('');
+    mapInstance.attributionControl.setPrefix('');
 
     mapInstance.on('locationfound', onLocationFound);
     mapInstance.on('locationerror', onLocationError);
@@ -2842,133 +2873,76 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
     const color = lineColors[route_id] || '#000000';
-    
     const lighterColor = adjustBrightness(color, 30);
     const darkerColor = adjustBrightness(color, -20);
     
-    const markerHtmlStyles = `
-        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
-        width: 12px;
-        height: 12px;
-        display: block;
-        left: -6px;
-        top: -6px;
-        position: relative;
-        border-radius: 50%;
-        border: 2px solid white;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        backdrop-filter: blur(4px);
-    `;
-
-    const pulseAnimation = `
-        @keyframes pulse-${route_id} {
-            0% { 
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
-                           0 2px 6px rgba(0, 0, 0, 0.15),
-                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
-                           0 0 0 0 ${color}40;
-            }
-            50% {
-                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 
-                           0 3px 8px rgba(0, 0, 0, 0.2),
-                           inset 0 1px 0 rgba(255, 255, 255, 0.4),
-                           0 0 0 8px ${color}20;
-            }
-            100% { 
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 
-                           0 2px 6px rgba(0, 0, 0, 0.15),
-                           inset 0 1px 0 rgba(255, 255, 255, 0.3),
-                           0 0 0 0 ${color}00;
-            }
-        }
-    `;
-
-    const arrowSvg = `
-        <svg class="marker-arrow" style="
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            left: 4px;
-            top: -2px;
-            transform-origin: 2px; 
-            transform: rotate(${bearing - 90}deg);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"
-            viewBox="0 0 24 24">
-            
-            <path 
-                d="M8 4 L16 12 L8 20"
-                fill="none"
-                stroke="rgba(0, 0, 0, 0.3)"
-                stroke-width="5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                transform="translate(1, 1)"
-            />
-            
-            <path 
-                d="M8 4 L16 12 L8 20"
-                fill="none"
-                stroke="white"
-                stroke-width="6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-            />
-            
-            <defs>
-                <linearGradient id="arrow-gradient-${route_id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:${lighterColor};stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:${darkerColor};stop-opacity:1" />
-                </linearGradient>
-            </defs>
-            <path 
-                d="M8 4 L16 12 L8 20"
-                fill="none"
-                stroke="url(#arrow-gradient-${route_id})"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="marker-arrow-path"
-            />
-        </svg>
-    `;
-
-    if (!document.getElementById(`pulse-style-${route_id}`)) {
-        const style = document.createElement('style');
-        style.id = `pulse-style-${route_id}`;
-        style.textContent = pulseAnimation;
-        document.head.appendChild(style);
-    }
-
-    const icon = L.divIcon({
-        className: "my-custom-pin-enhanced",
-        iconAnchor: [0, 0],
-        popupAnchor: [0, -5],
-        html: `
-            <div style="position: relative;" class="marker-container">
-                <span style="${markerHtmlStyles}" 
-                      class="marker-icon enhanced-marker" 
-                      onmouseover="this.style.transform='scale(1.2)'; this.style.animation='pulse-${route_id} 1.5s infinite';"
-                      onmouseout="this.style.transform='scale(1)'; this.style.animation='none';" />
-                ${arrowSvg}
-            </div>
-        `
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext('2d', { 
+        alpha: true,
+        willReadFrequently: false 
+    });
+    
+    ctx.save();
+    ctx.translate(16, 16);
+    ctx.rotate((bearing - 90) * Math.PI / 180);
+    
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 6);
+    gradient.addColorStop(0, lighterColor);
+    gradient.addColorStop(0.5, color);
+    gradient.addColorStop(1, darkerColor);
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+    
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(14, -3);
+    ctx.lineTo(14, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.restore();
+    
+    const icon = L.icon({
+        iconUrl: canvas.toDataURL(),
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+        className: 'hardware-accelerated-marker'
     });
 
     const marker = L.marker([lat, lon], { icon });
+    marker.canvasIcon = canvas;
+    marker.currentBearing = bearing;
+    marker.currentColor = color;
     const styleId = generateUniqueId();
     
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
-            safeVibrate([50]);
-            soundsUX('MBF_VehicleOpen');
-            saveAndFilterSingleLine(route_id);
-
+        safeVibrate([50]);
+        soundsUX('MBF_VehicleOpen');
+        saveAndFilterSingleLine(route_id);
 
         if (menubtm) {
             const markerId = marker.id;
             const color = lineColors[route_id] || '#000000';
-            
 
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
                 menubtm.style.backgroundColor = `${color}9c`;
@@ -2988,9 +2962,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                         });
                 }
 
-
-
-                
                 const styleId = StyleManager.applyMenuStyle(textColor);
                 marker.styleId = styleId;
             } else {
@@ -3020,64 +2991,158 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         }
     });
 
-marker.on('popupclose', async function(e) {
-    const menubtm = document.getElementById('menubtm');
-    safeVibrate([50]);
-    soundsUX('MBF_VehicleClose');
-    restoreFilterState();
-    
-    if (menubtm) {
-        try {
-            setTimeout(async () => {
-                if (lastActiveMarkerId === marker.id) {
-                    const data = await getSetvar();
-                    
-                    if (data) {
-                        const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
+    marker.on('popupclose', async function(e) {
+        const menubtm = document.getElementById('menubtm');
+        safeVibrate([50]);
+        soundsUX('MBF_VehicleClose');
+        restoreFilterState();
+        
+        if (menubtm) {
+            try {
+                setTimeout(async () => {
+                    if (lastActiveMarkerId === marker.id) {
+                        const data = await getSetvar();
                         
-                        if (!menubtmCurrentTransition.includes('background-color')) {
-                            menubtm.style.transition = menubtmCurrentTransition 
-                                ? `${menubtmCurrentTransition}, background-color 0.5s ease` 
-                                : 'background-color 0.5s ease';
-                        }
-                        
-                        menubtm.style.backgroundColor = `${window.colorbkg9c}`;
-                        
-                        document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
-                        const styleSheet = document.createElement('style');
-                        styleSheet.id = styleId;
-                        styleSheet.classList.add('menu-color-style');
-                        
-                        styleSheet.textContent = `
-                            #menubtm * {
-                                color: white !important;
+                        if (data) {
+                            const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
+                            
+                            if (!menubtmCurrentTransition.includes('background-color')) {
+                                menubtm.style.transition = menubtmCurrentTransition 
+                                    ? `${menubtmCurrentTransition}, background-color 0.5s ease` 
+                                    : 'background-color 0.5s ease';
                             }
-                        `;
-                        
-                        document.querySelectorAll('#menubtm img').forEach(img => {
-                            img.style.filter = 'invert(0)';
-                        });
-                        
-                        document.head.appendChild(styleSheet);
-                        
-                        lastActiveMarkerId = null;
-                        lastActiveColor = null;
-                        
-                        if (marker.styleId) {
-                            const oldStyle = document.getElementById(marker.styleId);
-                            if (oldStyle) {
-                                oldStyle.remove();
+                            
+                            menubtm.style.backgroundColor = `${window.colorbkg9c}`;
+                            
+                            document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                            const styleSheet = document.createElement('style');
+                            styleSheet.id = styleId;
+                            styleSheet.classList.add('menu-color-style');
+                            
+                            styleSheet.textContent = `
+                                #menubtm * {
+                                    color: white !important;
+                                }
+                            `;
+                            
+                            document.querySelectorAll('#menubtm img').forEach(img => {
+                                img.style.filter = 'invert(0)';
+                            });
+                            
+                            document.head.appendChild(styleSheet);
+                            
+                            lastActiveMarkerId = null;
+                            lastActiveColor = null;
+                            
+                            if (marker.styleId) {
+                                const oldStyle = document.getElementById(marker.styleId);
+                                if (oldStyle) {
+                                    oldStyle.remove();
+                                }
                             }
                         }
                     }
-                }
-            }, 50);
-        } catch (error) {
-            return false;
+                }, 50);
+            } catch (error) {
+                return false;
+            }
         }
-    }
-});
+    });
+    
     return marker;
+}
+
+function updateMarkerBearing(marker, bearing, route_id) {
+    if (!marker.canvasIcon) return;
+    
+    if (Math.abs(marker.currentBearing - bearing) < 5) return;
+    
+    const canvas = marker.canvasIcon;
+    const ctx = canvas.getContext('2d');
+    const color = lineColors[route_id] || '#000000';
+    
+    if (color !== marker.currentColor) {
+        marker.currentColor = color;
+    }
+    
+    const lighterColor = adjustBrightness(color, 30);
+    const darkerColor = adjustBrightness(color, -20);
+    
+    ctx.clearRect(0, 0, 32, 32);
+    
+    ctx.save();
+    ctx.translate(16, 16);
+    ctx.rotate((bearing - 90) * Math.PI / 180);
+    
+    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 6);
+    gradient.addColorStop(0, lighterColor);
+    gradient.addColorStop(0.5, color);
+    gradient.addColorStop(1, darkerColor);
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 2;
+    
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(14, -3);
+    ctx.lineTo(14, 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.restore();
+    
+    marker.setIcon(L.icon({
+        iconUrl: canvas.toDataURL(),
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+        className: 'hardware-accelerated-marker'
+    }));
+    
+    marker.currentBearing = bearing;
+}
+
+function shouldRenderMarker(latLng, zoom) {
+    if (zoom < 13) {
+        return false;
+    }
+    
+    if (zoom < 15) {
+        const bounds = map.getBounds();
+        const paddedBounds = bounds.pad(0.1);
+        return paddedBounds.contains(latLng);
+    }
+    
+    const bounds = map.getBounds();
+    const paddedBounds = bounds.pad(0.3);
+    return paddedBounds.contains(latLng);
+}
+
+function shouldRenderMarker(marker) {
+    const zoom = map.getZoom();
+    const bounds = map.getBounds();
+    
+    if (zoom < 13) {
+        return false; 
+    }
+    
+    const paddedBounds = bounds.pad(0.2);
+    return paddedBounds.contains(marker.getLatLng());
 }
 
 function adjustBrightness(hex, percent) {
@@ -7158,6 +7223,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 updateMinimalPopups();
                 
             } else {
+                if (!shouldRenderMarker({getLatLng: () => L.latLng(latitude, longitude)})) {
+                    return;
+                }
                 const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
                 marker.line = line;
                 marker.vehicleData = vehicle;
