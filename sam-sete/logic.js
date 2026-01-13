@@ -5257,7 +5257,9 @@ const MenuManager = {
         topBar.appendChild(backButton);
         topBar.appendChild(title);
         this.container.appendChild(topBar);
-        
+
+        let lastScrollTop = 0;
+
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
             const searchContainer = document.getElementById('search-container');
