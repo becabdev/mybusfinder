@@ -1114,37 +1114,40 @@ function soundsUX(soundFileName) {
 }
 
 function initMapLibre(mapInstance) {
-  const center = mapInstance.getCenter();
-  const zoom = mapInstance.getZoom();
+    setTimeout(() => {
+        const center = mapInstance.getCenter();
+        const zoom = mapInstance.getZoom();
 
-  const mlMap = new maplibregl.Map({
-    container: 'maplibre',
-    style: 'https://demotiles.maplibre.org/style.json',
-    center: [center.lng, center.lat],
-    zoom: zoom,
-    pitch: 60,
-    bearing: 0,
-    interactive: false
-  });
+        const mlMap = new maplibregl.Map({
+            container: 'maplibre',
+            style: 'https://demotiles.maplibre.org/style.json',
+            center: [center.lng, center.lat],
+            zoom: zoom,
+            pitch: 60,
+            bearing: 0,
+            interactive: false
+        });
 
-  mlMap.on('load', () => {
-    const layers = mlMap.getStyle().layers;
-    const labelLayerId = layers.find(
-      l => l.type === 'symbol' && l.layout?.['text-field']
-    )?.id;
+        mlMap.on('load', () => {
+            const layers = mlMap.getStyle().layers;
+            const labelLayerId = layers.find(
+            l => l.type === 'symbol' && l.layout?.['text-field']
+            )?.id;
 
-    const mlMap = new maplibregl.Map({
-        container: 'maplibre',
-        style: 'https://demotiles.maplibre.org/style.json',
-        center: [lng, lat],
-        zoom: zoom,
-        pitch: 60,
-        bearing: -20,
-        interactive: false
-    });
-  });
+            const mlMap = new maplibregl.Map({
+                container: 'maplibre',
+                style: 'https://demotiles.maplibre.org/style.json',
+                center: [lng, lat],
+                zoom: zoom,
+                pitch: 60,
+                bearing: -20,
+                interactive: false
+            });
+        });
 
-  return mlMap;
+        return mlMap;
+
+    }, 1000);
 }
 
 
