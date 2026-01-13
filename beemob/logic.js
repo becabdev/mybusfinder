@@ -5257,6 +5257,20 @@ const MenuManager = {
         topBar.appendChild(backButton);
         topBar.appendChild(title);
         this.container.appendChild(topBar);
+        
+        this.container.addEventListener('scroll', () => {
+            const scrollTop = this.container.scrollTop;
+            const searchContainer = document.getElementById('search-container');
+            
+            if (scrollTop > lastScrollTop && scrollTop > 50) {
+                topBar.style.transform = 'translateY(-130%)';
+            } else {
+                topBar.style.transform = 'translateY(0)';
+            }
+            lastScrollTop = scrollTop;
+            
+            this._handleScrollAnimations();
+        });
     },
 
     _handleScrollAnimations() {
@@ -7636,13 +7650,6 @@ const menubottom1 = document.getElementById('menubtm');
             }
             }, { once: true });
             MenuManager._handleScrollAnimations();
-
-            if (!menu._scrollListenerAttached) {
-                menu.addEventListener('scroll', debounce(() => {
-                    MenuManager._handleScrollAnimations();
-                }, 50));
-                menu._scrollListenerAttached = true;
-            }
 
         }
 
