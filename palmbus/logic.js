@@ -1149,51 +1149,11 @@ async function initMap() {
     const savedPosition = JSON.parse(localStorage.getItem(storageKey) || "null");
 
     const mapInstance = L.map('map', {
-        zoomControl: false,
-        preferCanvas: true, 
-        renderer: L.canvas({ padding: 0.5 })
+        zoomControl: false
     }).setView(
         savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
-
-    window.clusterGroup = L.markerClusterGroup({
-        disableClusteringAtZoom: 15,
-        spiderfyOnMaxZoom: false,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        maxClusterRadius: 60,
-        animate: true,
-        animateAddingMarkers: false,
-        removeOutsideVisibleBounds: true,
-        iconCreateFunction: function(cluster) {
-            const count = cluster.getChildCount();
-            const color = window.colorbkg || '#005A9E';
-            
-            return L.divIcon({
-                html: `<div style="
-                    background: ${color};
-                    color: white;
-                    border-radius: 50%;
-                    width: 40px;
-                    height: 40px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-weight: bold;
-                    font-family: 'League Spartan', sans-serif;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    will-change: transform;
-                    transform: translateZ(0);
-                    border: 2px solid white;
-                ">${count}</div>`,
-                className: 'marker-cluster-custom',
-                iconSize: [40, 40]
-            });
-        }
-    });
-    
-    mapInstance.addLayer(window.clusterGroup);
 
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
@@ -1204,6 +1164,7 @@ async function initMap() {
         }));
     });
 
+    
     L.popup({
         closeButton: false
     });
@@ -1235,29 +1196,37 @@ async function initMap() {
         );
     });
 
+    
+
+
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-        const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-        
-        const tileLayer = L.tileLayer(tileLayerUrl, {
-            minZoom: 6,
-            maxZoom: 19,
-        }).addTo(mapInstance);
+    const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    
+    const tileLayer = L.tileLayer(tileLayerUrl, {
+        minZoom: 6,
+        maxZoom: 19,
+    }).addTo(mapInstance);
 
-    } else {
-        const mapPane = mapInstance.getPanes().tilePane;
-        mapPane.style.filter = 'none';
-        
-        L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
-            minZoom: 6,
-            maxZoom: 19,
-            format: 'image/jpeg',
-            style: 'normal'
-        }).addTo(mapInstance);
-    }
 
-    mapInstance.attributionControl.setPrefix('');
+} else {
+    const mapPane = mapInstance.getPanes().tilePane;
+    mapPane.style.filter = 'none';
+    
+    L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+        minZoom: 6,
+        maxZoom: 19,
+        format: 'image/jpeg',
+        style: 'normal'
+    }).addTo(mapInstance);
+
+}
+
+
+
+
+mapInstance.attributionControl.setPrefix('');
 
     mapInstance.on('locationfound', onLocationFound);
     mapInstance.on('locationerror', onLocationError);
