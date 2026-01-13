@@ -2837,7 +2837,6 @@ const TextColorUtils = {
 };
 // ==================== FIN TEXT COLOR UTILS ====================
 
-// version avec design original en Canvas et structure GPU-accelerated
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
@@ -2846,8 +2845,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const darkerColor = adjustBrightness(color, -20);
     
     const canvas = document.createElement('canvas');
-    canvas.width = 32;
-    canvas.height = 32;
+    canvas.width = 40;
+    canvas.height = 40;
     const ctx = canvas.getContext('2d', { 
         alpha: true,
         willReadFrequently: false 
@@ -2855,46 +2854,46 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     
     // Dessiner le cercle avec dégradé
     ctx.save();
-    ctx.translate(16, 16);
+    ctx.translate(20, 20);
     
-    const gradient = ctx.createLinearGradient(-6, -6, 6, 6);
+    const gradient = ctx.createLinearGradient(-8, -8, 8, 8);
     gradient.addColorStop(0, lighterColor);
     gradient.addColorStop(0.5, color);
     gradient.addColorStop(1, darkerColor);
     
     // Ombre du cercle
     ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowOffsetY = 3;
     
     // Cercle principal avec dégradé
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
     // Bordure blanche
     ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
     
     // Reflet interne (highlight)
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
-    const highlightGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, 6);
+    const highlightGradient = ctx.createRadialGradient(-2.5, -2.5, 0, 0, 0, 8);
     highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
     highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = highlightGradient;
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
     // Dessiner la flèche
     ctx.rotate((bearing - 90) * Math.PI / 180);
     
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 2;
+    ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     
@@ -2904,9 +2903,9 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(16, 0);
-    ctx.lineTo(8, -4);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(10, -6);
     ctx.stroke();
     
     // Contour blanc de la flèche
@@ -2914,30 +2913,30 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(16, 0);
-    ctx.lineTo(8, -4);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(10, -6);
     ctx.stroke();
     
     // Flèche principale avec dégradé
-    const arrowGradient = ctx.createLinearGradient(8, -4, 16, 4);
+    const arrowGradient = ctx.createLinearGradient(10, -6, 18, 6);
     arrowGradient.addColorStop(0, lighterColor);
     arrowGradient.addColorStop(1, darkerColor);
     ctx.strokeStyle = arrowGradient;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(16, 0);
-    ctx.lineTo(8, -4);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(10, -6);
     ctx.stroke();
     
     ctx.restore();
     
     const icon = L.icon({
         iconUrl: canvas.toDataURL(),
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
         className: 'hardware-accelerated-marker'
     });
 
@@ -3081,50 +3080,50 @@ function updateMarkerBearing(marker, bearing, route_id) {
     const lighterColor = adjustBrightness(color, 30);
     const darkerColor = adjustBrightness(color, -20);
     
-    ctx.clearRect(0, 0, 32, 32);
+    ctx.clearRect(0, 0, 40, 40);
     
     // Dessiner le cercle avec dégradé
     ctx.save();
-    ctx.translate(16, 16);
+    ctx.translate(20, 20);
     
-    const gradient = ctx.createLinearGradient(-6, -6, 6, 6);
+    const gradient = ctx.createLinearGradient(-8, -8, 8, 8);
     gradient.addColorStop(0, lighterColor);
     gradient.addColorStop(0.5, color);
     gradient.addColorStop(1, darkerColor);
     
     // Ombre du cercle
     ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 6;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 2;
+    ctx.shadowOffsetY = 3;
     
     // Cercle principal avec dégradé
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
     // Bordure blanche
     ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
     
     // Reflet interne (highlight)
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
-    const highlightGradient = ctx.createRadialGradient(-2, -2, 0, 0, 0, 6);
+    const highlightGradient = ctx.createRadialGradient(-2.5, -2.5, 0, 0, 0, 8);
     highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
     highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
     ctx.fillStyle = highlightGradient;
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fill();
     
     // Dessiner la flèche
     ctx.rotate((bearing - 90) * Math.PI / 180);
     
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 2;
+    ctx.shadowBlur = 3;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
     
@@ -3134,9 +3133,9 @@ function updateMarkerBearing(marker, bearing, route_id) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(16, 0);
-    ctx.lineTo(8, -4);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(10, -6);
     ctx.stroke();
     
     // Contour blanc de la flèche
@@ -3144,30 +3143,30 @@ function updateMarkerBearing(marker, bearing, route_id) {
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(16, 0);
-    ctx.lineTo(8, -4);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(10, -6);
     ctx.stroke();
     
     // Flèche principale avec dégradé
-    const arrowGradient = ctx.createLinearGradient(8, -4, 16, 4);
+    const arrowGradient = ctx.createLinearGradient(10, -6, 18, 6);
     arrowGradient.addColorStop(0, lighterColor);
     arrowGradient.addColorStop(1, darkerColor);
     ctx.strokeStyle = arrowGradient;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(8, 4);
-    ctx.lineTo(16, 0);
-    ctx.lineTo(8, -4);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(18, 0);
+    ctx.lineTo(10, -6);
     ctx.stroke();
     
     ctx.restore();
     
     marker.setIcon(L.icon({
         iconUrl: canvas.toDataURL(),
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16],
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20],
         className: 'hardware-accelerated-marker'
     }));
     
