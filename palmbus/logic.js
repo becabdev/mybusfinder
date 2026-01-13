@@ -8848,7 +8848,7 @@ async function main() {
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
-        toastBottomRight.error("Une erreur critique est survenue. Nous investigons actuellement sur la cause de la panne.");
+        toastBottomRight.error("Internal error : unable to initialize app.");
         soundsUX('MBF_NotificationError');
     }
 }
@@ -8922,6 +8922,8 @@ if (performance && performance.memory) {
 }
 // ==================== FIN NETTOYAGE GLOBAL ====================
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', main);
-} 
+main().catch(error => {
+    console.error("Erreur critique lors de l'initialisation de l'application :", error);  
+    toastBottomRight.error("Critical error: unable to start the application.");
+    soundsUX('MBF_NotificationError');
+});
