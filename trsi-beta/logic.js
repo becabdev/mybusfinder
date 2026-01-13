@@ -7637,6 +7637,13 @@ const menubottom1 = document.getElementById('menubtm');
             }, { once: true });
             MenuManager._handleScrollAnimations();
 
+            if (!menu._scrollListenerAttached) {
+                menu.addEventListener('scroll', debounce(() => {
+                    MenuManager._handleScrollAnimations();
+                }, 50));
+                menu._scrollListenerAttached = true;
+            }
+
         }
 
         const menubutton = document.getElementById('menubutton');
