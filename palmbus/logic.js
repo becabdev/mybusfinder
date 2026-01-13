@@ -1281,6 +1281,7 @@ function locateUser() {
 
 (async function() {
     map = await initMap();
+    PixiVehicleEngine.init(map);
 })();
 
 // ==================== PIXI VEHICLE ENGINE ====================
@@ -9125,7 +9126,6 @@ async function main() {
             fetchTripUpdates().catch(console.error),
             fetchVehiclePositions(),
             loadGeoJsonLines(),
-            PixiVehicleEngine.init(map),
             hideLoadingScreen()
         ]);
         loadGeoJsonLines();
