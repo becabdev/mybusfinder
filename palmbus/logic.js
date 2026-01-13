@@ -638,7 +638,6 @@
             });
 
             FluentSettingsMenu.createSection("general", general);
-            FluentSettingsMenu.createSection("advanced", advanced);
             FluentSettingsMenu.createSection("about", about);
 
             FluentSettingsMenu.addSubmenu("general", "customization", {
