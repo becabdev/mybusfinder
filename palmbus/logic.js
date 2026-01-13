@@ -1133,22 +1133,15 @@ function initMapLibre(mapInstance) {
       l => l.type === 'symbol' && l.layout?.['text-field']
     )?.id;
 
-    mlMap.addLayer(
-      {
-        id: '3d-buildings',
-        source: 'openmaptiles',
-        'source-layer': 'building',
-        type: 'fill-extrusion',
-        minzoom: 15,
-        paint: {
-          'fill-extrusion-color': '#aaa',
-          'fill-extrusion-height': ['get', 'height'],
-          'fill-extrusion-base': ['get', 'min_height'],
-          'fill-extrusion-opacity': 0.85
-        }
-      },
-      labelLayerId
-    );
+    const mlMap = new maplibregl.Map({
+        container: 'maplibre',
+        style: 'https://demotiles.maplibre.org/style.json',
+        center: [lng, lat],
+        zoom: zoom,
+        pitch: 60,
+        bearing: -20,
+        interactive: false
+    });
   });
 
   return mlMap;
