@@ -1210,6 +1210,8 @@ async function initMap() {
 }
 
 
+
+
 mapInstance.attributionControl.setPrefix('');
 
     mapInstance.on('locationfound', onLocationFound);
@@ -1281,135 +1283,7 @@ function locateUser() {
 
 (async function() {
     map = await initMap();
-    PixiVehicleEngine.init(map);
 })();
-
-// ==================== PIXI VEHICLE ENGINE ====================
-const PixiVehicleEngine = (() => {
-
-    const container = new PIXI.Container();
-    const vehicles = new Map();
-    const textures = new Map();
-
-    let overlay;
-    let activeLeafletMarker = null;
-
-    function init(map) {
-        overlay = L.pixiOverlay((utils) => {
-            const { latLngToLayerPoint, getScale } = utils;
-            const scale = getScale();
-
-            vehicles.forEach(v => {
-                const p = latLngToLayerPoint([v.lat, v.lon]);
-                v.sprite.x = p.x;
-                v.sprite.y = p.y;
-                v.sprite.rotation = (v.bearing - 90) * Math.PI / 180;
-                v.sprite.scale.set(1 / scale);
-            });
-        }, container);
-
-        overlay.addTo(map);
-
-        map.on('move zoom', () => applyCulling(map));
-    }
-
-    function getTexture(routeId) {
-        if (textures.has(routeId)) return textures.get(routeId);
-
-        const { color } = getCachedColors(routeId);
-        const g = new PIXI.Graphics();
-        g.beginFill(PIXI.utils.string2hex(color));
-        g.drawCircle(0, 0, 6);
-        g.endFill();
-
-        const texture = overlay.utils.renderer.generateTexture(g);
-        textures.set(routeId, texture);
-        return texture;
-    }
-
-    function addVehicle({ id, lat, lon, routeId, bearing }) {
-        if (vehicles.has(id)) return;
-
-        const sprite = new PIXI.Sprite(getTexture(routeId));
-        sprite.anchor.set(0.5);
-        sprite.interactive = true;
-        sprite.buttonMode = true;
-
-        sprite.on('pointerdown', () => {
-            openPopup(id, lat, lon, routeId);
-        });
-
-        container.addChild(sprite);
-
-        vehicles.set(id, {
-            id,
-            lat,
-            lon,
-            routeId,
-            bearing,
-            sprite
-        });
-    }
-
-    function updateVehicle({ id, lat, lon, bearing }) {
-        const v = vehicles.get(id);
-        if (!v) return;
-
-        v.lat = lat;
-        v.lon = lon;
-        v.bearing = bearing;
-    }
-
-    function removeVehicle(id) {
-        const v = vehicles.get(id);
-        if (!v) return;
-
-        container.removeChild(v.sprite);
-        v.sprite.destroy();
-        vehicles.delete(id);
-    }
-
-    function clear() {
-        vehicles.forEach(v => {
-            container.removeChild(v.sprite);
-            v.sprite.destroy();
-        });
-        vehicles.clear();
-    }
-
-    function applyCulling(map) {
-        const bounds = map.getBounds().pad(0.2);
-        const zoom = map.getZoom();
-
-        vehicles.forEach(v => {
-            v.sprite.visible =
-                zoom >= 13 &&
-                bounds.contains([v.lat, v.lon]);
-        });
-    }
-
-    function openPopup(id, lat, lon, routeId) {
-        if (activeLeafletMarker) {
-            map.removeLayer(activeLeafletMarker);
-        }
-
-        const marker = createColoredMarker(lat, lon, routeId);
-        marker.id = id;
-        marker.addTo(map);
-        marker.openPopup();
-
-        activeLeafletMarker = marker;
-    }
-
-    return {
-        init,
-        addVehicle,
-        updateVehicle,
-        removeVehicle,
-        clear
-    };
-})();
-
 
 const sunOverlay = document.getElementById('sun-overlay');
     let isSunOrientationVisible = false; 
@@ -3029,7 +2903,6 @@ function createCachedIcon(route_id, bearing = 0) {
         border: 2px solid white;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
-        backdrop-filter: blur(4px);
         will-change: all;
     `;
 
@@ -3395,8 +3268,9 @@ async function loadGeoJsonLines() {
                 activeLinesSet.add(marker.line);
             }
         });
-        
+
         const busLines = L.geoJSON(geoJsonData, {
+            renderer: L.canvas(),
             filter: function(feature) {
                 if (feature.geometry.type === 'LineString') {
                     return activeLinesSet.has(feature.properties.route_id);
@@ -7300,14 +7174,9 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 }
 
 
-            if (PixiVehicleEngine.has(id)) {
+            if (markerPool.has(id)) {
                 const marker = markerPool.get(id);
-                PixiVehicleEngine.updateVehicle({
-                    id,
-                    lat,
-                    lon,
-                    bearing
-                });
+                animateMarker(marker, [latitude, longitude]);
                 
                 if (marker.minimalPopup) {
                     createOrUpdateMinimalTooltip(id, true);
@@ -7327,12 +7196,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     if (marker.line !== line) {
                         marker.line = line;
                         marker._lastNextStopsHTML = nextStopsHTML;
-                            PixiVehicleEngine.updateVehicle({
-                                id,
-                                lat,
-                                lon,
-                                bearing
-                            });
+                        markerPool.updateMarkerStyle(marker, line, bearing);
                         
                         if (marker.isPopupOpen()) {
                             const menubtm = document.getElementById('menubtm');
@@ -7374,13 +7238,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 updateMinimalPopups();
                 
             } else {
-                PixiVehicleEngine.addVehicle({
-                    id,
-                    lat,
-                    lon,
-                    routeId,
-                    bearing
-                });
+                const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
                 marker.line = line;
                 marker.vehicleData = vehicle;
                 marker.destination = lastStopName;
@@ -7436,9 +7294,12 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
 });
 
 
-PixiVehicleEngine.getIds().forEach(id => {
-    if (!visibleVehicleIds.has(id)) {
-        PixiVehicleEngine.removeVehicle(id);
+
+const activeIds = Array.from(markerPool.active.keys());
+activeIds.forEach(id => {
+    if (!activeVehicleIds.has(id)) {
+        delete window.minimalTooltipStates[id];
+        markerPool.release(id);
     }
 });
 
