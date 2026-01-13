@@ -9002,7 +9002,8 @@ async function main() {
             fetchTripUpdates().catch(console.error),
             fetchVehiclePositions(),
             loadGeoJsonLines(),
-            hideLoadingScreen()
+            hideLoadingScreen(),
+            mapEventHandlers.setup()
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
@@ -9036,7 +9037,7 @@ const mapEventHandlers = {
     }
 };
 
-mapEventHandlers.setup();
+
 
 // ==================== NETTOYAGE GLOBAL ====================
 window.addEventListener('beforeunload', () => {
