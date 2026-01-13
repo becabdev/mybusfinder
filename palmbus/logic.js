@@ -6675,12 +6675,6 @@ async function fetchVehiclePositions() {
 // Versions debounced des fonctions coûteuses
 const updateMinimalPopupsDebounced = debounce(updateMinimalPopups, 100);
 
-// Optimisation des listeners de map (à appeler une seule fois)
-if (!window.mapListenersInitialized) {
-    map.on('zoomend', debounce(updateMinimalPopups, 10));
-    map.on('moveend', debounce(updateMinimalPopups, 30));
-    window.mapListenersInitialized = true;
-}
 
 // Fonction getTextColorForBackground (inchangée mais placée en dehors)
 function getTextColorForBackground(bgColor, options = {}) {
