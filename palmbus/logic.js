@@ -1908,7 +1908,7 @@ function hideLoadingScreen() {
             setTimeout(() => {
                 loadingScreen.style.display = 'none';
             }, 300);
-        }, 500);
+        }, 300);
     }
 }
 
