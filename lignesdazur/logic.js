@@ -627,6 +627,8 @@
             const findlinetext = t("findlinetext");
             const nepasafficheraccueil = t("nepasafficheraccueil");
             const nepasafficheraccueiltext = t("nepasafficheraccueiltext");
+            const hardwareaccelerationtitle = t("hardwareaccelerationtitle");
+            const hardwareaccelerationtext = t("hardwareaccelerationtext");
 
                    
 
@@ -636,7 +638,6 @@
             });
 
             FluentSettingsMenu.createSection("general", general);
-            FluentSettingsMenu.createSection("advanced", advanced);
             FluentSettingsMenu.createSection("about", about);
 
             FluentSettingsMenu.addSubmenu("general", "customization", {
@@ -787,21 +788,6 @@
                 onChange: (lang) => {
                 localStorage.setItem('preferredLanguage', lang);
                 location.reload(); // recharge pour refléter les traductions
-                }
-            });
-
-            FluentSettingsMenu.addToggle("advanced", "spottingmode", {
-                icon: "📸",
-                label: spottingmode,
-                description: spottingmodetext,
-                value: false,
-                onChange: function (value) {
-                toggleSunOrientation(value);
-                if (value) {
-                    soundsUX('MBF_SettingOn');
-                } else {
-                    soundsUX('MBF_SettingOff');
-                }
                 }
             });
 
@@ -1903,26 +1889,27 @@ function hideLoadingScreen() {
             }, 3000);
 
     } else {
-
-    const logoscr = document.getElementById('logoscr');
-    logoscr.classList.add('logoscrappp');
-    loadingScreen.classList.add('logoscrapppp');
-    loadingScreen.style.pointerEvents = 'none';
-    const menubottom1 = document.getElementById('menubtm');
-    menubottom1.style.display = 'flex';
-    window.isMenuShowed = false;
-
-    if (localStorage.getItem('nepasafficheraccueil') === 'true') {
         setTimeout(() => {
-            menubottom1.classList.remove('slide-upb');
-            menubottom1.classList.add('slide-downb');
-        }, 10);
-    }
+            const logoscr = document.getElementById('logoscr');
+            logoscr.classList.add('logoscrappp');
+            loadingScreen.classList.add('logoscrapppp');
+            loadingScreen.style.pointerEvents = 'none';
+            const menubottom1 = document.getElementById('menubtm');
+            menubottom1.style.display = 'flex';
+            window.isMenuShowed = false;
 
-    setTimeout(() => {
-        loadingScreen.style.display = 'none';
-    }, 300);
-}
+            if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+                setTimeout(() => {
+                    menubottom1.classList.remove('slide-upb');
+                    menubottom1.classList.add('slide-downb');
+                }, 10);
+            }
+
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 300);
+        }, 300);
+    }
 }
 
 
@@ -2837,7 +2824,7 @@ const TextColorUtils = {
 };
 // ==================== FIN TEXT COLOR UTILS ====================
 
-// ancienne version à copier
+
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
@@ -3080,6 +3067,18 @@ marker.on('popupclose', async function(e) {
     return marker;
 }
 
+function shouldRenderMarker(marker) {
+    const zoom = map.getZoom();
+    const bounds = map.getBounds();
+    
+    if (zoom < 13) {
+        return false; 
+    }
+    
+    const paddedBounds = bounds.pad(0.2);
+    return paddedBounds.contains(marker.getLatLng());
+}
+
 function adjustBrightness(hex, percent) {
     const num = parseInt(hex.replace("#", ""), 16);
     const amt = Math.round(2.55 * percent);
@@ -3194,42 +3193,46 @@ let gtfsInitialized = false;
 
 
 async function loadGeoJsonLines() {
-    const response = await fetch('proxy-cors/proxy_geojson.php');
-    const geoJsonData = await response.json();
+    try {
+        const response = await fetch('proxy-cors/proxy_geojson.php');
+        const geoJsonData = await response.json();
 
-    currentZoomLevel = map.getZoom();
-    
-    const activeLinesSet = new Set();
-    markerPool.active.forEach((marker) => {
-        if (marker.line) {
-            activeLinesSet.add(marker.line);
-        }
-    });
-    
-    const busLines = L.geoJSON(geoJsonData, {
-        filter: function(feature) {
-            if (feature.geometry.type === 'LineString') {
-                return activeLinesSet.has(feature.properties.route_id);
+        currentZoomLevel = map.getZoom();
+        
+        const activeLinesSet = new Set();
+        markerPool.active.forEach((marker) => {
+            if (marker.line) {
+                activeLinesSet.add(marker.line);
             }
-            return false; 
-        },
-        style: function(feature) {
-            return {
-                color: lineColors[feature.properties.route_id] || '#3388ff',
-                weight: 6,
-                opacity: 0.7,  
-                lineJoin: 'round',
-                lineCap: 'round',
-                className: 'bus-line', 
-                dashArray: feature.properties.route_type === '3' ? '5, 5' : null
-            };
-        },
-        onEachFeature: function(feature, layer) {
-            if (feature.properties && feature.properties.route_id) {
-                geoJsonLines.push(layer);
+        });
+        
+        const busLines = L.geoJSON(geoJsonData, {
+            filter: function(feature) {
+                if (feature.geometry.type === 'LineString') {
+                    return activeLinesSet.has(feature.properties.route_id);
+                }
+                return false; 
+            },
+            style: function(feature) {
+                return {
+                    color: lineColors[feature.properties.route_id] || '#3388ff',
+                    weight: 6,
+                    opacity: 0.7,  
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                    className: 'bus-line', 
+                    dashArray: feature.properties.route_type === '3' ? '5, 5' : null
+                };
+            },
+            onEachFeature: function(feature, layer) {
+                if (feature.properties && feature.properties.route_id) {
+                    geoJsonLines.push(layer);
+                }
             }
-        }
-    }).addTo(map);
+        }).addTo(map);
+    } catch (error) {
+        console.error('Erreur lors du chargement des lignes GeoJSON', error);
+    }
 }
 
 function filterByLine(lineId) {
@@ -8837,16 +8840,16 @@ async function main() {
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),
-            hideLoadingScreen(),
             fetchVehiclePositions(),
-            loadGeoJsonLines()
+            loadGeoJsonLines(),
+            hideLoadingScreen()
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
-        toastBottomRight.error("Une erreur critique est survenue. Nous investigons actuellement sur la cause de la panne.");
+        toastBottomRight.error("Internal error : unable to initialize app.");
         soundsUX('MBF_NotificationError');
     }
 }
@@ -8920,6 +8923,8 @@ if (performance && performance.memory) {
 }
 // ==================== FIN NETTOYAGE GLOBAL ====================
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', main);
-} 
+main().catch(error => {
+    console.error("Erreur critique lors de l'initialisation de l'application :", error);  
+    toastBottomRight.error("Critical error: unable to start the application.");
+    soundsUX('MBF_NotificationError');
+});
