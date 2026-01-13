@@ -2825,29 +2825,38 @@ const TextColorUtils = {
 // ==================== FIN TEXT COLOR UTILS ====================
 
 
-function createColoredMarker(lat, lon, route_id, bearing = 0) {
-    const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
+// Cache pour éviter les recalculs
+const markerCache = {
+    colors: new Map(),
+    icons: new Map(),
+    styles: new Set()
+};
+
+// Optimisation: Pré-calculer et mettre en cache les couleurs
+function getCachedColors(route_id) {
+    if (markerCache.colors.has(route_id)) {
+        return markerCache.colors.get(route_id);
+    }
     
     const color = lineColors[route_id] || '#000000';
-    
     const lighterColor = adjustBrightness(color, 30);
     const darkerColor = adjustBrightness(color, -20);
     
-    const markerHtmlStyles = `
-        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
-        width: 12px;
-        height: 12px;
-        display: block;
-        left: -6px;
-        top: -6px;
-        position: relative;
-        border-radius: 50%;
-        border: 2px solid white;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        cursor: pointer;
-        backdrop-filter: blur(4px);
-    `;
+    const colors = { color, lighterColor, darkerColor };
+    markerCache.colors.set(route_id, colors);
+    return colors;
+}
 
+// Optimisation: Créer les styles d'animation une seule fois par route
+function ensurePulseStyle(route_id) {
+    const styleId = `pulse-style-${route_id}`;
+    
+    if (markerCache.styles.has(styleId)) {
+        return;
+    }
+    
+    const { color } = getCachedColors(route_id);
+    
     const pulseAnimation = `
         @keyframes pulse-${route_id} {
             0% { 
@@ -2869,6 +2878,38 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
                            0 0 0 0 ${color}00;
             }
         }
+    `;
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = pulseAnimation;
+    document.head.appendChild(style);
+    markerCache.styles.add(styleId);
+}
+
+// Optimisation: Créer l'icône avec un identifiant unique pour le cache
+function createCachedIcon(route_id, bearing = 0) {
+    const cacheKey = `${route_id}-${Math.floor(bearing / 5) * 5}`; // Cache par tranche de 5°
+    
+    if (markerCache.icons.has(cacheKey)) {
+        return markerCache.icons.get(cacheKey);
+    }
+    
+    const { color, lighterColor, darkerColor } = getCachedColors(route_id);
+    
+    const markerHtmlStyles = `
+        background: linear-gradient(135deg, ${lighterColor} 0%, ${color} 50%, ${darkerColor} 100%);
+        width: 12px;
+        height: 12px;
+        display: block;
+        left: -6px;
+        top: -6px;
+        position: relative;
+        border-radius: 50%;
+        border: 2px solid white;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        backdrop-filter: blur(4px);
     `;
 
     const arrowSvg = `
@@ -2920,13 +2961,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         </svg>
     `;
 
-    if (!document.getElementById(`pulse-style-${route_id}`)) {
-        const style = document.createElement('style');
-        style.id = `pulse-style-${route_id}`;
-        style.textContent = pulseAnimation;
-        document.head.appendChild(style);
-    }
-
     const icon = L.divIcon({
         className: "my-custom-pin-enhanced",
         iconAnchor: [0, 0],
@@ -2941,64 +2975,59 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
             </div>
         `
     });
+    
+    markerCache.icons.set(cacheKey, icon);
+    return icon;
+}
 
+// Optimisation: Utiliser requestAnimationFrame pour les mises à jour du DOM
+function updateMenuBtmColor(color, routeId) {
+    const menubtm = document.getElementById('menubtm');
+    if (!menubtm) return;
+    
+    requestAnimationFrame(() => {
+        menubtm.style.backgroundColor = `${color}9c`;
+        
+        const textColor = TextColorUtils.getOptimal(color);
+        const invert = textColor === '#1a1a1a' ? 'invert(1)' : 'invert(0)';
+        
+        // Optimisation: Batch les modifications du DOM
+        const images = document.querySelectorAll('#menubtm img');
+        images.forEach(img => {
+            img.style.filter = invert;
+        });
+        
+        return StyleManager.applyMenuStyle(textColor);
+    });
+}
+
+function createColoredMarker(lat, lon, route_id, bearing = 0) {
+    const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Optimisation: S'assurer que le style d'animation existe
+    ensurePulseStyle(route_id);
+    
+    // Optimisation: Utiliser l'icône en cache
+    const icon = createCachedIcon(route_id, bearing);
+    
     const marker = L.marker([lat, lon], { icon });
     const styleId = generateUniqueId();
+    const { color } = getCachedColors(route_id);
     
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
-            safeVibrate([50]);
-            soundsUX('MBF_VehicleOpen');
-            saveAndFilterSingleLine(route_id);
-
+        safeVibrate([50]);
+        soundsUX('MBF_VehicleOpen');
+        saveAndFilterSingleLine(route_id);
 
         if (menubtm) {
             const markerId = marker.id;
-            const color = lineColors[route_id] || '#000000';
-            
 
             if (lastActiveMarkerId !== null && lastActiveMarkerId !== markerId && lastActiveColor !== null) {
-                menubtm.style.backgroundColor = `${color}9c`;
-
-                const textColor = TextColorUtils.getOptimal(color);
-                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
-                    document
-                        .querySelectorAll('#menubtm img')
-                        .forEach(img => {
-                            img.style.filter = 'invert(1)';
-                        });
-                } else {
-                    document
-                        .querySelectorAll('#menubtm img')
-                        .forEach(img => {
-                            img.style.filter = 'invert(0)';
-                        });
-                }
-
-
-
-                
-                const styleId = StyleManager.applyMenuStyle(textColor);
+                const styleId = updateMenuBtmColor(color, route_id);
                 marker.styleId = styleId;
             } else {
-                const currentColor = window.getComputedStyle(menubtm).backgroundColor;
-                const textColor = TextColorUtils.getOptimal(color);
-                if (TextColorUtils.getOptimal(color) === '#1a1a1a') {
-                    document
-                        .querySelectorAll('#menubtm img')
-                        .forEach(img => {
-                            img.style.filter = 'invert(1)';
-                        });
-                } else {
-                    document
-                        .querySelectorAll('#menubtm img')
-                        .forEach(img => {
-                            img.style.filter = 'invert(0)';
-                        });
-                }
-                
-                menubtm.style.backgroundColor = `${color}9c`;
-                const styleId = StyleManager.applyMenuStyle(textColor);
+                const styleId = updateMenuBtmColor(color, route_id);
                 marker.styleId = styleId;
             }
             
@@ -3007,64 +3036,81 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         }
     });
 
-marker.on('popupclose', async function(e) {
-    const menubtm = document.getElementById('menubtm');
-    safeVibrate([50]);
-    soundsUX('MBF_VehicleClose');
-    restoreFilterState();
-    
-    if (menubtm) {
-        try {
-            setTimeout(async () => {
-                if (lastActiveMarkerId === marker.id) {
-                    const data = await getSetvar();
-                    
-                    if (data) {
-                        const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
+    marker.on('popupclose', async function(e) {
+        const menubtm = document.getElementById('menubtm');
+        safeVibrate([50]);
+        soundsUX('MBF_VehicleClose');
+        restoreFilterState();
+        
+        if (menubtm) {
+            try {
+                // Optimisation: Utiliser setTimeout avec un délai minimal
+                setTimeout(async () => {
+                    if (lastActiveMarkerId === marker.id) {
+                        const data = await getSetvar();
                         
-                        if (!menubtmCurrentTransition.includes('background-color')) {
-                            menubtm.style.transition = menubtmCurrentTransition 
-                                ? `${menubtmCurrentTransition}, background-color 0.5s ease` 
-                                : 'background-color 0.5s ease';
-                        }
-                        
-                        menubtm.style.backgroundColor = `${window.colorbkg9c}`;
-                        
-                        document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
-                        const styleSheet = document.createElement('style');
-                        styleSheet.id = styleId;
-                        styleSheet.classList.add('menu-color-style');
-                        
-                        styleSheet.textContent = `
-                            #menubtm * {
-                                color: white !important;
-                            }
-                        `;
-                        
-                        document.querySelectorAll('#menubtm img').forEach(img => {
-                            img.style.filter = 'invert(0)';
-                        });
-                        
-                        document.head.appendChild(styleSheet);
-                        
-                        lastActiveMarkerId = null;
-                        lastActiveColor = null;
-                        
-                        if (marker.styleId) {
-                            const oldStyle = document.getElementById(marker.styleId);
-                            if (oldStyle) {
-                                oldStyle.remove();
-                            }
+                        if (data) {
+                            requestAnimationFrame(() => {
+                                const menubtmCurrentTransition = window.getComputedStyle(menubtm).transition;
+                                
+                                if (!menubtmCurrentTransition.includes('background-color')) {
+                                    menubtm.style.transition = menubtmCurrentTransition 
+                                        ? `${menubtmCurrentTransition}, background-color 0.5s ease` 
+                                        : 'background-color 0.5s ease';
+                                }
+                                
+                                menubtm.style.backgroundColor = `${window.colorbkg9c}`;
+                                
+                                // Optimisation: Supprimer tous les anciens styles en une fois
+                                document.querySelectorAll('.menu-color-style').forEach(style => style.remove());
+                                
+                                const styleSheet = document.createElement('style');
+                                styleSheet.id = styleId;
+                                styleSheet.classList.add('menu-color-style');
+                                
+                                styleSheet.textContent = `
+                                    #menubtm * {
+                                        color: white !important;
+                                    }
+                                `;
+                                
+                                document.querySelectorAll('#menubtm img').forEach(img => {
+                                    img.style.filter = 'invert(0)';
+                                });
+                                
+                                document.head.appendChild(styleSheet);
+                                
+                                lastActiveMarkerId = null;
+                                lastActiveColor = null;
+                                
+                                if (marker.styleId) {
+                                    const oldStyle = document.getElementById(marker.styleId);
+                                    if (oldStyle) {
+                                        oldStyle.remove();
+                                    }
+                                }
+                            });
                         }
                     }
-                }
-            }, 50);
-        } catch (error) {
-            return false;
+                }, 50);
+            } catch (error) {
+                return false;
+            }
         }
-    }
-});
+    });
+    
     return marker;
+}
+
+// Fonction utilitaire pour nettoyer le cache si nécessaire
+function clearMarkerCache() {
+    markerCache.colors.clear();
+    markerCache.icons.clear();
+    markerCache.styles.forEach(styleId => {
+        const style = document.getElementById(styleId);
+        if (style) style.remove();
+    });
+    markerCache.styles.clear();
 }
 
 function shouldRenderMarker(marker) {
