@@ -6353,30 +6353,6 @@ function closeMenu() {
     }, 10);
 }
 
-const mapEventHandlers = {
-    zoomend: null,
-    moveend: null,
-    
-    setup() {
-        this.cleanup();
-        
-        this.zoomend = debounce(updateMinimalPopups, 10);
-        this.moveend = debounce(updateMinimalPopups, 30);
-        
-        map.on('zoomend', this.zoomend);
-        map.on('moveend', this.moveend);
-    },
-    
-    cleanup() {
-        if (this.zoomend) map.off('zoomend', this.zoomend);
-        if (this.moveend) map.off('moveend', this.moveend);
-        this.zoomend = null;
-        this.moveend = null;
-    }
-};
-
-mapEventHandlers.setup();
-
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -9037,6 +9013,30 @@ async function main() {
         soundsUX('MBF_NotificationError');
     }
 }
+
+const mapEventHandlers = {
+    zoomend: null,
+    moveend: null,
+    
+    setup() {
+        this.cleanup();
+        
+        this.zoomend = debounce(updateMinimalPopups, 10);
+        this.moveend = debounce(updateMinimalPopups, 30);
+        
+        map.on('zoomend', this.zoomend);
+        map.on('moveend', this.moveend);
+    },
+    
+    cleanup() {
+        if (this.zoomend) map.off('zoomend', this.zoomend);
+        if (this.moveend) map.off('moveend', this.moveend);
+        this.zoomend = null;
+        this.moveend = null;
+    }
+};
+
+mapEventHandlers.setup();
 
 // ==================== NETTOYAGE GLOBAL ====================
 window.addEventListener('beforeunload', () => {
