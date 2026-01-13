@@ -1889,26 +1889,27 @@ function hideLoadingScreen() {
             }, 3000);
 
     } else {
-
-    const logoscr = document.getElementById('logoscr');
-    logoscr.classList.add('logoscrappp');
-    loadingScreen.classList.add('logoscrapppp');
-    loadingScreen.style.pointerEvents = 'none';
-    const menubottom1 = document.getElementById('menubtm');
-    menubottom1.style.display = 'flex';
-    window.isMenuShowed = false;
-
-    if (localStorage.getItem('nepasafficheraccueil') === 'true') {
         setTimeout(() => {
-            menubottom1.classList.remove('slide-upb');
-            menubottom1.classList.add('slide-downb');
-        }, 10);
-    }
+            const logoscr = document.getElementById('logoscr');
+            logoscr.classList.add('logoscrappp');
+            loadingScreen.classList.add('logoscrapppp');
+            loadingScreen.style.pointerEvents = 'none';
+            const menubottom1 = document.getElementById('menubtm');
+            menubottom1.style.display = 'flex';
+            window.isMenuShowed = false;
 
-    setTimeout(() => {
-        loadingScreen.style.display = 'none';
-    }, 300);
-}
+            if (localStorage.getItem('nepasafficheraccueil') === 'true') {
+                setTimeout(() => {
+                    menubottom1.classList.remove('slide-upb');
+                    menubottom1.classList.add('slide-downb');
+                }, 10);
+            }
+
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 300);
+        }, 500);
+    }
 }
 
 
