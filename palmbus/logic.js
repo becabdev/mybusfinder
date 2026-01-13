@@ -1568,7 +1568,7 @@ const StyleManager = {
 function showLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
     loadingScreen.style.display = 'flex';
-    loadingInterval = setInterval(() => {}, 100);
+    loadingInterval = setInterval(() => {}, 0);
 }
 		
 
@@ -1889,25 +1889,23 @@ function hideLoadingScreen() {
             }, 3000);
 
     } else {
-        setTimeout(() => {
-            const logoscr = document.getElementById('logoscr');
-            logoscr.classList.add('logoscrappp');
-            loadingScreen.classList.add('logoscrapppp');
-            loadingScreen.style.pointerEvents = 'none';
-            const menubottom1 = document.getElementById('menubtm');
-            menubottom1.style.display = 'flex';
-            window.isMenuShowed = false;
+        const logoscr = document.getElementById('logoscr');
+        logoscr.classList.add('logoscrappp');
+        loadingScreen.classList.add('logoscrapppp');
+        loadingScreen.style.pointerEvents = 'none';
+        const menubottom1 = document.getElementById('menubtm');
+        menubottom1.style.display = 'flex';
+        window.isMenuShowed = false;
 
-            if (localStorage.getItem('nepasafficheraccueil') === 'true') {
-                setTimeout(() => {
-                    menubottom1.classList.remove('slide-upb');
-                    menubottom1.classList.add('slide-downb');
-                }, 10);
-            }
-
+        if (localStorage.getItem('nepasafficheraccueil') === 'true') {
             setTimeout(() => {
-                loadingScreen.style.display = 'none';
-            }, 300);
+                menubottom1.classList.remove('slide-upb');
+                menubottom1.classList.add('slide-downb');
+            }, 10);
+        }
+
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
         }, 300);
     }
 }
@@ -2910,6 +2908,7 @@ function createCachedIcon(route_id, bearing = 0) {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
         backdrop-filter: blur(4px);
+        will-change: all;
     `;
 
     const arrowSvg = `
@@ -2919,6 +2918,7 @@ function createCachedIcon(route_id, bearing = 0) {
             height: 16px;
             left: 4px;
             top: -2px;
+            will-change: all;
             transform-origin: 2px; 
             transform: rotate(${bearing - 90}deg);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"
@@ -2980,7 +2980,6 @@ function createCachedIcon(route_id, bearing = 0) {
     return icon;
 }
 
-// Optimisation: Utiliser requestAnimationFrame pour les mises à jour du DOM
 function updateMenuBtmColor(color, routeId) {
     const menubtm = document.getElementById('menubtm');
     if (!menubtm) return;
@@ -2991,7 +2990,6 @@ function updateMenuBtmColor(color, routeId) {
         const textColor = TextColorUtils.getOptimal(color);
         const invert = textColor === '#1a1a1a' ? 'invert(1)' : 'invert(0)';
         
-        // Optimisation: Batch les modifications du DOM
         const images = document.querySelectorAll('#menubtm img');
         images.forEach(img => {
             img.style.filter = invert;
@@ -3044,7 +3042,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
         
         if (menubtm) {
             try {
-                // Optimisation: Utiliser setTimeout avec un délai minimal
                 setTimeout(async () => {
                     if (lastActiveMarkerId === marker.id) {
                         const data = await getSetvar();
@@ -3102,7 +3099,6 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     return marker;
 }
 
-// Fonction utilitaire pour nettoyer le cache si nécessaire
 function clearMarkerCache() {
     markerCache.colors.clear();
     markerCache.icons.clear();
