@@ -1114,41 +1114,22 @@ function soundsUX(soundFileName) {
 }
 
 function initMapLibre(mapInstance) {
-    setTimeout(() => {
-        const center = mapInstance.getCenter();
-        const zoom = mapInstance.getZoom();
+  const center = mapInstance.getCenter();
+  const zoom = mapInstance.getZoom();
 
-        const mlMap = new maplibregl.Map({
-            container: 'maplibre',
-            style: 'https://demotiles.maplibre.org/style.json',
-            center: [center.lng, center.lat],
-            zoom: zoom,
-            pitch: 60,
-            bearing: 0,
-            interactive: false
-        });
+  const mlMap = new maplibregl.Map({
+    container: 'maplibre',
+    style: 'https://demotiles.maplibre.org/style.json',
+    center: [center.lng, center.lat],
+    zoom: zoom,
+    pitch: 60,
+    bearing: 0,
+    interactive: false
+  });
 
-        mlMap.on('load', () => {
-            const layers = mlMap.getStyle().layers;
-            const labelLayerId = layers.find(
-            l => l.type === 'symbol' && l.layout?.['text-field']
-            )?.id;
-
-            const mlMap = new maplibregl.Map({
-                container: 'maplibre',
-                style: 'https://demotiles.maplibre.org/style.json',
-                center: [lng, lat],
-                zoom: zoom,
-                pitch: 60,
-                bearing: -20,
-                interactive: false
-            });
-        });
-
-        return mlMap;
-
-    }, 1000);
+  return mlMap;
 }
+
 
 
 async function initMap() {
@@ -1179,13 +1160,17 @@ async function initMap() {
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
 
-    const mlMap = initMapLibre(mapInstance);
+    let mlMap;
 
-    mapInstance.on('move zoom', () => {
-        const c = mapInstance.getCenter();
-        mlMap.jumpTo({
+    mlMap = initMapLibre(mapInstance);
+
+    mlMap.on('load', () => {
+        mapInstance.on('move zoom', () => {
+            const c = mapInstance.getCenter();
+            mlMap.jumpTo({
             center: [c.lng, c.lat],
             zoom: mapInstance.getZoom()
+            });
         });
     });
 
