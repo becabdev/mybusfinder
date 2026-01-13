@@ -2976,9 +2976,35 @@ function createCachedIcon(route_id, bearing = 0) {
     return icon;
 }
 
+const StyleCleanupManager = {
+    lastCleanup: Date.now(),
+    cleanupInterval: 30000, 
+    
+    check() {
+        const now = Date.now();
+        if (now - this.lastCleanup > this.cleanupInterval) {
+            this.cleanup();
+            this.lastCleanup = now;
+        }
+    },
+    
+    cleanup() {
+        const styles = document.querySelectorAll('.menu-color-style');
+        if (styles.length > 5) {
+            styles.forEach((style, index) => {
+                if (index < styles.length - 2) {
+                    style.remove();
+                }
+            });
+        }
+    }
+};
+
 function updateMenuBtmColor(color, routeId) {
     const menubtm = document.getElementById('menubtm');
     if (!menubtm) return;
+    
+    StyleCleanupManager.check();
     
     requestAnimationFrame(() => {
         menubtm.style.backgroundColor = `${color}9c`;
@@ -6327,6 +6353,30 @@ function closeMenu() {
     }, 10);
 }
 
+const mapEventHandlers = {
+    zoomend: null,
+    moveend: null,
+    
+    setup() {
+        this.cleanup();
+        
+        this.zoomend = debounce(updateMinimalPopups, 10);
+        this.moveend = debounce(updateMinimalPopups, 30);
+        
+        map.on('zoomend', this.zoomend);
+        map.on('moveend', this.moveend);
+    },
+    
+    cleanup() {
+        if (this.zoomend) map.off('zoomend', this.zoomend);
+        if (this.moveend) map.off('moveend', this.moveend);
+        this.zoomend = null;
+        this.moveend = null;
+    }
+};
+
+mapEventHandlers.setup();
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -7043,6 +7093,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                 window.minimalTooltipStates[markerId] = 'visible';
             } catch (error) {
                 console.error('Erreur création tooltip Safari', error);
+                TooltipManager.release(minimalTooltip);
             }
         }
     } else if (!shouldShow && marker.minimalPopup) {
@@ -7059,15 +7110,22 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     delete window.minimalTooltipStates[markerId];
                     
                     if (tooltipToRemove) {
+                        if (tooltipToRemove._container && tooltipToRemove._container._eventHandlers) {
+                            tooltipToRemove._container._eventHandlers.forEach(handler => {
+                                tooltipToRemove._container.removeEventListener(handler.event, handler.fn);
+                            });
+                            delete tooltipToRemove._container._eventHandlers;
+                        }
+                        
                         try {
                             map.removeLayer(tooltipToRemove);
                             TooltipManager.release(tooltipToRemove);
                             TooltipManager.active.delete(markerId);
                         } catch (error) {
-                            console.error('Erreur suppression tooltip Safari:', error);
+                            console.error('Erreur suppression tooltip', error);
                         }
                     }
-                }, 20); // Délai plus long pour Safari
+                }, 20);
             }
         } else {
             const tooltipToRemove = marker.minimalPopup;
@@ -7099,10 +7157,30 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     return false;
                 }
 
-                function updateMinimalPopups() {
-                    if (this.rafId) cancelAnimationFrame(this.rafId);
+                const MinimalPopupAnimationManager = {
+                    rafId: null,
+                    handlers: new Set(),
                     
-                    this.rafId = requestAnimationFrame(() => {
+                    schedule(callback) {
+                        this.cancel();
+                        this.rafId = requestAnimationFrame(callback);
+                    },
+                    
+                    cancel() {
+                        if (this.rafId) {
+                            cancelAnimationFrame(this.rafId);
+                            this.rafId = null;
+                        }
+                    },
+                    
+                    cleanup() {
+                        this.cancel();
+                        this.handlers.clear();
+                    }
+                };
+
+                function updateMinimalPopups() {
+                    MinimalPopupAnimationManager.schedule(() => {
                         const currentZoom = map.getZoom();
                         const showMinimal = currentZoom >= 17 && currentZoom < 20;
                         
@@ -8714,23 +8792,91 @@ const FetchManager = {
 };
 // ==================== FIN FETCH ADAPTATIF ====================
 
-function initWorker() {
-    try {
-        worker = new Worker('worker.js');
+class LRUCache {
+    constructor(maxSize = 100) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+    }
+    
+    set(key, value) {
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        }
         
-        worker.onerror = (error) => {
+        if (this.cache.size >= this.maxSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+        
+        this.cache.set(key, value);
+    }
+    
+    get(key) {
+        if (!this.cache.has(key)) {
+            return undefined;
+        }
+        
+        const value = this.cache.get(key);
+        this.cache.delete(key);
+        this.cache.set(key, value);
+        return value;
+    }
+    
+    clear() {
+        this.cache.clear();
+    }
+}
+
+const contentCache = new LRUCache(50);
+const colorCache = new LRUCache(100);
+const textColorCache = new LRUCache(100);
+
+let workerInstance = null;
+let workerRestartAttempts = 0;
+const MAX_WORKER_RESTARTS = 3;
+
+function initWorker() {
+    if (workerRestartAttempts >= MAX_WORKER_RESTARTS) {
+        console.warn('Trop de redémarrages worker, mode fallback');
+        return;
+    }
+    
+    try {
+        if (workerInstance) {
+            workerInstance.terminate();
+            workerInstance = null;
+        }
+        
+        workerInstance = new Worker('worker.js');
+        workerRestartAttempts = 0; 
+        
+        workerInstance.onerror = (error) => {
             console.error('Erreur worker', error);
-            setTimeout(() => {
-                if (worker) {
-                    worker.terminate();
-                    worker = null;
+            workerRestartAttempts++;
+            
+            if (workerRestartAttempts < MAX_WORKER_RESTARTS) {
+                setTimeout(() => {
+                    if (workerInstance) {
+                        workerInstance.terminate();
+                        workerInstance = null;
+                    }
+                    initWorker();
+                }, 2000);
+            } else {
+                console.warn('Worker désactivé après échecs répétés');
+                if (workerInstance) {
+                    workerInstance.terminate();
+                    workerInstance = null;
                 }
-                initWorker();
-            }, 2000); 
+            }
         };
+        
+        worker = workerInstance;
+        
     } catch (error) {
         console.error('Worker non supporté', error);
         worker = null;
+        workerInstance = null;
     }
 }
 
@@ -8894,24 +9040,38 @@ async function main() {
 
 // ==================== NETTOYAGE GLOBAL ====================
 window.addEventListener('beforeunload', () => {
-    // Nettoyer tous les managers
+    console.log('Nettoyage global...');
+    
+    // Nettoyer animations
+    MinimalPopupAnimationManager.cleanup();
+    
+    // Nettoyer event handlers
+    mapEventHandlers.cleanup();
+    
+    // Nettoyer managers
     if (markerPool) markerPool.clear();
     if (eventManager) eventManager.clear();
     if (TooltipManager) TooltipManager.clear();
     if (StyleManager) StyleManager.clearAll();
     if (AnimationManager) AnimationManager.cancelAll();
     
-    // Nettoyer le worker
-    if (worker) {
-        worker.terminate();
-        worker = null;
+    // Nettoyer worker
+    if (workerInstance) {
+        workerInstance.terminate();
+        workerInstance = null;
     }
     
-    // Nettoyer les timers
+    // Nettoyer timers
     if (fetchTimerId) {
         clearTimeout(fetchTimerId);
         fetchTimerId = null;
     }
+    
+    // Nettoyer caches
+    if (contentCache) contentCache.clear();
+    if (colorCache) colorCache.clear();
+    if (textColorCache) textColorCache.clear();
+    if (TextColorUtils) TextColorUtils.clearCache();
     
     // Nettoyer la carte
     if (map) {
@@ -8919,23 +9079,31 @@ window.addEventListener('beforeunload', () => {
         map = null;
     }
     
-    console.log('Nettoyage global effectué');
+    console.log('Nettoyage terminé');
 });
 
-// Nettoyage périodique de la mémoire
 setInterval(() => {
-    if (TextColorUtils) {
-        if (TextColorUtils.cache.size > 50) {
-            const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
-            keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
-        }
+    if (TextColorUtils && TextColorUtils.cache.size > 50) {
+        const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
+        keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
     }
     
-    // Forcer le garbage collection si disponible
+    if (TooltipManager && TooltipManager.active.size > markerPool.active.size * 1.2) {
+        console.warn('⚠️ Tooltips orphelins détectés, nettoyage...');
+        TooltipManager.active.forEach((tooltip, id) => {
+            if (!markerPool.has(id)) {
+                map.removeLayer(tooltip);
+                TooltipManager.active.delete(id);
+            }
+        });
+    }
+    
+    StyleCleanupManager.cleanup();
+    
     if (window.gc) {
         window.gc();
     }
-}, 300000); // Toutes les 5 minutes
+}, 60000); 
 
 // Monitoring des performances
 if (performance && performance.memory) {
