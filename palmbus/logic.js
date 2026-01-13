@@ -792,21 +792,6 @@
                 }
             });
 
-            FluentSettingsMenu.addToggle("general", "performancesmode", {
-                icon: "📱",
-                label: hardwareaccelerationtitle,
-                description: hardwareaccelerationtext,
-                value: localStorage.getItem('hardware_acceleration') === 'true',
-                onChange: function (value) {
-                localStorage.setItem('hardware_acceleration', value);
-                if (value) {
-                    soundsUX('MBF_SettingOn');
-                } else {
-                    soundsUX('MBF_SettingOff');
-                }
-                }
-            });
-
             FluentSettingsMenu.addSubmenu("about", "aboutsub", {
                 icon: "",
                 label: "My Bus Finder - by BecabTransit",
