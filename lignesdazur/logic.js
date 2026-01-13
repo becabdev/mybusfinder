@@ -2837,7 +2837,7 @@ const TextColorUtils = {
 };
 // ==================== FIN TEXT COLOR UTILS ====================
 
-
+// ancienne version à copier
 function createColoredMarker(lat, lon, route_id, bearing = 0) {
     const generateUniqueId = () => `popup-style-${Math.random().toString(36).substr(2, 9)}`;
     
