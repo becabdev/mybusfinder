@@ -2903,7 +2903,6 @@ function createCachedIcon(route_id, bearing = 0) {
         border: 2px solid white;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
-        backdrop-filter: blur(4px);
         will-change: all;
     `;
 
@@ -3269,8 +3268,9 @@ async function loadGeoJsonLines() {
                 activeLinesSet.add(marker.line);
             }
         });
-        
+
         const busLines = L.geoJSON(geoJsonData, {
+            renderer: L.canvas(),
             filter: function(feature) {
                 if (feature.geometry.type === 'LineString') {
                     return activeLinesSet.has(feature.properties.route_id);
@@ -5257,21 +5257,6 @@ const MenuManager = {
         topBar.appendChild(backButton);
         topBar.appendChild(title);
         this.container.appendChild(topBar);
-        
-        let lastScrollTop = 0;
-        this.container.addEventListener('scroll', () => {
-            const scrollTop = this.container.scrollTop;
-            const searchContainer = document.getElementById('search-container');
-            
-            if (scrollTop > lastScrollTop && scrollTop > 50) {
-                topBar.style.transform = 'translateY(-130%)';
-            } else {
-                topBar.style.transform = 'translateY(0)';
-            }
-            lastScrollTop = scrollTop;
-            
-            this._handleScrollAnimations();
-        });
     },
 
     _handleScrollAnimations() {
