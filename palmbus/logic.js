@@ -6338,6 +6338,8 @@ function closeMenu() {
     }, 10);
 }
 
+const contentCache = new Map();
+const colorCache = new Map();
 
 // Debounce optimisé
 function debounce(func, wait) {
@@ -8410,9 +8412,6 @@ class LRUCache {
         this.cache.clear();
     }
 }
-
-const contentCache = new LRUCache(50);
-const colorCache = new LRUCache(100);
 const textColorCache = new LRUCache(100);
 
 let workerInstance = null;
