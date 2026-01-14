@@ -748,8 +748,8 @@
         z-index: 10000;
         padding: 0 20px;
         background-color: #0f056b9c;
-        backdrop-filter: url(#frosted);
-        -webkit-backdrop-filter: url(#frosted);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
         border-radius: 40px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
     }
@@ -929,8 +929,8 @@
         animation: apparitionMenuBas 0.6s cubic-bezier(0.25, 1.5, 0.5, 1);
         opacity: 1;
         filter: blur(0);
-        backdrop-filter: url(#frosted);
-        -webkit-backdrop-filter: url(#frosted);
+        backdrop-filter: blur(1px);
+        -webkit-backdrop-filter: blur(1px);
         transform: translateY(0) translateX(-50%) scaleX(1);
         transition: transform 0.45s ease-out, opacity 0.2s ease-in, filter 0.2s ease-in;
         cursor: pointer;
@@ -2147,3 +2147,23 @@
         will-change: transform;
         transform: translateZ(0);
     }
+
+
+    .liquidglass::before,
+    .liquidglass::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+    
+    .liquidglass::before {
+        backdrop-filter: blur(3px);
+        filter: url(#glass-distortion);
+        z-index: -1;
+    }
+    
+    .liquidglass::after {
+        box-shadow: inset 2px 2px 1px 0 rgb(255 255 255 / 50%), inset -1px -1px 1px 1px rgb(255 255 255 / 50%);
+    }
+    
