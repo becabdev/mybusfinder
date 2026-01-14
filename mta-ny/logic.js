@@ -1188,7 +1188,7 @@ async function initMap() {
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-    const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    const tileLayerUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
     
     const tileLayer = L.tileLayer(tileLayerUrl, {
         minZoom: 6,
