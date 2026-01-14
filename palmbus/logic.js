@@ -1080,7 +1080,7 @@ async function changeColorBkg(selectedTheme = null) {
     const theme = selectedTheme || savedTheme;
 
     const baseColor = themes[theme] || themes["default"];
-    const colorWithAlpha = `${baseColor}ff`;
+    const colorWithAlpha = `${baseColor}80`;
 
     localStorage.setItem("theme", theme);
     localStorage.setItem("colorbkg", baseColor);
@@ -3006,7 +3006,7 @@ function updateMenuBtmColor(color, routeId) {
     StyleCleanupManager.check();
     
     requestAnimationFrame(() => {
-        menubtm.style.backgroundColor = `${color}ff`;
+        menubtm.style.backgroundColor = `${color}80`;
         
         const textColor = TextColorUtils.getOptimal(color);
         const invert = textColor === '#1a1a1a' ? 'invert(1)' : 'invert(0)';
@@ -7219,7 +7219,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             if (menubtm) {
                                 const color = lineColors[line] || '#000000';
                                 lastActiveColor = color;
-                                menubtm.style.backgroundColor = `${color}ff`;
+                                menubtm.style.backgroundColor = `${color}80`;
                                 
                                 const textColor = TextColorUtils.getOptimal(color);
                                 StyleManager.applyMenuStyle(textColor);
@@ -9064,6 +9064,16 @@ setInterval(() => {
     if (TextColorUtils && TextColorUtils.cache.size > 50) {
         const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
         keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
+    }
+    
+    if (TooltipManager && TooltipManager.active.size > markerPool.active.size * 1.2) {
+        console.warn('⚠️ Tooltips orphelins détectés, nettoyage...');
+        TooltipManager.active.forEach((tooltip, id) => {
+            if (!markerPool.has(id)) {
+                map.removeLayer(tooltip);
+                TooltipManager.active.delete(id);
+            }
+        });
     }
     
     StyleCleanupManager.cleanup();
