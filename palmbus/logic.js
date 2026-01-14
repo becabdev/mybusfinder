@@ -1188,7 +1188,7 @@ async function initMap() {
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-    const tileLayerUrl = 'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png';
+    const tileLayerUrl = 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png';
     
     const tileLayer = L.tileLayer(tileLayerUrl, {
         minZoom: 6,
