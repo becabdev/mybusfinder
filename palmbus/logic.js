@@ -9066,16 +9066,6 @@ setInterval(() => {
         keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
     }
     
-    if (TooltipManager && TooltipManager.active.size > markerPool.active.size * 1.2) {
-        console.warn('⚠️ Tooltips orphelins détectés, nettoyage...');
-        TooltipManager.active.forEach((tooltip, id) => {
-            if (!markerPool.has(id)) {
-                map.removeLayer(tooltip);
-                TooltipManager.active.delete(id);
-            }
-        });
-    }
-    
     StyleCleanupManager.cleanup();
     
     if (window.gc) {
