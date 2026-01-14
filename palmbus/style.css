@@ -2164,6 +2164,6 @@
     }
     
     .liquidglass::after {
-        box-shadow: inset 2px 2px 1px 0 rgb(255 255 255 / 50%), inset -1px -1px 1px 1px rgb(255 255 255 / 50%);
+        box-shadow: inset 2px 2px 1px 0 rgb(255 255 255 / 15%), inset -1px -1px 1px 1px rgb(255 255 255 / 15%);
     }
     
