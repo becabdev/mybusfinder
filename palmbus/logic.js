@@ -1080,7 +1080,7 @@ async function changeColorBkg(selectedTheme = null) {
     const theme = selectedTheme || savedTheme;
 
     const baseColor = themes[theme] || themes["default"];
-    const colorWithAlpha = `${baseColor}80`;
+    const colorWithAlpha = `${baseColor}5c`;
 
     localStorage.setItem("theme", theme);
     localStorage.setItem("colorbkg", baseColor);
@@ -3006,7 +3006,7 @@ function updateMenuBtmColor(color, routeId) {
     StyleCleanupManager.check();
     
     requestAnimationFrame(() => {
-        menubtm.style.backgroundColor = `${color}80`;
+        menubtm.style.backgroundColor = `${color}5c`;
         
         const textColor = TextColorUtils.getOptimal(color);
         const invert = textColor === '#1a1a1a' ? 'invert(1)' : 'invert(0)';
@@ -7219,7 +7219,7 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                             if (menubtm) {
                                 const color = lineColors[line] || '#000000';
                                 lastActiveColor = color;
-                                menubtm.style.backgroundColor = `${color}80`;
+                                menubtm.style.backgroundColor = `${color}5c`;
                                 
                                 const textColor = TextColorUtils.getOptimal(color);
                                 StyleManager.applyMenuStyle(textColor);
