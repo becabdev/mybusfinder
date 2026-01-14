@@ -748,8 +748,8 @@
         z-index: 10000;
         padding: 0 20px;
         background-color: #0f056b9c;
-        backdrop-filter: blur(3px);
-        -webkit-backdrop-filter: blur(3px);
+        backdrop-filter: url(#frosted);
+        -webkit-backdrop-filter: url(#frosted);
         border-radius: 40px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
     }
