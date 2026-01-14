@@ -1113,25 +1113,6 @@ function soundsUX(soundFileName) {
     }
 }
 
-function initMapLibre(mapInstance) {
-  const center = mapInstance.getCenter();
-  const zoom = mapInstance.getZoom();
-
-  const mlMap = new maplibregl.Map({
-    container: 'maplibre',
-    style: 'https://demotiles.maplibre.org/style.json',
-    center: [center.lng, center.lat],
-    zoom: zoom,
-    pitch: 60,
-    bearing: 0,
-    interactive: false
-  });
-
-  return mlMap;
-}
-
-
-
 async function initMap() {
     const data = await getSetvar();
     let defaultCoords = [43.125463, 5.930077];
@@ -1159,20 +1140,6 @@ async function initMap() {
         savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
-
-    let mlMap;
-
-    mlMap = initMapLibre(mapInstance);
-
-    mlMap.on('load', () => {
-        mapInstance.on('move zoom', () => {
-            const c = mapInstance.getCenter();
-            mlMap.jumpTo({
-            center: [c.lng, c.lat],
-            zoom: mapInstance.getZoom()
-            });
-        });
-    });
 
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
@@ -1221,7 +1188,7 @@ async function initMap() {
     const isStandardView = localStorage.getItem('isStandardView') === 'true';
     
     if (!isStandardView) {
-    const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    const tileLayerUrl = 'https://tiles.stadiamaps.com/tiles/osm_bright/{z}/{x}/{y}{r}.png';
     
     const tileLayer = L.tileLayer(tileLayerUrl, {
         minZoom: 6,
