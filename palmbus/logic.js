@@ -5308,10 +5308,10 @@ const MenuManager = {
         
         const lineSection = document.createElement('div');
         lineSection.dataset.line = line;
-        lineSection.classList.add('linesection', 'ripple-container', 'liquidglass');
+        lineSection.classList.add('linesection', 'ripple-container');
         
         lineSection.style.cssText = `
-            background-color: ${lineColor}80 !important;
+            background-color: ${lineColor} !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
