@@ -2147,24 +2147,3 @@
         will-change: transform;
         transform: translateZ(0);
     }
-
-
-    .liquidglass::before,
-    .liquidglass::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        pointer-events: none;
-    }
-    
-    .liquidglass::before {
-        backdrop-filter: blur(3px);
-        filter: url(#glass-distortion);
-        z-index: -1;
-    }
-    
-    .liquidglass::after {
-        box-shadow: inset 2px 2px 1px 0 rgb(255 255 255 / 15%), inset -1px -1px 1px 1px rgb(255 255 255 / 15%);
-    }
-    
