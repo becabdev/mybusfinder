@@ -1,5 +1,5 @@
 HeuliezBus GX 437 Elec
-src/thumbnail/gx437le-rouge.png
+src/thumbnail/gx437e-rouge.png
 isElec=true
 isHybrid=false
 isGnv=false
