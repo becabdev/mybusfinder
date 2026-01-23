@@ -4461,12 +4461,53 @@ function getVehicleFromUrl() {
   return params.get("vehicle");
 }
 
+function waitForVehicleMarker(vehicleId, timeoutMs = 5000, intervalMs = 200) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const marker = markerPool && markerPool.active ? markerPool.active.get(vehicleId) : null;
+      if (marker) {
+        clearInterval(timer);
+        resolve(marker);
+        return;
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        resolve(null);
+      }
+    }, intervalMs);
+  });
+}
+
+function waitForGtfsInitialized(timeoutMs = 10000, intervalMs = 200) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      if (gtfsInitialized) {
+        clearInterval(timer);
+        resolve(true);
+        return;
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        resolve(false);
+      }
+    }, intervalMs);
+  });
+}
+
 window.addEventListener("load", async () => {
   const vehicleId = getVehicleFromUrl();
+  if (!vehicleId) return;
 
-  if (await fetchVehiclePositions()) {
-    window.mapInstance[vehicleId].openPopup();
-  }
+  await waitForGtfsInitialized();
+  await fetchVehiclePositions();
+
+  const marker = await waitForVehicleMarker(vehicleId);
+  if (!marker) return;
+
+  map.setView(marker.getLatLng(), 17);
+  marker.openPopup();
 });
 
 
