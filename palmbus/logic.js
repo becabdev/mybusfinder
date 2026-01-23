@@ -1173,7 +1173,7 @@ async function initMap() {
     const storageKey = `mapPosition_${location.pathname}`;
     const savedPosition = JSON.parse(localStorage.getItem(storageKey) || "null");
 
-    const mapInstance = L.map('map', {
+    window.mapInstance = L.map('map', {
         zoomControl: false
     }).setView(
         savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
@@ -4445,7 +4445,7 @@ function applyMapView() {
 
 function shareVehicleId(id) {
   const message = t("shareMessage").replace("{{vehicleId}}", id);
-  const url = window.location.href; 
+  const url = window.location.href + `?vehicle=${encodeURIComponent(id)}`; 
   const fullMessage = `${message} ${url}`;
 
   if (navigator.share) {
@@ -4455,6 +4455,21 @@ function shareVehicleId(id) {
     }).catch(err => console.error("Sharing failed :(", err));
   } 
 }
+
+function getVehicleFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("vehicle");
+}
+
+window.addEventListener("load", async () => {
+  const vehicleId = getVehicleFromUrl();
+
+  if (vehicleId && await fetchVehiclePositions()) {
+    mapInstance[vehicleId].openPopup();
+  }
+});
+
+
 
 function debounce(func, wait) {
     let timeout;
