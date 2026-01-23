@@ -48,7 +48,7 @@
     }
     @font-face {
         font-family: "League Spartan";
-        src: url("../src/inter.ttf") format("truetype");
+        src: url("../src/Helvetica.ttf") format("truetype");
     }
     @font-face {
         font-family: SegoeUIBoot;
