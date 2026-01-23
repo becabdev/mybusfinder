@@ -950,15 +950,6 @@
                 }
             });
 
-            FluentSettingsMenu.addSubmenu("submenu-aboutsub", "freepalestine", {
-                icon: "🇵🇸",
-                label: "Free Palestine",
-                description: "Support and solidarity with the Palestinian people - donate to UNRWA",
-                onclick: function () {
-                    window.open('https://donate.unrwa.org/int/en/general', '_blank');
-                }
-            });
-
 
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "erazecache", {
                 icon: "🗑️",
