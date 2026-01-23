@@ -32,201 +32,217 @@
             }
         });
 
-        // Ripple Effect Implementation for iOS26-like behavior - Improved by BecabDev
-        // Simply add class "ripple-container" to element you want the effect on it
-        class RippleEffect {
-            constructor() {
-                this.activeRipples = new Map();
-                this.rippleCounter = 0;
-                this.isTouch = false;
-                this.init();
+    // Ripple Effect Implementation for iOS26-like behavior - Improved by BecabDev
+    // Simply add class "ripple-container" to element you want the effect on it
+    class RippleEffect {
+        constructor() {
+            this.activeRipples = new Map();
+            this.rippleCounter = 0;
+            this.isTouch = false;
+            this.init();
+        }
+
+        init() {
+            // Mouse events
+            document.addEventListener('mousedown', this.handlePointerDown.bind(this));
+            document.addEventListener('mouseup', this.handlePointerUp.bind(this));
+            document.addEventListener('mousemove', this.handlePointerMove.bind(this));
+            document.addEventListener('mouseleave', this.handlePointerLeave.bind(this));
+            
+            // Touch events
+            document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
+            document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
+            document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
+            document.addEventListener('touchcancel', this.handlePointerLeave.bind(this), { passive: true });
+        }
+
+        handlePointerDown(e) {
+            if (e.type === 'touchstart') {
+                this.isTouch = true;
+            } else if (e.type === 'mousedown' && this.isTouch) {
+                return; 
             }
 
-            init() {
-                // Mouse events
-                document.addEventListener('mousedown', this.handlePointerDown.bind(this));
-                document.addEventListener('mouseup', this.handlePointerUp.bind(this));
-                document.addEventListener('mousemove', this.handlePointerMove.bind(this));
-                document.addEventListener('mouseleave', this.handlePointerLeave.bind(this));
-                
-                // Touch events
-                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
-                document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
-                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
-                document.addEventListener('touchcancel', this.handlePointerLeave.bind(this), { passive: true });
-            }
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
 
-            handlePointerDown(e) {
-                if (e.type === 'touchstart') {
-                    this.isTouch = true;
-                } else if (e.type === 'mousedown' && this.isTouch) {
-                    return; 
+            const pointer = this.getPointerPosition(e);
+            const rect = container.getBoundingClientRect();
+            
+            const rippleId = `ripple_${this.rippleCounter++}`;
+            const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
+            
+            const rippleData = {
+                id: rippleId,
+                element: ripple,
+                container: container,
+                startTime: Date.now(),
+                isHeld: false,
+                isReleased: false,
+                timeouts: []
+            };
+            
+            this.activeRipples.set(rippleId, rippleData);
+
+            const heldTimeout = setTimeout(() => {
+                const activeRipple = this.activeRipples.get(rippleId);
+                if (activeRipple && !activeRipple.isReleased && activeRipple.element.parentNode) {
+                    activeRipple.element.classList.remove('animate');
+                    activeRipple.element.classList.add('held');
+                    activeRipple.isHeld = true;
                 }
+            }, 150);
 
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
+            rippleData.timeouts.push(heldTimeout);
 
-                const pointer = this.getPointerPosition(e);
-                const rect = container.getBoundingClientRect();
-                
-                const rippleId = `ripple_${this.rippleCounter++}`;
-                const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
-                
-                const rippleData = {
-                    id: rippleId,
-                    element: ripple,
-                    container: container,
-                    startTime: Date.now(),
-                    isHeld: false,
-                    isReleased: false,
-                    timeouts: []
-                };
-                
-                this.activeRipples.set(rippleId, rippleData);
-
-                const heldTimeout = setTimeout(() => {
-                    const activeRipple = this.activeRipples.get(rippleId);
-                    if (activeRipple && !activeRipple.isReleased && activeRipple.element.parentNode) {
-                        ripple.classList.remove('animate');
-                        ripple.classList.add('held');
-                        activeRipple.isHeld = true;
-                    }
-                }, 150);
-
-                rippleData.timeouts.push(heldTimeout);
-            }
-
-            handlePointerMove(e) {
-                if (e.type === 'mousemove' && this.isTouch) return;
-
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
-
-                const pointer = this.getPointerPosition(e);
-                const rect = container.getBoundingClientRect();
-                
-                const x = pointer.x - rect.left;
-                const y = pointer.y - rect.top;
-
-                for (const [rippleId, rippleData] of this.activeRipples) {
-                    if (rippleData.container === container && 
-                        rippleData.isHeld && 
-                        !rippleData.isReleased &&
-                        rippleData.element.parentNode) {
-                        
-                        const ripple = rippleData.element;
-                        const size = parseFloat(ripple.style.width);
-                        ripple.style.left = (x - size / 2) + 'px';
-                        ripple.style.top = (y - size / 2) + 'px';
-                    }
-                }
-            }
-
-            handlePointerUp(e) {
-                if (e.type === 'mouseup' && this.isTouch) {
-                    setTimeout(() => { this.isTouch = false; }, 100);
-                    return;
-                }
-
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
-
-                for (const [rippleId, rippleData] of this.activeRipples) {
-                    if (rippleData.container === container && !rippleData.isReleased) {
-                        this.releaseRipple(rippleId);
-                    }
-                }
-            }
-
-            handlePointerLeave(e) {
-                const ripplesToRelease = Array.from(this.activeRipples.keys());
-                ripplesToRelease.forEach(rippleId => {
+            const safetyTimeout = setTimeout(() => {
+                const activeRipple = this.activeRipples.get(rippleId);
+                if (activeRipple && !activeRipple.isReleased) {
                     this.releaseRipple(rippleId);
-                });
+                }
+            }, 10000);
 
-                if (e.type === 'mouseleave') {
-                    this.isTouch = false;
+            rippleData.timeouts.push(safetyTimeout);
+        }
+
+        handlePointerMove(e) {
+            if (e.type === 'mousemove' && this.isTouch) return;
+
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
+
+            const pointer = this.getPointerPosition(e);
+            const rect = container.getBoundingClientRect();
+            
+            const x = pointer.x - rect.left;
+            const y = pointer.y - rect.top;
+
+            for (const [rippleId, rippleData] of this.activeRipples) {
+                if (rippleData.container === container && 
+                    rippleData.isHeld && 
+                    !rippleData.isReleased &&
+                    rippleData.element.parentNode) {
+                    
+                    const ripple = rippleData.element;
+                    const size = parseFloat(ripple.style.width);
+                    ripple.style.left = (x - size / 2) + 'px';
+                    ripple.style.top = (y - size / 2) + 'px';
                 }
             }
+        }
 
-            releaseRipple(rippleId) {
-                const rippleData = this.activeRipples.get(rippleId);
-                if (!rippleData || rippleData.isReleased) return;
+        handlePointerUp(e) {
+            if (e.type === 'mouseup' && this.isTouch) {
+                setTimeout(() => { this.isTouch = false; }, 100);
+                return;
+            }
 
-                rippleData.isReleased = true;
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
+
+            for (const [rippleId, rippleData] of this.activeRipples) {
+                if (rippleData.container === container && !rippleData.isReleased) {
+                    this.releaseRipple(rippleId);
+                }
+            }
+        }
+
+        handlePointerLeave(e) {
+            const ripplesToRelease = Array.from(this.activeRipples.keys());
+            ripplesToRelease.forEach(rippleId => {
+                this.releaseRipple(rippleId);
+            });
+
+            if (e.type === 'mouseleave') {
+                this.isTouch = false;
+            }
+        }
+
+        releaseRipple(rippleId) {
+            const rippleData = this.activeRipples.get(rippleId);
+            if (!rippleData || rippleData.isReleased) return;
+
+            rippleData.isReleased = true;
+
+            rippleData.timeouts.forEach(timeout => clearTimeout(timeout));
+            rippleData.timeouts = [];
+            
+            if (!rippleData.element.parentNode) {
+                this.cleanupRipple(rippleId);
+                return;
+            }
+
+            if (rippleData.isHeld) {
+                rippleData.element.classList.remove('held');
+                rippleData.element.classList.add('release');
                 
-                if (!rippleData.element.parentNode) {
-                    this.cleanupRipple(rippleId);
-                    return;
-                }
-
-                if (rippleData.isHeld) {
-                    rippleData.element.classList.remove('held');
-                    rippleData.element.classList.add('release');
-                } else {
-                    const timeHeld = Date.now() - rippleData.startTime;
-                    if (timeHeld < 150) {
-                        const cleanupTimeout = setTimeout(() => {
-                            this.cleanupRipple(rippleId);
-                        }, 150 - timeHeld + 50);
-                        rippleData.timeouts.push(cleanupTimeout);
-                        return;
-                    }
-                }
-
                 const cleanupTimeout = setTimeout(() => {
                     this.cleanupRipple(rippleId);
                 }, 400);
                 rippleData.timeouts.push(cleanupTimeout);
-            }
-
-            cleanupRipple(rippleId) {
-                const rippleData = this.activeRipples.get(rippleId);
-                if (!rippleData) return;
-
-                rippleData.timeouts.forEach(timeout => clearTimeout(timeout));
-                rippleData.timeouts = [];
-
-                if (rippleData.element && rippleData.element.parentNode) {
-                    try {
-                        rippleData.element.parentNode.removeChild(rippleData.element);
-                    } catch (e) {
-                    }
+            } else {
+                const timeHeld = Date.now() - rippleData.startTime;
+                if (timeHeld < 150) {
+                    const cleanupTimeout = setTimeout(() => {
+                        this.cleanupRipple(rippleId);
+                    }, 150 - timeHeld + 300); 
+                    rippleData.timeouts.push(cleanupTimeout);
+                } else {
+                    const cleanupTimeout = setTimeout(() => {
+                        this.cleanupRipple(rippleId);
+                    }, 100);
+                    rippleData.timeouts.push(cleanupTimeout);
                 }
-
-                this.activeRipples.delete(rippleId);
-            }
-
-            createRipple(container, x, y) {
-                const rect = container.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height) * 2.5;
-                
-                const ripple = document.createElement('div');
-                ripple.classList.add('ripple', 'animate');
-                
-                ripple.style.width = size + 'px';
-                ripple.style.height = size + 'px';
-                ripple.style.left = (x - size / 2) + 'px';
-                ripple.style.top = (y - size / 2) + 'px';
-                
-                container.appendChild(ripple);
-                
-                return ripple;
-            }
-
-            getPointerPosition(e) {
-                if (e.touches && e.touches.length > 0) {
-                    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                }
-                return { x: e.clientX, y: e.clientY };
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            new RippleEffect();
-        });
+        cleanupRipple(rippleId) {
+            const rippleData = this.activeRipples.get(rippleId);
+            if (!rippleData) return;
 
-        VERSION_NAME = '3.3';
+            rippleData.timeouts.forEach(timeout => clearTimeout(timeout));
+            rippleData.timeouts = [];
+
+            if (rippleData.element && rippleData.element.parentNode) {
+                try {
+                    rippleData.element.parentNode.removeChild(rippleData.element);
+                } catch (e) {
+                }
+            }
+
+            this.activeRipples.delete(rippleId);
+        }
+
+        createRipple(container, x, y) {
+            const rect = container.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height) * 2.5;
+            
+            const ripple = document.createElement('div');
+            ripple.classList.add('ripple', 'animate');
+            
+            ripple.style.width = size + 'px';
+            ripple.style.height = size + 'px';
+            ripple.style.left = (x - size / 2) + 'px';
+            ripple.style.top = (y - size / 2) + 'px';
+            
+            container.appendChild(ripple);
+            
+            return ripple;
+        }
+
+        getPointerPosition(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        new RippleEffect();
+    });
+
+    VERSION_NAME = '3.3.1';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
