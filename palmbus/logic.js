@@ -4464,8 +4464,8 @@ function getVehicleFromUrl() {
 window.addEventListener("load", async () => {
   const vehicleId = getVehicleFromUrl();
 
-  if (vehicleId && await fetchVehiclePositions()) {
-    mapInstance[vehicleId].openPopup();
+  if (await fetchVehiclePositions()) {
+    window.mapInstance[vehicleId].openPopup();
   }
 });
 
