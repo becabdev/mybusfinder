@@ -740,7 +740,8 @@
         display: flex;
         position: fixed;
         bottom: 10px;
-        left: 10px;
+        left: 50%;
+        transform: translateX(-50%);
         border: 1px solid rgba(255, 255, 255, 0.3);
         list-style: none;
         margin: 0;
@@ -930,7 +931,7 @@
         filter: blur(0);
         backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(1px);
-        transform: translateY(0) scaleX(1);
+        transform: translateY(0) translateX(-50%) scaleX(1);
         transition: transform 0.45s ease-out, opacity 0.2s ease-in, filter 0.2s ease-in;
         cursor: pointer;
     }
@@ -938,12 +939,12 @@
 
     @keyframes apparitionMenuBas {
         0% {
-            transform: translateY(100%) scaleX(0.5);
+            transform: translateY(100%) translateX(-50%) scaleX(0.5);
             opacity: 0;
             filter: blur(10px);
         }
         100% {
-            transform: translateY(0) scaleX(1);
+            transform: translateY(0) translateX(-50%) scaleX(1);
             opacity: 1;
             filter: blur(0);
         }
@@ -956,22 +957,22 @@
     }
     @keyframes disparitionMenuBas {
         0% {
-            transform: translateY(0) scaleX(1);
+            transform: translateY(0) translateX(-50%) scaleX(1);
             opacity: 1;
             filter: blur(0);
         }
         100% {
-            transform: translateY(100%) scaleX(0.5);
+            transform: translateY(100%) translateX(-50%) scaleX(0.5);
             opacity: 0;
             filter: blur(10px);
         }
     }
     .slide-downb:active {
-        transform: translateY(0) scale(1.05);
+        transform: translateY(0) translateX(-50%) scale(1.05);
     }
     .slide-downc {
         display: block;
-        transform: translateY(-220%) scaleX(1);
+        transform: translateY(-220%) translateX(-50%) scaleX(1);
         opacity: 1;
         filter: blur(0);
         backdrop-filter: blur(1px);
@@ -979,7 +980,7 @@
         transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
     .slide-upc {
-        transform: translateY(100%);
+        transform: translateY(100%) translateX(-50%);
         opacity: 0;
         filter: blur(5px);
         transition: all 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
