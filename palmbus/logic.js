@@ -850,7 +850,7 @@
 
             FluentSettingsMenu.addSubmenu("about", "aboutsub", {
                 icon: "",
-                label: "My Bus Finder - by BecabTransit",
+                label: "My Bus Finder - v" + window.VERSION_NAME,
                 description: "made in Cannes with ❤️",
             });
 
@@ -929,15 +929,6 @@
                 description: "© OpenStreetMap contributors (data: ODbL, map: CC-BY-SA 2.0)",
                 onclick: function () {
                     window.open('https://www.openstreetmap.org/copyright', '_blank');
-                }
-            });
-
-            FluentSettingsMenu.addSubmenu("submenu-aboutsub", "jszip", {
-                icon: "📦",
-                label: "JSZip.js",
-                description: "v3.10.1",
-                onclick: function () {
-                    window.open('https://stuk.github.io/jszip/', '_blank');
                 }
             });
 
