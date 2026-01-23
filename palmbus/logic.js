@@ -857,9 +857,9 @@
             FluentSettingsMenu.addSubmenu("about", "instagram", {
                 icon: "📸",
                 label: "Instagram",
-                description: "@becabtransit",
+                description: "@becabdev",
                 onclick: function () {
-                    window.open('https://www.instagram.com/becabtransit/', '_blank');
+                    window.open('https://www.instagram.com/becabdev/', '_blank');
                 }
             });
 
@@ -944,9 +944,9 @@
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "github", {
                 icon: "🐈‍⬛",
                 label: "GitHub",
-                description: "becabtransit/mybusfinder",
+                description: "becabdev/mybusfinder",
                 onclick: function () {
-                    window.open('https://github.com/becabtransit/mybusfinder', '_blank');
+                    window.open('https://github.com/becabdev/mybusfinder', '_blank');
                 }
             });
 
