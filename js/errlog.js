@@ -430,6 +430,8 @@ function sendBugReport() {
   const errorCodesText = [...new Set(errorQueue.map(err => getErrorCode(err)))].join(' | ');
   
   let body = `
+Describe the steps to reproduce the issue here/décrivez les étapes pour reproduire le problème ici :
+
 CRITICAL ERROR REPORT
 =====================
 
