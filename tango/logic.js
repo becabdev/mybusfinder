@@ -32,160 +32,217 @@
             }
         });
 
-        // Ripple Effect Implementation for iOS26-like behavior - by BecabDev
-        // simply add class "ripple-container" to element you want the effect on it
-        class RippleEffect {
-            constructor() {
-                this.activeRipples = new Map();
-                this.init();
+    // Ripple Effect Implementation for iOS26-like behavior - Improved by BecabDev
+    // Simply add class "ripple-container" to element you want the effect on it
+    class RippleEffect {
+        constructor() {
+            this.activeRipples = new Map();
+            this.rippleCounter = 0;
+            this.isTouch = false;
+            this.init();
+        }
+
+        init() {
+            // Mouse events
+            document.addEventListener('mousedown', this.handlePointerDown.bind(this));
+            document.addEventListener('mouseup', this.handlePointerUp.bind(this));
+            document.addEventListener('mousemove', this.handlePointerMove.bind(this));
+            document.addEventListener('mouseleave', this.handlePointerLeave.bind(this));
+            
+            // Touch events
+            document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
+            document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
+            document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
+            document.addEventListener('touchcancel', this.handlePointerLeave.bind(this), { passive: true });
+        }
+
+        handlePointerDown(e) {
+            if (e.type === 'touchstart') {
+                this.isTouch = true;
+            } else if (e.type === 'mousedown' && this.isTouch) {
+                return; 
             }
 
-            init() {
-                document.addEventListener('mousedown', this.handlePointerDown.bind(this));
-                document.addEventListener('mouseup', this.handlePointerUp.bind(this));
-                document.addEventListener('mousemove', this.handlePointerMove.bind(this));
-                document.addEventListener('mouseleave', this.handlePointerUp.bind(this));
-                
-                document.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true });
-                document.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true });
-                document.addEventListener('touchmove', this.handlePointerMove.bind(this), { passive: true });
-                document.addEventListener('touchcancel', this.handlePointerUp.bind(this), { passive: true });
-                
-            }
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
 
-            handlePointerDown(e) {
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
+            const pointer = this.getPointerPosition(e);
+            const rect = container.getBoundingClientRect();
+            
+            const rippleId = `ripple_${this.rippleCounter++}`;
+            const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
+            
+            const rippleData = {
+                id: rippleId,
+                element: ripple,
+                container: container,
+                startTime: Date.now(),
+                isHeld: false,
+                isReleased: false,
+                timeouts: []
+            };
+            
+            this.activeRipples.set(rippleId, rippleData);
 
-                const pointer = this.getPointerPosition(e);
-                const rect = container.getBoundingClientRect();
-                
-                const ripple = this.createRipple(container, pointer.x - rect.left, pointer.y - rect.top);
-                
-                this.activeRipples.set(container, {
-                    element: ripple,
-                    startTime: Date.now(),
-                    isHeld: false
-                });
-
-                setTimeout(() => {
-                    const activeRipple = this.activeRipples.get(container);
-                    if (activeRipple && !activeRipple.isReleased) {
-                        ripple.classList.remove('animate');
-                        ripple.classList.add('held');
-                        activeRipple.isHeld = true;
-                    }
-                }, 150);
-            }
-
-            handlePointerMove(e) {
-                const container = e.target.closest('.ripple-container');
-                if (!container) return;
-
-                const activeRipple = this.activeRipples.get(container);
-                if (!activeRipple || !activeRipple.isHeld) return;
-
-                const pointer = this.getPointerPosition(e);
-                const rect = container.getBoundingClientRect();
-                
-                const x = pointer.x - rect.left;
-                const y = pointer.y - rect.top;
-                
-                const ripple = activeRipple.element;
-                const size = parseFloat(ripple.style.width);
-                ripple.style.left = (x - size / 2) + 'px';
-                ripple.style.top = (y - size / 2) + 'px';
-            }
-
-            handlePointerUp(e) {
-                if (e.type === 'mouseleave' || e.type === 'touchcancel') {
-                    this.cleanupAllRipples();
-                    return;
+            const heldTimeout = setTimeout(() => {
+                const activeRipple = this.activeRipples.get(rippleId);
+                if (activeRipple && !activeRipple.isReleased && activeRipple.element.parentNode) {
+                    activeRipple.element.classList.remove('animate');
+                    activeRipple.element.classList.add('held');
+                    activeRipple.isHeld = true;
                 }
+            }, 150);
 
-                const container = e.target.closest('.ripple-container');
-                if (!container) {
-                    this.cleanupAllRipples();
-                    return;
+            rippleData.timeouts.push(heldTimeout);
+
+            const safetyTimeout = setTimeout(() => {
+                const activeRipple = this.activeRipples.get(rippleId);
+                if (activeRipple && !activeRipple.isReleased) {
+                    this.releaseRipple(rippleId);
                 }
+            }, 10000);
 
-                const activeRipple = this.activeRipples.get(container);
-                if (!activeRipple) return;
+            rippleData.timeouts.push(safetyTimeout);
+        }
 
-                activeRipple.isReleased = true;
-                
-                if (activeRipple.isHeld) {
-                    activeRipple.element.classList.remove('held');
-                    activeRipple.element.classList.add('release');
-                } else {
-                    const timeHeld = Date.now() - activeRipple.startTime;
-                    if (timeHeld < 150) {
-                        return;
-                    }
-                }
+        handlePointerMove(e) {
+            if (e.type === 'mousemove' && this.isTouch) return;
 
-                setTimeout(() => {
-                    this.cleanupRipple(container);
-                }, 400);
-            }
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
 
-            cleanupAllRipples() {
-                for (const [container, rippleData] of this.activeRipples) {
-                    rippleData.isReleased = true;
-                    rippleData.element.classList.remove('held');
-                    rippleData.element.classList.add('release');
+            const pointer = this.getPointerPosition(e);
+            const rect = container.getBoundingClientRect();
+            
+            const x = pointer.x - rect.left;
+            const y = pointer.y - rect.top;
+
+            for (const [rippleId, rippleData] of this.activeRipples) {
+                if (rippleData.container === container && 
+                    rippleData.isHeld && 
+                    !rippleData.isReleased &&
+                    rippleData.element.parentNode) {
                     
-                    setTimeout(() => {
-                        this.cleanupRipple(container);
-                    }, 400);
+                    const ripple = rippleData.element;
+                    const size = parseFloat(ripple.style.width);
+                    ripple.style.left = (x - size / 2) + 'px';
+                    ripple.style.top = (y - size / 2) + 'px';
                 }
-            }
-
-            cleanupRipple(container) {
-                const activeRipple = this.activeRipples.get(container);
-                if (activeRipple && activeRipple.element.parentNode) {
-                    activeRipple.element.parentNode.removeChild(activeRipple.element);
-                }
-                this.activeRipples.delete(container);
-            }
-
-            createRipple(container, x, y) {
-                const rect = container.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height) * 2.5;
-                
-                const ripple = document.createElement('div');
-                ripple.classList.add('ripple', 'animate');
-                
-                ripple.style.width = size + 'px';
-                ripple.style.height = size + 'px';
-                ripple.style.left = (x - size / 2) + 'px';
-                ripple.style.top = (y - size / 2) + 'px';
-                
-                container.appendChild(ripple);
-                
-                setTimeout(() => {
-                    if (ripple.parentNode && ripple.classList.contains('animate')) {
-                        this.cleanupRipple(container);
-                    }
-                }, 600);
-                
-                return ripple;
-            }
-
-            getPointerPosition(e) {
-                if (e.touches && e.touches.length > 0) {
-                    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                }
-                return { x: e.clientX, y: e.clientY };
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            new RippleEffect();
-        });
+        handlePointerUp(e) {
+            if (e.type === 'mouseup' && this.isTouch) {
+                setTimeout(() => { this.isTouch = false; }, 100);
+                return;
+            }
 
+            const container = e.target.closest('.ripple-container');
+            if (!container) return;
 
-        VERSION_NAME = '3.3';
+            for (const [rippleId, rippleData] of this.activeRipples) {
+                if (rippleData.container === container && !rippleData.isReleased) {
+                    this.releaseRipple(rippleId);
+                }
+            }
+        }
+
+        handlePointerLeave(e) {
+            const ripplesToRelease = Array.from(this.activeRipples.keys());
+            ripplesToRelease.forEach(rippleId => {
+                this.releaseRipple(rippleId);
+            });
+
+            if (e.type === 'mouseleave') {
+                this.isTouch = false;
+            }
+        }
+
+        releaseRipple(rippleId) {
+            const rippleData = this.activeRipples.get(rippleId);
+            if (!rippleData || rippleData.isReleased) return;
+
+            rippleData.isReleased = true;
+
+            rippleData.timeouts.forEach(timeout => clearTimeout(timeout));
+            rippleData.timeouts = [];
+            
+            if (!rippleData.element.parentNode) {
+                this.cleanupRipple(rippleId);
+                return;
+            }
+
+            if (rippleData.isHeld) {
+                rippleData.element.classList.remove('held');
+                rippleData.element.classList.add('release');
+                
+                const cleanupTimeout = setTimeout(() => {
+                    this.cleanupRipple(rippleId);
+                }, 400);
+                rippleData.timeouts.push(cleanupTimeout);
+            } else {
+                const timeHeld = Date.now() - rippleData.startTime;
+                if (timeHeld < 150) {
+                    const cleanupTimeout = setTimeout(() => {
+                        this.cleanupRipple(rippleId);
+                    }, 150 - timeHeld + 300); 
+                    rippleData.timeouts.push(cleanupTimeout);
+                } else {
+                    const cleanupTimeout = setTimeout(() => {
+                        this.cleanupRipple(rippleId);
+                    }, 100);
+                    rippleData.timeouts.push(cleanupTimeout);
+                }
+            }
+        }
+
+        cleanupRipple(rippleId) {
+            const rippleData = this.activeRipples.get(rippleId);
+            if (!rippleData) return;
+
+            rippleData.timeouts.forEach(timeout => clearTimeout(timeout));
+            rippleData.timeouts = [];
+
+            if (rippleData.element && rippleData.element.parentNode) {
+                try {
+                    rippleData.element.parentNode.removeChild(rippleData.element);
+                } catch (e) {
+                }
+            }
+
+            this.activeRipples.delete(rippleId);
+        }
+
+        createRipple(container, x, y) {
+            const rect = container.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height) * 2.5;
+            
+            const ripple = document.createElement('div');
+            ripple.classList.add('ripple', 'animate');
+            
+            ripple.style.width = size + 'px';
+            ripple.style.height = size + 'px';
+            ripple.style.left = (x - size / 2) + 'px';
+            ripple.style.top = (y - size / 2) + 'px';
+            
+            container.appendChild(ripple);
+            
+            return ripple;
+        }
+
+        getPointerPosition(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        new RippleEffect();
+    });
+
+    VERSION_NAME = '3.3.1';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -793,16 +850,16 @@
 
             FluentSettingsMenu.addSubmenu("about", "aboutsub", {
                 icon: "",
-                label: "My Bus Finder - by BecabTransit",
+                label: "My Bus Finder - v" + window.VERSION_NAME,
                 description: "made in Cannes with ❤️",
             });
 
             FluentSettingsMenu.addSubmenu("about", "instagram", {
                 icon: "📸",
                 label: "Instagram",
-                description: "@becabtransit",
+                description: "@becabdev",
                 onclick: function () {
-                    window.open('https://www.instagram.com/becabtransit/', '_blank');
+                    window.open('https://www.instagram.com/becabdev/', '_blank');
                 }
             });
 
@@ -875,30 +932,12 @@
                 }
             });
 
-            FluentSettingsMenu.addSubmenu("submenu-aboutsub", "jszip", {
-                icon: "📦",
-                label: "JSZip.js",
-                description: "v3.10.1",
-                onclick: function () {
-                    window.open('https://stuk.github.io/jszip/', '_blank');
-                }
-            });
-
             FluentSettingsMenu.addSubmenu("submenu-aboutsub", "github", {
                 icon: "🐈‍⬛",
                 label: "GitHub",
-                description: "becabtransit/mybusfinder",
+                description: "becabdev/mybusfinder",
                 onclick: function () {
-                    window.open('https://github.com/becabtransit/mybusfinder', '_blank');
-                }
-            });
-
-            FluentSettingsMenu.addSubmenu("submenu-aboutsub", "freepalestine", {
-                icon: "🇵🇸",
-                label: "Free Palestine",
-                description: "Support and solidarity with the Palestinian people - donate to UNRWA",
-                onclick: function () {
-                    window.open('https://donate.unrwa.org/int/en/general', '_blank');
+                    window.open('https://github.com/becabdev/mybusfinder', '_blank');
                 }
             });
 
@@ -1134,7 +1173,7 @@ async function initMap() {
     const storageKey = `mapPosition_${location.pathname}`;
     const savedPosition = JSON.parse(localStorage.getItem(storageKey) || "null");
 
-    const mapInstance = L.map('map', {
+    window.mapInstance = L.map('map', {
         zoomControl: false
     }).setView(
         savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
@@ -4406,7 +4445,7 @@ function applyMapView() {
 
 function shareVehicleId(id) {
   const message = t("shareMessage").replace("{{vehicleId}}", id);
-  const url = window.location.href; 
+  const url = window.location.href + `?vehicle=${encodeURIComponent(id)}`; 
   const fullMessage = `${message} ${url}`;
 
   if (navigator.share) {
@@ -4416,6 +4455,62 @@ function shareVehicleId(id) {
     }).catch(err => console.error("Sharing failed :(", err));
   } 
 }
+
+function getVehicleFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("vehicle");
+}
+
+function waitForVehicleMarker(vehicleId, timeoutMs = 5000, intervalMs = 200) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const marker = markerPool && markerPool.active ? markerPool.active.get(vehicleId) : null;
+      if (marker) {
+        clearInterval(timer);
+        resolve(marker);
+        return;
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        resolve(null);
+      }
+    }, intervalMs);
+  });
+}
+
+function waitForGtfsInitialized(timeoutMs = 10000, intervalMs = 200) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      if (gtfsInitialized) {
+        clearInterval(timer);
+        resolve(true);
+        return;
+      }
+      if (Date.now() - start > timeoutMs) {
+        clearInterval(timer);
+        resolve(false);
+      }
+    }, intervalMs);
+  });
+}
+
+window.addEventListener("load", async () => {
+  const vehicleId = getVehicleFromUrl();
+  if (!vehicleId) return;
+
+  await waitForGtfsInitialized();
+  await fetchVehiclePositions();
+
+  const marker = await waitForVehicleMarker(vehicleId);
+  if (!marker) return;
+
+  map.setView(marker.getLatLng(), 17);
+  marker.openPopup();
+});
+
+
 
 function debounce(func, wait) {
     let timeout;
@@ -8864,7 +8959,6 @@ async function fetchTripUpdates() {
     const fetchStartTime = performance.now();
     
     try {
-        // Safari : AbortController peut poser problème
         let timeoutId;
         const controller = typeof AbortController !== 'undefined' 
             ? new AbortController() 
@@ -8894,9 +8988,8 @@ async function fetchTripUpdates() {
         const buffer = await response.arrayBuffer();
         const data = await decodeProtobuf(buffer);
         
-        // Safari : Vérifier si le worker existe
+        // Safari verifier si le worker existe
         if (!worker) {
-            // Traitement synchrone en fallback
             const processedData = processTripsSync(data);
             tripUpdates = processedData;
             fetchInProgress = false;
@@ -8907,7 +9000,7 @@ async function fetchTripUpdates() {
             const workerTimeoutId = setTimeout(() => {
                 reject(new Error('Worker timeout'));
                 fetchInProgress = false;
-            }, 5000); // 5s pour Safari
+            }, 5000);
             
             worker.onmessage = (e) => {
                 clearTimeout(workerTimeoutId);
@@ -9020,38 +9113,30 @@ async function main() {
 window.addEventListener('beforeunload', () => {
     console.log('Nettoyage global...');
     
-    // Nettoyer animations
     MinimalPopupAnimationManager.cleanup();
-    
-    // Nettoyer event handlers
     mapEventHandlers.cleanup();
     
-    // Nettoyer managers
     if (markerPool) markerPool.clear();
     if (eventManager) eventManager.clear();
     if (TooltipManager) TooltipManager.clear();
     if (StyleManager) StyleManager.clearAll();
     if (AnimationManager) AnimationManager.cancelAll();
     
-    // Nettoyer worker
     if (workerInstance) {
         workerInstance.terminate();
         workerInstance = null;
     }
     
-    // Nettoyer timers
     if (fetchTimerId) {
         clearTimeout(fetchTimerId);
         fetchTimerId = null;
     }
     
-    // Nettoyer caches
     if (contentCache) contentCache.clear();
     if (colorCache) colorCache.clear();
     if (textColorCache) textColorCache.clear();
     if (TextColorUtils) TextColorUtils.clearCache();
     
-    // Nettoyer la carte
     if (map) {
         map.remove();
         map = null;
@@ -9066,16 +9151,6 @@ setInterval(() => {
         keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
     }
     
-    if (TooltipManager && TooltipManager.active.size > markerPool.active.size * 1.2) {
-        console.warn('⚠️ Tooltips orphelins détectés, nettoyage...');
-        TooltipManager.active.forEach((tooltip, id) => {
-            if (!markerPool.has(id)) {
-                map.removeLayer(tooltip);
-                TooltipManager.active.delete(id);
-            }
-        });
-    }
-    
     StyleCleanupManager.cleanup();
     
     if (window.gc) {
@@ -9083,7 +9158,6 @@ setInterval(() => {
     }
 }, 60000); 
 
-// Monitoring des performances
 if (performance && performance.memory) {
     setInterval(() => {
         const memory = performance.memory;
@@ -9093,17 +9167,13 @@ if (performance && performance.memory) {
         
         console.log(`Memory: ${usedMB}MB / ${totalMB}MB (limit: ${limitMB}MB)`);
         
-        // Alerte si mémoire > 80%
         if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
-            console.warn('⚠️ Mémoire élevée, nettoyage recommandé');
-            
-            // Nettoyage agressif
             if (TextColorUtils) TextColorUtils.cache.clear();
             if (contentCache) contentCache.clear();
             if (colorCache) colorCache.clear();
             if (textColorCache) textColorCache.clear();
         }
-    }, 60000); // Toutes les minutes
+    }, 60000); 
 }
 // ==================== FIN NETTOYAGE GLOBAL ====================
 
