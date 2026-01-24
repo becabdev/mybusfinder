@@ -2,7 +2,8 @@
 const CONFIG = {
   recipientEmail: 'bechir.abidi06@gmail.com',
   siteName: 'My Bus Finder 3X',
-  maxLogs: 50
+  maxLogs: 50,
+  collectionDelay: 3000 
 };
 
 // Error codes mapping
