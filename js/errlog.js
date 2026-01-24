@@ -5,6 +5,41 @@ const CONFIG = {
   maxLogs: 50
 };
 
+// Error codes mapping
+const ERROR_CODES = {
+  'TypeError': 'TYPE_MISMATCH_EXCEPTION',
+  'ReferenceError': 'UNDEFINED_REFERENCE_ERROR',
+  'SyntaxError': 'SYNTAX_PARSE_FAILURE',
+  'RangeError': 'OUT_OF_BOUNDS_ERROR',
+  'URIError': 'INVALID_URI_FORMAT',
+  'EvalError': 'EVAL_EXECUTION_FAILED',
+  'Promise': 'UNHANDLED_PROMISE_REJECTION',
+  'Network': 'NETWORK_CONNECTION_FAILED',
+  'Timeout': 'REQUEST_TIMEOUT_EXCEEDED',
+  'default': 'CRITICAL_JAVASCRIPT_ERROR'
+};
+
+// Get error code based on error type
+function getErrorCode(error) {
+  if (!error || !error.message) return ERROR_CODES.default;
+  
+  const message = error.message.toLowerCase();
+  
+  for (const [key, code] of Object.entries(ERROR_CODES)) {
+    if (key !== 'default' && message.includes(key.toLowerCase())) {
+      return code;
+    }
+  }
+  
+  // Check constructor name
+  if (error.name && ERROR_CODES[error.name]) {
+    return ERROR_CODES[error.name];
+  }
+  
+  return ERROR_CODES.default;
+}
+
+// Capture console logs
 const consoleLogs = [];
 const originalConsole = {
   log: console.log,
@@ -31,28 +66,56 @@ const originalConsole = {
 });
 
 // Capture global errors
-let lastError = null;
+let errorQueue = [];
+let isCollecting = false;
+let collectionTimeout = null;
+
 window.addEventListener('error', (e) => {
-  lastError = {
+  const error = {
     message: e.message,
     filename: e.filename,
     line: e.lineno,
     col: e.colno,
-    stack: e.error?.stack
+    stack: e.error?.stack,
+    name: e.error?.name,
+    timestamp: new Date().toISOString()
   };
-  showErrorOverlay(lastError);
+  
+  errorQueue.push(error);
+  
+  if (!isCollecting) {
+    startErrorCollection();
+  }
 });
 
 window.addEventListener('unhandledrejection', (e) => {
-  lastError = {
+  const error = {
     message: `Promise rejection: ${e.reason}`,
-    stack: e.reason?.stack
+    stack: e.reason?.stack,
+    name: 'Promise',
+    timestamp: new Date().toISOString()
   };
-  showErrorOverlay(lastError);
+  
+  errorQueue.push(error);
+  
+  if (!isCollecting) {
+    startErrorCollection();
+  }
 });
 
-// Show error overlay
-function showErrorOverlay(error) {
+// Start collecting errors for 3 seconds
+function startErrorCollection() {
+  isCollecting = true;
+  showErrorOverlay();
+  
+  collectionTimeout = setTimeout(() => {
+    isCollecting = false;
+    displayCollectedErrors();
+  }, CONFIG.collectionDelay);
+}
+
+// Show initial overlay with loading
+function showErrorOverlay() {
   if (document.getElementById('error-overlay')) return;
   
   const overlay = document.createElement('div');
@@ -72,7 +135,6 @@ function showErrorOverlay(error) {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-family: 'Roboto Mono', 'Courier New', monospace;
         color: white;
         padding: 20px;
         box-sizing: border-box;
@@ -109,7 +171,13 @@ function showErrorOverlay(error) {
         margin-bottom: 10px;
       }
       
-      #error-overlay .progress-bar {
+      #error-overlay .progress-percentage {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 20px 0;
+      }
+      
+      #error-overlay .progress-bar-bg {
         width: 100%;
         height: 4px;
         background: rgba(255, 255, 255, 0.3);
@@ -117,20 +185,11 @@ function showErrorOverlay(error) {
         overflow: hidden;
       }
       
-      #error-overlay .progress-bar::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
+      #error-overlay .progress-bar-fill {
         height: 100%;
-        width: 100%;
+        width: 0%;
         background: white;
-        animation: progress 3s ease-in-out infinite;
-      }
-      
-      @keyframes progress {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(100%); }
+        transition: width 0.1s linear;
       }
       
       #error-overlay .info-section {
@@ -165,6 +224,16 @@ function showErrorOverlay(error) {
         margin-bottom: 15px;
       }
       
+      #error-overlay .error-item {
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      #error-overlay .error-item:last-child {
+        border-bottom: none;
+      }
+      
       #error-overlay .button-container {
         margin-top: 40px;
         display: flex;
@@ -190,6 +259,11 @@ function showErrorOverlay(error) {
         color: #cc0000;
       }
       
+      #error-overlay button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
       #error-overlay .qr-note {
         margin-top: 40px;
         font-size: 13px;
@@ -205,6 +279,10 @@ function showErrorOverlay(error) {
         text-align: center;
         font-size: 14px;
         animation: slideIn 0.3s ease;
+      }
+      
+      #error-overlay .hidden {
+        display: none;
       }
       
       @keyframes slideIn {
@@ -231,43 +309,108 @@ function showErrorOverlay(error) {
       <h2>Your application ran into a problem and needs to send an error report. We're just collecting some error info, and then you can send it to us.</h2>
       
       <div class="progress-container">
-        <div class="progress-text">Collecting error information...</div>
-        <div class="progress-bar"></div>
+        <div class="progress-percentage" id="progress-percent">0% complete</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
       </div>
       
-      <div class="info-section">
-        <div class="error-code">STOP CODE: CRITICAL_JAVASCRIPT_ERROR</div>
-        <div class="info-line">If you contact support, please give them this info:</div>
+      <div id="error-content" class="hidden">
+        <div class="info-section">
+          <div class="error-code" id="error-codes">STOP CODE: COLLECTING...</div>
+          <div class="info-line">If you contact support, please give them this info:</div>
+        </div>
+        
+        <div class="error-details" id="error-details"></div>
+        
+        <div class="info-section">
+          <div class="info-line">URL: ${window.location.href}</div>
+          <div class="info-line">User Agent: ${navigator.userAgent}</div>
+          <div class="info-line">Timestamp: <span id="error-timestamp"></span></div>
+          <div class="info-line">Console Logs Captured: <span id="log-count"></span> entries</div>
+          <div class="info-line">Errors Detected: <span id="error-count"></span></div>
+        </div>
+        
+        <div class="button-container">
+          <button onclick="sendBugReport()" id="send-btn" disabled>SEND ERROR REPORT</button>
+          <button onclick="closeErrorOverlay()" id="restart-btn" disabled>RESTART</button>
+        </div>
+        
+        <div class="qr-note">
+          For more information about this issue and possible fixes, click "SEND ERROR REPORT".<br>
+          This will open your email client with a detailed error report ready to send.
+        </div>
+        
+        <div id="success-msg" style="display: none;"></div>
       </div>
-      
-      <div class="error-details">${error.message || 'Unknown error occurred'}
-${error.filename ? `\nFile: ${error.filename}` : ''}
-${error.line ? `Location: Line ${error.line}:${error.col || 0}` : ''}
-${error.stack ? `\n\nStack Trace:\n${error.stack}` : ''}
-      </div>
-      
-      <div class="info-section">
-        <div class="info-line">URL: ${window.location.href}</div>
-        <div class="info-line">User Agent: ${navigator.userAgent}</div>
-        <div class="info-line">Timestamp: ${new Date().toISOString()}</div>
-        <div class="info-line">Console Logs Captured: ${consoleLogs.length} entries</div>
-      </div>
-      
-      <div class="button-container">
-        <button onclick="sendBugReport()">SEND ERROR REPORT</button>
-        <button onclick="closeErrorOverlay()">RESTART</button>
-      </div>
-      
-      <div class="qr-note">
-        For more information about this issue and possible fixes, click "SEND ERROR REPORT".<br>
-        This will open your email client with a detailed error report ready to send.
-      </div>
-      
-      <div id="success-msg" style="display: none;"></div>
     </div>
   `;
   
   document.body.appendChild(overlay);
+  startProgressBar();
+}
+
+// Animate progress bar
+function startProgressBar() {
+  const fillElement = document.getElementById('progress-fill');
+  const percentElement = document.getElementById('progress-percent');
+  let progress = 0;
+  const interval = 30; // Update every 30ms
+  const increment = (100 / (CONFIG.collectionDelay / interval));
+  
+  const timer = setInterval(() => {
+    progress += increment;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(timer);
+    }
+    fillElement.style.width = progress + '%';
+    percentElement.textContent = Math.floor(progress) + '% complete';
+  }, interval);
+}
+
+// Display collected errors
+function displayCollectedErrors() {
+  const errorContent = document.getElementById('error-content');
+  const errorDetails = document.getElementById('error-details');
+  const errorCodes = document.getElementById('error-codes');
+  const errorTimestamp = document.getElementById('error-timestamp');
+  const logCount = document.getElementById('log-count');
+  const errorCount = document.getElementById('error-count');
+  const sendBtn = document.getElementById('send-btn');
+  const restartBtn = document.getElementById('restart-btn');
+  
+  // Show content
+  errorContent.classList.remove('hidden');
+  
+  // Update counts
+  errorTimestamp.textContent = new Date().toISOString();
+  logCount.textContent = consoleLogs.length;
+  errorCount.textContent = errorQueue.length;
+  
+  // Generate error codes
+  const codes = errorQueue.map(err => getErrorCode(err));
+  const uniqueCodes = [...new Set(codes)];
+  errorCodes.textContent = 'STOP CODE' + (uniqueCodes.length > 1 ? 'S' : '') + ': ' + uniqueCodes.join(' | ');
+  
+  // Display all errors
+  let detailsHTML = '';
+  errorQueue.forEach((error, index) => {
+    detailsHTML += `<div class="error-item">`;
+    detailsHTML += `<strong>ERROR #${index + 1} - ${getErrorCode(error)}</strong>\n`;
+    detailsHTML += `${error.message || 'Unknown error occurred'}`;
+    if (error.filename) detailsHTML += `\nFile: ${error.filename}`;
+    if (error.line) detailsHTML += `\nLocation: Line ${error.line}:${error.col || 0}`;
+    if (error.stack) detailsHTML += `\n\nStack Trace:\n${error.stack}`;
+    detailsHTML += `\nTime: ${error.timestamp}`;
+    detailsHTML += `</div>`;
+  });
+  
+  errorDetails.innerHTML = detailsHTML;
+  
+  // Enable buttons
+  sendBtn.disabled = false;
+  restartBtn.disabled = false;
 }
 
 // Close overlay
@@ -281,29 +424,34 @@ function closeErrorOverlay() {
 
 // Send bug report
 function sendBugReport() {
-  const errorInfo = {
-    error: lastError,
-    userAgent: navigator.userAgent,
-    url: window.location.href,
-    timestamp: new Date().toISOString(),
-    consoleLogs: consoleLogs
-  };
-  
   const subject = `[${CONFIG.siteName}] Critical Error Report - ${new Date().toLocaleDateString()}`;
-  const body = `
+  
+  const errorCodesText = [...new Set(errorQueue.map(err => getErrorCode(err)))].join(' | ');
+  
+  let body = `
 CRITICAL ERROR REPORT
 =====================
 
-STOP CODE: CRITICAL_JAVASCRIPT_ERROR
+STOP CODES: ${errorCodesText}
 
-URL: ${errorInfo.url}
-Date: ${errorInfo.timestamp}
-User Agent: ${errorInfo.userAgent}
+URL: ${window.location.href}
+Date: ${new Date().toISOString()}
+User Agent: ${navigator.userAgent}
 
-ERROR DETAILS:
+ERRORS DETECTED (${errorQueue.length}):
 --------------
-${JSON.stringify(lastError, null, 2)}
+`;
 
+  errorQueue.forEach((error, index) => {
+    body += `
+ERROR #${index + 1} - ${getErrorCode(error)}
+${'-'.repeat(50)}
+${JSON.stringify(error, null, 2)}
+
+`;
+  });
+
+  body += `
 CONSOLE LOGS (${consoleLogs.length} entries):
 --------------
 ${consoleLogs.map(log => `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.message}`).join('\n')}
@@ -321,7 +469,3 @@ This error report was automatically generated.
   successMsg.className = 'success-message';
   successMsg.textContent = '✓ Opening your email client with the error report...';
 }
-
-console.log('✓ Error reporting system initialized');
-
-// Test error: throw new Error('Test error');
