@@ -1,1279 +1,1404 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Bus Finder - Votre mobilité urbaine simplifiée</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5815761294049475"
-     crossorigin="anonymous"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        @font-face {
-            font-family: "Segoe UI";
-            src: url("src/leaguespartan.ttf") format("truetype");
-        }
-
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3e 50%, #0f1c3a 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Intro Animation */
-        .intro-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: fadeOutIntro 1s ease 2.5s forwards;
-        }
-
-        .intro-logo {
-            width: 300px;
-            height: auto;
-            opacity: 0;
-            transform: scale(0.8);
-            animation: logoAppear 1.5s ease forwards;
-        }
-
-        @keyframes logoAppear {
-            0% {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        @keyframes fadeOutIntro {
-            to {
-                opacity: 0;
-                visibility: hidden;
-            }
-        }
-
-        /* Animated Background */
-        .animated-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-
-        .bg-circle {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.1;
-            animation: float 20s infinite;
-        }
-
-        .bg-circle:nth-child(1) {
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, #00d4ff 0%, transparent 70%);
-            top: -200px;
-            left: -200px;
-            animation-duration: 25s;
-        }
-
-        .bg-circle:nth-child(2) {
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, #7160e8 0%, transparent 70%);
-            bottom: -150px;
-            right: -150px;
-            animation-duration: 30s;
-            animation-delay: 5s;
-        }
-
-        .bg-circle:nth-child(3) {
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, #0078d4 0%, transparent 70%);
-            top: 50%;
-            left: 50%;
-            animation-duration: 35s;
-            animation-delay: 10s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(50px, -50px) scale(1.1); }
-            50% { transform: translate(-30px, 50px) scale(0.9); }
-            75% { transform: translate(30px, 30px) scale(1.05); }
-        }
-
-        /* Header */
-        .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            padding: 15px 40px;
-            background: rgba(10, 10, 31, 0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-            animation: slideDown 0.8s ease;
-        }
-
-        .header.scrolled {
-            padding: 10px 40px;
-            background: rgba(10, 10, 31, 0.95);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        .logo {
-            height: 50px;
-            transition: all 0.3s ease;
-        }
-
-        .header.scrolled .logo {
-            height: 40px;
-        }
-
-        .nav-menu {
-            display: flex;
-            gap: 30px;
-            align-items: center;
-        }
-
-        .nav-link {
-            color: rgba(255, 255, 255, 0.8);
-            text-decoration: none;
-            font-weight: 500;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .nav-link::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #00d4ff, #0078d4);
-            transform: translateX(-50%);
-            transition: width 0.3s ease;
-        }
-
-        .nav-link:hover {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .nav-link:hover::before {
-            width: 80%;
-        }
-
-        .menu-toggle {
-            display: none;
-            flex-direction: column;
-            gap: 5px;
-            cursor: pointer;
-            padding: 10px;
-        }
-
-        .menu-toggle span {
-            width: 25px;
-            height: 3px;
-            background: #ffffff;
-            border-radius: 3px;
-            transition: all 0.3s ease;
-        }
-
-        .menu-toggle.active span:nth-child(1) {
-            transform: rotate(45deg) translate(5px, 5px);
-        }
-
-        .menu-toggle.active span:nth-child(2) {
-            opacity: 0;
-        }
-
-        .menu-toggle.active span:nth-child(3) {
-            transform: rotate(-45deg) translate(7px, -6px);
-        }
-
-        /* Hero Section */
-        .hero {
-            margin-top: 80px;
-            padding: 80px 40px 40px;
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            font-weight: 300;
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #00d4ff, #0078d4, #7160e8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: fadeInUp 1s ease 0.3s both;
-        }
-
-        .hero p {
-            font-size: 1.4rem;
-            color: rgba(255, 255, 255, 0.8);
-            max-width: 700px;
-            margin: 0 auto 40px;
-            line-height: 1.8;
-            animation: fadeInUp 1s ease 0.5s both;
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            animation: fadeInUp 1s ease 0.7s both;
-        }
-
-        .cta-button {
-            padding: 15px 35px;
-            border-radius: 12px;
-            font-size: 1.1rem;
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-primary {
-            background: linear-gradient(135deg, #0078d4, #00d4ff);
-            color: #ffffff;
-            border: none;
-        }
-
-        .cta-primary::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.6s, height 0.6s;
-        }
-
-        .cta-primary:hover::before {
-            width: 300px;
-            height: 300px;
-        }
-
-        .cta-primary:hover {
-            box-shadow: 0 10px 30px rgba(0, 120, 212, 0.4);
-        }
-
-        .cta-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .cta-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(0, 212, 255, 0.5);
-        }
-
-        /* Map Section */
-        .map-section {
-            padding: 60px 40px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .section-title {
-            font-size: 2.5rem;
-            font-weight: 300;
-            text-align: center;
-            margin-bottom: 20px;
-            animation: fadeInUp 1s ease;
-        }
-
-        .section-subtitle {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1.1rem;
-            margin-bottom: 40px;
-            animation: fadeInUp 1s ease 0.2s both;
-        }
-
-        .map-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            height: 600px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            animation: fadeInUp 1s ease 0.4s both;
-            position: relative;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-
-        .leaflet-popup-content-wrapper {
-            background: rgba(10, 10, 31, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: #ffffff;
-        }
-
-        .leaflet-popup-content {
-            margin: 15px;
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        .popup-content h3 {
-            font-size: 1.3rem;
-            margin-bottom: 8px;
-            background: linear-gradient(45deg, #00d4ff, #0078d4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .popup-content p {
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-        }
-
-        .popup-button {
-            display: inline-block;
-            padding: 10px 20px;
-            background: linear-gradient(135deg, #0078d4, #00d4ff);
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .leaflet-container a {
-            color: #ffffff;
-        }
-
-        .leaflet-popup-content p {
-            margin: 0 0;
-        }
-
-        .popup-button:hover {
-            box-shadow: 0 5px 15px rgba(0, 120, 212, 0.4);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .status-active {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.4);
-        }
-
-        .status-dev {
-            background: rgba(245, 158, 11, 0.2);
-            color: #f59e0b;
-            border: 1px solid rgba(245, 158, 11, 0.4);
-        }
-
-        .project-section {
-            margin-top: 80px;
-        }
-
-        .project-container {
-            padding: 60px 40px;
-            margin-top: 40px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .project-container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(116, 96, 232, 0.1) 0%, transparent 50%);
-            animation: rotate 20s linear infinite;
-        }
-
-        @keyframes rotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-bottom: 50px;
-            position: relative;
-            z-index: 2;
-        }
-
-        .feature-item {
-            text-align: center;
-            padding: 30px 20px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.6), transparent);
-            transform: translateX(-100%);
-            transition: transform 0.6s ease;
-        }
-
-        .feature-item:hover::before {
-            transform: translateX(100%);
-        }
-
-        .feature-item:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(0, 120, 212, 0.3);
-        }
-
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.3));
-        }
-
-        .feature-item h3 {
-            font-size: 1.3rem;
-            margin-bottom: 15px;
-            color: #ffffff;
-            font-weight: 500;
-        }
-
-        .feature-item p {
-            color: rgba(255, 255, 255, 0.8);
-            line-height: 1.6;
-            font-size: 0.95rem;
-        }
-
-        .project-description {
-            max-width: 800px;
-            margin: 0 auto 50px;
-            text-align: center;
-            position: relative;
-            z-index: 2;
-        }
-
-        .project-description h3 {
-            font-size: 1.8rem;
-            margin-bottom: 25px;
-            color: #ffffff;
-            font-weight: 400;
-        }
-
-        .project-description p {
-            color: rgba(255, 255, 255, 0.85);
-            line-height: 1.7;
-            font-size: 1.1rem;
-            margin-bottom: 20px;
-        }
-
-        .stats-section {
-            padding-bottom: 50px;
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stats-grid {
-            display: flex;
-            justify-content: center;
-            gap: 80px;
-            flex-wrap: wrap;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .stat-item {
-            animation: fadeInUp 1s ease both;
-        }
-
-        .stat-item:nth-child(1) { animation-delay: 0.2s; }
-        .stat-item:nth-child(2) { animation-delay: 0.4s; }
-        .stat-item:nth-child(3) { animation-delay: 0.6s; }
-
-        .stat-number {
-            font-size: 4rem;
-            font-weight: 300;
-            background: linear-gradient(45deg, #00d4ff, #0078d4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-
-        .stat-label {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        .footer {
-            padding: 40px;
-            text-align: center;
-            background: rgba(0, 0, 0, 0.3);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            z-index: 1;
-        }
-
-        .footer p {
-            color: rgba(255, 255, 255, 0.6);
-            margin-bottom: 10px;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        .footer-link {
-            color: rgba(255, 255, 255, 0.7);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .footer-link:hover {
-            color: #00d4ff;
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                padding: 15px 20px;
-            }
-
-            .nav-menu {
-                position: fixed;
-                top: 0;
-                left: 20px;
-                right: 20px;
-                border-radius: 20px;
-                background: rgba(10, 10, 31, 0.98);
-                backdrop-filter: blur(20px);
-                flex-direction: column;
-                padding: 30px;
-                gap: 20px;
-                transform: translateY(-120%);
-                transition: transform 0.4s ease;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-            }
-
-            .nav-menu.active {
-                transform: translateY(0);
-                top: 100px;
-            }
-
-            .menu-toggle {
-                display: flex;
-            }
-
-            .hero {
-                padding: 60px 20px 40px;
-                margin-top: 70px;
-            }
-
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero p {
-                font-size: 1.1rem;
-            }
-
-            .cta-buttons {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .cta-button {
-                text-align: center;
-            }
-
-            .map-section {
-                padding: 40px 20px;
-            }
-
-            .map-container {
-                height: 400px;
-                border-radius: 12px;
-            }
-
-            .section-title {
-                font-size: 2rem;
-            }
-
-            .features-section {
-                padding: 60px 20px;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
-                gap: 40px;
-            }
-
-            .stat-number {
-                font-size: 3rem;
-            }
-        }
-
-        .custom-marker {
-            background: linear-gradient(135deg, #0078d4, #00d4ff);
-            border: 3px solid rgba(255, 255, 255, 0.9);
-            border-radius: 50% 50% 50% 0;
-            width: 30px;
-            height: 30px;
-            transform: rotate(-45deg);
-            box-shadow: 0 4px 15px rgba(0, 120, 212, 0.5);
-            animation: markerPulse 2s infinite;
-        }
-
-        @keyframes markerPulse {
-            0%, 100% {
-                box-shadow: 0 4px 15px rgba(0, 120, 212, 0.5);
-            }
-            50% {
-                box-shadow: 0 4px 25px rgba(0, 212, 255, 0.8);
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Bus Finder - Suivez vos bus en temps réel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #000000;
+      --foreground: #ffffff;
+      --muted: rgba(255, 255, 255, 0.6);
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --blue-400: #60a5fa;
+      --blue-500: #3b82f6;
+      --blue-600: #2563eb;
+      --purple-400: #c084fc;
+      --purple-500: #a855f7;
+      --purple-600: #9333ea;
+      --green-400: #4ade80;
+      --indigo-600: #4f46e5;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--foreground);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Glass Effect */
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+    }
+
+    .glass-hover {
+      transition: all 0.3s ease;
+    }
+
+    .glass-hover:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-4px);
+    }
+
+    /* Animations */
+    @keyframes blob {
+      0% { transform: translate(0px, 0px) scale(1); }
+      33% { transform: translate(30px, -50px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+      100% { transform: translate(0px, 0px) scale(1); }
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+      100% { transform: translateY(0px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes ping {
+      75%, 100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    .animate-blob {
+      animation: blob 7s infinite;
+    }
+
+    .animation-delay-2000 {
+      animation-delay: 2s;
+    }
+
+    .animation-delay-4000 {
+      animation-delay: 4s;
+    }
+
+    .fade-in-up {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+
+    .delay-1 { animation-delay: 0.1s; opacity: 0; }
+    .delay-2 { animation-delay: 0.2s; opacity: 0; }
+    .delay-3 { animation-delay: 0.3s; opacity: 0; }
+    .delay-4 { animation-delay: 0.4s; opacity: 0; }
+    .delay-5 { animation-delay: 0.5s; opacity: 0; }
+    .delay-6 { animation-delay: 0.6s; opacity: 0; }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      padding: 1.5rem;
+      transition: padding 0.3s ease;
+    }
+
+    nav.scrolled {
+      padding: 1rem 1.5rem;
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      border-radius: 9999px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1.5rem;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
+    .logo {
+      text-decoration: none;
+      color: var(--foreground);
+      display: flex;
+      align-items: center;
+    }
+
+    .logo-img {
+      height: 36px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    @media (max-width: 768px) {
+      .logo-img {
+        height: 30px;
+      }
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    .nav-links a {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      color: white;
+    }
+
+    .nav-btn {
+      background: white;
+      color: black;
+      padding: 0.5rem 1.25rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.9);
+      transform: scale(1.05);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(20px);
+      z-index: 40;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+    }
+
+    .mobile-menu.active {
+      display: flex;
+    }
+
+    .mobile-menu a {
+      font-size: 1.875rem;
+      font-weight: 300;
+      color: white;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .mobile-menu a:hover {
+      color: var(--blue-400);
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding-top: 5rem;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      -webkit-filter: blur(80px);
+      opacity: 0.8;
+    }
+
+    .blob-1 {
+      top: -10%;
+      left: -10%;
+      width: 60vw;
+      height: 60vw;
+      min-width: 300px;
+      min-height: 300px;
+      background: radial-gradient(circle, rgba(37, 99, 235, 0.5) 0%, rgba(37, 99, 235, 0.2) 50%, transparent 70%);
+    }
+
+    .blob-2 {
+      top: 20%;
+      right: -10%;
+      width: 50vw;
+      height: 50vw;
+      min-width: 250px;
+      min-height: 250px;
+      background: radial-gradient(circle, rgba(74, 222, 128, 0.4) 0%, rgba(74, 222, 128, 0.15) 50%, transparent 70%);
+    }
+
+    .blob-3 {
+      bottom: -10%;
+      left: 20%;
+      width: 55vw;
+      height: 55vw;
+      min-width: 280px;
+      min-height: 280px;
+      background: radial-gradient(circle, rgba(79, 70, 229, 0.5) 0%, rgba(79, 70, 229, 0.2) 50%, transparent 70%);
+    }
+
+    /* Mobile specific blob styles */
+    @media (max-width: 768px) {
+      .blob {
+        filter: blur(60px);
+        -webkit-filter: blur(60px);
+        opacity: 0.9;
+      }
+      
+      .blob-1 {
+        top: -5%;
+        left: -20%;
+        width: 80vw;
+        height: 80vw;
+      }
+      
+      .blob-2 {
+        top: 30%;
+        right: -20%;
+        width: 70vw;
+        height: 70vw;
+      }
+      
+      .blob-3 {
+        bottom: 0;
+        left: 10%;
+        width: 75vw;
+        height: 75vw;
+      }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: 0 1.5rem;
+      max-width: 1000px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      margin-bottom: 2rem;
+    }
+
+    .hero-badge .ping {
+      position: relative;
+      width: 0.5rem;
+      height: 0.5rem;
+    }
+
+    .hero-badge .ping-inner {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--green-400);
+      animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+
+    .hero-badge .ping-dot {
+      position: relative;
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: var(--green-400);
+    }
+
+    .hero-badge span {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.8);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 8vw, 7rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(to right, white, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+    }
+
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, var(--blue-400), var(--green-400));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.125rem;
+      color: var(--muted);
+      max-width: 600px;
+      margin: 0 auto 3rem;
+      line-height: 1.7;
+    }
+
+    .hero-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      background: white;
+      color: black;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 1.125rem;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 20px 40px rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-primary svg {
+      transition: transform 0.2s ease;
+    }
+
+    .btn-primary:hover svg {
+      transform: translateX(4px);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 1.125rem;
+      color: white;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: scale(1.05);
+    }
+
+    .scroll-indicator {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .scroll-indicator span {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+    }
+
+    .scroll-indicator .line {
+      width: 1px;
+      height: 3rem;
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.4), transparent);
+    }
+
+    /* Features Section */
+    .features {
+      padding: 8rem 1.5rem;
+      position: relative;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .section-header {
+      margin-bottom: 5rem;
+    }
+
+    .section-header h2 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-header .underline {
+      height: 4px;
+      width: 100px;
+      background: linear-gradient(to right, var(--blue-500), var(--green-400));
+      border-radius: 9999px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+    }
+
+    .feature-card {
+      border-radius: 1.5rem;
+      padding: 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+
+    .feature-card:hover::before {
+      opacity: 1;
+    }
+
+    .feature-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+      transition: background 0.3s ease;
+    }
+
+    .feature-card:hover .feature-icon {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .feature-icon svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .feature-card p {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .feature-card .learn-more {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
+      transition: color 0.3s ease;
+    }
+
+    .feature-card:hover .learn-more {
+      color: white;
+    }
+
+    .feature-card .learn-more .line {
+      width: 1rem;
+      height: 1px;
+      background: currentColor;
+      transition: width 0.3s ease;
+    }
+
+    .feature-card:hover .learn-more .line {
+      width: 2rem;
+    }
+
+    /* Stats Section */
+    .stats {
+      padding: 4rem 1.5rem;
+      position: relative;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+    }
+
+    .stat-card {
+      border-radius: 1.5rem;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .stat-card .number {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--blue-400), var(--green-400));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stat-card .label {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-top: 0.5rem;
+    }
+
+    /* CTA Section */
+    .cta {
+      padding: 8rem 1.5rem;
+      position: relative;
+    }
+
+    .cta-card {
+      border-radius: 2rem;
+      padding: 4rem 2rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(74, 222, 128, 0.1));
+      pointer-events: none;
+    }
+
+    .cta h2 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 700;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .cta p {
+      color: var(--muted);
+      margin-bottom: 2rem;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+    }
+
+    .cta .btn-primary {
+      position: relative;
+    }
+
+    /* Footer */
+    footer {
+      padding: 4rem 1.5rem 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .footer-brand {
+      max-width: 300px;
+    }
+
+    .footer-brand .logo {
+      margin-bottom: 1rem;
+    }
+
+    .footer-brand p {
+      color: var(--muted);
+      font-size: 0.875rem;
+      line-height: 1.7;
+    }
+
+    .footer-links {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2rem;
+    }
+
+    .footer-links h4 {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .footer-links ul {
+      list-style: none;
+    }
+
+    .footer-links li {
+      margin-bottom: 0.75rem;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: white;
+    }
+
+    .footer-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .footer-bottom p {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .social-links {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .social-links a {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition: all 0.2s ease;
+    }
+
+    .social-links a:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    /* Responsive */
+    @media (min-width: 640px) {
+      .hero-buttons {
+        flex-direction: row;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (min-width: 768px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .footer-content {
+        flex-direction: row;
+        justify-content: space-between;
+      }
+
+      .footer-links {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4rem;
+      }
+
+      .footer-bottom {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .features-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .cta-card {
+        padding: 6rem 4rem;
+      }
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 500px;
+      max-height: 80vh;
+      border-radius: 1.5rem;
+      padding: 2rem;
+      position: relative;
+      transform: scale(0.9) translateY(20px);
+      transition: transform 0.3s ease;
+      overflow-y: auto;
+    }
+
+    .modal-overlay.active .modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .modal-header {
+      margin-bottom: 1.5rem;
+      padding-right: 2rem;
+    }
+
+    .modal-header h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .modal-header p {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .network-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .network-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      text-decoration: none;
+      color: white;
+      transition: all 0.2s ease;
+    }
+
+    .network-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateX(4px);
+    }
+
+    .network-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 0.75rem;
+      background: linear-gradient(135deg, var(--blue-500), var(--green-400));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .network-icon svg {
+      width: 24px;
+      height: 24px;
+      color: white;
+    }
+
+    .network-info {
+      flex: 1;
+    }
+
+    .network-info h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .network-info span {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .network-arrow {
+      color: var(--muted);
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .network-item:hover .network-arrow {
+      transform: translateX(4px);
+      color: white;
+    }
+  </style>
 </head>
 <body>
-    <div class="intro-overlay">
-        <img src="/src/logownoborder.png" alt="My Bus Finder" class="intro-logo">
+  <nav id="navbar">
+    <div class="nav-container glass">
+      <a href="#" class="logo">
+        <img src="src/logownoborder.png" alt="My Bus Finder" class="logo-img">
+      </a>
+      
+      <div class="nav-links">
+
+        <button class="nav-btn">Lancer l'app</button>
+      </div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="blob blob-1 animate-blob"></div>
+      <div class="blob blob-2 animate-blob animation-delay-2000"></div>
+      <div class="blob blob-3 animate-blob animation-delay-4000"></div>
     </div>
 
-    <div class="animated-bg">
-        <div class="bg-circle"></div>
-        <div class="bg-circle"></div>
-        <div class="bg-circle"></div>
+    <div class="hero-content">
+      <div class="hero-badge glass fade-in-up">
+        <div class="ping">
+          <span class="ping-inner"></span>
+          <span class="ping-dot"></span>
+        </div>
+        <span>Disponible sur plusieurs reseaux</span>
+      </div>
+
+      <h1 class="fade-in-up delay-2">
+        Suivez vos<br><span class="highlight">bus</span> en temps reel
+      </h1>
+
+      <p class="fade-in-up delay-3">
+        MyBusFinder transforme votre experience de transport. Localisez vos bus, consultez les horaires 
+        et restez informe des perturbations, le tout dans une interface fluide et intuitive.
+      </p>
+
+      <div class="hero-buttons fade-in-up delay-4">
+        <a onclick="openModal()" class="btn-primary">
+          Lancer l'app
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </a>
+        <a href="#features" class="btn-secondary glass">
+          Découvrir My Bus Finder
+        </a>
+      </div>
     </div>
+  </section>
 
-    <header class="header" id="header">
-        <img src="/src/logownoborder.png" alt="My Bus Finder" class="logo">
-        <nav class="nav-menu" id="navMenu">
-            <a href="#map" class="nav-link">Carte</a>
-            <a href="#features" class="nav-link">Fonctionnalités</a>
-            <a href="#about" class="nav-link">À propos</a>
-            <a href="https://github.com/becabtransit/mybusfinder" class="nav-link" target="_blank">GitHub</a>
-        </nav>
-        <div class="menu-toggle" id="menuToggle">
-            <span></span>
-            <span></span>
-            <span></span>
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="fade-in-up">Fonctionnalites principales</h2>
+        <div class="underline fade-in-up delay-1"></div>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card glass glass-hover">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="var(--blue-400)" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+          </div>
+          <h3>Localisation temps reel</h3>
+          <p>Carte interactive affichant les lignes et les bus en circulation. Mise a jour dynamique des positions pour rendre le bus previsible.</p>
         </div>
-    </header>
 
-    <section class="hero">
-        <h1>Votre mobilité urbaine, simplifiée</h1>
-        <p>Suivez vos transports en temps réel sur une carte interactive. Simple, rapide, et entièrement gratuit.</p>
-        <div class="cta-buttons">
-            <a href="#map" class="cta-button cta-primary">Choisir ma ville</a>
-            <a href="/forum/public" class="cta-button cta-secondary">Forum officiel</a>
+        <div class="feature-card glass glass-hover">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="var(--green-400)" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3>Horaires intelligents</h3>
+          <p>Consultez les horaires theoriques et en temps reel. Selection simple : ligne, direction, arrets pour trouver votre trajet.</p>
         </div>
-    </section>
 
-    <section class="map-section" id="map">
-        <div class="map-container">
-            <div id="map"></div>
+        <div class="feature-card glass glass-hover">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="var(--purple-400)" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+          </div>
+          <h3>Vue Reseau</h3>
+          <p>Liste structuree des lignes avec destinations, vehicules actifs et temps d'arrivee. Recherche rapide et interaction carte-liste.</p>
         </div>
-    </section>
 
-    <section class="project-section" id="features">
-        <div class="project-container acrylic">
-            <h2 class="section-title fade-in">Le projet My Bus Finder</h2>
-            
-        <div class="project-content">
-            <div class="project-text fade-in">
-                <div class="feature-grid">
-                    <div class="feature-item">
-                        <div class="feature-icon">🔍</div>
-                        <h3>Localisez. En un clin d'œil.</h3>
-                        <p>Suivez votre bus en direct. Sur la carte. Sans stress. Juste là, où vous en avez besoin.</p>
-                    </div>
-                    
-                    <div class="feature-item">
-                        <div class="feature-icon">⏱️</div>
-                        <h3>À l’heure. Pour de vrai.</h3>
-                        <p>Des horaires qui s’adaptent à la réalité. Moins d’attente. Plus de certitudes.</p>
-                    </div>
+        <div class="feature-card glass glass-hover">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <h3>Alertes trafic</h3>
+          <p>Centralisation des perturbations: travaux, accidents, meteo, pannes. Filtres par type et indication claire de l'etat du reseau.</p>
+        </div>
 
-                    <div class="feature-item">
-                        <div class="feature-icon">🖌️</div>
-                        <h3>Votre style. Votre app.</h3>
-                        <p>Changez les couleurs. L’affichage. Le thème. Faites-en une application qui vous ressemble.</p>
-                    </div>
+        <div class="feature-card glass glass-hover">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#ec4899" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <h3>My Bus History</h3>
+          <p>Suivi de la flotte: numero, etat, derniere ligne et modele du bus. Ideal pour les passionnes et equipes reseau.</p>
+        </div>
 
-                    <div class="feature-item">
-                        <div class="feature-icon">📖</div>
-                        <h3>Ouvert. Et fier de l’être.</h3>
-                        <p>My Bus Finder est open source. Parce que les meilleures idées naissent ensemble.</p>
-                    </div>
-                    
-                    <div class="feature-item">
-                        <div class="feature-icon">📱</div>
-                        <h3>Partout. Pour tous.</h3>
-                        <p>Un design pensé pour tous vos écrans. Du smartphone au bureau, tout est fluide. Évident.</p>
-                    </div>
-                </div>
-                
-                <div class="project-description fade-in">
-                    <h3>Pourquoi ce projet existe ?</h3>
-                    <p>Parce qu’on mérite mieux que des horaires figés et des plans incompréhensibles.</p>
-                    
-                    <p>My Bus Finder rend la mobilité urbaine simple. Intuitive. Humaine. Pour tous les voyageurs, d’ici et d’ailleurs.</p>
-                </div>
+        <div class="feature-card glass glass-hover">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#8b5cf6" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <h3>Personnalisation</h3>
+          <p>Geolocalisation automatique, affichage direct de la carte, choix de la langue et plus. Adaptez l'app a vos besoins.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats" id="stats">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-card glass">
+          <div class="number">10+</div>
+          <div class="label">Reseaux supportes</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="number">24/7</div>
+          <div class="label">Temps reel</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="number">100%</div>
+          <div class="label">Gratuit</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="number">6 000</div>
+          <div class="label">Utilisateurs quotidiens</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta" id="cta">
+    <div class="container">
+      <div class="cta-card glass">
+        <h2>Pret a transformer vos trajets ?</h2>
+        <p>Rejoignez des milliers d'utilisateurs qui ont deja adopte My Bus Finder pour leurs deplacements quotidiens.</p>
+        <a onclick="openModal()" class="btn-primary">
+          Lancer l'app
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal-overlay" id="network-modal">
+    <div class="modal glass">
+        <button class="modal-close" onclick="closeModal()" aria-label="Fermer">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+      
+        <div class="modal-header">
+            <h3>Choisissez votre reseau</h3>
+            <p>Selectionnez le reseau de transport que vous souhaitez consulter</p>
+        </div>
+
+        <a href="zou-express/" class="network-item">
+          <div class="network-info">
+            <h4>Zou Express</h4>
+            <span>Provence-Alpes-Côte-d'Azur</span>
+          </div>
+          <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+
+        <a href="zou-proximite/" class="network-item">
+          <div class="network-info">
+            <h4>Zou Proximité</h4>
+            <span>Provence-Alpes-Côte-d'Azur</span>
+          </div>
+          <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </a>
+      
+        <div class="network-list">
+            <a href="palmbus/" class="network-item">
+            <div class="network-info">
+                <h4>Palm Bus</h4>
+                <span>Cannes Pays de Lérins</span>
             </div>
-        </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
 
-        </div>
-    </section>
-
-    <section class="stats-section" id="about">
-        <h2 class="section-title">My Bus Finder en chiffres</h2>
-        <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-number">15+</div>
-                <div class="stat-label">Réseaux</div>
+            <a href="reseaumistral/" class="network-item">
+            <div class="network-info">
+                <h4>Réseau Mistral</h4>
+                <span>Toulon Provence Méditérannée</span>
             </div>
-            <div class="stat-item">
-                <div class="stat-number">100%</div>
-                <div class="stat-label">Gratuit</div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="lignesdazur/" class="network-item">
+            <div class="network-info">
+                <h4>Lignes d'Azur</h4>
+                <span>Métropole Nice Côte d'Azur</span>
             </div>
-            <div class="stat-item">
-                <div class="stat-number">24/7</div>
-                <div class="stat-label">Disponible</div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="beemob/" class="network-item">
+            <div class="network-info">
+                <h4>Beemob</h4>
+                <span>Béziers Méditérannée</span>
             </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="sam-sete/" class="network-item">
+            <div class="network-info">
+                <h4>SAM</h4>
+                <span>Sète Agglopole Méditérannée</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="sankeo/" class="network-item">
+            <div class="network-info">
+                <h4>Sankeo</h4>
+                <span>Agglomération de Perpignan</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="sankeo/" class="network-item">
+            <div class="network-info">
+                <h4>Sankeo</h4>
+                <span>Agglomération de Perpignan</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="tam/" class="network-item">
+            <div class="network-info">
+                <h4>TAM</h4>
+                <span>Métropole Montpellier Médirérannée</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="tedbus/" class="network-item">
+            <div class="network-info">
+                <h4>TEDBUS</h4>
+                <span>Agglomération de Draguignan</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="zestbus/" class="network-item">
+            <div class="network-info">
+                <h4>Zest Bus</h4>
+                <span>Agglomération de Menton</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <h1>Nightly - contiennent des bugs</h1>
+
+            <a href="https://nightly.mybusfinder.fr/trsi-beta/" class="network-item">
+            <div class="network-info">
+                <h4>Transdev Sud Rail Intermétropole</h4>
+                <span>Intercités Nice-Marseille</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="https://nightly.mybusfinder.fr/reseauastuce/" class="network-item">
+            <div class="network-info">
+                <h4>Réseau Astuce</h4>
+                <span>Métropole de Rouen</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="https://nightly.mybusfinder.fr/reseauastuce/" class="network-item">
+            <div class="network-info">
+                <h4>Réseau Astuce</h4>
+                <span>Métropole de Rouen</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
+
+            <a href="https://nightly.mybusfinder.fr/mta-ny/" class="network-item">
+            <div class="network-info">
+                <h4>MTA</h4>
+                <span>New York public transit</span>
+            </div>
+            <svg class="network-arrow" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            </a>
         </div>
-    </section>
+    </div>
+</div>
 
-    <footer class="footer">
-        <p>&copy; 2025 My Bus Finder - BecabSystems</p>
-    </footer>
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <!-- Remplacez le src par le chemin vers votre image de logo -->
+            <img src="src/logownoborder.png" alt="MyBusFinder" class="logo-img">
+          </a>
+          <p>La plateforme multi-reseaux pour suivre vos bus en temps reel.</p>
+        </div>
+      </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    <script>
-        const menuToggle = document.getElementById('menuToggle');
-        const navMenu = document.getElementById('navMenu');
-        
-        menuToggle.addEventListener('click', () => {
-            menuToggle.classList.toggle('active');
-            navMenu.classList.toggle('active');
-        });
+      <div class="footer-bottom">
+        <p>&copy; 2026 BecabDev. Tous droits reserves.</p>
+        <div class="social-links">
+          <a href="https://github.com/becabtransit/mybusfinder" aria-label="GitHub">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <a href="https://www.instagram.com/becabdev" aria-label="Instagram">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 0C5.829 0 5.556.01 4.703.048 3.85.088 3.269.222 2.76.42a3.9 3.9 0 0 0-1.417.923A3.9 3.9 0 0 0 .42 2.76C.222 3.268.087 3.85.048 4.7.01 5.555 0 5.827 0 8.001c0 2.172.01 2.444.048 3.297.04.852.174 1.433.372 1.942.205.526.478.972.923 1.417.444.445.89.719 1.416.923.51.198 1.09.333 1.942.372C5.555 15.99 5.827 16 8 16s2.444-.01 3.298-.048c.851-.04 1.434-.174 1.943-.372a3.9 3.9 0 0 0 1.416-.923c.445-.445.718-.891.923-1.417.197-.509.332-1.09.372-1.942C15.99 10.445 16 10.173 16 8s-.01-2.445-.048-3.299c-.04-.851-.175-1.433-.372-1.941a3.9 3.9 0 0 0-.923-1.417A3.9 3.9 0 0 0 13.24.42c-.51-.198-1.092-.333-1.943-.372C10.443.01 10.172 0 7.998 0zm-.717 1.442h.718c2.136 0 2.389.007 3.232.046.78.035 1.204.166 1.486.275.373.145.64.319.92.599s.453.546.598.92c.11.281.24.705.275 1.485.039.843.047 1.096.047 3.231s-.008 2.389-.047 3.232c-.035.78-.166 1.203-.275 1.485a2.5 2.5 0 0 1-.599.919c-.28.28-.546.453-.92.598-.28.11-.704.24-1.485.276-.843.038-1.096.047-3.232.047s-2.39-.009-3.233-.047c-.78-.036-1.203-.166-1.485-.276a2.5 2.5 0 0 1-.92-.598 2.5 2.5 0 0 1-.6-.92c-.109-.281-.24-.705-.275-1.485-.038-.843-.046-1.096-.046-3.233s.008-2.388.046-3.231c.036-.78.166-1.204.276-1.486.145-.373.319-.64.599-.92s.546-.453.92-.598c.282-.11.705-.24 1.485-.276.738-.034 1.024-.044 2.515-.045zm4.988 1.328a.96.96 0 1 0 0 1.92.96.96 0 0 0 0-1.92m-4.27 1.122a4.109 4.109 0 1 0 0 8.217 4.109 4.109 0 0 0 0-8.217m0 1.441a2.667 2.667 0 1 1 0 5.334 2.667 2.667 0 0 1 0-5.334"/>            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
 
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', () => {
-                menuToggle.classList.remove('active');
-                navMenu.classList.remove('active');
-            });
-        });
+  <script>
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobile-menu');
+      const menuIcon = document.getElementById('menu-icon');
+      const closeIcon = document.getElementById('close-icon');
+      
+      menu.classList.toggle('active');
+      
+      if (menu.classList.contains('active')) {
+        menuIcon.style.display = 'none';
+        closeIcon.style.display = 'block';
+      } else {
+        menuIcon.style.display = 'block';
+        closeIcon.style.display = 'none';
+      }
+    }
 
-        const header = document.getElementById('header');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                header.classList.add('scrolled');
-            } else {
-                header.classList.remove('scrolled');
-            }
-        });
+    window.addEventListener('scroll', function() {
+      const navbar = document.getElementById('navbar');
+      if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+      } else {
+        navbar.classList.remove('scrolled');
+      }
+    });
 
-        const map = L.map('map', {
-            center: [45.5, 4.5],
-            zoom: 6,
-            zoomControl: true,
-            scrollWheelZoom: true
-        });
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
-        }).addTo(map);
-
-        const networks = [
-            {
-                name: 'Palm Bus',
-                city: 'Cannes',
-                coords: [43.5528, 7.0174],
-                url: '/palmbus',
-                status: 'active',
-                description: 'Lignes régulières et Palm Express de Cannes.'
-            },
-            {
-                name: 'Réseau Mistral',
-                city: 'Toulon',
-                coords: [43.1242, 5.9280],
-                url: '/reseaumistral',
-                status: 'active',
-                description: 'Bus, bateaux et téléphérique toulonnais.'
-            },
-            {
-                name: 'TAM',
-                city: 'Montpellier',
-                coords: [43.6108, 3.8767],
-                url: '/tammpl',
-                status: 'active',
-                description: 'Tramway, bus et BHNS de Montpellier.'
-            },
-            {
-                name: 'TanGO',
-                city: 'Nîmes',
-                coords: [43.8367, 4.3601],
-                url: '/tango',
-                status: 'active',
-                description: 'BHNS et bus de l\'agglomération nîmoise.'
-            },
-            {
-                name: 'TedBus',
-                city: 'Draguignan',
-                coords: [43.5389, 6.4672],
-                url: '/tedbus',
-                status: 'active',
-                description: 'Réseau de Dracénie Provence Verdon.'
-            },
-            {
-                name: 'ZestBus',
-                city: 'Menton',
-                coords: [43.7745, 7.4950],
-                url: '/zestbus',
-                status: 'active',
-                description: 'Bus de Menton, de Monaco à l\'Italie.'
-            },
-            {
-                name: 'Lignes d\'Azur',
-                city: 'Nice',
-                coords: [43.7102, 7.2620],
-                url: '/lignesdazur',
-                status: 'active',
-                description: 'Bus et tramway niçois.'
-            },
-            {
-                name: 'Zou! Région Sud - Express et Proximité',
-                city: 'Provence-Alpes-Côte d\'Azur',
-                coords: [43.9882, 6.0030],
-                links: [
-                    { label: 'Proximité', url: '/zou-proximite' },
-                    { label: 'Express', url: '/zou-express' }
-                ],
-                status: 'active',
-                description: 'Lignes régionales de Provence-Alpes-Côte d\'Azur.'
-            },
-            {
-                name: 'Transdev Sud Rail Intermétropoles - intercités Nice-Marseille',
-                city: 'de Marseille à Nice',
-                coords: [43.3034, 5.3808],
-                url: '/trsi-beta',
-                status: 'active',
-                description: 'En bêta publique - peut contenir des bugs.'
-            },
-            {
-                name: 'Envia',
-                city: 'Arles',
-                coords: [43.6766, 4.6278],
-                url: '/envia',
-                status: 'active',
-                description: 'Bus de l\'agglomération arlésienne.'
-            },
-            {
-                name: 'Beemob',
-                city: 'Béziers',
-                coords: [43.3438, 3.2150],
-                url: '/beemob',
-                status: 'active',
-                description: 'Bus de l\'agglomération biterroise.'
-            },
-            {
-                name: 'Sète Agglopôle Mobilités - SAM',
-                city: 'Sète',
-                coords: [43.4075, 3.6920],
-                url: '/sam-sete',
-                status: 'active',
-                description: 'Bus de l\'agglomération de Sète.'
-            },
-            {
-                name: 'Sankeo',
-                city: 'Perpignan',
-                coords: [42.6887, 2.8948],
-                url: '/sankeo',
-                status: 'active',
-                description: 'Bus de l\'agglomération de Perpignan.'
-            },
-            {
-                name: 'STAS',
-                city: 'Saint-Étienne',
-                coords: [45.4397, 4.3872],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'TCL',
-                city: 'Lyon',
-                coords: [45.7640, 4.8357],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'Envibus',
-                city: 'Antibes',
-                coords: [43.5808, 7.1251],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'Sillages',
-                city: 'Grasse',
-                coords: [43.6584, 6.9222],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'TPG',
-                city: 'Genève',
-                coords: [46.2044, 6.1432],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'TBM',
-                city: 'Bordeaux',
-                coords: [44.8378, -0.5792],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'IDFM',
-                city: 'Île-de-France',
-                coords: [48.8566, 2.3522],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            },
-            {
-                name: 'MTA',
-                city: 'New York',
-                coords: [40.7128, -74.0060],
-                url: '#',
-                status: 'dev',
-                description: 'En développement'
-            }
-        ];
-
-        const createCustomIcon = (status) => {
-            const color = status === 'active' ? '#00d4ff' : '#f59e0b';
-            return L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div style="
-                    background: linear-gradient(135deg, #0078d4, ${color});
-                    border: 3px solid rgba(255, 255, 255, 0.9);
-                    border-radius: 50% 50% 50% 0;
-                    width: 30px;
-                    height: 30px;
-                    transform: rotate(-45deg);
-                    box-shadow: 0 4px 15px rgba(0, 120, 212, 0.5);
-                "></div>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 30],
-                popupAnchor: [0, -30]
-            });
-        };
-
-        networks.forEach(network => {
-            const marker = L.marker(network.coords, {
-                icon: createCustomIcon(network.status)
-            }).addTo(map);
-
-            const statusBadge = network.status === 'active' 
-                ? '<span class="status-badge status-active">Actif</span>'
-                : '<span class="status-badge status-dev">En développement</span>';
-
-            const linksHTML = network.status === 'active' 
-                ? (network.links 
-                    ? network.links.map(link => `<a href="${link.url}" class="popup-button">${link.label} →</a>`).join('')
-                    : `<a href="${network.url}" class="popup-button">Accéder au réseau →</a>`)
-                : '<p style="color: rgba(255,255,255,0.5); font-style: italic;">Bientôt disponible</p>';
-
-            const popupContent = `
-                <div class="popup-content">
-                    ${statusBadge}
-                    <h3>${network.name}</h3>
-                    <p><strong>${network.city}</strong></p>
-                    <p style="margin-bottom: 10px;">${network.description}</p>
-                    ${linksHTML}
-                </div>
-            `;
-
-            marker.bindPopup(popupContent, {
-                maxWidth: 300,
-                className: 'custom-popup'
-            });
-
-            marker.on('mouseover', function() {
-                this.openPopup();
-            });
-        });
-
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
-
-        const observerOptions = {
-            threshold: 0.5,
-            rootMargin: '0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const statNumbers = entry.target.querySelectorAll('.stat-number');
-                    statNumbers.forEach(stat => {
-                        const finalValue = stat.textContent;
-                        if (finalValue.includes('+')) {
-                            const num = parseInt(finalValue);
-                            animateNumber(stat, 0, num, 1500, '+');
-                        }
-                    });
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-
-        const statsSection = document.querySelector('.stats-section');
-        if (statsSection) {
-            observer.observe(statsSection);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
         }
+      });
+    }, observerOptions);
 
-        function animateNumber(element, start, end, duration, suffix = '') {
-            const range = end - start;
-            const increment = range / (duration / 16);
-            let current = start;
-            
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= end) {
-                    element.textContent = end + suffix;
-                    clearInterval(timer);
-                } else {
-                    element.textContent = Math.floor(current) + suffix;
-                }
-            }, 16);
+    document.querySelectorAll('.feature-card, .stat-card').forEach(card => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      observer.observe(card);
+    });
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
         }
+      });
+    });
 
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const circles = document.querySelectorAll('.bg-circle');
-            circles.forEach((circle, index) => {
-                const speed = (index + 1) * 0.05;
-                circle.style.transform = `translateY(${scrolled * speed}px)`;
-            });
-        });
+    function openModal() {
+      const modal = document.getElementById('network-modal');
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
 
-        function createParticles() {
-            const particles = document.createElement('div');
-            particles.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                z-index: 0;
-                overflow: hidden;
-            `;
-            
-            for (let i = 0; i < 30; i++) {
-                const particle = document.createElement('div');
-                particle.style.cssText = `
-                    position: absolute;
-                    width: 3px;
-                    height: 3px;
-                    background: rgba(255, 255, 255, 0.2);
-                    border-radius: 50%;
-                    left: ${Math.random() * 100}%;
-                    animation: particleFloat ${5 + Math.random() * 10}s linear infinite;
-                    animation-delay: ${Math.random() * 5}s;
-                `;
-                particles.appendChild(particle);
-            }
-            
-            document.body.appendChild(particles);
-        }
+    function closeModal() {
+      const modal = document.getElementById('network-modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
 
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes particleFloat {
-                0% {
-                    transform: translateY(100vh) rotate(0deg);
-                    opacity: 0;
-                }
-                10% {
-                    opacity: 0.5;
-                }
-                90% {
-                    opacity: 0.5;
-                }
-                100% {
-                    transform: translateY(-100px) rotate(360deg);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-        createParticles();
+    document.getElementById('network-modal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeModal();
+      }
+    });
 
-        document.querySelectorAll('.feature-icon').forEach((icon, index) => {
-            icon.style.animationDelay = `${index * 0.2}s`;
-        });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
 
-        const cardObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, { threshold: 0.1 });
-
-        document.querySelectorAll('.feature-card').forEach(card => {
-            cardObserver.observe(card);
-        });
-
-        document.querySelectorAll('.cta-button').forEach(button => {
-            button.addEventListener('click', function(e) {
-                const ripple = document.createElement('span');
-                const rect = this.getBoundingClientRect();
-                const size = Math.max(rect.width, rect.height);
-                const x = e.clientX - rect.left - size / 2;
-                const y = e.clientY - rect.top - size / 2;
-                
-                ripple.style.cssText = `
-                    position: absolute;
-                    width: ${size}px;
-                    height: ${size}px;
-                    border-radius: 50%;
-                    background: rgba(255, 255, 255, 0.3);
-                    left: ${x}px;
-                    top: ${y}px;
-                    pointer-events: none;
-                    animation: rippleEffect 0.6s ease-out;
-                `;
-                
-                this.appendChild(ripple);
-                setTimeout(() => ripple.remove(), 600);
-            });
-        });
-
-        const rippleStyle = document.createElement('style');
-        rippleStyle.textContent = `
-            @keyframes rippleEffect {
-                from {
-                    transform: scale(0);
-                    opacity: 1;
-                }
-                to {
-                    transform: scale(2);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(rippleStyle);
-    </script>
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', openModal);
+    });
+  </script>
 </body>
 </html>
