@@ -1899,11 +1899,6 @@ function closeUpdatePopup() {
             menubottom1.classList.add('slide-downb');
         }, 10);
     }
-    
-    if (!audio.paused) {
-        audio.pause();
-        audio.currentTime = 0;
-    }
 }
 
 
