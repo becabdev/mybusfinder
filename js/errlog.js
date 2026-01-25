@@ -588,10 +588,10 @@ function showErrorOverlay() {
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
         </div>
-        <h1 class="modal-title">The application quit unexpectedly</h1>
+        <h1 class="modal-title">The app crashed</h1>
         <h2 class="modal-title">L'application a planté</h2>
         <p class="modal-subtitle">We're collecting diagnostic information to help resolve this issue. This will only take a moment.</p>
-        <p class="modal-subtitle">Nous collectons des informations de diagnostic pour nous aider à corriger ce bug.</p>
+        <p class="modal-subtitle">Nous collectons des informations de diagnostic pour nous aider à corriger ce bug. Pour envoyer le rapport, appuyez sur "Send Report to BecabDev".</p>
       </div>
       
       <div class="modal-body">
@@ -634,7 +634,7 @@ function showErrorOverlay() {
       
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeErrorOverlay()" id="close-btn" disabled>Ignore</button>
-        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Send Report to BecabDev | Envoyer le rapport</button>
+        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Send Report to BecabDev</button>
       </div>
     </div>
   `;
@@ -830,17 +830,17 @@ function sendBugReport() {
   const perfMetrics = getPerformanceMetrics();
   const timestamp = new Date();
   
-  const subject = `[${CONFIG.siteName}] Critical Error Report - ${timestamp.toLocaleDateString()}`;
+  const subject = `[${CONFIG.siteName}] Panic Report - ${timestamp.toLocaleDateString()}`;
   
   const errorCodesText = [...new Set(errorQueue.map(err => err.errorInfo.code))].join(', ');
   
   let body = `
 ═══════════════════════════════════════════════════════════════
-                    CRITICAL ERROR REPORT
+                      PANIC ERROR REPORT
                       ${CONFIG.siteName}
 ═══════════════════════════════════════════════════════════════
 
-Please describe what you were doing when this error occurred:
+Please describe what you were doing when this error occurred / merci de décrire ce que vous étiez en train de faire lorsque ça a planté :
 _______________________________________________________________
 
 
@@ -848,7 +848,7 @@ _______________________________________________________________
 EXECUTIVE SUMMARY
 ═══════════════════════════════════════════════════════════════
 
-Error Codes: ${errorCodesText}
+Error Codes : ${errorCodesText}
 Total Errors: ${errorQueue.length}
 Timestamp: ${timestamp.toISOString()}
 URL: ${window.location.href}
@@ -999,6 +999,30 @@ For privacy: This report may contain URLs and system information.
 Please review before sending if you have privacy concerns.
 
 ═══════════════════════════════════════════════════════════════
+
+Ce rapport de diagnostic a été généré automatiquement pour aider
+à identifier et résoudre le bug. Toutes les informations collectées
+sont utilisées exclusivement pour le débogage.
+
+Pour votre confidentialité : ce rapport pourrait contenir des liens
+et des informations systèmes. Merci de relire avant d'envoyer
+si vous vous préoccupez de certaines informations concernant votre
+terminal.
+
+═══════════════════════════════════════════════════════════════
+
+██████╗ ███████╗ ██████╗ █████╗ ██████╗ ██████╗ ███████╗██╗   ██╗
+██╔══██╗██╔════╝██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝██║   ██║
+██████╔╝█████╗  ██║     ███████║██████╔╝██║  ██║█████╗  ██║   ██║
+██╔══██╗██╔══╝  ██║     ██╔══██║██╔══██╗██║  ██║██╔══╝  ╚██╗ ██╔╝
+██████╔╝███████╗╚██████╗██║  ██║██████╔╝██████╔╝███████╗ ╚████╔╝ 
+╚═════╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═════╝ ╚═════╝ ╚══════╝  ╚═══╝  
+                                                                 
+BecabDev - Mohamed Bechir ABIDI
+22 boulevard du Riou, 06400 Cannes
+bechir.abidi06@gmail.com
+
+Immatriculé au RCS, SIREN 999 304 751
   `;
   
   const mailtoLink = `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
