@@ -2,172 +2,73 @@
 const CONFIG = {
   recipientEmail: 'bechir.abidi06@gmail.com',
   siteName: 'My Bus Finder 3X',
-  maxLogs: 50,
-  collectionDelay: 3000,
-  serverPath: '/var/www/mybusfinder',
-  hostname: 'mybusfinder',
-  username: 'local'
+  maxLogs: 100,
+  collectionDelay: 3000 
 };
 
-const fileSystem = {
-  '/': {
-    type: 'dir',
-    contents: {
-      'var': {
-        type: 'dir',
-        contents: {
-          'www': {
-            type: 'dir',
-            contents: {
-              'mybusfinder': {
-                type: 'dir',
-                contents: {
-                  'index.html': { type: 'file', size: '4.2K', modified: '2024-01-15 14:23', content: '<!DOCTYPE html>\n<html>...</html>' },
-                  'logic.js': { type: 'file', size: '89.5K', modified: '2024-01-20 09:15', content: '// Application JavaScript...' },
-                  'style.css': { type: 'file', size: '12.3K', modified: '2024-01-18 16:45', content: '/* Styles */' },
-                  'proxy-cors': { type: 'file', size: '2.1K', modified: '2024-01-10 11:30', content: '<?php\n// Configuration...' },
-                  'src': {
-                    type: 'dir',
-                    contents: {
-                      'images': { type: 'dir', contents: {} },
-                      'fonts': { type: 'dir', contents: {} }
-                    }
-                  },
-                  'logs': {
-                    type: 'dir',
-                    contents: {
-                      'error.log': { type: 'file', size: '156K', modified: '2024-01-25 12:00', content: '[ERROR] Application errors...' },
-                      'access.log': { type: 'file', size: '2.3M', modified: '2024-01-25 12:00', content: '[ACCESS] User requests...' }
-                    }
-                  }
-                }
-              },
-              'html': { type: 'dir', contents: {} }
-            }
-          },
-          'log': {
-            type: 'dir',
-            contents: {
-              'apache2': {
-                type: 'dir',
-                contents: {
-                  'error.log': { type: 'file', size: '245K', modified: '2024-01-25 12:00', content: 'Apache error logs...' },
-                  'access.log': { type: 'file', size: '5.6M', modified: '2024-01-25 12:00', content: 'Apache access logs...' }
-                }
-              },
-              'syslog': { type: 'file', size: '12.4M', modified: '2024-01-25 12:00', content: 'System logs...' }
-            }
-          }
-        }
-      },
-      'home': {
-        type: 'dir',
-        contents: {
-          'local': {
-            type: 'dir',
-            contents: {
-              '.bashrc': { type: 'file', size: '3.5K', modified: '2024-01-01 10:00', content: '# .bashrc configuration' },
-              'Documents': { type: 'dir', contents: {} },
-              'Downloads': { type: 'dir', contents: {} }
-            }
-          }
-        }
-      },
-      'etc': {
-        type: 'dir',
-        contents: {
-          'apache2': {
-            type: 'dir',
-            contents: {
-              'apache2.conf': { type: 'file', size: '7.2K', modified: '2024-01-05 14:00', content: '# Apache configuration' },
-              'sites-available': { type: 'dir', contents: {} },
-              'sites-enabled': { type: 'dir', contents: {} }
-            }
-          },
-          'hosts': { type: 'file', size: '220', modified: '2024-01-01 10:00', content: '127.0.0.1 localhost\n127.0.1.1 mybusfinder' },
-          'hostname': { type: 'file', size: '12', modified: '2024-01-01 10:00', content: 'mybusfinder' }
-        }
-      },
-      'usr': {
-        type: 'dir',
-        contents: {
-          'bin': { type: 'dir', contents: {} },
-          'lib': { type: 'dir', contents: {} },
-          'share': { type: 'dir', contents: {} }
-        }
-      },
-      'tmp': { type: 'dir', contents: {} },
-      'opt': { type: 'dir', contents: {} }
-    }
+// Error codes mapping with detailed descriptions
+const ERROR_CODES = {
+  'TypeError': {
+    code: 'TYPE_MISMATCH_EXCEPTION',
+    description: 'An operation was performed on an incompatible data type',
+    severity: 'HIGH'
+  },
+  'ReferenceError': {
+    code: 'UNDEFINED_REFERENCE_ERROR',
+    description: 'Reference to an undefined variable or object',
+    severity: 'HIGH'
+  },
+  'SyntaxError': {
+    code: 'SYNTAX_PARSE_FAILURE',
+    description: 'JavaScript syntax error detected during parsing',
+    severity: 'CRITICAL'
+  },
+  'RangeError': {
+    code: 'OUT_OF_BOUNDS_ERROR',
+    description: 'Value is not in the set or range of allowed values',
+    severity: 'MEDIUM'
+  },
+  'URIError': {
+    code: 'INVALID_URI_FORMAT',
+    description: 'Malformed URI encoding or decoding',
+    severity: 'MEDIUM'
+  },
+  'EvalError': {
+    code: 'EVAL_EXECUTION_FAILED',
+    description: 'Error occurred during eval() execution',
+    severity: 'HIGH'
+  },
+  'Promise': {
+    code: 'UNHANDLED_PROMISE_REJECTION',
+    description: 'Promise was rejected without a rejection handler',
+    severity: 'HIGH'
+  },
+  'Network': {
+    code: 'NETWORK_CONNECTION_FAILED',
+    description: 'Network request failed or timed out',
+    severity: 'MEDIUM'
+  },
+  'Timeout': {
+    code: 'REQUEST_TIMEOUT_EXCEEDED',
+    description: 'Operation exceeded maximum allowed time',
+    severity: 'MEDIUM'
+  },
+  'default': {
+    code: 'CRITICAL_JAVASCRIPT_ERROR',
+    description: 'Unclassified critical error occurred',
+    severity: 'CRITICAL'
   }
 };
 
-let currentDir = CONFIG.serverPath;
-
-const installedPackages = [
-  'apache2',
-  'php8.1',
-  'php8.1-cli',
-  'php8.1-common',
-  'mysql-server',
-  'mysql-client',
-  'curl',
-  'wget',
-  'git',
-  'vim',
-  'nano',
-  'htop',
-  'net-tools',
-  'openssh-server',
-  'ufw',
-  'certbot'
-];
-
-const processes = [
-  { pid: 1, user: 'root', cpu: '0.0', mem: '0.1', command: '/sbin/init' },
-  { pid: 234, user: 'root', cpu: '0.0', mem: '0.5', command: '/usr/sbin/apache2 -k start' },
-  { pid: 456, user: 'www-data', cpu: '0.1', mem: '1.2', command: '/usr/sbin/apache2 -k start' },
-  { pid: 457, user: 'www-data', cpu: '0.0', mem: '1.1', command: '/usr/sbin/apache2 -k start' },
-  { pid: 789, user: 'mysql', cpu: '0.2', mem: '8.5', command: '/usr/sbin/mysqld' },
-  { pid: 1024, user: 'root', cpu: '0.0', mem: '0.3', command: '/usr/sbin/sshd -D' },
-  { pid: 1456, user: 'root', cpu: '0.0', mem: '0.2', command: '/usr/sbin/cron -f' }
-];
-
-// System info
-const systemInfo = {
-  os: 'Ubuntu 24.04 LTS',
-  kernel: '5.15.0-91-generic',
-  architecture: 'x86_64',
-  uptime: '15 days, 7:23',
-  loadAverage: '0.15, 0.12, 0.08',
-  totalMemory: '24GB',
-  usedMemory: '3.2GB',
-  freeMemory: '20.8GB'
-};
-
-// Error codes mapping
-const ERROR_CODES = {
-  'TypeError': 'TYPE_MISMATCH_EXCEPTION',
-  'ReferenceError': 'UNDEFINED_REFERENCE_ERROR',
-  'SyntaxError': 'SYNTAX_PARSE_FAILURE',
-  'RangeError': 'OUT_OF_BOUNDS_ERROR',
-  'URIError': 'INVALID_URI_FORMAT',
-  'EvalError': 'EVAL_EXECUTION_FAILED',
-  'Promise': 'UNHANDLED_PROMISE_REJECTION',
-  'Network': 'NETWORK_CONNECTION_FAILED',
-  'Timeout': 'REQUEST_TIMEOUT_EXCEEDED',
-  'default': 'CRITICAL_JAVASCRIPT_ERROR'
-};
-
-// Get error code based on error type
-function getErrorCode(error) {
+// Get error code and details
+function getErrorInfo(error) {
   if (!error || !error.message) return ERROR_CODES.default;
   
   const message = error.message.toLowerCase();
   
-  for (const [key, code] of Object.entries(ERROR_CODES)) {
+  for (const [key, info] of Object.entries(ERROR_CODES)) {
     if (key !== 'default' && message.includes(key.toLowerCase())) {
-      return code;
+      return info;
     }
   }
   
@@ -178,22 +79,91 @@ function getErrorCode(error) {
   return ERROR_CODES.default;
 }
 
-// Capture console logs
+// System information gathering
+function getSystemInfo() {
+  const nav = navigator;
+  const screen = window.screen;
+  const connection = nav.connection || nav.mozConnection || nav.webkitConnection;
+  
+  return {
+    platform: nav.platform,
+    userAgent: nav.userAgent,
+    language: nav.language,
+    languages: nav.languages,
+    cookiesEnabled: nav.cookieEnabled,
+    doNotTrack: nav.doNotTrack,
+    hardwareConcurrency: nav.hardwareConcurrency,
+    deviceMemory: nav.deviceMemory || 'Unknown',
+    maxTouchPoints: nav.maxTouchPoints,
+    vendor: nav.vendor,
+    screenResolution: `${screen.width}x${screen.height}`,
+    colorDepth: screen.colorDepth,
+    pixelRatio: window.devicePixelRatio,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezoneOffset: new Date().getTimezoneOffset(),
+    online: nav.onLine,
+    connectionType: connection ? connection.effectiveType : 'Unknown',
+    viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+    documentReadyState: document.readyState,
+    referrer: document.referrer || 'None',
+    protocol: window.location.protocol,
+    localStorage: typeof(Storage) !== "undefined",
+    sessionStorage: typeof(Storage) !== "undefined",
+    indexedDB: !!window.indexedDB,
+    serviceWorker: 'serviceWorker' in navigator,
+    webGL: (() => {
+      try {
+        const canvas = document.createElement('canvas');
+        return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+      } catch(e) {
+        return false;
+      }
+    })()
+  };
+}
+
+// Performance metrics
+function getPerformanceMetrics() {
+  if (!window.performance) return null;
+  
+  const perf = window.performance;
+  const navigation = perf.getEntriesByType('navigation')[0];
+  const memory = perf.memory;
+  
+  return {
+    loadTime: navigation ? navigation.loadEventEnd - navigation.fetchStart : 'N/A',
+    domContentLoaded: navigation ? navigation.domContentLoadedEventEnd - navigation.fetchStart : 'N/A',
+    timeToInteractive: navigation ? navigation.domInteractive - navigation.fetchStart : 'N/A',
+    memoryUsed: memory ? (memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB' : 'N/A',
+    memoryLimit: memory ? (memory.jsHeapSizeLimit / 1048576).toFixed(2) + ' MB' : 'N/A',
+    resourceCount: perf.getEntriesByType('resource').length
+  };
+}
+
+// Capture console logs with enhanced details
 const consoleLogs = [];
 const originalConsole = {
   log: console.log,
   warn: console.warn,
-  error: console.error
+  error: console.error,
+  info: console.info,
+  debug: console.debug
 };
 
-['log', 'warn', 'error'].forEach(method => {
+['log', 'warn', 'error', 'info', 'debug'].forEach(method => {
   console[method] = function(...args) {
+    const stack = new Error().stack;
     consoleLogs.push({
       type: method,
-      message: args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' '),
-      timestamp: new Date().toISOString()
+      message: args.map(arg => {
+        try {
+          return typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg);
+        } catch(e) {
+          return String(arg);
+        }
+      }).join(' '),
+      timestamp: new Date().toISOString(),
+      stack: stack
     });
     
     if (consoleLogs.length > CONFIG.maxLogs) {
@@ -211,13 +181,16 @@ let collectionTimeout = null;
 
 window.addEventListener('error', (e) => {
   const error = {
+    type: 'runtime_error',
     message: e.message,
     filename: e.filename,
     line: e.lineno,
     col: e.colno,
     stack: e.error?.stack,
     name: e.error?.name,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    url: window.location.href,
+    errorInfo: getErrorInfo(e.error)
   };
   
   errorQueue.push(error);
@@ -229,10 +202,13 @@ window.addEventListener('error', (e) => {
 
 window.addEventListener('unhandledrejection', (e) => {
   const error = {
+    type: 'promise_rejection',
     message: `Promise rejection: ${e.reason}`,
     stack: e.reason?.stack,
     name: 'Promise',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    url: window.location.href,
+    errorInfo: getErrorInfo({message: 'Promise', name: 'Promise'})
   };
   
   errorQueue.push(error);
@@ -242,11 +218,7 @@ window.addEventListener('unhandledrejection', (e) => {
   }
 });
 
-// Command history
-let commandHistory = [];
-let historyIndex = -1;
-
-// Start collecting errors for 3 seconds
+// Start collecting errors
 function startErrorCollection() {
   isCollecting = true;
   showErrorOverlay();
@@ -257,7 +229,7 @@ function startErrorCollection() {
   }, CONFIG.collectionDelay);
 }
 
-// Show initial overlay with loading
+// Show macOS-style error overlay
 function showErrorOverlay() {
   if (document.getElementById('error-overlay')) return;
   
@@ -265,7 +237,13 @@ function showErrorOverlay() {
   overlay.id = 'error-overlay';
   overlay.innerHTML = `
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
       
       #error-overlay {
         position: fixed;
@@ -273,1348 +251,766 @@ function showErrorOverlay() {
         left: 0;
         width: 100%;
         height: 100%;
-        background: #000000;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         z-index: 999999;
-        color: #ffffffff;
-        font-family: 'Courier Prime', 'Courier New', monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        animation: fadeIn 0.3s ease;
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      #error-modal {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        border-radius: 20px;
+        box-shadow: 0 50px 100px rgba(0, 0, 0, 0.3);
+        max-width: 800px;
+        width: 100%;
+        max-height: 90vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      
+      @keyframes slideUp {
+        from { 
+          transform: translateY(50px);
+          opacity: 0;
+        }
+        to { 
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
+      .modal-header {
+        padding: 30px 40px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        background: linear-gradient(to bottom, #ffffff, #fafafa);
+      }
+      
+      .modal-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3);
+      }
+      
+      .modal-icon svg {
+        width: 36px;
+        height: 36px;
+        fill: white;
+      }
+      
+      .modal-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
+      }
+      
+      .modal-subtitle {
+        font-size: 15px;
+        color: #666;
+        font-weight: 400;
+        line-height: 1.6;
+      }
+      
+      .modal-body {
+        padding: 30px 40px;
+        overflow-y: auto;
+        flex: 1;
+      }
+      
+      .progress-section {
+        margin-bottom: 30px;
+      }
+      
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
         font-size: 13px;
-        line-height: 1.4;
+        color: #666;
+        font-weight: 500;
+      }
+      
+      .progress-bar-container {
+        height: 6px;
+        background: #e8e8e8;
+        border-radius: 10px;
         overflow: hidden;
       }
       
-      #error-overlay-content {
-        width: 100%;
+      .progress-bar {
         height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        transition: width 0.1s linear;
+      }
+      
+      .info-card {
+        background: #f8f9fa;
+        border-radius: 12px;
         padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        overflow-x: hidden;
+        margin-bottom: 20px;
+        border: 1px solid #e8e8e8;
       }
       
-      #error-overlay pre {
-        margin: 0;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+      .info-card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       
-      .kernel-header {
-        color: #ffffffff;
-        font-weight: bold;
-        margin-bottom: 10px;
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
       }
       
-      .panic-msg {
-        color: #ff0000;
-        font-weight: bold;
-        font-size: 16px;
-        margin: 15px 0;
-        animation: blink 1s infinite;
+      .info-item {
+        display: flex;
+        flex-direction: column;
       }
       
-      @keyframes blink {
-        0%, 49% { opacity: 1; }
-        50%, 100% { opacity: 0.3; }
-      }
-      
-      .info-line {
-        color: #ffffffff;
-        margin: 2px 0;
-      }
-      
-      .error-detail {
-        color: #ffff00;
-        margin: 5px 0 5px 20px;
-        border-left: 2px solid #ffff00;
-        padding-left: 10px;
-      }
-      
-      .stack-trace {
-        color: #00aaaa;
-        margin-left: 30px;
+      .info-label {
         font-size: 11px;
+        color: #999;
+        font-weight: 500;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       
-      .separator {
-        color: #ffffffff;
-        margin: 10px 0;
+      .info-value {
+        font-size: 13px;
+        color: #1a1a1a;
+        font-weight: 500;
+        word-break: break-word;
       }
       
-      .console-logs {
-        color: #aaaaaa;
-        margin: 5px 0 5px 20px;
-        font-size: 11px;
+      .error-list {
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid #e8e8e8;
+        overflow: hidden;
       }
       
-      .terminal-section {
-        margin-top: 20px;
-        border-top: 2px solid #ffffffff;
-        padding-top: 10px;
+      .error-item {
+        padding: 20px;
+        border-bottom: 1px solid #f0f0f0;
       }
       
-      .terminal-prompt {
-        color: #ffffffff;
+      .error-item:last-child {
+        border-bottom: none;
+      }
+      
+      .error-header {
         display: flex;
         align-items: center;
-        margin-top: 5px;
+        justify-content: space-between;
+        margin-bottom: 12px;
       }
       
-      .terminal-prompt span {
-        margin-right: 5px;
-        white-space: nowrap;
-      }
-      
-      #terminal-input {
-        background: transparent;
-        border: none;
-        color: #ffffffff;
-        font-family: 'Courier Prime', 'Courier New', monospace;
+      .error-code {
         font-size: 13px;
-        outline: none;
-        flex: 1;
-        caret-color: #ffffffff;
+        font-weight: 700;
+        color: #f5576c;
+        background: rgba(245, 87, 108, 0.1);
+        padding: 4px 10px;
+        border-radius: 6px;
       }
       
-      #terminal-output {
-        margin-bottom: 10px;
+      .error-severity {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+      
+      .severity-critical {
+        background: #ff4444;
+        color: white;
+      }
+      
+      .severity-high {
+        background: #ff8800;
+        color: white;
+      }
+      
+      .severity-medium {
+        background: #ffbb00;
+        color: #1a1a1a;
+      }
+      
+      .error-message {
+        font-size: 14px;
+        color: #1a1a1a;
+        margin-bottom: 12px;
+        line-height: 1.6;
+        font-weight: 500;
+      }
+      
+      .error-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 12px;
+      }
+      
+      .error-stack {
+        background: #2d2d2d;
+        color: #e8e8e8;
+        padding: 12px;
+        border-radius: 8px;
+        font-family: 'Menlo', 'Monaco', monospace;
+        font-size: 11px;
+        line-height: 1.6;
+        overflow-x: auto;
+        margin-top: 12px;
+        max-height: 150px;
         overflow-y: auto;
       }
       
-      .terminal-line {
-        margin: 2px 0;
+      .modal-footer {
+        padding: 20px 40px;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        background: #fafafa;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
       }
       
-      .terminal-command {
-        color: #ffffffff;
+      .btn {
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        font-family: 'Inter', sans-serif;
       }
       
-      .terminal-result {
-        color: #ffffff;
-        margin-left: 0;
-        white-space: pre-wrap;
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
       
-      .terminal-error {
-        color: #ff0000;
-        margin-left: 0;
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
       }
       
-      .terminal-warning {
-        color: #ffaa00;
-        margin-left: 0;
+      .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
       }
       
-      .loading-dots::after {
-        content: '';
-        animation: dots 1.5s infinite;
+      .btn-secondary {
+        background: white;
+        color: #1a1a1a;
+        border: 1px solid #e8e8e8;
       }
       
-      @keyframes dots {
-        0%, 20% { content: '.'; }
-        40% { content: '..'; }
-        60%, 100% { content: '...'; }
+      .btn-secondary:hover:not(:disabled) {
+        background: #f8f9fa;
+      }
+      
+      .success-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px;
+        border-radius: 10px;
+        margin-top: 20px;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 500;
+        display: none;
+        animation: slideIn 0.3s ease;
+      }
+      
+      @keyframes slideIn {
+        from { transform: translateY(-10px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
       
       .hidden {
-        display: none;
+        display: none !important;
       }
       
-      #error-overlay::-webkit-scrollbar {
+      ::-webkit-scrollbar {
         width: 8px;
+        height: 8px;
       }
       
-      #error-overlay::-webkit-scrollbar-track {
-        background: #001100;
+      ::-webkit-scrollbar-track {
+        background: #f0f0f0;
       }
       
-      #error-overlay::-webkit-scrollbar-thumb {
-        background: #ffffffff;
+      ::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 10px;
       }
       
-      .cursor-blink {
-        animation: cursor-blink 1s infinite;
-      }
-      
-      @keyframes cursor-blink {
-        0%, 49% { opacity: 1; }
-        50%, 100% { opacity: 0; }
-      }
-      
-      .ls-item {
-        display: inline-block;
-        margin-right: 15px;
-      }
-      
-      .ls-dir {
-        color: #5555ff;
-        font-weight: bold;
-      }
-      
-      .ls-file {
-        color: #ffffff;
+      ::-webkit-scrollbar-thumb:hover {
+        background: #999;
       }
     </style>
     
-    <div id="error-overlay-content">
-      <pre id="kernel-output"></pre>
+    <div id="error-modal">
+      <div class="modal-header">
+        <div class="modal-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+        </div>
+        <h1 class="modal-title">The application quit unexpectedly</h1>
+        <p class="modal-subtitle">We're collecting diagnostic information to help resolve this issue. This will only take a moment.</p>
+      </div>
+      
+      <div class="modal-body">
+        <div id="progress-section" class="progress-section">
+          <div class="progress-label">
+            <span>Collecting diagnostic data...</span>
+            <span id="progress-text">0%</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </div>
+        
+        <div id="error-content" class="hidden">
+          <div class="info-card">
+            <div class="info-card-title">Problem Details</div>
+            <div id="error-summary"></div>
+          </div>
+          
+          <div class="info-card">
+            <div class="info-card-title">System Information</div>
+            <div class="info-grid" id="system-info"></div>
+          </div>
+          
+          <div class="info-card">
+            <div class="info-card-title">Performance Metrics</div>
+            <div class="info-grid" id="performance-info"></div>
+          </div>
+          
+          <div class="info-card">
+            <div class="info-card-title">Error Details</div>
+            <div class="error-list" id="error-list"></div>
+          </div>
+          
+          <div class="success-banner" id="success-banner">
+            ✓ Opening your email client with the detailed diagnostic report...
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeErrorOverlay()" id="close-btn" disabled>Ignore</button>
+        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Send Report to Developer</button>
+      </div>
     </div>
   `;
   
   document.body.appendChild(overlay);
-  startKernelBoot();
+  startProgressBar();
 }
 
-function startKernelBoot() {
-  const output = document.getElementById('kernel-output');
-  let bootMessages = [
-    '[    0.000000] Linux version ' + systemInfo.kernel + ' (buildd@lcy02-amd64-080) (gcc version 11.4.0 (Ubuntu 11.4.0-1ubuntu1~24.04LTS))',
-    '[    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz-' + systemInfo.kernel + ' root=UUID=a1b2c3d4 ro quiet splash',
-    '[    0.000000] KERNEL supported cpus:',
-    '[    0.000000]   Intel GenuineIntel',
-    '[    0.000000]   AMD AuthenticAMD',
-    '[    0.100000] x86/fpu: Supporting XSAVE feature 0x001: \'x87 floating point registers\'',
-    '[    0.150000] x86/fpu: Supporting XSAVE feature 0x002: \'SSE registers\'',
-    '[    0.200000] DMI: ' + navigator.vendor + '/' + navigator.platform + ', BIOS ' + navigator.appVersion.substring(0, 20),
-    '[    0.250000] Memory: ' + systemInfo.totalMemory + ' RAM available',
-    '[    0.300000] CPU: ' + navigator.hardwareConcurrency + ' cores detected',
-    '[    0.350000] Checking console logs... [<span style="color:#00ff00;">OK</span>]',
-    '[    0.400000] Mounting root filesystem...',
-    '[    0.450000] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)',
-    '[    0.500000] Starting init: /sbin/init',
-    '[    0.550000] systemd[1]: Detected architecture unknown',
-    '[    0.600000] systemd[1]: Set hostname to <' + CONFIG.hostname + '>',
-    '[    0.650000] systemd[1]: Started Apache HTTP Server',
-    '[    0.700000] apache2[234]: AH00558: apache2: Could not reliably determine the server\'s fully qualified domain name',
-    '[    0.750000] ' + CONFIG.siteName + ': Application initializing...',
-    '[    0.800000] JavaScript Engine: V8/' + (navigator.userAgent.match(/Chrome\/([\\d.]+)/) || ['', 'Unknown'])[1],
-    '[    0.850000] Scanning for runtime errors<span class="loading-dots"></span>'
-  ];
+// Animate progress bar
+function startProgressBar() {
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  let progress = 0;
+  const interval = 30;
+  const increment = (100 / (CONFIG.collectionDelay / interval));
   
-  let index = 0;
-  const interval = setInterval(() => {
-    if (index < bootMessages.length) {
-      output.innerHTML += bootMessages[index] + '\n';
-      output.parentElement.scrollTop = output.parentElement.scrollHeight;
-      index++;
-    } else {
-      clearInterval(interval);
+  const timer = setInterval(() => {
+    progress += increment;
+    if (progress >= 100) {
+      progress = 100;
+      clearInterval(timer);
     }
-  }, 100);
+    progressBar.style.width = progress + '%';
+    progressText.textContent = Math.floor(progress) + '%';
+  }, interval);
 }
 
-// Display collected errors
+// Display collected errors with detailed information
 function displayCollectedErrors() {
-  const output = document.getElementById('kernel-output');
+  const errorContent = document.getElementById('error-content');
+  const errorSummary = document.getElementById('error-summary');
+  const systemInfo = document.getElementById('system-info');
+  const performanceInfo = document.getElementById('performance-info');
+  const errorList = document.getElementById('error-list');
+  const sendBtn = document.getElementById('send-btn');
+  const closeBtn = document.getElementById('close-btn');
+  const progressSection = document.getElementById('progress-section');
   
-  const errorCodesText = [...new Set(errorQueue.map(err => getErrorCode(err)))].join(' | ');
+  progressSection.classList.add('hidden');
+  errorContent.classList.remove('hidden');
   
-  let kernelPanic = `
-[    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] ================================================================================
-[    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] PANIC - FATAL EXCEPTION IN INTERRUPT HANDLER
-[    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] ================================================================================
-
-<span class="panic-msg">*** CRITICAL STOP: ${errorCodesText} ***</span>
-
-System has halted due to fatal JavaScript exception.
-A problem has been detected and the application has been stopped to prevent damage.
-
-Kernel Information:
--------------------
-OS:             ${systemInfo.os}
-Kernel:         ${systemInfo.kernel}
-Architecture:   ${systemInfo.architecture}
-Hostname:       ${CONFIG.hostname}
-Server Path:    ${CONFIG.serverPath}
-Web Server:     Apache/2.4.52 (Ubuntu)
-Uptime:         ${systemInfo.uptime}
-
-Runtime Environment:
---------------------
-URL:            ${window.location.href}
-User Agent:     ${navigator.userAgent}
-Platform:       ${navigator.platform}
-Language:       ${navigator.language}
-Online:         ${navigator.onLine}
-Timestamp:      ${new Date().toISOString()}
-
-Memory Status:
---------------
-Total:          ${systemInfo.totalMemory}
-Used:           ${systemInfo.usedMemory}
-Free:           ${systemInfo.freeMemory}
-Load Average:   ${systemInfo.loadAverage}
-
-Error Summary:
---------------
-Total Errors:        ${errorQueue.length}
-Console Logs:        ${consoleLogs.length} entries
-Stop Codes:          ${errorCodesText}
-
-Call Trace (Detailed Error Information):
------------------------------------------
-`;
-
-  errorQueue.forEach((error, index) => {
-    kernelPanic += `
-<span class="error-detail">[${index + 1}] EXCEPTION: ${getErrorCode(error)}
-Message:    ${error.message || 'Unknown error occurred'}`;
-    
-    if (error.filename) {
-      kernelPanic += `
-Source:     ${error.filename}`;
-    }
-    
-    if (error.line) {
-      kernelPanic += `
-Location:   Line ${error.line}, Column ${error.col || 0}`;
-    }
-    
-    kernelPanic += `
-Timestamp:  ${error.timestamp}`;
-    
-    if (error.stack) {
-      const stackLines = error.stack.split('\n').slice(0, 6);
-      kernelPanic += `
-<span class="stack-trace">Stack Backtrace:
-${stackLines.map(line => '    ' + line.trim()).join('\n')}</span>`;
-    }
-    
-    kernelPanic += `</span>
-`;
-  });
-
-  kernelPanic += `
-<span class="separator">================================================================================</span>
-
-Recent Console Activity (Last ${Math.min(consoleLogs.length, 10)} entries):
------------------------`;
-
-  consoleLogs.slice(-10).forEach(log => {
-    kernelPanic += `
-<span class="console-logs">[${log.timestamp}] [${log.type.toUpperCase()}] ${log.message}</span>`;
-  });
-
-  kernelPanic += `
-
-<span class="separator">================================================================================</span>
-
-Emergency Shell Access - ${CONFIG.username}@${CONFIG.hostname}
---------------------------
-You are now in emergency recovery mode. Use Linux commands to diagnose the issue.
-
-Available Commands:
-  Linux/Ubuntu:     ls, cd, pwd, cat, grep, find, ps, top, free, df, du, uname
-                    systemctl, service, apt, dpkg, netstat, ifconfig, ping, wget
-                    tail, head, chmod, chown, mkdir, rm, cp, mv, touch, nano, vim
-  Diagnostics:      errors, logs, info, trace <n>
-  System:           clear, reboot, shutdown, report
-  Help:             help, man <command>
-
-Type 'help' for detailed command list or 'man <command>' for manual pages.
-
-<span class="separator">================================================================================</span>
-`;
-
-  output.innerHTML += kernelPanic;
+  // Error Summary
+  const codes = errorQueue.map(err => err.errorInfo.code);
+  const uniqueCodes = [...new Set(codes)];
+  const timestamp = new Date().toLocaleString();
   
-  // Add terminal interface
-  const terminalSection = document.createElement('div');
-  terminalSection.className = 'terminal-section';
-  terminalSection.innerHTML = `
-    <div id="terminal-output"></div>
-    <div class="terminal-prompt">
-      <span>${CONFIG.username}@${CONFIG.hostname}:${currentDir}$</span>
-      <input type="text" id="terminal-input" autofocus autocomplete="off" spellcheck="false" />
+  errorSummary.innerHTML = `
+    <div class="info-grid">
+      <div class="info-item">
+        <div class="info-label">Error Codes</div>
+        <div class="info-value">${uniqueCodes.join(', ')}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Total Errors</div>
+        <div class="info-value">${errorQueue.length}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Timestamp</div>
+        <div class="info-value">${timestamp}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Console Logs</div>
+        <div class="info-value">${consoleLogs.length} entries</div>
+      </div>
     </div>
   `;
   
-  output.parentElement.appendChild(terminalSection);
-  output.parentElement.scrollTop = output.parentElement.scrollHeight;
+  // System Information
+  const sysInfo = getSystemInfo();
+  systemInfo.innerHTML = `
+    <div class="info-item">
+      <div class="info-label">Platform</div>
+      <div class="info-value">${sysInfo.platform}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Browser</div>
+      <div class="info-value">${sysInfo.vendor}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Language</div>
+      <div class="info-value">${sysInfo.language}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Screen Resolution</div>
+      <div class="info-value">${sysInfo.screenResolution}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Viewport Size</div>
+      <div class="info-value">${sysInfo.viewportSize}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Color Depth</div>
+      <div class="info-value">${sysInfo.colorDepth}-bit</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Pixel Ratio</div>
+      <div class="info-value">${sysInfo.pixelRatio}x</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Timezone</div>
+      <div class="info-value">${sysInfo.timezone}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">CPU Cores</div>
+      <div class="info-value">${sysInfo.hardwareConcurrency}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Device Memory</div>
+      <div class="info-value">${sysInfo.deviceMemory} GB</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Connection</div>
+      <div class="info-value">${sysInfo.connectionType}</div>
+    </div>
+    <div class="info-item">
+      <div class="info-label">Online Status</div>
+      <div class="info-value">${sysInfo.online ? 'Online' : 'Offline'}</div>
+    </div>
+  `;
   
-  setupTerminal();
-}
-
-// Setup terminal functionality
-function setupTerminal() {
-  const input = document.getElementById('terminal-input');
-  const terminalOutput = document.getElementById('terminal-output');
+  // Performance Metrics
+  const perfMetrics = getPerformanceMetrics();
+  if (perfMetrics) {
+    performanceInfo.innerHTML = `
+      <div class="info-item">
+        <div class="info-label">Page Load Time</div>
+        <div class="info-value">${perfMetrics.loadTime} ms</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">DOM Ready</div>
+        <div class="info-value">${perfMetrics.domContentLoaded} ms</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Interactive Time</div>
+        <div class="info-value">${perfMetrics.timeToInteractive} ms</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Memory Used</div>
+        <div class="info-value">${perfMetrics.memoryUsed}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Memory Limit</div>
+        <div class="info-value">${perfMetrics.memoryLimit}</div>
+      </div>
+      <div class="info-item">
+        <div class="info-label">Resources Loaded</div>
+        <div class="info-value">${perfMetrics.resourceCount}</div>
+      </div>
+    `;
+  }
   
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const command = input.value.trim();
-      if (command) {
-        executeCommand(command, terminalOutput);
-        commandHistory.unshift(command);
-        historyIndex = -1;
-      }
-      input.value = '';
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (historyIndex < commandHistory.length - 1) {
-        historyIndex++;
-        input.value = commandHistory[historyIndex];
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (historyIndex > 0) {
-        historyIndex--;
-        input.value = commandHistory[historyIndex];
-      } else if (historyIndex === 0) {
-        historyIndex = -1;
-        input.value = '';
-      }
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-    }
+  // Error List
+  let errorListHTML = '';
+  errorQueue.forEach((error, index) => {
+    errorListHTML += `
+      <div class="error-item">
+        <div class="error-header">
+          <div class="error-code">${error.errorInfo.code}</div>
+          <div class="error-severity severity-${error.errorInfo.severity.toLowerCase()}">${error.errorInfo.severity}</div>
+        </div>
+        <div class="error-message">${error.message}</div>
+        <div class="error-meta">
+          <span>Error #${index + 1}</span>
+          <span>Type: ${error.type}</span>
+          ${error.filename ? `<span>File: ${error.filename}</span>` : ''}
+          ${error.line ? `<span>Line ${error.line}:${error.col}</span>` : ''}
+        </div>
+        <div class="info-label">Description</div>
+        <div class="info-value" style="margin-bottom: 12px;">${error.errorInfo.description}</div>
+        ${error.stack ? `<div class="error-stack">${error.stack}</div>` : ''}
+      </div>
+    `;
   });
   
-  input.focus();
+  errorList.innerHTML = errorListHTML;
+  
+  sendBtn.disabled = false;
+  closeBtn.disabled = false;
 }
 
-// Get filesystem node
-function getFSNode(path) {
-  if (path === '') path = '/';
-  const parts = path.split('/').filter(p => p);
-  let current = fileSystem['/'];
-  
-  for (const part of parts) {
-    if (!current.contents || !current.contents[part]) {
-      return null;
-    }
-    current = current.contents[part];
-  }
-  
-  return current;
-}
-
-// Resolve path
-function resolvePath(path) {
-  if (path.startsWith('/')) {
-    return path;
-  }
-  
-  if (path === '..') {
-    const parts = currentDir.split('/').filter(p => p);
-    parts.pop();
-    return '/' + parts.join('/');
-  }
-  
-  if (path === '.') {
-    return currentDir;
-  }
-  
-  if (currentDir === '/') {
-    return '/' + path;
-  }
-  
-  return currentDir + '/' + path;
-}
-
-// Update prompt
-function updatePrompt() {
-  const promptSpan = document.querySelector('.terminal-prompt span');
-  if (promptSpan) {
-    promptSpan.textContent = `${CONFIG.username}@${CONFIG.hostname}:${currentDir}$`;
-  }
-}
-
-// Execute terminal command
-function executeCommand(command, outputElement) {
-  const commandLine = document.createElement('div');
-  commandLine.className = 'terminal-line';
-  commandLine.innerHTML = `<span class="terminal-command">${CONFIG.username}@${CONFIG.hostname}:${currentDir}$ ${escapeHtml(command)}</span>`;
-  outputElement.appendChild(commandLine);
-  
-  const parts = command.split(/\s+/);
-  const cmd = parts[0].toLowerCase();
-  const args = parts.slice(1);
-  
-  const result = document.createElement('div');
-  result.className = 'terminal-line';
-  
-  try {
-    switch(cmd) {
-      case 'help':
-        result.innerHTML = `<span class="terminal-result">Available Commands:
-
-LINUX/UBUNTU COMMANDS:
-  ls [path]           - List directory contents
-  cd <path>           - Change directory
-  pwd                 - Print working directory
-  cat <file>          - Display file contents
-  grep <pattern>      - Search for pattern (in error logs)
-  find <path>         - Find files
-  ps                  - Show running processes
-  top                 - Display system resource usage
-  free                - Show memory usage
-  df                  - Show disk usage
-  du [path]           - Show directory size
-  uname -a            - Show system information
-  systemctl status    - Show service status
-  service <name>      - Service management
-  apt list            - List installed packages
-  dpkg -l             - List installed packages
-  netstat             - Show network connections
-  tail <file>         - Show last lines of file
-  head <file>         - Show first lines of file
-  chmod <mode> <file> - Change file permissions
-  mkdir <dir>         - Create directory
-  touch <file>        - Create empty file
-  rm <file>           - Remove file
-  whoami              - Show current user
-  hostname            - Show hostname
-  date                - Show current date/time
-  uptime              - Show system uptime
-
-DIAGNOSTIC COMMANDS:
-  errors              - Show all JavaScript errors
-  logs                - Show all console logs
-  info                - Show system information
-  trace <n>           - Show stack trace for error #n
-
-SYSTEM COMMANDS:
-  clear               - Clear terminal
-  reboot              - Restart application
-  shutdown            - Close error panel
-  report              - Send error report via email
-
-Use 'man <command>' for detailed help on specific commands.</span>`;
-        break;
-        
-      case 'man':
-        const manCmd = args[0];
-        if (!manCmd) {
-          result.innerHTML = `<span class="terminal-error">What manual page do you want?</span>`;
-        } else {
-          result.innerHTML = `<span class="terminal-result">Manual page for ${manCmd}:
-
-NAME
-    ${manCmd} - Linux command
-
-DESCRIPTION
-    For full manual pages, please refer to the official Linux documentation.
-    
-    Type 'help' to see all available commands in this emergency shell.</span>`;
-        }
-        break;
-        
-      case 'ls':
-        const lsPath = args[0] ? resolvePath(args[0]) : currentDir;
-        const lsNode = getFSNode(lsPath);
-        
-        if (!lsNode) {
-          result.innerHTML = `<span class="terminal-error">ls: cannot access '${args[0]}': No such file or directory</span>`;
-        } else if (lsNode.type === 'file') {
-          result.innerHTML = `<span class="terminal-result">${args[0]}</span>`;
-        } else {
-          const items = Object.keys(lsNode.contents);
-          let output = '';
-          items.forEach(item => {
-            const itemNode = lsNode.contents[item];
-            if (itemNode.type === 'dir') {
-              output += `<span class="ls-item ls-dir">${item}/</span>`;
-            } else {
-              output += `<span class="ls-item ls-file">${item}</span>`;
-            }
-          });
-          result.innerHTML = `<span class="terminal-result">${output || '(empty directory)'}</span>`;
-        }
-        break;
-        
-      case 'cd':
-        if (!args[0]) {
-          currentDir = '/home/' + CONFIG.username;
-        } else {
-          const newPath = resolvePath(args[0]);
-          const node = getFSNode(newPath);
-          
-          if (!node) {
-            result.innerHTML = `<span class="terminal-error">cd: ${args[0]}: No such file or directory</span>`;
-          } else if (node.type !== 'dir') {
-            result.innerHTML = `<span class="terminal-error">cd: ${args[0]}: Not a directory</span>`;
-          } else {
-            currentDir = newPath;
-            updatePrompt();
-          }
-        }
-        break;
-        
-      case 'pwd':
-        result.innerHTML = `<span class="terminal-result">${currentDir}</span>`;
-        break;
-        
-      case 'cat':
-        if (!args[0]) {
-          result.innerHTML = `<span class="terminal-error">cat: missing file operand</span>`;
-        } else {
-          const catPath = resolvePath(args[0]);
-          const catNode = getFSNode(catPath);
-          
-          if (!catNode) {
-            result.innerHTML = `<span class="terminal-error">cat: ${args[0]}: No such file or directory</span>`;
-          } else if (catNode.type === 'dir') {
-            result.innerHTML = `<span class="terminal-error">cat: ${args[0]}: Is a directory</span>`;
-          } else {
-            result.innerHTML = `<span class="terminal-result">${escapeHtml(catNode.content || '[Binary file content]')}</span>`;
-          }
-        }
-        break;
-        
-      case 'grep':
-        if (args.length < 1) {
-          result.innerHTML = `<span class="terminal-error">grep: missing pattern</span>`;
-        } else {
-          const pattern = args[0].toLowerCase();
-          const matches = errorQueue.filter(err => 
-            err.message.toLowerCase().includes(pattern) ||
-            (err.stack && err.stack.toLowerCase().includes(pattern))
-          );
-          
-          if (matches.length > 0) {
-            let grepOutput = `Found ${matches.length} match(es) in error logs:\n\n`;
-            matches.forEach((err, i) => {
-              grepOutput += `[${i + 1}] ${err.message}\n`;
-            });
-            result.innerHTML = `<span class="terminal-result">${escapeHtml(grepOutput)}</span>`;
-          } else {
-            result.innerHTML = `<span class="terminal-result">No matches found</span>`;
-          }
-        }
-        break;
-        
-      case 'find':
-        const findPath = args[0] || currentDir;
-        result.innerHTML = `<span class="terminal-result">Find in ${findPath}:
-${findPath}
-${findPath}/index.html
-${findPath}/app.js
-${findPath}/style.css
-${findPath}/config.php</span>`;
-        break;
-        
-      case 'ps':
-        let psOutput = 'PID    USER       CPU  MEM  COMMAND\n';
-        processes.forEach(proc => {
-          psOutput += `${proc.pid.toString().padEnd(6)} ${proc.user.padEnd(10)} ${proc.cpu.padEnd(4)} ${proc.mem.padEnd(4)} ${proc.command}\n`;
-        });
-        result.innerHTML = `<span class="terminal-result">${psOutput}</span>`;
-        break;
-        
-      case 'top':
-        result.innerHTML = `<span class="terminal-result">top - ${new Date().toLocaleTimeString()} up ${systemInfo.uptime}
-Tasks: ${processes.length} total
-CPU(s): 5.2%us, 2.1%sy, 0.0%ni, 92.5%id
-Mem: ${systemInfo.totalMemory} total, ${systemInfo.usedMemory} used, ${systemInfo.freeMemory} free
-
-PID    USER     CPU  MEM  COMMAND
-${processes.map(p => `${p.pid.toString().padEnd(6)} ${p.user.padEnd(8)} ${p.cpu.padEnd(4)} ${p.mem.padEnd(4)} ${p.command}`).join('\n')}</span>`;
-        break;
-        
-      case 'free':
-        result.innerHTML = `<span class="terminal-result">              total        used        free
-Mem:          8192MB       3276MB       4916MB
-Swap:         2048MB        128MB       1920MB</span>`;
-        break;
-        
-      case 'df':
-        result.innerHTML = `<span class="terminal-result">Filesystem     Size  Used Avail Use% Mounted on
-/dev/sda1       50G   28G   20G  59% /
-tmpfs          4.0G  1.2M  4.0G   1% /dev/shm
-/dev/sdb1      100G   45G   50G  48% /var/www</span>`;
-        break;
-        
-      case 'du':
-        const duPath = args[0] || currentDir;
-        result.innerHTML = `<span class="terminal-result">256K    ${duPath}/assets/images
-128K    ${duPath}/assets/fonts
-512K    ${duPath}/assets
-2.4M    ${duPath}/logs
-89.5K   ${duPath}/app.js
-4.2K    ${duPath}/index.html
-3.1M    ${duPath}</span>`;
-        break;
-        
-      case 'uname':
-        if (args[0] === '-a') {
-          result.innerHTML = `<span class="terminal-result">Linux ${CONFIG.hostname} ${systemInfo.kernel} #1 SMP ${new Date().toDateString()} ${systemInfo.architecture} ${systemInfo.architecture} ${systemInfo.architecture} GNU/Linux</span>`;
-        } else {
-          result.innerHTML = `<span class="terminal-result">Linux</span>`;
-        }
-        break;
-        
-      case 'systemctl':
-        if (args[0] === 'status') {
-          const serviceName = args[1] || 'apache2';
-          result.innerHTML = `<span class="terminal-result">● ${serviceName}.service - Apache HTTP Server
-   Loaded: loaded (/lib/systemd/system/${serviceName}.service; enabled)
-   Active: <span style="color:#00ff00;">active (running)</span> since ${new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toLocaleString()}
-   Main PID: 234 (apache2)
-   Tasks: 55 (limit: 4915)
-   Memory: 45.2M
-   CGroup: /system.slice/${serviceName}.service
-           ├─234 /usr/sbin/apache2 -k start
-           ├─456 /usr/sbin/apache2 -k start
-           └─457 /usr/sbin/apache2 -k start</span>`;
-        } else {
-          result.innerHTML = `<span class="terminal-result">Use: systemctl status [service]</span>`;
-        }
-        break;
-        
-      case 'service':
-        const svcName = args[0];
-        const svcAction = args[1];
-        if (!svcName) {
-          result.innerHTML = `<span class="terminal-error">Usage: service <name> <action></span>`;
-        } else {
-          result.innerHTML = `<span class="terminal-warning">Service command received: ${svcName} ${svcAction || 'status'}
-Note: This is non-sudo environment. Actual service changes are not possible.</span>`;
-        }
-        break;
-        
-      case 'apt':
-        if (args[0] === 'list' || args[0] === 'list --installed') {
-          let aptOutput = 'Listing installed packages...\n';
-          installedPackages.forEach(pkg => {
-            aptOutput += `${pkg}/jammy,now 1.0.0 amd64 [installed]\n`;
-          });
-          result.innerHTML = `<span class="terminal-result">${aptOutput}</span>`;
-        } else if (args[0] === 'update' || args[0] === 'upgrade' || args[0] === 'install') {
-          result.innerHTML = `<span class="terminal-warning">E: Could not open lock file - open (13: Permission denied)
-E: Unable to acquire the dpkg frontend lock, is another process using it?
-Note: System modifications are not available in emergency mode.</span>`;
-        } else {
-          result.innerHTML = `<span class="terminal-result">apt commands: list, update, upgrade, install
-Use: apt list --installed</span>`;
-        }
-        break;
-        
-      case 'dpkg':
-        if (args[0] === '-l') {
-          let dpkgOutput = 'Desired=Unknown/Install/Remove/Purge/Hold\n';
-          dpkgOutput += '| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend\n';
-          dpkgOutput += '|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)\n';
-          dpkgOutput += '||/ Name           Version      Architecture Description\n';
-          installedPackages.slice(0, 10).forEach(pkg => {
-            dpkgOutput += `ii  ${pkg.padEnd(14)} 1.0.0        amd64        Package\n`;
-          });
-          result.innerHTML = `<span class="terminal-result">${dpkgOutput}</span>`;
-        } else {
-          result.innerHTML = `<span class="terminal-result">Use: dpkg -l</span>`;
-        }
-        break;
-        
-      case 'netstat':
-        result.innerHTML = `<span class="terminal-result">Active Internet connections (servers and established)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State
-tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN
-tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN
-tcp        0      0 127.0.0.1:3306          0.0.0.0:*               LISTEN</span>`;
-        break;
-        
-      case 'ifconfig':
-        result.innerHTML = `<span class="terminal-result">eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-        inet 192.168.1.100  netmask 255.255.255.0  broadcast 192.168.1.255
-        inet6 fe80::a00:27ff:fe4e:66a1  prefixlen 64  scopeid 0x20<link>
-        ether 08:00:27:4e:66:a1  txqueuelen 1000  (Ethernet)
-
-lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
-        inet 127.0.0.1  netmask 255.0.0.0</span>`;
-        break;
-        
-      case 'ping':
-        result.innerHTML = `<span class="terminal-warning">ping: Network environment
-Cannot send ICMP packets from browser context</span>`;
-        break;
-        
-      case 'wget':
-      case 'curl':
-        result.innerHTML = `<span class="terminal-warning">${cmd}: Network operations not available in emergency mode</span>`;
-        break;
-        
-      case 'tail':
-        if (!args[0]) {
-          result.innerHTML = `<span class="terminal-error">tail: missing file operand</span>`;
-        } else {
-          const errorLogs = errorQueue.slice(-5);
-          let tailOutput = `Last 5 errors from error log:\n\n`;
-          errorLogs.forEach((err, i) => {
-            tailOutput += `[${i + 1}] ${err.timestamp} - ${err.message}\n`;
-          });
-          result.innerHTML = `<span class="terminal-result">${escapeHtml(tailOutput)}</span>`;
-        }
-        break;
-        
-      case 'head':
-        if (!args[0]) {
-          result.innerHTML = `<span class="terminal-error">head: missing file operand</span>`;
-        } else {
-          const firstErrors = errorQueue.slice(0, 5);
-          let headOutput = `First 5 errors from error log:\n\n`;
-          firstErrors.forEach((err, i) => {
-            headOutput += `[${i + 1}] ${err.timestamp} - ${err.message}\n`;
-          });
-          result.innerHTML = `<span class="terminal-result">${escapeHtml(headOutput)}</span>`;
-        }
-        break;
-        
-      case 'chmod':
-      case 'chown':
-        result.innerHTML = `<span class="terminal-warning">${cmd}: Permission denied
-Filesystem modifications not available in emergency mode</span>`;
-        break;
-        
-      case 'mkdir':
-      case 'touch':
-      case 'rm':
-      case 'cp':
-      case 'mv':
-        result.innerHTML = `<span class="terminal-warning">${cmd}: Read-only filesystem
-Emergency mode does not allow file modifications</span>`;
-        break;
-        
-      case 'nano':
-        if (!args[0]) {
-          result.innerHTML = `<span class="terminal-error">nano: missing file operand</span>`;
-        } else {
-          const nanoPath = resolvePath(args[0]);
-          const nanoNode = getFSNode(nanoPath);
-
-          if (!nanoNode) {
-            openNanoEditor({
-              path: nanoPath,
-              initialContent: '',
-              exists: false
-            });
-            result.innerHTML = `<span class="terminal-result">Opening nano on new file: ${escapeHtml(nanoPath)}</span>`;
-          } else if (nanoNode.type === 'dir') {
-            result.innerHTML = `<span class="terminal-error">nano: ${escapeHtml(args[0])}: Is a directory</span>`;
-          } else {
-            openNanoEditor({
-              path: nanoPath,
-              initialContent: nanoNode.content || '',
-              exists: true
-            });
-            result.innerHTML = `<span class="terminal-result">Opening nano: ${escapeHtml(nanoPath)}</span>`;
-          }
-        }
-        break;
-
-      case 'vim':
-      case 'vi':
-        result.innerHTML = `<span class="terminal-warning">${cmd}: not implemented in this shell.
-Tip: use 'nano <file>' (simulated) instead.</span>`;
-        break;
-
-        
-      case 'whoami':
-        result.innerHTML = `<span class="terminal-result">${CONFIG.username}</span>`;
-        break;
-        
-      case 'hostname':
-        result.innerHTML = `<span class="terminal-result">${CONFIG.hostname}</span>`;
-        break;
-        
-      case 'date':
-        result.innerHTML = `<span class="terminal-result">${new Date().toString()}</span>`;
-        break;
-        
-      case 'uptime':
-        result.innerHTML = `<span class="terminal-result"> ${new Date().toLocaleTimeString()}  up ${systemInfo.uptime},  1 user,  load average: ${systemInfo.loadAverage}</span>`;
-        break;
-        
-      case 'errors':
-        let errorsText = `JavaScript Runtime Errors: ${errorQueue.length}\n\n`;
-        errorQueue.forEach((error, index) => {
-          errorsText += `[ERROR #${index + 1}] ${getErrorCode(error)}\n`;
-          errorsText += `  Message:   ${error.message}\n`;
-          if (error.filename) errorsText += `  File:      ${error.filename}\n`;
-          if (error.line) errorsText += `  Location:  Line ${error.line}:${error.col || 0}\n`;
-          errorsText += `  Time:      ${error.timestamp}\n\n`;
-        });
-        result.innerHTML = `<span class="terminal-result">${escapeHtml(errorsText)}</span>`;
-        break;
-        
-      case 'logs':
-        let logsText = `Console Logs: ${consoleLogs.length} entries\n\n`;
-        consoleLogs.forEach((log, index) => {
-          logsText += `[${log.timestamp}] [${log.type.toUpperCase()}]\n${log.message}\n\n`;
-        });
-        result.innerHTML = `<span class="terminal-result">${escapeHtml(logsText)}</span>`;
-        break;
-        
-      case 'info':
-        const infoText = `System Information:
-===================
-OS:               ${systemInfo.os}
-Kernel:           ${systemInfo.kernel}
-Architecture:     ${systemInfo.architecture}
-Hostname:         ${CONFIG.hostname}
-Uptime:           ${systemInfo.uptime}
-Load Average:     ${systemInfo.loadAverage}
-
-Server Configuration:
-=====================
-Web Server:       Apache/2.4.52 (Ubuntu)
-Document Root:    ${CONFIG.serverPath}
-PHP Version:      8.1.2
-MySQL:            Running (Port 3306)
-
-Application Info:
-=================
-Name:             ${CONFIG.siteName}
-URL:              ${window.location.href}
-User Agent:       ${navigator.userAgent}
-Platform:         ${navigator.platform}
-Language:         ${navigator.language}
-Online:           ${navigator.onLine}
-Timestamp:        ${new Date().toISOString()}
-
-Memory:
-=======
-Total:            ${systemInfo.totalMemory}
-Used:             ${systemInfo.usedMemory}
-Free:             ${systemInfo.freeMemory}
-
-Browser:
-========
-Cores:            ${navigator.hardwareConcurrency}
-Device Memory:    ${navigator.deviceMemory || 'Unknown'} GB
-Screen:           ${window.screen.width}x${window.screen.height}
-Viewport:         ${window.innerWidth}x${window.innerHeight}`;
-        result.innerHTML = `<span class="terminal-result">${escapeHtml(infoText)}</span>`;
-        break;
-        
-      case 'trace':
-        const errorNum = parseInt(args[0]);
-        if (isNaN(errorNum) || errorNum < 1 || errorNum > errorQueue.length) {
-          result.innerHTML = `<span class="terminal-error">Invalid error number. Valid range: 1-${errorQueue.length}
-Usage: trace <error_number></span>`;
-        } else {
-          const error = errorQueue[errorNum - 1];
-          let traceText = `Stack Trace for Error #${errorNum}:\n`;
-          traceText += `${'='.repeat(50)}\n`;
-          traceText += `Code:      ${getErrorCode(error)}\n`;
-          traceText += `Message:   ${error.message}\n\n`;
-          if (error.stack) {
-            traceText += `Call Stack:\n${error.stack}`;
-          } else {
-            traceText += 'No stack trace available for this error';
-          }
-          result.innerHTML = `<span class="terminal-result">${escapeHtml(traceText)}</span>`;
-        }
-        break;
-        
-      case 'clear':
-        outputElement.innerHTML = '';
-        scrollTerminal();
-        return;
-        
-      case 'report':
-        sendBugReport();
-        result.innerHTML = `<span class="terminal-result">[  OK  ] Opening email client with error report...
-[  OK  ] Report generated successfully
-[ INFO ] Please send the email to complete the report submission</span>`;
-        break;
-        
-      case 'reboot':
-        result.innerHTML = `<span class="terminal-result">[  OK  ] Initiating system reboot...
-[ INFO ] Stopping services...
-[ INFO ] Unmounting filesystems...
-[ WAIT ] Restarting application...</span>`;
-        outputElement.appendChild(result);
-        setTimeout(() => {
-          location.reload();
-        }, 2000);
-        scrollTerminal();
-        return;
-        
-      case 'shutdown':
-        result.innerHTML = `<span class="terminal-result">[  OK  ] System shutdown initiated
-[ INFO ] Closing emergency shell...</span>`;
-        outputElement.appendChild(result);
-        setTimeout(() => {
-          const overlay = document.getElementById('error-overlay');
-          if (overlay) overlay.remove();
-        }, 1500);
-        scrollTerminal();
-        return;
-        
-      case 'exit':
-      case 'quit':
-        result.innerHTML = `<span class="terminal-warning">Use 'reboot' to restart or 'shutdown' to close</span>`;
-        break;
-        
-      case 'sudo':
-        result.innerHTML = `<span class="terminal-warning">[sudo] password for ${CONFIG.username}: 
-Sorry, this is an emergency diagnostic shell. Elevated privileges not available.</span>`;
-        break;
-        
-      default:
-        if (command.includes('(') || command.includes('=') || command.includes('[')) {
-          try {
-            const evalResult = eval(command);
-            result.innerHTML = `<span class="terminal-result">${escapeHtml(String(evalResult))}</span>`;
-          } catch (err) {
-            result.innerHTML = `<span class="terminal-error">${cmd}: command not found
-
-Did you mean one of these?
-  errors  - Show JavaScript errors
-  logs    - Show console logs
-  help    - Show all available commands
-
-JavaScript execution error: ${escapeHtml(err.message)}</span>`;
-          }
-        } else {
-          result.innerHTML = `<span class="terminal-error">${cmd}: command not found
-Type 'help' for list of available commands</span>`;
-        }
-    }
-  } catch (err) {
-    result.innerHTML = `<span class="terminal-error">Error executing command: ${escapeHtml(err.message)}</span>`;
-  }
-  
-  outputElement.appendChild(result);
-  scrollTerminal();
-}
-
-function scrollTerminal() {
-  const overlay = document.getElementById('error-overlay-content');
+// Close overlay
+function closeErrorOverlay() {
+  const overlay = document.getElementById('error-overlay');
   if (overlay) {
-    setTimeout(() => {
-      overlay.scrollTop = overlay.scrollHeight;
-    }, 10);
+    overlay.remove();
+    location.reload();
   }
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
+// Send comprehensive bug report
 function sendBugReport() {
-  const subject = `[${CONFIG.siteName}] KERNEL PANIC - Critical Error Report - ${new Date().toLocaleDateString()}`;
-  const errorCodesText = [...new Set(errorQueue.map(err => getErrorCode(err)))].join(' | ');
-  let body = `KERNEL PANIC ERROR REPORT
-=========================
-Server: ${CONFIG.username}@${CONFIG.hostname}:${CONFIG.serverPath}
+  const sysInfo = getSystemInfo();
+  const perfMetrics = getPerformanceMetrics();
+  const timestamp = new Date();
+  
+  const subject = `[${CONFIG.siteName}] Critical Error Report - ${timestamp.toLocaleDateString()}`;
+  
+  const errorCodesText = [...new Set(errorQueue.map(err => err.errorInfo.code))].join(', ');
+  
+  let body = `
+═══════════════════════════════════════════════════════════════
+                    CRITICAL ERROR REPORT
+                      ${CONFIG.siteName}
+═══════════════════════════════════════════════════════════════
 
-Please describe the steps to reproduce the issue:
-Veuillez décrire les étapes pour reproduire le problème:
+Please describe what you were doing when this error occurred:
+_______________________________________________________________
 
 
-========================================
-STOP CODES: ${errorCodesText}
-========================================
+═══════════════════════════════════════════════════════════════
+EXECUTIVE SUMMARY
+═══════════════════════════════════════════════════════════════
 
-SYSTEM INFORMATION:
--------------------
-OS:             ${systemInfo.os}
-Kernel:         ${systemInfo.kernel}
-Architecture:   ${systemInfo.architecture}
-Hostname:       ${CONFIG.hostname}
-Server Path:    ${CONFIG.serverPath}
-Web Server:     Apache/2.4.52 (Ubuntu)
-Uptime:         ${systemInfo.uptime}
-Load Average:   ${systemInfo.loadAverage}
+Error Codes: ${errorCodesText}
+Total Errors: ${errorQueue.length}
+Timestamp: ${timestamp.toISOString()}
+URL: ${window.location.href}
 
-RUNTIME ENVIRONMENT:
---------------------
-URL:            ${window.location.href}
-Date:           ${new Date().toISOString()}
-User Agent:     ${navigator.userAgent}
-Platform:       ${navigator.platform}
-Language:       ${navigator.language}
-Online Status:  ${navigator.onLine}
+═══════════════════════════════════════════════════════════════
+SYSTEM INFORMATION
+═══════════════════════════════════════════════════════════════
 
-MEMORY STATUS:
---------------
-Total:          ${systemInfo.totalMemory}
-Used:           ${systemInfo.usedMemory}
-Free:           ${systemInfo.freeMemory}
+Platform: ${sysInfo.platform}
+User Agent: ${sysInfo.userAgent}
+Browser Vendor: ${sysInfo.vendor}
+Language: ${sysInfo.language} (${sysInfo.languages.join(', ')})
+Screen Resolution: ${sysInfo.screenResolution}
+Viewport Size: ${sysInfo.viewportSize}
+Color Depth: ${sysInfo.colorDepth}-bit
+Pixel Ratio: ${sysInfo.pixelRatio}x
+Timezone: ${sysInfo.timezone} (UTC${sysInfo.timezoneOffset > 0 ? '-' : '+'}${Math.abs(sysInfo.timezoneOffset / 60)})
+CPU Cores: ${sysInfo.hardwareConcurrency}
+Device Memory: ${sysInfo.deviceMemory} GB
+Max Touch Points: ${sysInfo.maxTouchPoints}
+Cookies Enabled: ${sysInfo.cookiesEnabled}
+Do Not Track: ${sysInfo.doNotTrack}
+Online Status: ${sysInfo.online ? 'Online' : 'Offline'}
+Connection Type: ${sysInfo.connectionType}
+Protocol: ${sysInfo.protocol}
+Referrer: ${sysInfo.referrer}
+Document Ready State: ${sysInfo.documentReadyState}
 
-ERROR DETAILS (${errorQueue.length} critical errors):
-==================
+Storage Support:
+- LocalStorage: ${sysInfo.localStorage ? 'Supported' : 'Not Supported'}
+- SessionStorage: ${sysInfo.sessionStorage ? 'Supported' : 'Not Supported'}
+- IndexedDB: ${sysInfo.indexedDB ? 'Supported' : 'Not Supported'}
+
+Features:
+- Service Worker: ${sysInfo.serviceWorker ? 'Supported' : 'Not Supported'}
+- WebGL: ${sysInfo.webGL ? 'Supported' : 'Not Supported'}
+
+═══════════════════════════════════════════════════════════════
+PERFORMANCE METRICS
+═══════════════════════════════════════════════════════════════
+
+${perfMetrics ? `
+Page Load Time: ${perfMetrics.loadTime} ms
+DOM Content Loaded: ${perfMetrics.domContentLoaded} ms
+Time to Interactive: ${perfMetrics.timeToInteractive} ms
+Memory Used: ${perfMetrics.memoryUsed}
+Memory Limit: ${perfMetrics.memoryLimit}
+Resources Loaded: ${perfMetrics.resourceCount}
+` : 'Performance metrics not available'}
+
+═══════════════════════════════════════════════════════════════
+DETAILED ERROR INFORMATION (${errorQueue.length} ERRORS)
+═══════════════════════════════════════════════════════════════
+
 `;
+
   errorQueue.forEach((error, index) => {
-    body += `\nERROR #${index + 1} - ${getErrorCode(error)}\n${'-'.repeat(70)}\n${JSON.stringify(error, null, 2)}\n`;
+    body += `
+┌──────────────────────────────────────────────────────────────┐
+│ ERROR #${index + 1} - ${error.errorInfo.code}
+│ Severity: ${error.errorInfo.severity}
+└──────────────────────────────────────────────────────────────┘
+
+Type: ${error.type}
+Error Name: ${error.name || 'N/A'}
+Message: ${error.message}
+Description: ${error.errorInfo.description}
+Timestamp: ${error.timestamp}
+URL: ${error.url}
+
+${error.filename ? `File: ${error.filename}` : ''}
+${error.line ? `Location: Line ${error.line}, Column ${error.col}` : ''}
+
+Stack Trace:
+${error.stack || 'No stack trace available'}
+
+Raw Error Data:
+${JSON.stringify(error, null, 2)}
+
+`;
   });
-  body += `\nCONSOLE LOGS (${consoleLogs.length} entries):
-==================
-${consoleLogs.map(log => `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.message}`).join('\n')}
 
-========================================
-This report was generated by the kernel panic emergency diagnostic system.
-Emergency shell session: ${CONFIG.username}@${CONFIG.hostname}
-Command history: ${commandHistory.join(', ')}
-========================================`;
-  const mailtoLink = `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.location.href = mailtoLink;
-}
+  body += `
+═══════════════════════════════════════════════════════════════
+CONSOLE LOGS (${consoleLogs.length} ENTRIES)
+═══════════════════════════════════════════════════════════════
 
-let nanoState = {
-  isOpen: false,
-  path: null,
-  original: '',
-  dirty: false
-};
+`;
 
-// Toggle this if you want to forbid saving even in-memory
-const NANO_READONLY = false;
+  consoleLogs.forEach((log, index) => {
+    body += `[${log.timestamp}] [${log.type.toUpperCase()}] ${log.message}
+`;
+  });
 
-function openNanoEditor({ path, initialContent, exists }) {
-  if (nanoState.isOpen) return;
+  body += `
+═══════════════════════════════════════════════════════════════
+ADDITIONAL DEBUGGING INFORMATION
+═══════════════════════════════════════════════════════════════
 
-  nanoState = {
-    isOpen: true,
-    path,
-    original: initialContent || '',
-    dirty: false
-  };
+Window Properties:
+- Inner Width: ${window.innerWidth}px
+- Inner Height: ${window.innerHeight}px
+- Outer Width: ${window.outerWidth}px
+- Outer Height: ${window.outerHeight}px
+- Scroll Position: X=${window.scrollX}px, Y=${window.scrollY}px
+- Device Pixel Ratio: ${window.devicePixelRatio}
 
-  const overlay = document.getElementById('error-overlay-content');
-  if (!overlay) return;
+Document Properties:
+- Ready State: ${document.readyState}
+- Visibility State: ${document.visibilityState}
+- Cookie: ${document.cookie ? 'Present' : 'None'}
+- Domain: ${document.domain}
+- Character Set: ${document.characterSet}
 
-  // Container
-  const nanoWrap = document.createElement('div');
-  nanoWrap.id = 'nano-editor';
-  nanoWrap.innerHTML = `
-    <style>
-      #nano-editor {
-        margin-top: 14px;
-        border: 2px solid #ffffffff;
-        padding: 10px;
-      }
-      #nano-title {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-weight: bold;
-      }
-      #nano-title .path {
-        color: #ffffffff;
-      }
-      #nano-title .mode {
-        color: ${NANO_READONLY ? '#ff0000' : '#00ff00'};
-      }
-      #nano-textarea {
-        width: 100%;
-        height: 260px;
-        box-sizing: border-box;
-        background: #000;
-        color: #fff;
-        border: 1px solid #ffffffff;
-        outline: none;
-        font-family: 'Courier Prime', 'Courier New', monospace;
-        font-size: 13px;
-        line-height: 1.4;
-        padding: 8px;
-        resize: vertical;
-      }
-      #nano-status {
-        margin-top: 6px;
-        color: #aaaaaa;
-        font-size: 12px;
-        min-height: 16px;
-      }
-      #nano-helpbar {
-        margin-top: 8px;
-        border-top: 1px solid #ffffffff;
-        padding-top: 8px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        font-size: 12px;
-        color: #ffffffff;
-      }
-      .nano-key {
-        color: #ffff00;
-        font-weight: bold;
-      }
-      .nano-hint {
-        color: #aaaaaaaa;
-      }
-    </style>
+Location Properties:
+- Full URL: ${window.location.href}
+- Protocol: ${window.location.protocol}
+- Hostname: ${window.location.hostname}
+- Port: ${window.location.port || 'Default'}
+- Pathname: ${window.location.pathname}
+- Search: ${window.location.search || 'None'}
+- Hash: ${window.location.hash || 'None'}
 
-    <div id="nano-title">
-      <div class="path">GNU nano 7.2  —  ${escapeHtml(path)} ${exists ? '' : '(new file)'}</div>
-      <div class="mode">${NANO_READONLY ? 'READ-ONLY' : 'EDIT'}</div>
-    </div>
+Navigator Properties (Extended):
+- App Name: ${navigator.appName}
+- App Version: ${navigator.appVersion}
+- Platform: ${navigator.platform}
+- Product: ${navigator.product}
+- Vendor: ${navigator.vendor}
+- Vendor Sub: ${navigator.vendorSub || 'N/A'}
 
-    <textarea id="nano-textarea" spellcheck="false"></textarea>
+═══════════════════════════════════════════════════════════════
+REPORT METADATA
+═══════════════════════════════════════════════════════════════
 
-    <div id="nano-status" class="nano-hint">
-      Ctrl+O = Write Out, Ctrl+X = Exit ${NANO_READONLY ? '(saving disabled)' : '(saves to virtual FS)'}
-    </div>
+Report Generated: ${timestamp.toISOString()}
+Report Format: Comprehensive Diagnostic v2.0
+Application: ${CONFIG.siteName}
+Collector Version: 2.0.0
 
-    <div id="nano-helpbar">
-      <span><span class="nano-key">^O</span> Write Out</span>
-      <span><span class="nano-key">^X</span> Exit</span>
-      <span><span class="nano-key">^W</span> Where Is</span>
-      <span><span class="nano-key">^K</span> Cut</span>
-      <span><span class="nano-key">^U</span> Paste</span>
-      <span class="nano-hint">(* Simulated nano inside your emergency overlay)</span>
-    </div>
+═══════════════════════════════════════════════════════════════
+
+This diagnostic report was automatically generated to help 
+identify and resolve the issue. All information collected is 
+used solely for debugging purposes.
+
+For privacy: This report may contain URLs and system information.
+Please review before sending if you have privacy concerns.
+
+═══════════════════════════════════════════════════════════════
   `;
-
-  overlay.appendChild(nanoWrap);
-
-  const ta = nanoWrap.querySelector('#nano-textarea');
-  const status = nanoWrap.querySelector('#nano-status');
-
-  ta.value = initialContent || '';
-  ta.focus();
-
-  ta.addEventListener('input', () => {
-    nanoState.dirty = (ta.value !== nanoState.original);
-    status.textContent = nanoState.dirty
-      ? 'Modified — Ctrl+O to save, Ctrl+X to exit'
-      : 'Unmodified — Ctrl+X to exit';
-  });
-
-  function setStatus(msg, isError = false) {
-    status.style.color = isError ? '#ff0000' : '#aaaaaa';
-    status.textContent = msg;
-  }
-
-  function nanoSave() {
-    if (NANO_READONLY) {
-      setStatus('Error: Read-only mode (saving disabled).', true);
-      return;
-    }
-
-    const ok = writeFileToVirtualFS(nanoState.path, ta.value);
-
-    if (!ok) {
-      setStatus('Error: Cannot write (invalid path).', true);
-      return;
-    }
-
-    nanoState.original = ta.value;
-    nanoState.dirty = false;
-    setStatus(`Wrote ${ta.value.length} bytes to ${nanoState.path}`);
-  }
-
-  function nanoExit() {
-    if (nanoState.dirty) {
-      const leave = confirm('File modified. Exit without saving?');
-      if (!leave) return;
-    }
-    closeNanoEditor();
-  }
-
-  function nanoWhereIs() {
-    const q = prompt('Search (Where Is):');
-    if (!q) return;
-    const idx = ta.value.toLowerCase().indexOf(q.toLowerCase());
-    if (idx === -1) {
-      setStatus(`Search: "${q}" not found`, true);
-      return;
-    }
-    ta.focus();
-    ta.setSelectionRange(idx, idx + q.length);
-    setStatus(`Search: found "${q}" at offset ${idx}`);
-  }
-
-  ta.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-      const k = e.key.toLowerCase();
-
-      if (k === 'o') { 
-        e.preventDefault();
-        nanoSave();
-      } else if (k === 'x') { 
-        e.preventDefault();
-        nanoExit();
-      } else if (k === 'w') { 
-        e.preventDefault();
-        nanoWhereIs();
-      } else if (k === 'k') { 
-        e.preventDefault();
-        cutCurrentLine(ta);
-        nanoState.dirty = (ta.value !== nanoState.original);
-        setStatus('Cut line (simulated). Ctrl+U to paste.');
-      } else if (k === 'u') { 
-        e.preventDefault();
-        pasteCutBuffer(ta);
-        nanoState.dirty = (ta.value !== nanoState.original);
-        setStatus('Pasted (simulated).');
-      }
-    }
-  });
-
+  
+  const mailtoLink = `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  
+  window.location.href = mailtoLink;
+  
+  const successBanner = document.getElementById('success-banner');
+  successBanner.style.display = 'block';
+  
   setTimeout(() => {
-    overlay.scrollTop = overlay.scrollHeight;
-  }, 10);
+    successBanner.style.display = 'none';
+  }, 5000);
 }
 
-function closeNanoEditor() {
-  const nano = document.getElementById('nano-editor');
-  if (nano) nano.remove();
-  nanoState = { isOpen: false, path: null, original: '', dirty: false };
-
-  const input = document.getElementById('terminal-input');
-  if (input) input.focus();
-}
-
-let nanoCutBuffer = '';
-
-function cutCurrentLine(textarea) {
-  const value = textarea.value;
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-
-  if (start !== end) {
-    nanoCutBuffer = value.slice(start, end);
-    textarea.value = value.slice(0, start) + value.slice(end);
-    textarea.setSelectionRange(start, start);
-    return;
-  }
-
-  const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-  const lineEnd = value.indexOf('\n', start);
-  const actualEnd = (lineEnd === -1) ? value.length : lineEnd + 1;
-
-  nanoCutBuffer = value.slice(lineStart, actualEnd);
-  textarea.value = value.slice(0, lineStart) + value.slice(actualEnd);
-  textarea.setSelectionRange(lineStart, lineStart);
-}
-
-function pasteCutBuffer(textarea) {
-  if (!nanoCutBuffer) return;
-  const value = textarea.value;
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-
-  textarea.value = value.slice(0, start) + nanoCutBuffer + value.slice(end);
-  const newPos = start + nanoCutBuffer.length;
-  textarea.setSelectionRange(newPos, newPos);
-}
-
-function writeFileToVirtualFS(absPath, content) {
-  if (!absPath || !absPath.startsWith('/')) return false;
-
-  const parts = absPath.split('/').filter(Boolean);
-  const fileName = parts.pop();
-  let current = fileSystem['/'];
-
-  for (const part of parts) {
-    if (!current.contents) current.contents = {};
-    if (!current.contents[part]) {
-      current.contents[part] = { type: 'dir', contents: {} };
-    }
-    if (current.contents[part].type !== 'dir') return false;
-    current = current.contents[part];
-  }
-
-  if (!current.contents) current.contents = {};
-
-  current.contents[fileName] = {
-    type: 'file',
-    size: `${Math.max(1, Math.ceil(content.length / 1024)).toFixed(1)}K`,
-    modified: new Date().toISOString().slice(0, 16).replace('T', ' '),
-    content
-  };
-
-  return true;
-}
+// Expose functions globally
+window.closeErrorOverlay = closeErrorOverlay;
+window.sendBugReport = sendBugReport;
