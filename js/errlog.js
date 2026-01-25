@@ -135,14 +135,14 @@ const processes = [
 
 // System info
 const systemInfo = {
-  os: 'Ubuntu 22.04.3 LTS',
+  os: 'Ubuntu 24.04 LTS',
   kernel: '5.15.0-91-generic',
   architecture: 'x86_64',
   uptime: '15 days, 7:23',
   loadAverage: '0.15, 0.12, 0.08',
-  totalMemory: '8GB',
+  totalMemory: '24GB',
   usedMemory: '3.2GB',
-  freeMemory: '4.8GB'
+  freeMemory: '20.8GB'
 };
 
 // Error codes mapping
@@ -275,7 +275,7 @@ function showErrorOverlay() {
         height: 100%;
         background: #000000;
         z-index: 999999;
-        color: #00ff00;
+        color: #ffffffff;
         font-family: 'Courier Prime', 'Courier New', monospace;
         font-size: 13px;
         line-height: 1.4;
@@ -298,7 +298,7 @@ function showErrorOverlay() {
       }
       
       .kernel-header {
-        color: #00ff00;
+        color: #ffffffff;
         font-weight: bold;
         margin-bottom: 10px;
       }
@@ -317,7 +317,7 @@ function showErrorOverlay() {
       }
       
       .info-line {
-        color: #00ff00;
+        color: #ffffffff;
         margin: 2px 0;
       }
       
@@ -335,7 +335,7 @@ function showErrorOverlay() {
       }
       
       .separator {
-        color: #00ff00;
+        color: #ffffffff;
         margin: 10px 0;
       }
       
@@ -347,12 +347,12 @@ function showErrorOverlay() {
       
       .terminal-section {
         margin-top: 20px;
-        border-top: 2px solid #00ff00;
+        border-top: 2px solid #ffffffff;
         padding-top: 10px;
       }
       
       .terminal-prompt {
-        color: #00ff00;
+        color: #ffffffff;
         display: flex;
         align-items: center;
         margin-top: 5px;
@@ -366,17 +366,16 @@ function showErrorOverlay() {
       #terminal-input {
         background: transparent;
         border: none;
-        color: #00ff00;
+        color: #ffffffff;
         font-family: 'Courier Prime', 'Courier New', monospace;
         font-size: 13px;
         outline: none;
         flex: 1;
-        caret-color: #00ff00;
+        caret-color: #ffffffff;
       }
       
       #terminal-output {
         margin-bottom: 10px;
-        max-height: 300px;
         overflow-y: auto;
       }
       
@@ -385,7 +384,7 @@ function showErrorOverlay() {
       }
       
       .terminal-command {
-        color: #00ff00;
+        color: #ffffffff;
       }
       
       .terminal-result {
@@ -428,7 +427,7 @@ function showErrorOverlay() {
       }
       
       #error-overlay::-webkit-scrollbar-thumb {
-        background: #00ff00;
+        background: #ffffffff;
       }
       
       .cursor-blink {
@@ -481,7 +480,7 @@ function startKernelBoot() {
     '[    0.400000] Mounting root filesystem...',
     '[    0.450000] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)',
     '[    0.500000] Starting init: /sbin/init',
-    '[    0.550000] systemd[1]: Detected architecture x86-64',
+    '[    0.550000] systemd[1]: Detected architecture unknown',
     '[    0.600000] systemd[1]: Set hostname to <' + CONFIG.hostname + '>',
     '[    0.650000] systemd[1]: Started Apache HTTP Server',
     '[    0.700000] apache2[234]: AH00558: apache2: Could not reliably determine the server\'s fully qualified domain name',
@@ -510,7 +509,7 @@ function displayCollectedErrors() {
   
   let kernelPanic = `
 [    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] ================================================================================
-[    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] KERNEL PANIC - FATAL EXCEPTION IN INTERRUPT HANDLER
+[    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] PANIC - FATAL EXCEPTION IN INTERRUPT HANDLER
 [    ${(CONFIG.collectionDelay / 1000).toFixed(3)}] ================================================================================
 
 <span class="panic-msg">*** CRITICAL STOP: ${errorCodesText} ***</span>
@@ -717,6 +716,16 @@ function updatePrompt() {
     promptSpan.textContent = `${CONFIG.username}@${CONFIG.hostname}:${currentDir}$`;
   }
 }
+
+if (nanoState.isOpen) {
+  const warning = document.createElement('div');
+  warning.className = 'terminal-line';
+  warning.innerHTML = `<span class="terminal-warning">nano is open — use Ctrl+X to exit editor.</span>`;
+  outputElement.appendChild(warning);
+  scrollTerminal();
+  return;
+}
+
 
 // Execute terminal command
 function executeCommand(command, outputElement) {
@@ -1074,11 +1083,38 @@ Emergency mode does not allow file modifications</span>`;
         break;
         
       case 'nano':
+        if (!args[0]) {
+          result.innerHTML = `<span class="terminal-error">nano: missing file operand</span>`;
+        } else {
+          const nanoPath = resolvePath(args[0]);
+          const nanoNode = getFSNode(nanoPath);
+
+          if (!nanoNode) {
+            openNanoEditor({
+              path: nanoPath,
+              initialContent: '',
+              exists: false
+            });
+            result.innerHTML = `<span class="terminal-result">Opening nano on new file: ${escapeHtml(nanoPath)}</span>`;
+          } else if (nanoNode.type === 'dir') {
+            result.innerHTML = `<span class="terminal-error">nano: ${escapeHtml(args[0])}: Is a directory</span>`;
+          } else {
+            openNanoEditor({
+              path: nanoPath,
+              initialContent: nanoNode.content || '',
+              exists: true
+            });
+            result.innerHTML = `<span class="terminal-result">Opening nano: ${escapeHtml(nanoPath)}</span>`;
+          }
+        }
+        break;
+
       case 'vim':
       case 'vi':
-        result.innerHTML = `<span class="terminal-warning">${cmd}: Text editor not available
-Use 'cat' to view file contents</span>`;
+        result.innerHTML = `<span class="terminal-warning">${cmd}: not implemented in this shell.
+Tip: use 'nano <file>' (simulated) instead.</span>`;
         break;
+
         
       case 'whoami':
         result.innerHTML = `<span class="terminal-result">${CONFIG.username}</span>`;
@@ -1324,4 +1360,271 @@ Command history: ${commandHistory.join(', ')}
 ========================================`;
   const mailtoLink = `mailto:${CONFIG.recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.location.href = mailtoLink;
+}
+
+let nanoState = {
+  isOpen: false,
+  path: null,
+  original: '',
+  dirty: false
+};
+
+// Toggle this if you want to forbid saving even in-memory
+const NANO_READONLY = false;
+
+function openNanoEditor({ path, initialContent, exists }) {
+  if (nanoState.isOpen) return;
+
+  nanoState = {
+    isOpen: true,
+    path,
+    original: initialContent || '',
+    dirty: false
+  };
+
+  const overlay = document.getElementById('error-overlay-content');
+  if (!overlay) return;
+
+  // Container
+  const nanoWrap = document.createElement('div');
+  nanoWrap.id = 'nano-editor';
+  nanoWrap.innerHTML = `
+    <style>
+      #nano-editor {
+        margin-top: 14px;
+        border: 2px solid #ffffffff;
+        padding: 10px;
+      }
+      #nano-title {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-weight: bold;
+      }
+      #nano-title .path {
+        color: #ffffffff;
+      }
+      #nano-title .mode {
+        color: ${NANO_READONLY ? '#ff0000' : '#00ff00'};
+      }
+      #nano-textarea {
+        width: 100%;
+        height: 260px;
+        box-sizing: border-box;
+        background: #000;
+        color: #fff;
+        border: 1px solid #ffffffff;
+        outline: none;
+        font-family: 'Courier Prime', 'Courier New', monospace;
+        font-size: 13px;
+        line-height: 1.4;
+        padding: 8px;
+        resize: vertical;
+      }
+      #nano-status {
+        margin-top: 6px;
+        color: #aaaaaa;
+        font-size: 12px;
+        min-height: 16px;
+      }
+      #nano-helpbar {
+        margin-top: 8px;
+        border-top: 1px solid #ffffffff;
+        padding-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: #ffffffff;
+      }
+      .nano-key {
+        color: #ffff00;
+        font-weight: bold;
+      }
+      .nano-hint {
+        color: #aaaaaaaa;
+      }
+    </style>
+
+    <div id="nano-title">
+      <div class="path">GNU nano 7.2  —  ${escapeHtml(path)} ${exists ? '' : '(new file)'}</div>
+      <div class="mode">${NANO_READONLY ? 'READ-ONLY' : 'EDIT'}</div>
+    </div>
+
+    <textarea id="nano-textarea" spellcheck="false"></textarea>
+
+    <div id="nano-status" class="nano-hint">
+      Ctrl+O = Write Out, Ctrl+X = Exit ${NANO_READONLY ? '(saving disabled)' : '(saves to virtual FS)'}
+    </div>
+
+    <div id="nano-helpbar">
+      <span><span class="nano-key">^O</span> Write Out</span>
+      <span><span class="nano-key">^X</span> Exit</span>
+      <span><span class="nano-key">^W</span> Where Is</span>
+      <span><span class="nano-key">^K</span> Cut</span>
+      <span><span class="nano-key">^U</span> Paste</span>
+      <span class="nano-hint">(* Simulated nano inside your emergency overlay)</span>
+    </div>
+  `;
+
+  overlay.appendChild(nanoWrap);
+
+  const ta = nanoWrap.querySelector('#nano-textarea');
+  const status = nanoWrap.querySelector('#nano-status');
+
+  ta.value = initialContent || '';
+  ta.focus();
+
+  ta.addEventListener('input', () => {
+    nanoState.dirty = (ta.value !== nanoState.original);
+    status.textContent = nanoState.dirty
+      ? 'Modified — Ctrl+O to save, Ctrl+X to exit'
+      : 'Unmodified — Ctrl+X to exit';
+  });
+
+  function setStatus(msg, isError = false) {
+    status.style.color = isError ? '#ff0000' : '#aaaaaa';
+    status.textContent = msg;
+  }
+
+  function nanoSave() {
+    if (NANO_READONLY) {
+      setStatus('Error: Read-only mode (saving disabled).', true);
+      return;
+    }
+
+    const ok = writeFileToVirtualFS(nanoState.path, ta.value);
+
+    if (!ok) {
+      setStatus('Error: Cannot write (invalid path).', true);
+      return;
+    }
+
+    nanoState.original = ta.value;
+    nanoState.dirty = false;
+    setStatus(`Wrote ${ta.value.length} bytes to ${nanoState.path}`);
+  }
+
+  function nanoExit() {
+    if (nanoState.dirty) {
+      const leave = confirm('File modified. Exit without saving?');
+      if (!leave) return;
+    }
+    closeNanoEditor();
+  }
+
+  function nanoWhereIs() {
+    const q = prompt('Search (Where Is):');
+    if (!q) return;
+    const idx = ta.value.toLowerCase().indexOf(q.toLowerCase());
+    if (idx === -1) {
+      setStatus(`Search: "${q}" not found`, true);
+      return;
+    }
+    ta.focus();
+    ta.setSelectionRange(idx, idx + q.length);
+    setStatus(`Search: found "${q}" at offset ${idx}`);
+  }
+
+  ta.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+      const k = e.key.toLowerCase();
+
+      if (k === 'o') { 
+        e.preventDefault();
+        nanoSave();
+      } else if (k === 'x') { 
+        e.preventDefault();
+        nanoExit();
+      } else if (k === 'w') { 
+        e.preventDefault();
+        nanoWhereIs();
+      } else if (k === 'k') { 
+        e.preventDefault();
+        cutCurrentLine(ta);
+        nanoState.dirty = (ta.value !== nanoState.original);
+        setStatus('Cut line (simulated). Ctrl+U to paste.');
+      } else if (k === 'u') { 
+        e.preventDefault();
+        pasteCutBuffer(ta);
+        nanoState.dirty = (ta.value !== nanoState.original);
+        setStatus('Pasted (simulated).');
+      }
+    }
+  });
+
+  setTimeout(() => {
+    overlay.scrollTop = overlay.scrollHeight;
+  }, 10);
+}
+
+function closeNanoEditor() {
+  const nano = document.getElementById('nano-editor');
+  if (nano) nano.remove();
+  nanoState = { isOpen: false, path: null, original: '', dirty: false };
+
+  const input = document.getElementById('terminal-input');
+  if (input) input.focus();
+}
+
+let nanoCutBuffer = '';
+
+function cutCurrentLine(textarea) {
+  const value = textarea.value;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+
+  if (start !== end) {
+    nanoCutBuffer = value.slice(start, end);
+    textarea.value = value.slice(0, start) + value.slice(end);
+    textarea.setSelectionRange(start, start);
+    return;
+  }
+
+  const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+  const lineEnd = value.indexOf('\n', start);
+  const actualEnd = (lineEnd === -1) ? value.length : lineEnd + 1;
+
+  nanoCutBuffer = value.slice(lineStart, actualEnd);
+  textarea.value = value.slice(0, lineStart) + value.slice(actualEnd);
+  textarea.setSelectionRange(lineStart, lineStart);
+}
+
+function pasteCutBuffer(textarea) {
+  if (!nanoCutBuffer) return;
+  const value = textarea.value;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+
+  textarea.value = value.slice(0, start) + nanoCutBuffer + value.slice(end);
+  const newPos = start + nanoCutBuffer.length;
+  textarea.setSelectionRange(newPos, newPos);
+}
+
+function writeFileToVirtualFS(absPath, content) {
+  if (!absPath || !absPath.startsWith('/')) return false;
+
+  const parts = absPath.split('/').filter(Boolean);
+  const fileName = parts.pop();
+  let current = fileSystem['/'];
+
+  for (const part of parts) {
+    if (!current.contents) current.contents = {};
+    if (!current.contents[part]) {
+      current.contents[part] = { type: 'dir', contents: {} };
+    }
+    if (current.contents[part].type !== 'dir') return false;
+    current = current.contents[part];
+  }
+
+  if (!current.contents) current.contents = {};
+
+  current.contents[fileName] = {
+    type: 'file',
+    size: `${Math.max(1, Math.ceil(content.length / 1024)).toFixed(1)}K`,
+    modified: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    content
+  };
+
+  return true;
 }
