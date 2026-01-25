@@ -589,7 +589,9 @@ function showErrorOverlay() {
           </svg>
         </div>
         <h1 class="modal-title">The application quit unexpectedly</h1>
+        <h2 class="modal-title">L'application a planté</h2>
         <p class="modal-subtitle">We're collecting diagnostic information to help resolve this issue. This will only take a moment.</p>
+        <p class="modal-subtitle">Nous collectons des informations de diagnostic pour nous aider à corriger ce bug.</p>
       </div>
       
       <div class="modal-body">
@@ -632,7 +634,7 @@ function showErrorOverlay() {
       
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeErrorOverlay()" id="close-btn" disabled>Ignore</button>
-        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Send Report to Developer</button>
+        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Send Report to BecabDev | Envoyer le rapport</button>
       </div>
     </div>
   `;
