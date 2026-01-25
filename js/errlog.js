@@ -717,16 +717,6 @@ function updatePrompt() {
   }
 }
 
-if (nanoState.isOpen) {
-  const warning = document.createElement('div');
-  warning.className = 'terminal-line';
-  warning.innerHTML = `<span class="terminal-warning">nano is open — use Ctrl+X to exit editor.</span>`;
-  outputElement.appendChild(warning);
-  scrollTerminal();
-  return;
-}
-
-
 // Execute terminal command
 function executeCommand(command, outputElement) {
   const commandLine = document.createElement('div');
