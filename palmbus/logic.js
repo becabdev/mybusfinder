@@ -8786,21 +8786,21 @@ function afficherMenu() {
     
 }
 
-
-if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+async function modeSombre() {
     const mapPane = await map.getPanes().tilePane;
-    mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+    }
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+        if (event.matches) {
+            mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
+        } else {
+            mapPane.style.filter = 'none';
+        }
+    });
 }
 
-
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
-    const mapPane = map.getPanes().tilePane;
-    if (event.matches) {
-        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-    } else {
-        mapPane.style.filter = 'none';
-    }
-});
 
 
 
@@ -9087,6 +9087,7 @@ async function main() {
             fetchTripUpdates().catch(console.error),
             fetchVehiclePositions(),
             loadGeoJsonLines(),
+            modeSombre(),
             hideLoadingScreen()
         ]);
         loadGeoJsonLines();
