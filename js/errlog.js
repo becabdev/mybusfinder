@@ -871,10 +871,8 @@ setTimeout(() => {
   setProgress(5);
 
   const intervalId = setInterval(() => {
-    intervalle++;
-
-    if (intervalle === 100) {
-      clearInterval(intervalId); 
+    if (++intervalle >= 100) {
+      clearInterval(intervalId);
     }
   }, 100);
 
