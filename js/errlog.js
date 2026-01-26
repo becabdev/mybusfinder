@@ -3,7 +3,7 @@ const CONFIG = {
   recipientEmail: 'bechir.abidi06@gmail.com',
   siteName: 'My Bus Finder 3X',
   maxLogs: 100,
-  collectionDelay: 9450 
+  collectionDelay: 4450 
 };
 
 // Error codes mapping with detailed descriptions
@@ -599,12 +599,12 @@ function showErrorOverlay() {
       }
 
       .progress-wrapper {
-          margin-bottom: 40px;
+          margin-bottom: 1px;
       }
 
       .progress-container {
           width: 100%;
-          height: 8px;
+          height: 6px;
           background: #e5e5e5;
           border-radius: 4px;
           overflow: hidden;
@@ -873,20 +873,11 @@ function stopAnimation() {
   
   requestAnimationFrame(() => {
     setIndeterminate();
-
-    let intervalle = 0;
-
     setTimeout(() => {
-      setProgress(5);
-      const intervalId = setInterval(() => {
-        setProgress(intervalle);
-        if (++intervalle >= 100) {
-          clearInterval(intervalId);
-        }
+      setProgress(100);
       }, 50);
     }, 4450);
-  });
-}
+  }
 
 
 // Display collected errors with detailed information
