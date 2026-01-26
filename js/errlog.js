@@ -229,7 +229,6 @@ function startErrorCollection() {
   }, CONFIG.collectionDelay);
 }
 
-// Show macOS-style error overlay
 function showErrorOverlay() {
   if (document.getElementById('error-overlay')) return;
   
@@ -251,14 +250,14 @@ function showErrorOverlay() {
         left: 0;
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #1e1e1e;
         z-index: 999999;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 40px;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        animation: fadeIn 0.3s ease;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+        animation: fadeIn 0.4s ease;
       }
       
       @keyframes fadeIn {
@@ -267,23 +266,22 @@ function showErrorOverlay() {
       }
       
       #error-modal {
-        background: rgba(255, 255, 255, 0.98);
-        backdrop-filter: blur(40px);
-        -webkit-backdrop-filter: blur(40px);
-        border-radius: 20px;
-        box-shadow: 0 50px 100px rgba(0, 0, 0, 0.3);
-        max-width: 800px;
+        background: #2d2d2d;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        max-width: 600px;
         width: 100%;
-        max-height: 90vh;
+        max-height: 85vh;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       
       @keyframes slideUp {
         from { 
-          transform: translateY(50px);
+          transform: translateY(30px);
           opacity: 0;
         }
         to { 
@@ -293,93 +291,95 @@ function showErrorOverlay() {
       }
       
       .modal-header {
-        padding: 30px 40px;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-        background: linear-gradient(to bottom, #ffffff, #fafafa);
+        padding: 40px 40px 30px 40px;
+        text-align: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
       
       .modal-icon {
-        width: 64px;
-        height: 64px;
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        border-radius: 16px;
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #3a3a3c 0%, #2c2c2e 100%);
+        border-radius: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px rgba(240, 147, 251, 0.3);
+        margin: 0 auto 24px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       
       .modal-icon svg {
-        width: 36px;
-        height: 36px;
-        fill: white;
+        width: 42px;
+        height: 42px;
+        fill: #f5f5f7;
       }
       
       .modal-title {
-        font-size: 28px;
-        font-weight: 700;
-        color: #1a1a1a;
-        margin-bottom: 8px;
-        letter-spacing: -0.5px;
+        font-size: 22px;
+        font-weight: 600;
+        color: #f5f5f7;
+        margin-bottom: 4px;
+        letter-spacing: -0.3px;
       }
       
       .modal-subtitle {
-        font-size: 15px;
-        color: #666;
+        font-size: 13px;
+        color: #98989d;
         font-weight: 400;
-        line-height: 1.6;
+        line-height: 1.5;
+        margin-bottom: 4px;
       }
       
       .modal-body {
-        padding: 30px 40px;
+        padding: 24px 40px 30px 40px;
         overflow-y: auto;
         flex: 1;
       }
       
       .progress-section {
-        margin-bottom: 30px;
+        margin-bottom: 0;
       }
       
       .progress-label {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 12px;
-        font-size: 13px;
-        color: #666;
+        margin-bottom: 10px;
+        font-size: 12px;
+        color: #98989d;
         font-weight: 500;
       }
       
       .progress-bar-container {
-        height: 6px;
-        background: #e8e8e8;
-        border-radius: 10px;
+        height: 4px;
+        background: #3a3a3c;
+        border-radius: 2px;
         overflow: hidden;
       }
       
       .progress-bar {
         height: 100%;
         width: 0%;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
+        background: #0a84ff;
+        border-radius: 2px;
         transition: width 0.1s linear;
       }
       
       .info-card {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        border: 1px solid #e8e8e8;
+        background: rgba(58, 58, 60, 0.6);
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
       
       .info-card-title {
-        font-size: 13px;
+        font-size: 11px;
         font-weight: 600;
-        color: #1a1a1a;
+        color: #98989d;
         margin-bottom: 12px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
       }
       
       .info-grid {
@@ -395,30 +395,28 @@ function showErrorOverlay() {
       
       .info-label {
         font-size: 11px;
-        color: #999;
+        color: #98989d;
         font-weight: 500;
         margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
       }
       
       .info-value {
         font-size: 13px;
-        color: #1a1a1a;
+        color: #f5f5f7;
         font-weight: 500;
         word-break: break-word;
       }
       
       .error-list {
-        background: #fff;
-        border-radius: 12px;
-        border: 1px solid #e8e8e8;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
         overflow: hidden;
       }
       
       .error-item {
-        padding: 20px;
-        border-bottom: 1px solid #f0f0f0;
+        padding: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       }
       
       .error-item:last-child {
@@ -429,128 +427,139 @@ function showErrorOverlay() {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
       }
       
       .error-code {
-        font-size: 13px;
-        font-weight: 700;
-        color: #f5576c;
-        background: rgba(245, 87, 108, 0.1);
+        font-size: 12px;
+        font-weight: 600;
+        color: #ff453a;
+        background: rgba(255, 69, 58, 0.15);
         padding: 4px 10px;
         border-radius: 6px;
       }
       
       .error-severity {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         padding: 4px 8px;
         border-radius: 4px;
         text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       
       .severity-critical {
-        background: #ff4444;
-        color: white;
+        background: rgba(255, 69, 58, 0.2);
+        color: #ff453a;
       }
       
       .severity-high {
-        background: #ff8800;
-        color: white;
+        background: rgba(255, 159, 10, 0.2);
+        color: #ff9f0a;
       }
       
       .severity-medium {
-        background: #ffbb00;
-        color: #1a1a1a;
+        background: rgba(255, 214, 10, 0.2);
+        color: #ffd60a;
       }
       
       .error-message {
-        font-size: 14px;
-        color: #1a1a1a;
-        margin-bottom: 12px;
-        line-height: 1.6;
-        font-weight: 500;
+        font-size: 13px;
+        color: #f5f5f7;
+        margin-bottom: 10px;
+        line-height: 1.5;
+        font-weight: 400;
       }
       
       .error-meta {
         display: flex;
-        gap: 20px;
-        font-size: 12px;
-        color: #999;
-        margin-bottom: 12px;
+        gap: 16px;
+        font-size: 11px;
+        color: #98989d;
+        margin-bottom: 10px;
       }
       
       .error-stack {
-        background: #2d2d2d;
-        color: #e8e8e8;
+        background: rgba(0, 0, 0, 0.4);
+        color: #d1d1d6;
         padding: 12px;
-        border-radius: 8px;
-        font-family: 'Menlo', 'Monaco', monospace;
-        font-size: 11px;
-        line-height: 1.6;
+        border-radius: 6px;
+        font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+        font-size: 10px;
+        line-height: 1.5;
         overflow-x: auto;
-        margin-top: 12px;
-        max-height: 150px;
+        margin-top: 10px;
+        max-height: 120px;
         overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.06);
       }
       
       .modal-footer {
-        padding: 20px 40px;
-        border-top: 1px solid rgba(0, 0, 0, 0.08);
-        background: #fafafa;
+        padding: 16px 40px 20px 40px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: #2d2d2d;
         display: flex;
-        gap: 12px;
-        justify-content: flex-end;
+        gap: 10px;
+        justify-content: center;
       }
       
       .btn {
-        padding: 12px 24px;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 600;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
         cursor: pointer;
         border: none;
-        transition: all 0.2s ease;
-        font-family: 'Inter', sans-serif;
+        transition: all 0.15s ease;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+        min-width: 100px;
       }
       
       .btn:disabled {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
       }
       
       .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        background: #0a84ff;
+        color: #ffffff;
+        box-shadow: 0 1px 4px rgba(10, 132, 255, 0.3);
       }
       
       .btn-primary:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        background: #0a7aef;
+      }
+      
+      .btn-primary:active:not(:disabled) {
+        background: #0070df;
       }
       
       .btn-secondary {
-        background: white;
-        color: #1a1a1a;
-        border: 1px solid #e8e8e8;
+        background: rgba(120, 120, 128, 0.2);
+        color: #f5f5f7;
+        border: 1px solid rgba(255, 255, 255, 0.1);
       }
       
       .btn-secondary:hover:not(:disabled) {
-        background: #f8f9fa;
+        background: rgba(120, 120, 128, 0.28);
+      }
+      
+      .btn-secondary:active:not(:disabled) {
+        background: rgba(120, 120, 128, 0.35);
       }
       
       .success-banner {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 16px;
-        border-radius: 10px;
-        margin-top: 20px;
+        background: rgba(10, 132, 255, 0.15);
+        color: #0a84ff;
+        padding: 14px;
+        border-radius: 8px;
+        margin-top: 16px;
         text-align: center;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 500;
         display: none;
         animation: slideIn 0.3s ease;
+        border: 1px solid rgba(10, 132, 255, 0.3);
       }
       
       @keyframes slideIn {
@@ -568,16 +577,39 @@ function showErrorOverlay() {
       }
       
       ::-webkit-scrollbar-track {
-        background: #f0f0f0;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
       }
       
       ::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
       }
       
       ::-webkit-scrollbar-thumb:hover {
-        background: #999;
+        background: rgba(255, 255, 255, 0.3);
+      }
+      
+      @media (max-width: 768px) {
+        #error-overlay {
+          padding: 20px;
+        }
+        
+        .modal-header {
+          padding: 30px 24px 24px 24px;
+        }
+        
+        .modal-body {
+          padding: 20px 24px 24px 24px;
+        }
+        
+        .modal-footer {
+          padding: 14px 24px 18px 24px;
+        }
+        
+        .info-grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
     
@@ -588,16 +620,16 @@ function showErrorOverlay() {
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
         </div>
-        <h1 class="modal-title">The app crashed</h1>
-        <h2 class="modal-title">L'application a planté</h2>
-        <p class="modal-subtitle">We're collecting diagnostic information to help resolve this issue. This will only take a moment.</p>
-        <p class="modal-subtitle">Nous collectons des informations de diagnostic pour nous aider à corriger ce bug. Pour envoyer le rapport, appuyez sur "Send Report to BecabDev".</p>
+        <h1 class="modal-title">L'application a rencontré un problème</h1>
+        <h1 class="modal-title">The application encountered a problem</h1>
+        <p class="modal-subtitle">Pour nous aider à corriger ce bug, envoyez le rapport à BecabDev.</p>
+        <p class="modal-subtitle">To help us fix this bug, send the report to BecabDev.</p>
       </div>
       
       <div class="modal-body">
         <div id="progress-section" class="progress-section">
           <div class="progress-label">
-            <span>Collecting diagnostic data...</span>
+            <span>Collecte des données de diagnostic... / Collecting diagnostic data...</span>
             <span id="progress-text">0%</span>
           </div>
           <div class="progress-bar-container">
@@ -607,34 +639,35 @@ function showErrorOverlay() {
         
         <div id="error-content" class="hidden">
           <div class="info-card">
-            <div class="info-card-title">Problem Details</div>
+            <div class="info-card-title">Détails du problème / Problem Details</div>
             <div id="error-summary"></div>
           </div>
           
           <div class="info-card">
-            <div class="info-card-title">System Information</div>
+            <div class="info-card-title">Informations système / System Information</div>
             <div class="info-grid" id="system-info"></div>
           </div>
           
           <div class="info-card">
-            <div class="info-card-title">Performance Metrics</div>
+            <div class="info-card-title">Métriques de performance / Performance Metrics</div>
             <div class="info-grid" id="performance-info"></div>
           </div>
           
           <div class="info-card">
-            <div class="info-card-title">Error Details</div>
+            <div class="info-card-title">Détails des erreurs / Error Details</div>
             <div class="error-list" id="error-list"></div>
           </div>
           
           <div class="success-banner" id="success-banner">
+            ✓ Ouverture de votre client email avec le rapport de diagnostic détaillé...<br>
             ✓ Opening your email client with the detailed diagnostic report...
           </div>
         </div>
       </div>
       
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeErrorOverlay()" id="close-btn" disabled>Ignore</button>
-        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Send Report to BecabDev</button>
+        <button class="btn btn-secondary" onclick="closeErrorOverlay()" id="close-btn" disabled>Ignorer / Ignore</button>
+        <button class="btn btn-primary" onclick="sendBugReport()" id="send-btn" disabled>Envoyer à BecabDev / Send to BecabDev</button>
       </div>
     </div>
   `;
@@ -840,7 +873,8 @@ function sendBugReport() {
                       ${CONFIG.siteName}
 ═══════════════════════════════════════════════════════════════
 
-Please describe what you were doing when this error occurred / merci de décrire ce que vous étiez en train de faire lorsque ça a planté :
+Please describe what you were doing when this error occurred :
+Merci de décrire ce que vous étiez en train de faire lorsque ça a planté :
 _______________________________________________________________
 
 
