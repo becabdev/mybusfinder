@@ -8786,15 +8786,12 @@ function afficherMenu() {
     
 }
 
-// Source - https://stackoverflow.com/a
-// Posted by Mark Szabo, modified by community. See post 'Timeline' for change history
-// Retrieved 2025-12-30, License - CC BY-SA 4.0
-setTimeout(() => {
+map.whenReady(() => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         const mapPane = map.getPanes().tilePane;
         mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
     }
-}, 300);
+});
 
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
