@@ -275,18 +275,16 @@ function showErrorOverlay() {
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: apparitionMac 0.5s cubic-bezier(.99,0,.53,1.28);
         border: 1px solid rgba(255, 255, 255, 0.1);
       }
       
-      @keyframes slideUp {
+      @keyframes apparitionMac {
         from { 
-          transform: translateY(30px);
-          opacity: 0;
+          transform: scale(0);
         }
         to { 
-          transform: translateY(0);
-          opacity: 1;
+          transform: scale(1);
         }
       }
       
@@ -504,8 +502,8 @@ function showErrorOverlay() {
       }
       
       .btn {
-        padding: 10px 20px;
-        border-radius: 6px;
+        padding: 3px 14px;
+        border-radius: 16px;
         font-size: 13px;
         font-weight: 500;
         cursor: pointer;
