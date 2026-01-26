@@ -598,13 +598,9 @@ function showErrorOverlay() {
         }
       }
 
-      .progress-wrapper {
-          margin-bottom: 40px;
-      }
-
       .progress-container {
           width: 100%;
-          height: 8px;
+          height: 6px;
           background: #e5e5e5;
           border-radius: 4px;
           overflow: hidden;
@@ -670,7 +666,6 @@ function showErrorOverlay() {
         <div id="progress-section" class="progress-section">
           <div class="progress-label">
             <span>Collecte des données de diagnostic... / Collecting diagnostic data...</span>
-            <span id="progress-text">0%</span>
           </div>
         <div class="progress-wrapper">
             <div class="progress-container">
@@ -870,21 +865,20 @@ function stopAnimation() {
     }
 }
 
-  
-  requestAnimationFrame(() => {
-    setIndeterminate();
+let intervalle = 0;
 
-    let intervalle = 0;
+setTimeout(() => {
+  setProgress(5);
 
-    setTimeout(() => {
-      setProgress(5);
-      const intervalId = setInterval(() => {
-        if (++intervalle >= 100) {
-          clearInterval(intervalId);
-        }
-      }, 50);
-    }, 4450);
-  });
+  const intervalId = setInterval(() => {
+    intervalle++;
+
+    if (intervalle === 100) {
+      clearInterval(intervalId); 
+    }
+  }, 100);
+
+}, 4450);
 }
 
 
