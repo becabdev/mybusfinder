@@ -6894,6 +6894,16 @@ async function fetchVehiclePositions() {
                     }
                 }
 
+                function determineLeModeSombre() {
+                    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        return ""
+                    } else {
+                        return "9c"
+                    }
+                }
+
+                const transparenceSombre = determineLeModeSombre();
+
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
                     const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
@@ -6905,7 +6915,7 @@ async function fetchVehiclePositions() {
 
                     // nouvelle version
                     const popupContent = `
-                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
+                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}${transparenceSombre}; color: ${textColor};">
                             
                             <button onclick="shareVehicleId('${vehicle.vehicle.id}')" title="${t("share")}" class="share-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
