@@ -622,8 +622,6 @@ function showErrorOverlay() {
         </div>
         <h1 class="modal-title">L'application a rencontré un problème</h1>
         <h1 class="modal-title">The application encountered a problem</h1>
-        <p class="modal-subtitle">Collecte d'informations de diagnostic en cours...</p>
-        <p class="modal-subtitle">Collecting diagnostic information...</p>
         <p class="modal-subtitle">Pour nous aider à corriger ce bug, envoyez le rapport à BecabDev.</p>
         <p class="modal-subtitle">To help us fix this bug, send the report to BecabDev.</p>
       </div>
