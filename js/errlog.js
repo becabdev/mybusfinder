@@ -670,7 +670,6 @@ function showErrorOverlay() {
         <div id="progress-section" class="progress-section">
           <div class="progress-label">
             <span>Collecte des données de diagnostic... / Collecting diagnostic data...</span>
-            <span id="progress-text">0%</span>
           </div>
         <div class="progress-wrapper">
             <div class="progress-container">
@@ -882,13 +881,15 @@ function stopAnimation() {
 
 // Display collected errors with detailed information
 function displayCollectedErrors() {
+  const errorContent = document.getElementById('error-content');
   const errorSummary = document.getElementById('error-summary');
   const systemInfo = document.getElementById('system-info');
   const performanceInfo = document.getElementById('performance-info');
   const errorList = document.getElementById('error-list');
   const sendBtn = document.getElementById('send-btn');
   const closeBtn = document.getElementById('close-btn');
-
+  
+  errorContent.classList.remove('hidden');
   
   // Error Summary
   const codes = errorQueue.map(err => err.errorInfo.code);
