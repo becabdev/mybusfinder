@@ -879,6 +879,7 @@ function stopAnimation() {
     setTimeout(() => {
       setProgress(5);
       const intervalId = setInterval(() => {
+        setProgress(intervalle);
         if (++intervalle >= 100) {
           clearInterval(intervalId);
         }
