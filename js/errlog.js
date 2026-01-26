@@ -229,159 +229,6 @@ function startErrorCollection() {
   }, CONFIG.collectionDelay);
 }
 
-const progressBar = document.getElementById('progressBar');
-let currentProgress = 0;
-let animationInterval = null;
-let isTransitioning = false;
-let pendingTransition = null;
-
-function setIndeterminate() {
-    if (isTransitioning) return;
-    stopAnimation();
-    pendingTransition = null;
-    progressBar.classList.add('indeterminate');
-    progressBar.classList.remove('completed');
-    progressBar.style.width = '';
-    progressBar.style.left = '';
-    currentProgress = -1;
-}
-
-function setProgress(percent) {
-    if (isTransitioning) return;
-    
-    if (progressBar.classList.contains('indeterminate')) {
-        pendingTransition = { type: 'progress', value: percent };
-        waitForIndeterminateEnd();
-        return;
-    }
-    
-    stopAnimation();
-    progressBar.classList.remove('indeterminate');
-    
-    if (percent >= 100) {
-        progressBar.classList.add('completed');
-    } else {
-        progressBar.classList.remove('completed');
-    }
-    
-    progressBar.style.width = percent + '%';
-    progressBar.style.left = '0';
-    currentProgress = percent;
-}
-
-function waitForIndeterminateEnd() {
-    if (!progressBar.classList.contains('indeterminate')) return;
-    
-    isTransitioning = true;
-    
-    // attendre que l'animation css se termine au cycle suivant
-    // l'animation dure 2s donc on attend max 2s pour être sur de choper le retour à gauche
-    const startTime = Date.now();
-    const animationDuration = 2000; // 2s
-    
-    const checkPosition = () => {
-        const computedStyle = window.getComputedStyle(progressBar);
-        const leftPx = computedStyle.left;
-        const widthPx = computedStyle.width;
-        const containerWidth = progressBar.parentElement.offsetWidth;
-        
-        const left = parseFloat(leftPx);
-        const width = parseFloat(widthPx);
-        
-        const leftPercent = (left / containerWidth) * 100;
-        const widthPercent = (width / containerWidth) * 100;
-        
-        if (leftPercent < 2 && widthPercent < 15) {
-            setTimeout(() => {
-                progressBar.classList.remove('indeterminate');
-                
-                if (pendingTransition) {
-                    if (pendingTransition.type === 'progress') {
-                        executeProgressTransition(pendingTransition.value);
-                    } else if (pendingTransition.type === 'animate') {
-                        executeAnimateTransition();
-                    }
-                    pendingTransition = null;
-                }
-                isTransitioning = false;
-            }, 100);
-        } else if (Date.now() - startTime < animationDuration * 1.5) {
-            requestAnimationFrame(checkPosition);
-        } else {
-            progressBar.classList.remove('indeterminate');
-            isTransitioning = false;
-            if (pendingTransition) {
-                if (pendingTransition.type === 'progress') {
-                    executeProgressTransition(pendingTransition.value);
-                } else if (pendingTransition.type === 'animate') {
-                    executeAnimateTransition();
-                }
-                pendingTransition = null;
-            }
-        }
-    };
-    
-    requestAnimationFrame(checkPosition);
-}
-
-function executeProgressTransition(targetPercent) {
-    progressBar.style.width = '5%';
-    progressBar.style.left = '0';
-    
-    setTimeout(() => {
-        if (targetPercent >= 100) {
-            progressBar.classList.add('completed');
-        } else {
-            progressBar.classList.remove('completed');
-        }
-        
-        progressBar.style.width = targetPercent + '%';
-        currentProgress = targetPercent;
-    }, 150);
-}
-
-function animateProgress() {
-    if (isTransitioning) return;
-    
-    stopAnimation();
-    
-    if (progressBar.classList.contains('indeterminate')) {
-        pendingTransition = { type: 'animate' };
-        waitForIndeterminateEnd();
-    } else {
-        setProgress(0);
-        startProgressAnimation();
-    }
-}
-
-function executeAnimateTransition() {
-    progressBar.classList.remove('completed');
-    progressBar.style.width = '0%';
-    progressBar.style.left = '0';
-    currentProgress = 0;
-    
-    setTimeout(() => {
-        startProgressAnimation();
-    }, 100);
-}
-
-function startProgressAnimation() {
-    animationInterval = setInterval(() => {
-        if (currentProgress < 100) {
-            currentProgress += 1;
-            setProgress(currentProgress);
-        } else {
-            stopAnimation();
-        }
-    }, 30);
-}
-
-function stopAnimation() {
-    if (animationInterval) {
-        clearInterval(animationInterval);
-        animationInterval = null;
-    }
-}
         
 
 
@@ -866,6 +713,161 @@ function showErrorOverlay() {
       </div>
     </div>
   `;
+
+  const progressBar = document.getElementById('progressBar');
+let currentProgress = 0;
+let animationInterval = null;
+let isTransitioning = false;
+let pendingTransition = null;
+
+function setIndeterminate() {
+    if (isTransitioning) return;
+    stopAnimation();
+    pendingTransition = null;
+    progressBar.classList.add('indeterminate');
+    progressBar.classList.remove('completed');
+    progressBar.style.width = '';
+    progressBar.style.left = '';
+    currentProgress = -1;
+}
+
+function setProgress(percent) {
+    if (isTransitioning) return;
+    
+    if (progressBar.classList.contains('indeterminate')) {
+        pendingTransition = { type: 'progress', value: percent };
+        waitForIndeterminateEnd();
+        return;
+    }
+    
+    stopAnimation();
+    progressBar.classList.remove('indeterminate');
+    
+    if (percent >= 100) {
+        progressBar.classList.add('completed');
+    } else {
+        progressBar.classList.remove('completed');
+    }
+    
+    progressBar.style.width = percent + '%';
+    progressBar.style.left = '0';
+    currentProgress = percent;
+}
+
+function waitForIndeterminateEnd() {
+    if (!progressBar.classList.contains('indeterminate')) return;
+    
+    isTransitioning = true;
+    
+    // attendre que l'animation css se termine au cycle suivant
+    // l'animation dure 2s donc on attend max 2s pour être sur de choper le retour à gauche
+    const startTime = Date.now();
+    const animationDuration = 2000; // 2s
+    
+    const checkPosition = () => {
+        const computedStyle = window.getComputedStyle(progressBar);
+        const leftPx = computedStyle.left;
+        const widthPx = computedStyle.width;
+        const containerWidth = progressBar.parentElement.offsetWidth;
+        
+        const left = parseFloat(leftPx);
+        const width = parseFloat(widthPx);
+        
+        const leftPercent = (left / containerWidth) * 100;
+        const widthPercent = (width / containerWidth) * 100;
+        
+        if (leftPercent < 2 && widthPercent < 15) {
+            setTimeout(() => {
+                progressBar.classList.remove('indeterminate');
+                
+                if (pendingTransition) {
+                    if (pendingTransition.type === 'progress') {
+                        executeProgressTransition(pendingTransition.value);
+                    } else if (pendingTransition.type === 'animate') {
+                        executeAnimateTransition();
+                    }
+                    pendingTransition = null;
+                }
+                isTransitioning = false;
+            }, 100);
+        } else if (Date.now() - startTime < animationDuration * 1.5) {
+            requestAnimationFrame(checkPosition);
+        } else {
+            progressBar.classList.remove('indeterminate');
+            isTransitioning = false;
+            if (pendingTransition) {
+                if (pendingTransition.type === 'progress') {
+                    executeProgressTransition(pendingTransition.value);
+                } else if (pendingTransition.type === 'animate') {
+                    executeAnimateTransition();
+                }
+                pendingTransition = null;
+            }
+        }
+    };
+    
+    requestAnimationFrame(checkPosition);
+}
+
+function executeProgressTransition(targetPercent) {
+    progressBar.style.width = '5%';
+    progressBar.style.left = '0';
+    
+    setTimeout(() => {
+        if (targetPercent >= 100) {
+            progressBar.classList.add('completed');
+        } else {
+            progressBar.classList.remove('completed');
+        }
+        
+        progressBar.style.width = targetPercent + '%';
+        currentProgress = targetPercent;
+    }, 150);
+}
+
+function animateProgress() {
+    if (isTransitioning) return;
+    
+    stopAnimation();
+    
+    if (progressBar.classList.contains('indeterminate')) {
+        pendingTransition = { type: 'animate' };
+        waitForIndeterminateEnd();
+    } else {
+        setProgress(0);
+        startProgressAnimation();
+    }
+}
+
+function executeAnimateTransition() {
+    progressBar.classList.remove('completed');
+    progressBar.style.width = '0%';
+    progressBar.style.left = '0';
+    currentProgress = 0;
+    
+    setTimeout(() => {
+        startProgressAnimation();
+    }, 100);
+}
+
+function startProgressAnimation() {
+    animationInterval = setInterval(() => {
+        if (currentProgress < 100) {
+            currentProgress += 1;
+            setProgress(currentProgress);
+        } else {
+            stopAnimation();
+        }
+    }, 30);
+}
+
+function stopAnimation() {
+    if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+    }
+}
+
   
   document.body.appendChild(overlay);
   
