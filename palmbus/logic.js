@@ -6901,9 +6901,10 @@ async function fetchVehiclePositions() {
                         return ""
                     }
                 }
+
                 const transparenceSombre = determineLeModeSombre();
 
-                function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id, transparenceSombre) {
+                function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
                     const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
                     
