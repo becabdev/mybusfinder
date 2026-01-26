@@ -875,9 +875,9 @@ function stopAnimation() {
     setIndeterminate();
     setTimeout(() => {
       setProgress(100);
-      }, 50);
     }, 4450);
-  }
+  }, 100);
+}
 
 
 // Display collected errors with detailed information
