@@ -599,7 +599,7 @@ function showErrorOverlay() {
       }
 
       .progress-wrapper {
-          margin-bottom: 1px;
+          margin-bottom: 17px;
       }
 
       .progress-container {
@@ -650,10 +650,239 @@ function showErrorOverlay() {
           background: linear-gradient(90deg, #34c759 0%, #30b350 100%);
       }
 
+      .status-bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 28px;
+        background: rgba(30, 30, 30, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        font-size: 13px;
+        color: #f5f5f7;
+        z-index: 1000000;
+        font-weight: 500;
+      }
+
+      .status-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .status-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .status-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        transition: background 0.15s ease;
+        cursor: default;
+        user-select: none;
+      }
+
+      .status-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .status-item.clickable {
+        cursor: pointer;
+      }
+
+      .status-item.clickable:active {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .status-icon {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+      }
+
+      .status-label {
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: -0.1px;
+      }
+
+      .status-value {
+        font-size: 11px;
+        color: #98989d;
+        font-weight: 400;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #34c759;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      .status-dot.warning {
+        background: #ff9f0a;
+      }
+
+      .status-dot.error {
+        background: #ff453a;
+      }
+
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .debug-menu {
+        position: absolute;
+        top: 32px;
+        right: 12px;
+        background: rgba(45, 45, 45, 0.98);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        padding: 6px;
+        min-width: 200px;
+        display: none;
+        animation: menuAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      @keyframes menuAppear {
+        from {
+          opacity: 0;
+          transform: translateY(-8px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .debug-menu.show {
+        display: block;
+      }
+
+      .debug-menu-item {
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.1s ease;
+        font-size: 12px;
+        color: #f5f5f7;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .debug-menu-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .debug-menu-item:active {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .debug-menu-separator {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.1);
+        margin: 4px 0;
+      }
+
+      #error-overlay {
+        padding-top: 68px;
+      }
 
     </style>
     
     <div id="error-modal">
+      <div class="status-bar">
+        <div class="status-left">
+          <div class="status-item">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-label">Error Collector</span>
+          </div>
+          <div class="status-item">
+            <svg class="status-icon" viewBox="0 0 24 24">
+              <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+            </svg>
+            <span class="status-value" id="uptime">0:00</span>
+          </div>
+          <div class="status-item">
+            <svg class="status-icon" viewBox="0 0 24 24">
+              <path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/>
+            </svg>
+            <span class="status-value" id="errorCount">0 errors</span>
+          </div>
+        </div>
+        
+        <div class="status-right">
+          <div class="status-item">
+            <svg class="status-icon" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span class="status-value" id="memoryUsage">-- MB</span>
+          </div>
+          <div class="status-item clickable" id="debugMenuBtn">
+            <svg class="status-icon" viewBox="0 0 24 24">
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+            <span class="status-label">Debug</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="debug-menu" id="debugMenu">
+        <div class="debug-menu-item" onclick="exportErrorLog()">
+          <svg class="status-icon" viewBox="0 0 24 24">
+            <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/>
+          </svg>
+          Export Error Log (JSON)
+        </div>
+        <div class="debug-menu-item" onclick="copyToClipboard()">
+          <svg class="status-icon" viewBox="0 0 24 24">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          Copy Report to Clipboard
+        </div>
+        <div class="debug-menu-separator"></div>
+        <div class="debug-menu-item" onclick="clearConsoleHistory()">
+          <svg class="status-icon" viewBox="0 0 24 24">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+          </svg>
+          Clear Console History
+        </div>
+        <div class="debug-menu-item" onclick="toggleVerboseMode()">
+          <svg class="status-icon" viewBox="0 0 24 24">
+            <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/>
+          </svg>
+          <span id="verboseToggle">Enable Verbose Mode</span>
+        </div>
+        <div class="debug-menu-separator"></div>
+        <div class="debug-menu-item" onclick="forceReload()">
+          <svg class="status-icon" viewBox="0 0 24 24">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+          </svg>
+          Force Reload Page
+        </div>
+      </div>
       <div class="modal-header">
         <div class="modal-icon">
           <svg viewBox="0 0 24 24">
@@ -876,6 +1105,105 @@ function stopAnimation() {
       setProgress(100);
     }, 4450);
   }, 100);
+
+  let startTime = Date.now();
+let verboseMode = false;
+
+function updateStatusBar() {
+  // Update uptime
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const minutes = Math.floor(elapsed / 60);
+  const seconds = elapsed % 60;
+  document.getElementById('uptime').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  
+  // Update error count
+  const errorCount = errorQueue.length;
+  document.getElementById('errorCount').textContent = `${errorCount} error${errorCount !== 1 ? 's' : ''}`;
+  
+  // Update status dot
+  const statusDot = document.getElementById('statusDot');
+  if (errorCount === 0) {
+    statusDot.className = 'status-dot';
+  } else if (errorCount < 3) {
+    statusDot.className = 'status-dot warning';
+  } else {
+    statusDot.className = 'status-dot error';
+  }
+  
+  // Update memory
+  if (performance.memory) {
+    const memMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+    document.getElementById('memoryUsage').textContent = `${memMB} MB`;
+  }
+}
+
+// Update status bar every second
+setInterval(updateStatusBar, 1000);
+updateStatusBar();
+
+// Debug menu toggle
+document.getElementById('debugMenuBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById('debugMenu');
+  menu.classList.toggle('show');
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('debugMenu');
+  const btn = document.getElementById('debugMenuBtn');
+  if (!menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('show');
+  }
+});
+
+// Debug functions
+window.exportErrorLog = function() {
+  const data = {
+    errors: errorQueue,
+    consoleLogs: consoleLogs,
+    systemInfo: getSystemInfo(),
+    performanceMetrics: getPerformanceMetrics(),
+    timestamp: new Date().toISOString()
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `error-log-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  
+  document.getElementById('debugMenu').classList.remove('show');
+};
+
+window.copyToClipboard = function() {
+  const reportText = document.querySelector('.modal-body').innerText;
+  navigator.clipboard.writeText(reportText).then(() => {
+    alert('Report copied to clipboard!');
+  });
+  document.getElementById('debugMenu').classList.remove('show');
+};
+
+window.clearConsoleHistory = function() {
+  consoleLogs.length = 0;
+  alert('Console history cleared');
+  document.getElementById('debugMenu').classList.remove('show');
+};
+
+window.toggleVerboseMode = function() {
+  verboseMode = !verboseMode;
+  document.getElementById('verboseToggle').textContent = 
+    verboseMode ? 'Disable Verbose Mode' : 'Enable Verbose Mode';
+  console.log('Verbose mode:', verboseMode ? 'ON' : 'OFF');
+  document.getElementById('debugMenu').classList.remove('show');
+};
+
+window.forceReload = function() {
+  location.reload(true);
+};
+
 }
 
 
