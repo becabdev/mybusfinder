@@ -3,7 +3,7 @@ const CONFIG = {
   recipientEmail: 'bechir.abidi06@gmail.com',
   siteName: 'My Bus Finder 3X',
   maxLogs: 100,
-  collectionDelay: 3000 
+  collectionDelay: 9450 
 };
 
 // Error codes mapping with detailed descriptions
@@ -229,6 +229,163 @@ function startErrorCollection() {
   }, CONFIG.collectionDelay);
 }
 
+const progressBar = document.getElementById('progressBar');
+let currentProgress = 0;
+let animationInterval = null;
+let isTransitioning = false;
+let pendingTransition = null;
+
+function setIndeterminate() {
+    if (isTransitioning) return;
+    stopAnimation();
+    pendingTransition = null;
+    progressBar.classList.add('indeterminate');
+    progressBar.classList.remove('completed');
+    progressBar.style.width = '';
+    progressBar.style.left = '';
+    currentProgress = -1;
+}
+
+function setProgress(percent) {
+    if (isTransitioning) return;
+    
+    if (progressBar.classList.contains('indeterminate')) {
+        pendingTransition = { type: 'progress', value: percent };
+        waitForIndeterminateEnd();
+        return;
+    }
+    
+    stopAnimation();
+    progressBar.classList.remove('indeterminate');
+    
+    if (percent >= 100) {
+        progressBar.classList.add('completed');
+    } else {
+        progressBar.classList.remove('completed');
+    }
+    
+    progressBar.style.width = percent + '%';
+    progressBar.style.left = '0';
+    currentProgress = percent;
+}
+
+function waitForIndeterminateEnd() {
+    if (!progressBar.classList.contains('indeterminate')) return;
+    
+    isTransitioning = true;
+    
+    // attendre que l'animation css se termine au cycle suivant
+    // l'animation dure 2s donc on attend max 2s pour être sur de choper le retour à gauche
+    const startTime = Date.now();
+    const animationDuration = 2000; // 2s
+    
+    const checkPosition = () => {
+        const computedStyle = window.getComputedStyle(progressBar);
+        const leftPx = computedStyle.left;
+        const widthPx = computedStyle.width;
+        const containerWidth = progressBar.parentElement.offsetWidth;
+        
+        const left = parseFloat(leftPx);
+        const width = parseFloat(widthPx);
+        
+        const leftPercent = (left / containerWidth) * 100;
+        const widthPercent = (width / containerWidth) * 100;
+        
+        if (leftPercent < 2 && widthPercent < 15) {
+            setTimeout(() => {
+                progressBar.classList.remove('indeterminate');
+                
+                if (pendingTransition) {
+                    if (pendingTransition.type === 'progress') {
+                        executeProgressTransition(pendingTransition.value);
+                    } else if (pendingTransition.type === 'animate') {
+                        executeAnimateTransition();
+                    }
+                    pendingTransition = null;
+                }
+                isTransitioning = false;
+            }, 100);
+        } else if (Date.now() - startTime < animationDuration * 1.5) {
+            requestAnimationFrame(checkPosition);
+        } else {
+            progressBar.classList.remove('indeterminate');
+            isTransitioning = false;
+            if (pendingTransition) {
+                if (pendingTransition.type === 'progress') {
+                    executeProgressTransition(pendingTransition.value);
+                } else if (pendingTransition.type === 'animate') {
+                    executeAnimateTransition();
+                }
+                pendingTransition = null;
+            }
+        }
+    };
+    
+    requestAnimationFrame(checkPosition);
+}
+
+function executeProgressTransition(targetPercent) {
+    progressBar.style.width = '5%';
+    progressBar.style.left = '0';
+    
+    setTimeout(() => {
+        if (targetPercent >= 100) {
+            progressBar.classList.add('completed');
+        } else {
+            progressBar.classList.remove('completed');
+        }
+        
+        progressBar.style.width = targetPercent + '%';
+        currentProgress = targetPercent;
+    }, 150);
+}
+
+function animateProgress() {
+    if (isTransitioning) return;
+    
+    stopAnimation();
+    
+    if (progressBar.classList.contains('indeterminate')) {
+        pendingTransition = { type: 'animate' };
+        waitForIndeterminateEnd();
+    } else {
+        setProgress(0);
+        startProgressAnimation();
+    }
+}
+
+function executeAnimateTransition() {
+    progressBar.classList.remove('completed');
+    progressBar.style.width = '0%';
+    progressBar.style.left = '0';
+    progressText.textContent = '0%';
+    currentProgress = 0;
+    
+    setTimeout(() => {
+        startProgressAnimation();
+    }, 100);
+}
+
+function startProgressAnimation() {
+    animationInterval = setInterval(() => {
+        if (currentProgress < 100) {
+            currentProgress += 1;
+            setProgress(currentProgress);
+        } else {
+            stopAnimation();
+        }
+    }, 30);
+}
+
+function stopAnimation() {
+    if (animationInterval) {
+        clearInterval(animationInterval);
+        animationInterval = null;
+    }
+}
+        
+
+
 function showErrorOverlay() {
   if (document.getElementById('error-overlay')) return;
   
@@ -346,21 +503,6 @@ function showErrorOverlay() {
         font-size: 12px;
         color: #98989d;
         font-weight: 500;
-      }
-      
-      .progress-bar-container {
-        height: 4px;
-        background: #3a3a3c;
-        border-radius: 2px;
-        overflow: hidden;
-      }
-      
-      .progress-bar {
-        height: 100%;
-        width: 0%;
-        background: #0a84ff;
-        border-radius: 2px;
-        transition: width 0.1s linear;
       }
       
       .info-card {
@@ -498,7 +640,7 @@ function showErrorOverlay() {
         background: #2d2d2d;
         display: flex;
         gap: 10px;
-        justify-content: center;
+        justify-content: end;
       }
       
       .btn {
@@ -609,6 +751,60 @@ function showErrorOverlay() {
           grid-template-columns: 1fr;
         }
       }
+
+      .progress-wrapper {
+          margin-bottom: 40px;
+      }
+
+      .progress-container {
+          width: 100%;
+          height: 8px;
+          background: #e5e5e5;
+          border-radius: 4px;
+          overflow: hidden;
+          position: relative;
+      }
+
+      .progress-bar {
+          height: 100%;
+          background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+          border-radius: 4px;
+          transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+      }
+
+      .progress-bar.indeterminate {
+          position: absolute;
+          width: 30%;
+          background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+          animation: indeterminate-move 2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+                      indeterminate-width 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      @keyframes indeterminate-move {
+          0%, 100% {
+              left: 0;
+          }
+          50% {
+              left: 95%;
+          }
+      }
+
+      @keyframes indeterminate-width {
+          0%, 50%, 100% {
+              width: 5%;
+          }
+          25%, 75% {
+              width: 35%;
+          }
+      }
+
+      .progress-bar.completed {
+          background: linear-gradient(90deg, #34c759 0%, #30b350 100%);
+      }
+
+
     </style>
     
     <div id="error-modal">
@@ -630,8 +826,11 @@ function showErrorOverlay() {
             <span>Collecte des données de diagnostic... / Collecting diagnostic data...</span>
             <span id="progress-text">0%</span>
           </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar" id="progress-bar"></div>
+        <div class="progress-wrapper">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+              </div>
+              <div class="progress-text" id="progressText"></div>
           </div>
         </div>
         
@@ -671,27 +870,20 @@ function showErrorOverlay() {
   `;
   
   document.body.appendChild(overlay);
-  startProgressBar();
+  setIndeterminate();
+
+  let intervalle = 0;
+
+  setTimeout(() => {
+    setProgress(5);
+    const intervalId = setInterval(() => {
+      if (++intervalle >= 100) {
+        clearInterval(intervalId);
+      }
+    }, 50);
+  }, 4450);
 }
 
-// Animate progress bar
-function startProgressBar() {
-  const progressBar = document.getElementById('progress-bar');
-  const progressText = document.getElementById('progress-text');
-  let progress = 0;
-  const interval = 30;
-  const increment = (100 / (CONFIG.collectionDelay / interval));
-  
-  const timer = setInterval(() => {
-    progress += increment;
-    if (progress >= 100) {
-      progress = 100;
-      clearInterval(timer);
-    }
-    progressBar.style.width = progress + '%';
-    progressText.textContent = Math.floor(progress) + '%';
-  }, interval);
-}
 
 // Display collected errors with detailed information
 function displayCollectedErrors() {
