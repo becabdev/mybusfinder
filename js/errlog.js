@@ -257,7 +257,7 @@ function showErrorOverlay() {
         justify-content: center;
         padding: 40px;
         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
-        animation: fadeIn 0.4s ease;
+        animation: fadeIn 0.01s ease;
       }
       
       @keyframes fadeIn {
