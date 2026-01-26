@@ -714,7 +714,9 @@ function showErrorOverlay() {
     </div>
   `;
 
-  const progressBar = document.getElementById('progressBar');
+document.body.appendChild(overlay);
+
+const progressBar = document.getElementById('progressBar');
 let currentProgress = 0;
 let animationInterval = null;
 let isTransitioning = false;
@@ -868,8 +870,6 @@ function stopAnimation() {
     }
 }
 
-  
-  document.body.appendChild(overlay);
   
   requestAnimationFrame(() => {
     setIndeterminate();
