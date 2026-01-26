@@ -6444,7 +6444,7 @@ function closeMenu() {
     }, 10);
 }
 
-async function fetchVehilePositions() {
+async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
     }
