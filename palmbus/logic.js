@@ -6896,9 +6896,9 @@ async function fetchVehiclePositions() {
 
                 function determineLeModeSombre() {
                     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                        return "9c"
-                    } else {
                         return ""
+                    } else {
+                        return "9c"
                     }
                 }
 
