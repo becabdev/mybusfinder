@@ -358,7 +358,6 @@ function executeAnimateTransition() {
     progressBar.classList.remove('completed');
     progressBar.style.width = '0%';
     progressBar.style.left = '0';
-    progressText.textContent = '0%';
     currentProgress = 0;
     
     setTimeout(() => {
@@ -830,7 +829,6 @@ function showErrorOverlay() {
             <div class="progress-container">
                 <div class="progress-bar" id="progressBar"></div>
               </div>
-              <div class="progress-text" id="progressText"></div>
           </div>
         </div>
         
@@ -870,18 +868,21 @@ function showErrorOverlay() {
   `;
   
   document.body.appendChild(overlay);
-  setIndeterminate();
+  
+  requestAnimationFrame(() => {
+    setIndeterminate();
 
-  let intervalle = 0;
+    let intervalle = 0;
 
-  setTimeout(() => {
-    setProgress(5);
-    const intervalId = setInterval(() => {
-      if (++intervalle >= 100) {
-        clearInterval(intervalId);
-      }
-    }, 50);
-  }, 4450);
+    setTimeout(() => {
+      setProgress(5);
+      const intervalId = setInterval(() => {
+        if (++intervalle >= 100) {
+          clearInterval(intervalId);
+        }
+      }, 50);
+    }, 4450);
+  });
 }
 
 
