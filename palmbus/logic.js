@@ -8786,13 +8786,10 @@ function afficherMenu() {
     
 }
 
-const tilePane = map.getPane('tilePane');
 
-if (tilePane) {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        const mapPane = map.getPanes().tilePane;
-        mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
-    }
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    const mapPane = await map.getPanes().tilePane;
+    mapPane.style.filter = 'invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%)';
 }
 
 
