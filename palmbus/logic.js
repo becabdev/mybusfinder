@@ -6489,14 +6489,14 @@ async function fetchVehiclePositions() {
                 const longitude = vehicle.position.longitude;
                 const occypancyStatus = vehicle.occupancyStatus;
                 const occupancyStatusMap = {
-                    EMPTY: t("empty"),
-                    MANY_SEATS_AVAILABLE: t("manyseatsavailable"),
-                    FEW_SEATS_AVAILABLE: t("fewseatsavailable"),
-                    STANDING_ROOM_ONLY: t("standingroomonly"),
-                    CRUSHED_STANDING_ROOM_ONLY: t("crushedstandingroomonly"),
-                    FULL: t("full"),
-                    NOT_ACCEPTING_PASSENGERS: t("notavailable"),
-                    EN_SERVICE: t("enservice")
+                    "EMPTY": t("empty"),
+                    "MANY_SEATS_AVAILABLE": t("manyseatsavailable"),
+                    "FEW_SEATS_AVAILABLE": t("fewseatsavailable"),
+                    "STANDING_ROOM_ONLY": t("standingroomonly"),
+                    "CRUSHED_STANDING_ROOM_ONLY": t("crushedstandingroomonly"),
+                    "FULL": t("full"),
+                    "NOT_ACCEPTING_PASSENGERS": t("notavailable"),
+                    "EN_SERVICE": t("enservice")
                 };
                 const occupancyStatusText = occupancyStatusMap[occypancyStatus] || "";
                 
