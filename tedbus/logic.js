@@ -6481,12 +6481,25 @@ async function fetchVehiclePositions() {
                     2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || t("enservice");
-                
+
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
+                const occupancyStatus = vehicle.occupancyStatus;
+                const occupancyStatusMap = {
+                    0: t("empty"),                      // EMPTY
+                    1: t("manyseatsavailable"),         // MANY_SEATS_AVAILABLE
+                    2: t("fewseatsavailable"),          // FEW_SEATS_AVAILABLE
+                    3: t("standingroomonly"),           // STANDING_ROOM_ONLY
+                    4: t("crushedstandingroomonly"),    // CRUSHED_STANDING_ROOM_ONLY
+                    5: t("full"),                       // FULL
+                    6: t("notavailable"),               // NOT_ACCEPTING_PASSENGERS
+                    7: t("endstop")                     // NO_DATA_AVAILABLE
+                };
+                const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
+                
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
@@ -6526,16 +6539,16 @@ async function fetchVehiclePositions() {
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-style: italic; font-size: 0.8rem; margin-top:-4px;">${t("unknownline")}</small>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${t("unknownline")}</small>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
-                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                                : `<small style="display:block; font-size: 0.7rem; margin-bottom:-2px;">${occupancyStatusText} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.7rem; margin-bottom:-4px;">${occupancyStatusText} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${status}</small> ${t("nextstops")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-4px;">${occupancyStatusText} | ${status}</small> ${t("nextstops")}`;
                         }
                     }
                 }

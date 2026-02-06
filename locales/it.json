@@ -297,6 +297,14 @@
   "other_lines": "altre linee",
   "search_placeholder": "Cerca una linea, un veicolo, una destinazione...",
   "vehicle": "veicolo",
+  "empty": "Autobus vuoto",
+  "manyseatsavailable": "Molti posti disponibili",
+  "fewseatsavailable": "Pochi posti disponibili",
+  "standingroomonly": "Solo posti in piedi",
+  "crushedstandingroomonly": "Solo posti in piedi molto affollati",
+  "full": "Autobus completo",
+  "notavailable": "Questo autobus non accetta passeggeri",
+
   "langversion": "1.0.7.4",
   "no_results": "Questo autobus non prende passeggeri! Sembra che non siano stati trovati risultati :("
 
