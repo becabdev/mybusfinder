@@ -6489,21 +6489,16 @@ async function fetchVehiclePositions() {
                 const longitude = vehicle.position.longitude;
                 const occupancyStatus = vehicle.occupancyStatus;
                 const occupancyStatusMap = {
-                    "EMPTY": t("empty"),
-                    "MANY_SEATS_AVAILABLE": t("manyseatsavailable"),
-                    "FEW_SEATS_AVAILABLE": t("fewseatsavailable"),
-                    "STANDING_ROOM_ONLY": t("standingroomonly"),
-                    "CRUSHED_STANDING_ROOM_ONLY": t("crushedstandingroomonly"),
-                    "FULL": t("full"),
-                    "NOT_ACCEPTING_PASSENGERS": t("notavailable"),
-                    "EN_SERVICE": t("enservice")
+                    0: t("empty"),                      // EMPTY
+                    1: t("manyseatsavailable"),         // MANY_SEATS_AVAILABLE
+                    2: t("fewseatsavailable"),          // FEW_SEATS_AVAILABLE
+                    3: t("standingroomonly"),           // STANDING_ROOM_ONLY
+                    4: t("crushedstandingroomonly"),    // CRUSHED_STANDING_ROOM_ONLY
+                    5: t("full"),                       // FULL
+                    6: t("notavailable"),               // NOT_ACCEPTING_PASSENGERS
+                    7: t("enservice")                   // NO_DATA_AVAILABLE
                 };
                 const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
-
-                console.log('Vehicle ID:', id);
-                console.log('occupancyStatus brut:', occupancyStatus);
-                console.log('occupancyStatusText:', occupancyStatusText);
-                console.log('stopsHeaderText final:', stopsHeaderText);
                 
 
                 if (isNaN(latitude) || isNaN(longitude)) {
