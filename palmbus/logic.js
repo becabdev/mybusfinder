@@ -6487,7 +6487,7 @@ async function fetchVehiclePositions() {
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
-                const occypancyStatus = vehicle.occupancyStatus;
+                const occupancyStatus = vehicle.occupancyStatus;
                 const occupancyStatusMap = {
                     "EMPTY": t("empty"),
                     "MANY_SEATS_AVAILABLE": t("manyseatsavailable"),
@@ -6498,7 +6498,7 @@ async function fetchVehiclePositions() {
                     "NOT_ACCEPTING_PASSENGERS": t("notavailable"),
                     "EN_SERVICE": t("enservice")
                 };
-                const occupancyStatusText = occupancyStatusMap[occypancyStatus] || "";
+                const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
                 
 
                 if (isNaN(latitude) || isNaN(longitude)) {
