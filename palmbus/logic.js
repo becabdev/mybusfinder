@@ -6498,7 +6498,9 @@ async function fetchVehiclePositions() {
                     "NOT_ACCEPTING_PASSENGERS": t("notavailable"),
                     "EN_SERVICE": t("enservice")
                 };
-                const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
+                const occupancyStatusText = occupancyStatus && occupancyStatusMap[occupancyStatus] 
+                ? occupancyStatusMap[occupancyStatus] 
+                : null;
                 
 
                 if (isNaN(latitude) || isNaN(longitude)) {
