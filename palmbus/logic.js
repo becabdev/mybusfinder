@@ -6487,7 +6487,7 @@ async function fetchVehiclePositions() {
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
-                const occypancyStatus = vehicle.occupancyStatus !== undefined ? vehicle.occupancyStatus : "";
+                const occypancyStatus = vehicle.occupancyStatus;
                 const occupancyStatusMap = {
                     EMPTY: t("empty"),
                     MANY_SEATS_AVAILABLE: t("manyseatsavailable"),
