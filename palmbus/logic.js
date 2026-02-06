@@ -6481,12 +6481,26 @@ async function fetchVehiclePositions() {
                     2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || t("enservice");
-                
+
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
+                const occypancyStatus = vehicle.occupancyStatus !== undefined ? vehicle.occupancyStatus : "";
+                const occupancyStatusMap = {
+                    EMPTY: t("empty"),
+                    MANY_SEATS_AVAILABLE: t("manyseatsavailable"),
+                    FEW_SEATS_AVAILABLE: t("fewseatsavailable"),
+                    STANDING_ROOM_ONLY: t("standingroomonly"),
+                    CRUSHED_STANDING_ROOM_ONLY: t("crushedstandingroomonly"),
+                    FULL: t("full"),
+                    NOT_ACCEPTING_PASSENGERS: t("notavailable"),
+                    EN_SERVICE: t("enservice")
+                };
+                const occupancyStatusText = occupancyStatusMap[occypancyStatus] || "";
+                busChargerOuPas = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${occupancyStatusText}</small>`;
+                
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
@@ -6531,11 +6545,11 @@ async function fetchVehiclePositions() {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
-                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${busChargerOuPas} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${busChargerOuPas} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${status}</small> ${t("nextstops")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${busChargerOuPas} | ${status}</small> ${t("nextstops")}`;
                         }
                     }
                 }

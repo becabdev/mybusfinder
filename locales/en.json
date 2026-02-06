@@ -297,6 +297,13 @@
     "vehicle": "vehicle",
     "lines": "lines in service",
     "vehicles": "vehicles",
+      "empty": "Empty bus",
+    "manyseatsavailable": "Many seats available",
+    "fewseatsavailable": "Few seats available",
+    "standingroomonly": "Standing room only",
+    "crushedstandingroomonly": "Standing room only, very crowded",
+    "full": "Bus full",
+    "notavailable": "This bus is not taking passengers",
     "langversion": "1.0.7.4",
     "no_results": "This bus doesn't take passengers! It seems no results were found :("
 

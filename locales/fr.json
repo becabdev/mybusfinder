@@ -298,6 +298,13 @@
     "search_placeholder": "Rechercher une ligne, un véhicule, une destination...",
     "vehicle": "véhicule",
     "no_results": "Ce bus ne prend pas de voyageurs ! On dirait qu'aucun résultat n'a été trouvé :(",
+    "empty": "Bus vide",
+    "manyseatsavailable": "Beaucoup de places disponibles",
+    "fewseatsavailable": "Peu de places disponibles",
+    "standingroomonly": "Places debout uniquement",
+    "crushedstandingroomonly": "Places debout très serrées",
+    "full": "Bus complet", 
+    "notavailable": "Ce bus ne prend pas de voyageurs",
 
     "langversion": "1.0.7.4"
   }
