@@ -6499,7 +6499,6 @@ async function fetchVehiclePositions() {
                     EN_SERVICE: t("enservice")
                 };
                 const occupancyStatusText = occupancyStatusMap[occypancyStatus] || "";
-                busChargerOuPas = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${occupancyStatusText}</small>`;
                 
 
                 if (isNaN(latitude) || isNaN(longitude)) {
@@ -6545,11 +6544,11 @@ async function fetchVehiclePositions() {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? t("imminentdeparture")
-                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${busChargerOuPas} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                                : `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-2px;">${occupancyStatusText} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${busChargerOuPas} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                            stopsHeaderText = `<small style="display:block; font-style: italic; font-size: 0.7rem; margin-bottom:-4px;">${occupancyStatusText} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${busChargerOuPas} | ${status}</small> ${t("nextstops")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; font-style: italic; margin-bottom:-4px;">${occupancyStatusText} | ${status}</small> ${t("nextstops")}`;
                         }
                     }
                 }
