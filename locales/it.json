@@ -304,6 +304,15 @@
   "crushedstandingroomonly": "Solo posti in piedi molto affollati",
   "full": "Autobus completo",
   "notavailable": "Questo autobus non accetta passeggeri",
+  
+  "estdepart": "Partenza dalla fermata tra",
+  "added": "Veicolo aggiuntivo",
+  "unscheduled": "Corsa non programmata",
+  "canceled": "❌ Veicolo rimosso",
+  "replacement": "Sostituzione",
+  "duplicated": "Rinforzo della linea",
+  "newvec": "Veicolo aggiuntivo",
+  "deleted": "❌ Veicolo rimosso",
 
   "langversion": "1.0.7.4",
   "no_results": "Questo autobus non prende passeggeri! Sembra che non siano stati trovati risultati :("
