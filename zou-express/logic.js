@@ -6512,7 +6512,7 @@ async function fetchVehiclePositions() {
                     6: t("newvec"),                     // NEW
                     7: t("deleted")                     // DETELED
                 };
-                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || "";
+                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("nextstops");
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
