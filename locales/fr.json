@@ -306,5 +306,14 @@
     "full": "Bus complet", 
     "notavailable": "Ce bus ne prend pas de voyageurs",
 
+    "estdepart": "Départ de l'arrêt dans",
+    "added": "Véhicule supplémentaire",
+    "unscheduled": "Trajet non planifié",
+    "canceled": "❌ Véhicule supprimé",
+    "replacement": "Remplacement",
+    "duplicated": "Renfort de la ligne",
+    "newvec": "Véhicule supplémentaire",
+    "deleted": "❌ Véhicule supprimé",
+
     "langversion": "1.0.7.4"
   }

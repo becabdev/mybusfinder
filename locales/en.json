@@ -304,6 +304,14 @@
     "crushedstandingroomonly": "Standing room only, very crowded",
     "full": "Bus full",
     "notavailable": "This bus is not taking passengers",
+      "estdepart": "Departure from the stop in",
+  "added": "Additional vehicle",
+  "unscheduled": "Unscheduled trip",
+  "canceled": "❌ Vehicle removed",
+  "replacement": "Replacement",
+  "duplicated": "Line reinforcement",
+  "newvec": "Additional vehicle",
+  "deleted": "❌ Vehicle removed",
     "langversion": "1.0.7.4",
     "no_results": "This bus doesn't take passengers! It seems no results were found :("
 
