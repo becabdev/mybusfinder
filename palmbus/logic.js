@@ -6477,7 +6477,7 @@ async function fetchVehiclePositions() {
 
                 const statusMap = {
                     0: t("notinservicemaj"), // ❌ Hors service commercial
-                    1: t("dooropen"), // En service - Portes ouvertes
+                    1: t("dooropen"), // Portes ouvertes
                     2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || t("enservice");
@@ -6487,7 +6487,8 @@ async function fetchVehiclePositions() {
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
-                const occupancyStatus = vehicle.occupancyStatus;
+                const occupancyStatus = vehicle?.occupancyStatus ?? null;
+
                 const occupancyStatusMap = {
                     0: t("empty"),                      // EMPTY
                     1: t("manyseatsavailable"),         // MANY_SEATS_AVAILABLE
@@ -6498,8 +6499,21 @@ async function fetchVehiclePositions() {
                     6: t("notavailable"),               // NOT_ACCEPTING_PASSENGERS
                     7: t("endstop")                     // NO_DATA_AVAILABLE
                 };
-                const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
+                const occupancyStatusText = occupancyStatusMap[occupancyStatus] ?? "";
                 
+
+                const scheduleRelationship = vehicle?.trip?.scheduleRelationship ?? 0;
+                const scheduleRelationshipMap = {
+                    0: t("nextstops"),                  // SCHEDULED
+                    1: t("added"),                      // ADDED
+                    2: t("unscheduled"),                // UNSCHEDULED
+                    3: t("canceled"),                   // CANCELED
+                    4: t("replacement"),                // REPLACEMENT
+                    5: t("duplicated"),                 // DUPLICATED
+                    6: t("newvec"),                     // NEW
+                    7: t("deleted")                     // DETELED
+                };
+                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("nextstops");
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
@@ -6539,16 +6553,16 @@ async function fetchVehiclePositions() {
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${t("unknownline")}</small>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${scheduleRelationshipText}</small>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
-                                ? t("imminentdeparture")
-                                : `<small style="display:block; font-size: 0.7rem; margin-bottom:-2px;">${occupancyStatusText} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                                ? `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${scheduleRelationshipText}</small>${t("imminentdeparture")}`
+                                : `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText}</small>${t("departurein")} ${minutes} ${t("minutes")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.7rem; margin-bottom:-4px;">${occupancyStatusText} | ${t("departurein")}</small> ${minutes} ${t("minutes")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText}</small>${t("estdepart")} ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-4px;">${occupancyStatusText} | ${status}</small> ${t("nextstops")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-4px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${status}</small> ${scheduleRelationshipText}`;
                         }
                     }
                 }
