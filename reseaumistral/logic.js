@@ -6487,7 +6487,7 @@ async function fetchVehiclePositions() {
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
-                const occupancyStatus = vehicle.occupancyStatus;
+                const occupancyStatus = vehicle.occupancyStatus || undefined;
                 const occupancyStatusMap = {
                     0: t("empty"),                      // EMPTY
                     1: t("manyseatsavailable"),         // MANY_SEATS_AVAILABLE
@@ -6501,7 +6501,7 @@ async function fetchVehiclePositions() {
                 const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
                 
 
-                const scheduleRelationship = vehicle.trip.scheduleRelationship;
+                const scheduleRelationship = vehicle.trip.scheduleRelationship || undefined;
                 const scheduleRelationshipMap = {
                     0: t("nextstops"),                  // SCHEDULED
                     1: t("added"),                      // ADDED
