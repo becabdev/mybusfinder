@@ -6552,16 +6552,16 @@ async function fetchVehiclePositions() {
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
                     if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${scheduleRelationshipText}</small>`;
+                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${scheduleRelationshipText !== "" ? scheduleRelationshipText : ""}</small>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
-                                ? `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${scheduleRelationshipText}</small>${t("imminentdeparture")}`
+                                ? `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${scheduleRelationshipText !== "" ? scheduleRelationshipText : ""}</small>${t("imminentdeparture")}`
                                 : `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText}</small>${t("departurein")} ${minutes} ${t("minutes")}`;
                         } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText}</small>${t("estdepart")} ${minutes} ${t("minutes")}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText !== "" ? scheduleRelationshipText : ""}</small>${t("estdepart")} ${minutes} ${t("minutes")}`;
                         } else {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-4px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${status}</small> ${scheduleRelationshipText}`;
+                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-4px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${status !== "" ? status : scheduleRelationshipText}</small>`;
                         }
                     }
                 }
