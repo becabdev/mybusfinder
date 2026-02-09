@@ -6444,7 +6444,7 @@ function closeMenu() {
     }, 10);
 }
 
-async function fetchVehiclePositions() {
+async function fetchVehilePositions() {
     if (!gtfsInitialized) {
         return;
     }
@@ -6477,42 +6477,16 @@ async function fetchVehiclePositions() {
 
                 const statusMap = {
                     0: t("notinservicemaj"), // ❌ Hors service commercial
-                    1: t("dooropen"), // Portes ouvertes
+                    1: t("dooropen"), // En service - Portes ouvertes
                     2: t("enservice") // En service
                 };
                 const status = statusMap[vehicle.currentStatus] || t("enservice");
-
+                
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
                 let stopId = stopIdun.replace("0:", "");
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
-                const occupancyStatus = vehicle.occupancyStatus !== undefined ? vehicle.occupancyStatus : undefined;
-                const occupancyStatusMap = {
-                    0: t("empty"),                      // EMPTY
-                    1: t("manyseatsavailable"),         // MANY_SEATS_AVAILABLE
-                    2: t("fewseatsavailable"),          // FEW_SEATS_AVAILABLE
-                    3: t("standingroomonly"),           // STANDING_ROOM_ONLY
-                    4: t("crushedstandingroomonly"),    // CRUSHED_STANDING_ROOM_ONLY
-                    5: t("full"),                       // FULL
-                    6: t("notavailable"),               // NOT_ACCEPTING_PASSENGERS
-                    7: t("endstop")                     // NO_DATA_AVAILABLE
-                };
-                const occupancyStatusText = occupancyStatusMap[occupancyStatus] || "";
-                
-
-                const scheduleRelationship = vehicle.trip.scheduleRelationship !== undefined ? vehicle.trip.scheduleRelationship : undefined;
-                const scheduleRelationshipMap = {
-                    0: t("nextstops"),                  // SCHEDULED
-                    1: t("added"),                      // ADDED
-                    2: t("unscheduled"),                // UNSCHEDULED
-                    3: t("canceled"),                   // CANCELED
-                    4: t("replacement"),                // REPLACEMENT
-                    5: t("duplicated"),                 // DUPLICATED
-                    6: t("newvec"),                     // NEW
-                    7: t("deleted")                     // DETELED
-                };
-                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("nextstops");
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
@@ -6544,6 +6518,7 @@ async function fetchVehiclePositions() {
                     stopSpinner();
                 }, 8000);
                 
+
                 if (filteredStops.length === 0) {
                     stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  ${t("pleasewait")}<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-4px;">${t("unavailabletrip")}</small>`;
                 } else {
