@@ -307,9 +307,9 @@
     "notavailable": "Ce bus ne prend pas de voyageurs",
 
     "estdepart": "Départ de l'arrêt dans",
-    "added": "Véhicule supplémentaire",
+    "added": "Véhicule de remplacement",
     "unscheduled": "Trajet non planifié",
-    "canceled": "❌ Véhicule supprimé",
+    "canceled": "❌ Service supprimé",
     "replacement": "Remplacement",
     "duplicated": "Renfort de la ligne",
     "newvec": "Véhicule supplémentaire",
