@@ -6854,21 +6854,13 @@ function closeMenu() {
     }, 10);
 }
 
-let cache = false;
 
 function cacheBoutonsenHaut() {
     const actualiserbtn = document.getElementById('refresh-bouton-map');
     const localiserbtn = document.getElementById('localiser-bouton-map');
 
-    if (!cache) {
-        actualiserbtn.classList.add('hideblur');
-        localiserbtn.classList.add('hideblur');
-        cache = true;
-    } else {
-        actualiserbtn.classList.remove('hideblur');
-        localiserbtn.classList.remove('hideblur');
-        cache = false;
-    }
+    actualiserbtn.classList.toggle('hideblur');
+    localiserbtn.classList.toggle('hideblur');
 }
 
 
