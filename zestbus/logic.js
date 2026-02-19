@@ -1180,12 +1180,7 @@ async function initMap() {
         savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
     );
 
-    mapInstance.on('movestart', () => {
-        cacheBoutonsenHaut();
-    });
-
     mapInstance.on("moveend", () => {
-        cacheBoutonsenHaut()
         const center = mapInstance.getCenter();
         const zoom = mapInstance.getZoom();
         localStorage.setItem(storageKey, JSON.stringify({
