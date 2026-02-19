@@ -2394,12 +2394,12 @@ const ProgressOverlay = {
     style.textContent = `
       #progress-overlay {
         position: fixed;
-        bottom: 0px;
+        top: 0px;
         left: 50%;
-        transform: translateX(-50%) translateY(20px);
+        transform: translateX(-50%) translateY(-40px);
         z-index: 9999999;
         width: 90%;
-        background: rgba(30, 30, 30, 0.92);
+        background: rgba(30, 30, 30, 0.75);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2418,7 +2418,7 @@ const ProgressOverlay = {
 
       #progress-overlay.hiding {
         opacity: 0;
-        transform: translateX(-50%) translateY(20px);
+        transform: translateX(-50%) translateY(-40px);
       }
 
       .po-label-row {
