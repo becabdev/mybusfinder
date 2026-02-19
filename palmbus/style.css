@@ -2160,7 +2160,7 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         cursor: pointer;
         transform: scale(1);
-        transition: all cubic-bezier(.25,0,.47,1.5) 0.4s;
+        transition: all cubic-bezier(0.25, 1.5, 0.5, 1) 0.3s;
     }
 
     .refresh-bouton:active {
