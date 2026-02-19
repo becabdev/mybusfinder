@@ -1913,6 +1913,8 @@ function hideLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
 
     if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
+        setTimeout(() => {
+            
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
@@ -1928,6 +1930,7 @@ function hideLoadingScreen() {
         soundsUX('MBF_NotificationInfo');
         localStorage.setItem('buildversion', window.BUILD_VERSION);
 
+        }, 500);
 
 
     } else {
