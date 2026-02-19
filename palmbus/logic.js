@@ -6860,7 +6860,7 @@ function cacheBoutonsenHaut() {
     const actualiserbtn = document.getElementById('refresh-bouton-map');
     const localiserbtn = document.getElementById('localiser-bouton-map');
 
-    if (cache) {
+    if (!cache) {
         actualiserbtn.classList.add('hideblur');
         localiserbtn.classList.add('hideblur');
         cache = true;
