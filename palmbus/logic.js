@@ -2393,36 +2393,41 @@ const ProgressOverlay = {
         transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: absolute;
         left: 0;
+        width: 0%;
       }
 
       .po-bar.indeterminate {
-        width: 30%;
         animation: po-move 2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
                    po-width 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+        width: 0%;
+        left: 0%;
       }
 
       .po-bar.completed {
         background: linear-gradient(90deg, #34c759 0%, #30b350 100%);
         width: 100% !important;
+        left: 0 !important;
       }
 
       @keyframes po-move {
-        0%, 100% { left: 0; }
-        50% { left: 70%; }
+        0%   { left: -35%; }
+        100% { left: 110%; }
       }
 
       @keyframes po-width {
-        0%, 50%, 100% { width: 5%; }
-        25%, 75% { width: 35%; }
+        0%   { width: 5%; }
+        25%  { width: 35%; }
+        50%  { width: 35%; }
+        75%  { width: 5%; }
+        100% { width: 5%; }
       }
     `;
     document.head.appendChild(style);
   },
 
-  create(label = 'Chargement...') {
+  create(label = '') {
     this.injectStyles();
-
     if (document.getElementById('progress-overlay')) return;
 
     const overlay = document.createElement('div');
@@ -2454,10 +2459,12 @@ const ProgressOverlay = {
   setIndeterminate(label) {
     if (!this.overlay) this.create(label);
     if (label) this.setLabel(label);
-    if (this.isTransitioning) return;
-
     this.stopAnimation();
+
+    // On écrase toujours le pending, l'indéterminé est prioritaire
     this.pendingTransition = null;
+    this.isTransitioning = false;
+
     this.progressBar.classList.add('indeterminate');
     this.progressBar.classList.remove('completed');
     this.progressBar.style.width = '';
@@ -2466,11 +2473,16 @@ const ProgressOverlay = {
     this.updatePercent('');
   },
 
+  // Correction : on garde toujours le dernier pourcentage reçu
   setProgress(percent, label) {
     if (!this.overlay) this.create(label);
     if (label) this.setLabel(label);
 
-    if (this.isTransitioning) return;
+    // On écrase toujours le pending avec la valeur la plus récente
+    if (this.isTransitioning) {
+      this.pendingTransition = { type: 'progress', value: percent };
+      return;
+    }
 
     if (this.progressBar.classList.contains('indeterminate')) {
       this.pendingTransition = { type: 'progress', value: percent };
@@ -2483,21 +2495,26 @@ const ProgressOverlay = {
 
     if (percent >= 100) {
       this.progressBar.classList.add('completed');
+      this.updatePercent('');
     } else {
       this.progressBar.classList.remove('completed');
+      this.updatePercent(Math.round(percent) + '%');
     }
 
-    this.progressBar.style.width = percent + '%';
     this.progressBar.style.left = '0';
+    this.progressBar.style.width = percent + '%';
     this.currentProgress = percent;
-    this.updatePercent(percent >= 100 ? '' : Math.round(percent) + '%');
   },
 
   animate(durationMs = 4000, label) {
     if (!this.overlay) this.create(label);
     if (label) this.setLabel(label);
 
-    if (this.isTransitioning) return;
+    if (this.isTransitioning) {
+      this.pendingTransition = { type: 'animate', duration: durationMs };
+      return;
+    }
+
     this.stopAnimation();
 
     if (this.progressBar.classList.contains('indeterminate')) {
@@ -2511,6 +2528,8 @@ const ProgressOverlay = {
   hide(delay = 0) {
     if (!this.overlay) return;
     this.stopAnimation();
+    this.isTransitioning = false;
+    this.pendingTransition = null;
 
     setTimeout(() => {
       if (!this.overlay) return;
@@ -2523,7 +2542,7 @@ const ProgressOverlay = {
           this.overlay = null;
           this.progressBar = null;
         }
-      }, 400); 
+      }, 400);
     }, delay);
   },
 
@@ -2536,7 +2555,6 @@ const ProgressOverlay = {
     const el = document.getElementById('po-percent-text');
     if (el) el.textContent = text;
   },
-
 
   stopAnimation() {
     if (this.animationInterval) {
@@ -2567,48 +2585,54 @@ const ProgressOverlay = {
     }, intervalMs);
   },
 
-    _waitForIndeterminateEnd() {
-        if (!this.progressBar || !this.progressBar.classList.contains('indeterminate')) return;
+  _waitForIndeterminateEnd() {
+    if (!this.progressBar || !this.progressBar.classList.contains('indeterminate')) return;
 
-        this.isTransitioning = true;
-        const startTime = Date.now();
-        const maxWait = 3000;
+    this.isTransitioning = true;
+    const startTime = Date.now();
+    const maxWait = 3000;
 
-        const check = () => {
-        if (!this.progressBar || !this.overlay) {
-            this.isTransitioning = false;
-            this.pendingTransition = null;
-            return;
-        }
+    const check = () => {
+      // Garde : éléments supprimés entre-temps
+      if (!this.progressBar || !this.overlay) {
+        this.isTransitioning = false;
+        this.pendingTransition = null;
+        return;
+      }
 
-        const style = window.getComputedStyle(this.progressBar);
-        const left = parseFloat(style.left);
-        const width = parseFloat(style.width);
-        const containerWidth = this.progressBar.parentElement
-            ? this.progressBar.parentElement.offsetWidth
-            : 0;
+      const style = window.getComputedStyle(this.progressBar);
+      const left = parseFloat(style.left);
+      const containerWidth = this.progressBar.parentElement
+        ? this.progressBar.parentElement.offsetWidth
+        : 0;
 
-        if (containerWidth === 0) {
-            this._applyPendingTransition();
-            return;
-        }
+      if (containerWidth === 0) {
+        this._applyPendingTransition();
+        return;
+      }
 
-        const leftPct = (left / containerWidth) * 100;
-        const widthPct = (width / containerWidth) * 100;
+      const leftPct = (left / containerWidth) * 100;
 
-        if (leftPct < 2 && widthPct < 15) {
-            this._applyPendingTransition();
-        } else if (Date.now() - startTime < maxWait) {
-            requestAnimationFrame(check);
-        } else {
-            this._applyPendingTransition();
-        }
-        };
+      // On attend que la barre reparte de la gauche (cycle terminé)
+      if (leftPct < 0) {
+        this._applyPendingTransition();
+      } else if (Date.now() - startTime < maxWait) {
+        requestAnimationFrame(check);
+      } else {
+        this._applyPendingTransition();
+      }
+    };
 
-        setTimeout(() => requestAnimationFrame(check), 100);
-    },
+    setTimeout(() => requestAnimationFrame(check), 100);
+  },
 
   _applyPendingTransition() {
+    if (!this.progressBar) {
+      this.isTransitioning = false;
+      this.pendingTransition = null;
+      return;
+    }
+
     this.progressBar.classList.remove('indeterminate');
 
     setTimeout(() => {
@@ -2616,10 +2640,10 @@ const ProgressOverlay = {
       this.pendingTransition = null;
       this.isTransitioning = false;
 
-      if (!t) return;
+      if (!t || !this.progressBar) return;
 
       if (t.type === 'progress') {
-        this.progressBar.style.width = '5%';
+        this.progressBar.style.width = '0%';
         this.progressBar.style.left = '0';
         setTimeout(() => this.setProgress(t.value), 150);
       } else if (t.type === 'animate') {
