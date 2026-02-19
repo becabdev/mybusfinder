@@ -1259,65 +1259,115 @@ mapInstance.attributionControl.setPrefix('');
     return mapInstance;
 }
 
+let locationMarker = null;
+let locationCircle = null;
+let isLocating = false;
+let watchId = null;
+
+function locateMe() {
+    if (!navigator.geolocation) {
+        console.warn('La géolocalisation n\'est pas supportée par ce navigateur.');
+        return;
+    }
+
+    if (isLocating) {
+        stopLocating();
+        return;
+    }
+
+    isLocating = true;
+
+    watchId = navigator.geolocation.watchPosition(
+        (position) => onLocationFound({
+            latlng: L.latLng(position.coords.latitude, position.coords.longitude),
+            accuracy: position.coords.accuracy
+        }),
+        (error) => onLocationError({ message: error.message }),
+        {
+            enableHighAccuracy: true,
+            maximumAge: 5000,
+            timeout: 10000
+        }
+    );
+}
+
+function stopLocating() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+    isLocating = false;
+
+    if (locationMarker) {
+        mapInstance.removeLayer(locationMarker);
+        locationMarker = null;
+    }
+    if (locationCircle) {
+        mapInstance.removeLayer(locationCircle);
+        locationCircle = null;
+    }
+}
+
 function onLocationFound(e) {
-    const radius = e.accuracy / 2;
+    const radius = e.accuracy;
+    const latlng = e.latlng;
 
-    if (window.locationMarker) {
-        map.removeLayer(window.locationMarker);
+    if (locationCircle) {
+        locationCircle.setLatLng(latlng).setRadius(radius);
+    } else {
+        locationCircle = L.circle(latlng, {
+            radius: radius,
+            color: '#4A90E2',
+            fillColor: '#4A90E2',
+            fillOpacity: 0.15,
+            weight: 1
+        }).addTo(mapInstance);
     }
-    if (window.locationCircle) {
-        map.removeLayer(window.locationCircle);
+
+    if (locationMarker) {
+        locationMarker.setLatLng(latlng);
+    } else {
+        const locationIcon = L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width: 18px;
+                    height: 18px;
+                    background: #4A90E2;
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+                    position: relative;
+                ">
+                    <div style="
+                        position: absolute;
+                        inset: -6px;
+                        border-radius: 50%;
+                        background: rgba(74, 144, 226, 0.25);
+                        animation: pulse 2s infinite;
+                    "></div>
+                </div>
+            `,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+        });
+
+        locationMarker = L.marker(latlng, { icon: locationIcon, zIndexOffset: 1000 })
+            .addTo(mapInstance);
+
+        mapInstance.setView(latlng, Math.max(mapInstance.getZoom(), 16));
     }
-
-    window.locationCircle = L.circle(e.latlng, {
-        radius: radius,
-        color: '#136AEC',
-        fillColor: '#136AEC',
-        fillOpacity: 0.15,
-        weight: 2
-    }).addTo(map);
-
-    map.setView(e.latlng, 16);
 }
 
 function onLocationError(e) {
-    toastBottomRight.warning("Vous avez refusé la localisation.");
+    console.error('Erreur de géolocalisation :', e.message);
+    isLocating = false;
 }
 
 function locateUser() {
     if (!map) return;
     
-    if ("geolocation" in navigator) {
-        const locationOptions = {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-        };
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
-
-                map.fireEvent('locationfound', {
-                    latlng: L.latLng(lat, lng),
-                    accuracy: accuracy,
-                    timestamp: position.timestamp
-                });
-            },
-            (error) => {
-                map.fireEvent('locationerror', {
-                    code: error.code,
-                    message: error.message
-                });
-            },
-            locationOptions
-        );
-    } else {
-        toastBottomRight.error("La géolocalisation n'est pas supportée par votre navigateur");
-        soundsUX('MBF_NotificationError');
-    }
+    locateMe();
 }
 
 (async function() {

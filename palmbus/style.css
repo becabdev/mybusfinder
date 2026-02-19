@@ -2166,3 +2166,24 @@
     .refresh-bouton:active {
         transform: scale(1.3);
     }
+    .locate-bouton {
+        position: absolute;
+        top: 50px;
+        right: 20px;
+        z-index: 2;
+        padding: 10px 10px 7px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin: 0;
+        background-color: #0000009c;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        border-radius: 40px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        cursor: pointer;
+        transform: scale(1);
+        transition: all cubic-bezier(0.25, 1.5, 0.5, 1) 0.3s;
+    }
+
+    .locate-bouton:active {
+        transform: scale(1.3);
+    }
