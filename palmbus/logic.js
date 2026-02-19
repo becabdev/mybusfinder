@@ -1914,7 +1914,7 @@ function hideLoadingScreen() {
 
     if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
         setTimeout(() => {
-            
+        window.updating = true;
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
@@ -1924,8 +1924,9 @@ function hideLoadingScreen() {
             progress++;
             updateLoadingProgress(progress);
             if (progress >= 100) {
+                window.location.reload();
             }
-        }, 10);
+        }, 30);
         soundsUX('MBF_NotificationInfo');
         localStorage.setItem('buildversion', window.BUILD_VERSION);
 
@@ -2855,11 +2856,10 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
         
-
-        if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
+        if (!updating) {
+            updateProgress(3, 3);
+            updateLoadingProgress(100);
             setTimeout(() => {
-                updateProgress(3, 3);
-                updateLoadingProgress(100);
                 ProgressOverlay.setLabel('Done !');
             }, 200);
         }
