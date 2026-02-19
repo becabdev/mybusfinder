@@ -2354,7 +2354,7 @@ const ProgressOverlay = {
         -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.12);
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-        padding: 16px 20px;
+        padding: 16px 200px;
         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
         opacity: 0;
         transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2375,7 +2375,7 @@ const ProgressOverlay = {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 10px;
+        margin-bottom: 10px;
       }
 
       .po-label {
@@ -2398,7 +2398,6 @@ const ProgressOverlay = {
         border-radius: 4px;
         overflow: hidden;
         position: relative;
-        padding: 10px;
       }
 
       .po-bar {
