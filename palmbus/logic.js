@@ -2448,7 +2448,7 @@ const ProgressOverlay = {
     overlay.id = 'progress-overlay';
     overlay.innerHTML = `
       <div class="po-label-row">
-        <span class="po-label" id="po-label-text">${label} Downloading requirements...</span>
+        <span class="po-label" id="po-label-text">${label} Installing requirements...</span>
         <span class="po-percent" id="po-percent-text"></span>
       </div>
       <div class="po-container">
