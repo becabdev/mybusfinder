@@ -1916,6 +1916,7 @@ function hideLoadingScreen() {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
+        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
         soundsUX('MBF_NotificationInfo');
         localStorage.setItem('buildversion', window.BUILD_VERSION);
             setTimeout(() => {
