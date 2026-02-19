@@ -1919,8 +1919,8 @@ function hideLoadingScreen() {
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
         ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
+        let progress = 0;
         setInterval(() => {
-            let progress = 0;
             progress++;
             updateLoadingProgress(progress);
             if (progress >= 100) {
