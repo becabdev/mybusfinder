@@ -2853,10 +2853,11 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
         
-        updateProgress(3, 3);
-        updateLoadingProgress(100);
+
         if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
             setTimeout(() => {
+                updateProgress(3, 3);
+                updateLoadingProgress(100);
                 ProgressOverlay.setLabel('Done !');
             }, 200);
         }
