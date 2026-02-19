@@ -2497,7 +2497,7 @@ const ProgressOverlay = {
         const target = this.pendingProgress;
         this.pendingProgress = null;
         this._applyProgress(target);
-      }, 50); // délai court pour absorber les appels simultanés
+      }, 20); // délai court pour absorber les appels simultanés
     }
   },
 
@@ -2780,7 +2780,9 @@ async function loadGTFSDataOptimized() {
 
         updateProgress(1, 3);
         updateLoadingProgress(33);
-        ProgressOverlay.setLabel('Loading Lines...');
+        setTimeout(() => {
+            ProgressOverlay.setLabel('Loading Lines...');
+        }, 100);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2816,7 +2818,9 @@ async function loadGTFSDataOptimized() {
         
         updateProgress(2, 3);
         updateLoadingProgress(66);
-        ProgressOverlay.setLabel('Loading Stops...');
+        setTimeout(() => {
+            ProgressOverlay.setLabel('Loading Stops...');
+        }, 150);
         
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2843,7 +2847,9 @@ async function loadGTFSDataOptimized() {
         
         updateProgress(3, 3);
         updateLoadingProgress(100);
-        ProgressOverlay.setLabel('Welcome to MyBusFinder!');
+        setTimeout(() => {
+            ProgressOverlay.setLabel('Welcome to MyBusFinder!');
+        }, 200);
         
         apparaitrelelogo();
         
