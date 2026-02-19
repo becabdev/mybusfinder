@@ -2187,3 +2187,9 @@
     .locate-bouton:active {
         transform: scale(1.3);
     }
+
+    .hideblur {
+        transform: scale(1.3);
+        filter: blur(5px);
+        opacity: 0;
+    }
