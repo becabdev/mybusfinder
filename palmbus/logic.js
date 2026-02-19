@@ -1916,20 +1916,18 @@ function hideLoadingScreen() {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
-        setTimeout(() => {
-            ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
-            setInterval(() => {
-                let progress = 0;
-                progress++;
-                updateLoadingProgress(progress);
-                if (progress >= 100) {
-                    window.location.reload();
-                }
-            }, 10);
-            soundsUX('MBF_NotificationInfo');
-            localStorage.setItem('buildversion', window.BUILD_VERSION);
+        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
+        setInterval(() => {
+            let progress = 0;
+            progress++;
+            updateLoadingProgress(progress);
+            if (progress >= 100) {
+                window.location.reload();
+            }
+        }, 10);
+        soundsUX('MBF_NotificationInfo');
+        localStorage.setItem('buildversion', window.BUILD_VERSION);
 
-        }, 1000);
 
 
     } else {
@@ -2857,9 +2855,11 @@ async function loadGTFSDataOptimized() {
         
         updateProgress(3, 3);
         updateLoadingProgress(100);
-        setTimeout(() => {
-            ProgressOverlay.setLabel('Done !');
-        }, 200);
+        if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
+            setTimeout(() => {
+                ProgressOverlay.setLabel('Done !');
+            }, 200);
+        }
         
         apparaitrelelogo();
         
