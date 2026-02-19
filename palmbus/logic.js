@@ -2343,7 +2343,6 @@ const ProgressOverlay = {
     style.id = 'progress-overlay-styles';
     style.textContent = `
       #progress-overlay {
-        display: flex;
         position: fixed;
         bottom: 0px;
         left: 50%;
@@ -2376,7 +2375,7 @@ const ProgressOverlay = {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        padding: 10px;
       }
 
       .po-label {
@@ -2399,6 +2398,7 @@ const ProgressOverlay = {
         border-radius: 4px;
         overflow: hidden;
         position: relative;
+        padding: 10px;
       }
 
       .po-bar {
