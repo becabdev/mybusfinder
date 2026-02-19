@@ -2397,22 +2397,12 @@ const ProgressOverlay = {
         transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-    .po-bar.indeterminate {
-        width: 30%;
-        left: 0%;
-        transition: none;
-        animation: po-indeterminate 1.8s ease-in-out infinite;
+      .po-bar.indeterminate {
+        animation: po-move 2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+                   po-width 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
-    }
-
-    @keyframes po-indeterminate {
-        0%   { left: 0%;   width: 5%;  }
-        20%  { left: 0%;   width: 35%; }
-        50%  { left: 65%;  width: 35%; }
-        70%  { left: 95%;  width: 5%;  }
-        71%  { left: 0%;   width: 0%;  }
-        100% { left: 0%;   width: 5%;  }
-    }
+        transition: none;
+      }
 
       .po-bar.completed {
         background: linear-gradient(90deg, #34c759 0%, #30b350 100%);
@@ -2572,62 +2562,63 @@ const ProgressOverlay = {
     }
   },
 
-    _setBarProgress(percent) {
+  _setBarProgress(percent) {
     if (!this.progressBar) return;
 
     this.stopAnimation();
-
     this.progressBar.classList.remove('indeterminate');
 
-    void this.progressBar.offsetWidth;
+    if (percent >= 100) {
+      this.progressBar.classList.add('completed');
+      this.updatePercent('');
+    } else {
+      this.progressBar.classList.remove('completed');
+      this.progressBar.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      this.progressBar.style.left = '0';
+      this.progressBar.style.width = percent + '%';
+      this.updatePercent(Math.round(percent) + '%');
+    }
 
-    this.progressBar.style.transition = 'none';
-    this.progressBar.style.left = '0%';
-    this.progressBar.style.width = percent >= 100 ? '100%' : percent + '%';
+    this.currentProgress = percent;
+  },
 
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-        if (!this.progressBar) return;
-        if (percent >= 100) {
-            this.progressBar.classList.add('completed');
-            this.updatePercent('');
-        } else {
-            this.progressBar.classList.remove('completed');
-            this.progressBar.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            this.updatePercent(Math.round(percent) + '%');
-        }
-        this.currentProgress = percent;
-        });
-    });
-    },
-
-    _waitForIndeterminateEnd(callback) {
+  _waitForIndeterminateEnd(callback) {
     const startTime = Date.now();
-    const maxWait = 2000;
+    const maxWait = 3000;
 
     const check = () => {
-        if (!this.progressBar || !this.overlay) return;
+      if (!this.progressBar || !this.overlay) return;
 
-        const containerWidth = this.progressBar.parentElement?.offsetWidth || 0;
-        if (containerWidth === 0) { callback(); return; }
+      const containerWidth = this.progressBar.parentElement
+        ? this.progressBar.parentElement.offsetWidth
+        : 0;
 
-        const style = window.getComputedStyle(this.progressBar);
-        const left = parseFloat(style.left) || 0;
-        const width = parseFloat(style.width) || 0;
-        const leftPct = (left / containerWidth) * 100;
-        const widthPct = (width / containerWidth) * 100;
-
-        if (leftPct < 3 && widthPct < 10) {
+      if (containerWidth === 0) {
+        this.progressBar.classList.remove('indeterminate');
         callback();
-        } else if (Date.now() - startTime < maxWait) {
+        return;
+      }
+
+      const style = window.getComputedStyle(this.progressBar);
+      const left = parseFloat(style.left) || 0;
+      const width = parseFloat(style.width) || 0;
+      const leftPct = (left / containerWidth) * 100;
+      const widthPct = (width / containerWidth) * 100;
+
+      // On attend que la barre soit revenue proche du bord gauche
+      if (leftPct < 2 && widthPct < 15) {
+        this.progressBar.classList.remove('indeterminate');
+        setTimeout(callback, 80);
+      } else if (Date.now() - startTime < maxWait) {
         requestAnimationFrame(check);
-        } else {
-        callback(); 
-        }
+      } else {
+        this.progressBar.classList.remove('indeterminate');
+        callback();
+      }
     };
 
-    requestAnimationFrame(check);
-    },
+    setTimeout(() => requestAnimationFrame(check), 100);
+  },
 
   _startAnimation(durationMs) {
     this.stopAnimation();
