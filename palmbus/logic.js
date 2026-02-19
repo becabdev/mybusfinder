@@ -2343,6 +2343,7 @@ const ProgressOverlay = {
     style.id = 'progress-overlay-styles';
     style.textContent = `
       #progress-overlay {
+        display: flex;
         position: fixed;
         bottom: 0px;
         left: 50%;
@@ -2359,7 +2360,6 @@ const ProgressOverlay = {
         opacity: 0;
         transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         pointer-events: none;
-        padding: 0 20px 0 20px;
       }
 
       #progress-overlay.visible {
