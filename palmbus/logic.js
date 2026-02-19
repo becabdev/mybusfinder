@@ -2567,32 +2567,46 @@ const ProgressOverlay = {
     }, intervalMs);
   },
 
-  _waitForIndeterminateEnd() {
-    if (!this.progressBar.classList.contains('indeterminate')) return;
+    _waitForIndeterminateEnd() {
+        if (!this.progressBar || !this.progressBar.classList.contains('indeterminate')) return;
 
-    this.isTransitioning = true;
-    const startTime = Date.now();
-    const maxWait = 3000;
+        this.isTransitioning = true;
+        const startTime = Date.now();
+        const maxWait = 3000;
 
-    const check = () => {
-      const style = window.getComputedStyle(this.progressBar);
-      const left = parseFloat(style.left);
-      const width = parseFloat(style.width);
-      const containerWidth = this.progressBar.parentElement.offsetWidth;
-      const leftPct = (left / containerWidth) * 100;
-      const widthPct = (width / containerWidth) * 100;
+        const check = () => {
+        if (!this.progressBar || !this.overlay) {
+            this.isTransitioning = false;
+            this.pendingTransition = null;
+            return;
+        }
 
-      if (leftPct < 2 && widthPct < 15) {
-        this._applyPendingTransition();
-      } else if (Date.now() - startTime < maxWait) {
-        requestAnimationFrame(check);
-      } else {
-        this._applyPendingTransition();
-      }
-    };
+        const style = window.getComputedStyle(this.progressBar);
+        const left = parseFloat(style.left);
+        const width = parseFloat(style.width);
+        const containerWidth = this.progressBar.parentElement
+            ? this.progressBar.parentElement.offsetWidth
+            : 0;
 
-    setTimeout(() => requestAnimationFrame(check), 100);
-  },
+        if (containerWidth === 0) {
+            this._applyPendingTransition();
+            return;
+        }
+
+        const leftPct = (left / containerWidth) * 100;
+        const widthPct = (width / containerWidth) * 100;
+
+        if (leftPct < 2 && widthPct < 15) {
+            this._applyPendingTransition();
+        } else if (Date.now() - startTime < maxWait) {
+            requestAnimationFrame(check);
+        } else {
+            this._applyPendingTransition();
+        }
+        };
+
+        setTimeout(() => requestAnimationFrame(check), 100);
+    },
 
   _applyPendingTransition() {
     this.progressBar.classList.remove('indeterminate');
