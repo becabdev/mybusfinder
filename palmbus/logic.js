@@ -1924,7 +1924,6 @@ function hideLoadingScreen() {
             progress++;
             updateLoadingProgress(progress);
             if (progress >= 100) {
-                window.location.reload();
             }
         }, 10);
         soundsUX('MBF_NotificationInfo');
