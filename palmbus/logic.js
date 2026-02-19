@@ -2856,7 +2856,7 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
         
-        if (!updating) {
+        if (!window.updating) {
             updateProgress(3, 3);
             updateLoadingProgress(100);
             setTimeout(() => {
