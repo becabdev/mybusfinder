@@ -2726,7 +2726,7 @@ function hideLoadingOverlay() {
     window.overlayVisible = false;
     setTimeout(() => {
         ProgressOverlay.hide();
-    }, 300);
+    }, 2000);
 
 }
 
