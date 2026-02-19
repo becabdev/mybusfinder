@@ -2754,6 +2754,7 @@ async function loadGTFSDataOptimized() {
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
             updateLoadingProgress(progress);
+            ProgressOverlay.setLabel('Loading defer...');
         };
         
         updateProgress(0, 3);
@@ -2778,7 +2779,8 @@ async function loadGTFSDataOptimized() {
         }
 
         updateProgress(1, 3);
-        updateLoadingProgress('Loading Lines...', 33);
+        updateLoadingProgress(33);
+        ProgressOverlay.setLabel('Loading Lines...');
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2813,7 +2815,8 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(2, 3);
-        updateLoadingProgress('Loading Stops...', 66);
+        updateLoadingProgress(66);
+        ProgressOverlay.setLabel('Loading Stops...');
         
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2839,7 +2842,8 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(3, 3);
-        updateLoadingProgress('Welcome to MyBusFinder!', 100);
+        updateLoadingProgress(100);
+        ProgressOverlay.setLabel('Welcome to MyBusFinder!');
         
         apparaitrelelogo();
         
