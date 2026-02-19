@@ -2687,7 +2687,7 @@ function createLoadingOverlay() {
                 position: fixed;
                 bottom: 100px;
                 left: 50%;
-                transform: translateX(-50%) translateY(40%);
+                transform: translateX(-50%) translateY(20%);
                 z-index: 999999999999999999999;
                 opacity: 0;
                 visibility: hidden;
@@ -2712,7 +2712,7 @@ function createLoadingOverlay() {
                 background: rgba(255, 255, 255, 0.2);
                 border-radius: 10px;
                 overflow: hidden;
-                margin-bottom: 10px;
+                margin-bottom: 25px;
                 box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
             }
             
