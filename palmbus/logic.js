@@ -6857,7 +6857,7 @@ function closeMenu() {
 
 function cacheBoutonsenHaut() {
     const actualiserbtn = document.getElementById('refresh-bouton-map');
-    const localiserbtn = document.getElementById('localiser-bouton-map');
+    const localiserbtn = document.getElementById('locate-bouton-map');
 
     actualiserbtn.classList.toggle('hideblur');
     localiserbtn.classList.toggle('hideblur');
