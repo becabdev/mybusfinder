@@ -1920,14 +1920,17 @@ function hideLoadingScreen() {
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
         ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
         let progress = 0;
-        setInterval(() => {
+
+        const intervalId = setInterval(() => {
             progress++;
             updateLoadingProgress(progress);
+
             if (progress >= 100) {
+                clearInterval(intervalId); 
                 window.location.reload();
-                clearInterval(this.intervalId);
             }
         }, 30);
+
         soundsUX('MBF_NotificationInfo');
         localStorage.setItem('buildversion', window.BUILD_VERSION);
 
