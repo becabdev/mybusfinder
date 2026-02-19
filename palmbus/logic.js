@@ -1916,12 +1916,15 @@ function hideLoadingScreen() {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
-        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
-        soundsUX('MBF_NotificationInfo');
-        localStorage.setItem('buildversion', window.BUILD_VERSION);
+        setTimeout(() => {
+            ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
+            soundsUX('MBF_NotificationInfo');
+            localStorage.setItem('buildversion', window.BUILD_VERSION);
             setTimeout(() => {
                 window.location.reload();
             }, 3000);
+        }, 1000);
+
 
     } else {
         const logoscr = document.getElementById('logoscr');
