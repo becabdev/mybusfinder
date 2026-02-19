@@ -6817,7 +6817,17 @@ animationStyle.textContent = `
 `;
 document.head.appendChild(animationStyle);
 
+
+function cacheBoutonsenHaut() {
+    const actualiserbtn = document.getElementById('refresh-bouton-map');
+    const localiserbtn = document.getElementById('locate-bouton-map');
+
+    actualiserbtn.classList.toggle('hideblur');
+    localiserbtn.classList.toggle('hideblur');
+}
+
 function closeMenu() {
+    cacheBoutonsenHaut()
     safeVibrate([30], true);
     soundsUX('MBF_SelectedVehicle_DoorClose');
     const menu = document.getElementById('menu');
@@ -6854,14 +6864,6 @@ function closeMenu() {
     }, 10);
 }
 
-
-function cacheBoutonsenHaut() {
-    const actualiserbtn = document.getElementById('refresh-bouton-map');
-    const localiserbtn = document.getElementById('locate-bouton-map');
-
-    actualiserbtn.classList.toggle('hideblur');
-    localiserbtn.classList.toggle('hideblur');
-}
 
 
 async function fetchVehiclePositions() {
