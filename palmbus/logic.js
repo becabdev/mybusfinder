@@ -2413,7 +2413,7 @@ const ProgressOverlay = {
 
       @keyframes po-move {
         0%   { left: 0%; }
-        50%  { left: 65%; }
+        50%  { left: 100%; }
         100% { left: 0%; }
       }
 
