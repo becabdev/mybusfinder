@@ -2345,8 +2345,9 @@ const ProgressOverlay = {
       #progress-overlay {
         position: fixed;
         bottom: 0px;
+        left: 0%;
         transform: translateX(-50%) translateY(20px);
-        z-index: 999999;
+        z-index: 9999999;
         width: 100%;
         background: rgba(30, 30, 30, 0.92);
         backdrop-filter: blur(20px);
