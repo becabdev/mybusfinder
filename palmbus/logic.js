@@ -2702,7 +2702,10 @@ function showLoadingOverlay() {
 
 function hideLoadingOverlay() {
     window.overlayVisible = false;
-    ProgressOverlay.hide();
+    setTimeout(() => {
+        ProgressOverlay.hide();
+    }, 3300);
+
 }
 
 function updateLoadingProgress(percentage) {
@@ -2715,7 +2718,7 @@ function updateLoadingProgress(percentage) {
     if (percentage >= 100) {
         setTimeout(() => {
             hideLoadingOverlay();
-        }, 500);
+        }, 3300);
     }
 }
 
