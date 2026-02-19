@@ -2344,7 +2344,7 @@ const ProgressOverlay = {
     style.textContent = `
       #progress-overlay {
         position: fixed;
-        bottom: 40px;
+        bottom: 120px;
         left: 50%;
         transform: translateX(-50%) translateY(20px);
         z-index: 999999;
@@ -2697,7 +2697,7 @@ function createLoadingOverlay() {
             #gtfs-loading-overlay.visible {
                 opacity: 1;
                 visibility: visible;
-                transform: translateX(-50%) translateY(-40%);
+                transform: translateX(-50%) translateY(0%);
             }
             
             .loading-container {
