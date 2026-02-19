@@ -2145,3 +2145,23 @@
         will-change: transform;
         transform: translateZ(0);
     }
+    .refresh-bouton {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 2;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin: 0;
+        background-color: #0000009c;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        border-radius: 40px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        cursor: pointer;
+    }
+
+    .refresh-bouton:active {
+        transform: scale(0.95);
+        transition: all cubic-bezier(0.25, 1.5, 0.5, 1) 0.4s;
+    }
