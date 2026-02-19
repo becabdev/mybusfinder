@@ -1259,65 +1259,115 @@ mapInstance.attributionControl.setPrefix('');
     return mapInstance;
 }
 
+let locationMarker = null;
+let locationCircle = null;
+let isLocating = false;
+let watchId = null;
+
+function locateMe() {
+    if (!navigator.geolocation) {
+        console.warn('La géolocalisation n\'est pas supportée par ce navigateur.');
+        return;
+    }
+
+    if (isLocating) {
+        stopLocating();
+        return;
+    }
+
+    isLocating = true;
+
+    watchId = navigator.geolocation.watchPosition(
+        (position) => onLocationFound({
+            latlng: L.latLng(position.coords.latitude, position.coords.longitude),
+            accuracy: position.coords.accuracy
+        }),
+        (error) => onLocationError({ message: error.message }),
+        {
+            enableHighAccuracy: true,
+            maximumAge: 5000,
+            timeout: 10000
+        }
+    );
+}
+
+function stopLocating() {
+    if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
+    isLocating = false;
+
+    if (locationMarker) {
+        mapInstance.removeLayer(locationMarker);
+        locationMarker = null;
+    }
+    if (locationCircle) {
+        mapInstance.removeLayer(locationCircle);
+        locationCircle = null;
+    }
+}
+
 function onLocationFound(e) {
-    const radius = e.accuracy / 2;
+    const radius = e.accuracy;
+    const latlng = e.latlng;
 
-    if (window.locationMarker) {
-        map.removeLayer(window.locationMarker);
+    if (locationCircle) {
+        locationCircle.setLatLng(latlng).setRadius(radius);
+    } else {
+        locationCircle = L.circle(latlng, {
+            radius: radius,
+            color: '#4A90E2',
+            fillColor: '#4A90E2',
+            fillOpacity: 0.15,
+            weight: 1
+        }).addTo(mapInstance);
     }
-    if (window.locationCircle) {
-        map.removeLayer(window.locationCircle);
+
+    if (locationMarker) {
+        locationMarker.setLatLng(latlng);
+    } else {
+        const locationIcon = L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width: 18px;
+                    height: 18px;
+                    background: #4A90E2;
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 0 6px rgba(0,0,0,0.4);
+                    position: relative;
+                ">
+                    <div style="
+                        position: absolute;
+                        inset: -6px;
+                        border-radius: 50%;
+                        background: rgba(74, 144, 226, 0.25);
+                        animation: pulse 2s infinite;
+                    "></div>
+                </div>
+            `,
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+        });
+
+        locationMarker = L.marker(latlng, { icon: locationIcon, zIndexOffset: 1000 })
+            .addTo(mapInstance);
+
+        mapInstance.setView(latlng, Math.max(mapInstance.getZoom(), 16));
     }
-
-    window.locationCircle = L.circle(e.latlng, {
-        radius: radius,
-        color: '#136AEC',
-        fillColor: '#136AEC',
-        fillOpacity: 0.15,
-        weight: 2
-    }).addTo(map);
-
-    map.setView(e.latlng, 16);
 }
 
 function onLocationError(e) {
-    toastBottomRight.warning("Vous avez refusé la localisation.");
+    console.error('Erreur de géolocalisation :', e.message);
+    isLocating = false;
 }
 
 function locateUser() {
     if (!map) return;
     
-    if ("geolocation" in navigator) {
-        const locationOptions = {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0
-        };
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
-
-                map.fireEvent('locationfound', {
-                    latlng: L.latLng(lat, lng),
-                    accuracy: accuracy,
-                    timestamp: position.timestamp
-                });
-            },
-            (error) => {
-                map.fireEvent('locationerror', {
-                    code: error.code,
-                    message: error.message
-                });
-            },
-            locationOptions
-        );
-    } else {
-        toastBottomRight.error("La géolocalisation n'est pas supportée par votre navigateur");
-        soundsUX('MBF_NotificationError');
-    }
+    locateMe();
 }
 
 (async function() {
@@ -1913,14 +1963,29 @@ function hideLoadingScreen() {
     const loadingScreen = document.getElementById('loading-screen');
 
     if (localStorage.getItem('buildversion') !== window.BUILD_VERSION) {
+        setTimeout(() => {
+        window.updating = true;
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
+        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
+        let progress = 0;
+
+        const intervalId = setInterval(() => {
+            progress++;
+            updateLoadingProgress(progress);
+
+            if (progress >= 100) {
+                clearInterval(intervalId); 
+                window.location.reload();
+            }
+        }, 30);
+
         soundsUX('MBF_NotificationInfo');
         localStorage.setItem('buildversion', window.BUILD_VERSION);
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
+
+        }, 500);
+
 
     } else {
         const logoscr = document.getElementById('logoscr');
@@ -2313,6 +2378,342 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
+const ProgressOverlay = {
+  overlay: null,
+  progressBar: null,
+  animationInterval: null,
+  isCollecting: false,
+  collectionTimeout: null,
+  pendingProgress: null,
+  currentProgress: 0,
+
+  injectStyles() {
+    if (document.getElementById('progress-overlay-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'progress-overlay-styles';
+    style.textContent = `
+      #progress-overlay {
+        position: fixed;
+        bottom: 0px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        z-index: 9999999;
+        width: 90%;
+        background: rgba(30, 30, 30, 0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        padding: 16px 200px;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+        opacity: 0;
+        transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: none;
+      }
+
+      #progress-overlay.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0px);
+      }
+
+      #progress-overlay.hiding {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+
+      .po-label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .po-label {
+        font-size: 12px;
+        color: #98989d;
+        font-weight: 500;
+      }
+
+      .po-percent {
+        font-size: 12px;
+        color: #98989d;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .po-container {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .po-bar {
+        height: 100%;
+        border-radius: 4px;
+        position: absolute;
+        left: 0;
+        width: 0%;
+        background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .po-bar.indeterminate {
+        animation: po-move 2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+                   po-width 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+        transition: none;
+      }
+
+      .po-bar.completed {
+        background: linear-gradient(90deg, #34c759 0%, #30b350 100%);
+        width: 100% !important;
+        left: 0 !important;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      @keyframes po-move {
+        0%   { left: 0%; }
+        50%  { left: 95%; }
+        100% { left: 0%; }
+      }
+
+      @keyframes po-width {
+        0%   { width: 5%; }
+        25%  { width: 35%; }
+        50%  { width: 5%; }
+        75%  { width: 35%; }
+        100% { width: 5%; }
+      }
+    `;
+    document.head.appendChild(style);
+  },
+
+  create(label = '') {
+    this.injectStyles();
+    if (document.getElementById('progress-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'progress-overlay';
+    overlay.innerHTML = `
+      <div class="po-label-row">
+        <span class="po-label" id="po-label-text">${label} Installing requirements...</span>
+        <span class="po-percent" id="po-percent-text"></span>
+      </div>
+      <div class="po-container">
+        <div class="po-bar" id="po-bar"></div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    this.overlay = overlay;
+    this.progressBar = document.getElementById('po-bar');
+    this.currentProgress = 0;
+    this.isCollecting = false;
+    this.pendingProgress = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.add('visible');
+      });
+    });
+  },
+
+  // --- API publique ---
+
+  setIndeterminate(label) {
+    if (!this.overlay) this.create(label);
+    if (label) this.setLabel(label);
+
+    this.stopAnimation();
+    this.pendingProgress = null;
+    this.isCollecting = false;
+    if (this.collectionTimeout) {
+      clearTimeout(this.collectionTimeout);
+      this.collectionTimeout = null;
+    }
+
+    this.progressBar.style.transition = 'none';
+    this.progressBar.style.width = '';
+    this.progressBar.style.left = '';
+    this.progressBar.classList.remove('completed');
+    this.progressBar.classList.add('indeterminate');
+    this.currentProgress = -1;
+    this.updatePercent('');
+  },
+
+  // Appelé à chaque updateLoadingProgress() — accumule et garde la dernière valeur
+  setProgress(percent, label) {
+    if (!this.overlay) this.create(label);
+    if (label) this.setLabel(label);
+
+    // On garde toujours la valeur la plus récente (écrase les intermédiaires)
+    this.pendingProgress = percent;
+
+    if (!this.isCollecting) {
+      this.isCollecting = true;
+
+      this.collectionTimeout = setTimeout(() => {
+        this.isCollecting = false;
+        const target = this.pendingProgress;
+        this.pendingProgress = null;
+        this._applyProgress(target);
+      }, 20); // délai court pour absorber les appels simultanés
+    }
+  },
+
+  animate(durationMs = 4000, label) {
+    if (!this.overlay) this.create(label);
+    if (label) this.setLabel(label);
+    this._startAnimation(durationMs);
+  },
+
+  hide(delay = 0) {
+    if (!this.overlay) return;
+    this.stopAnimation();
+    if (this.collectionTimeout) {
+      clearTimeout(this.collectionTimeout);
+      this.collectionTimeout = null;
+    }
+
+    setTimeout(() => {
+      if (!this.overlay) return;
+      this.overlay.classList.remove('visible');
+      this.overlay.classList.add('hiding');
+
+      setTimeout(() => {
+        if (this.overlay) {
+          this.overlay.remove();
+          this.overlay = null;
+          this.progressBar = null;
+        }
+      }, 400);
+    }, delay);
+  },
+
+  setLabel(text) {
+    const el = document.getElementById('po-label-text');
+    if (el) el.textContent = text;
+  },
+
+  updatePercent(text) {
+    const el = document.getElementById('po-percent-text');
+    if (el) el.textContent = text;
+  },
+
+  // --- Méthodes internes ---
+
+  stopAnimation() {
+    if (this.animationInterval) {
+      clearInterval(this.animationInterval);
+      this.animationInterval = null;
+    }
+  },
+
+  _applyProgress(percent) {
+    if (!this.progressBar) return;
+
+    const wasIndeterminate = this.progressBar.classList.contains('indeterminate');
+
+    if (wasIndeterminate) {
+      // Attendre le bon moment dans le cycle CSS (barre revenue à gauche)
+      this._waitForIndeterminateEnd(() => this._setBarProgress(percent));
+    } else {
+      this._setBarProgress(percent);
+    }
+  },
+
+  _setBarProgress(percent) {
+    if (!this.progressBar) return;
+
+    this.stopAnimation();
+    this.progressBar.classList.remove('indeterminate');
+
+    if (percent >= 100) {
+      this.progressBar.classList.add('completed');
+      this.updatePercent('');
+    } else {
+      this.progressBar.classList.remove('completed');
+      this.progressBar.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      this.progressBar.style.left = '0';
+      this.progressBar.style.width = percent + '%';
+      this.updatePercent(Math.round(percent) + '%');
+    }
+
+    this.currentProgress = percent;
+  },
+
+  _waitForIndeterminateEnd(callback) {
+    const startTime = Date.now();
+    const maxWait = 3000;
+
+    const check = () => {
+      if (!this.progressBar || !this.overlay) return;
+
+      const containerWidth = this.progressBar.parentElement
+        ? this.progressBar.parentElement.offsetWidth
+        : 0;
+
+      if (containerWidth === 0) {
+        this.progressBar.classList.remove('indeterminate');
+        callback();
+        return;
+      }
+
+      const style = window.getComputedStyle(this.progressBar);
+      const left = parseFloat(style.left) || 0;
+      const width = parseFloat(style.width) || 0;
+      const leftPct = (left / containerWidth) * 100;
+      const widthPct = (width / containerWidth) * 100;
+
+      // On attend que la barre soit revenue proche du bord gauche
+      if (leftPct < 2 && widthPct < 15) {
+        this.progressBar.classList.remove('indeterminate');
+        setTimeout(callback, 80);
+      } else if (Date.now() - startTime < maxWait) {
+        requestAnimationFrame(check);
+      } else {
+        this.progressBar.classList.remove('indeterminate');
+        callback();
+      }
+    };
+
+    setTimeout(() => requestAnimationFrame(check), 100);
+  },
+
+  _startAnimation(durationMs) {
+    this.stopAnimation();
+    if (!this.progressBar) return;
+
+    this.progressBar.classList.remove('completed', 'indeterminate');
+    this.progressBar.style.transition = 'none';
+    this.progressBar.style.width = '0%';
+    this.progressBar.style.left = '0';
+    this.currentProgress = 0;
+
+    const steps = 100;
+    const intervalMs = durationMs / steps;
+
+    setTimeout(() => {
+      this.progressBar.style.transition = 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      this.animationInterval = setInterval(() => {
+        if (!this.progressBar) { this.stopAnimation(); return; }
+        if (this.currentProgress < 100) {
+          this.currentProgress += 1;
+          this.progressBar.style.width = this.currentProgress + '%';
+          this.updatePercent(this.currentProgress + '%');
+        } else {
+          this.stopAnimation();
+          this.progressBar.classList.add('completed');
+          this.updatePercent('');
+        }
+      }, intervalMs);
+    }, 50);
+  }
+};
+
 function createLoadingOverlay() {
     let overlay = document.getElementById('gtfs-loading-overlay');
     
@@ -2380,32 +2781,29 @@ function createLoadingOverlay() {
 }
 
 function showLoadingOverlay() {
-    const overlay = createLoadingOverlay();
-    overlay.classList.add('visible');
+    ProgressOverlay.setIndeterminate();
     window.overlayVisible = true;
 }
 
 function hideLoadingOverlay() {
-    const overlay = document.getElementById('gtfs-loading-overlay');
     window.overlayVisible = false;
-    if (overlay) {
-        overlay.classList.remove('visible');
-    }
+    setTimeout(() => {
+        ProgressOverlay.hide();
+    }, 2000);
+
 }
 
 function updateLoadingProgress(percentage) {
-    const progressFill = document.getElementById('progress-bar-fill');
-    const progressPercentage = document.getElementById('progress-percentage');
-    const loadingText = document.querySelector('.loading-text');
-    
-    if (progressFill) {
-        progressFill.style.width = `${percentage}%`;
+    if (percentage <= 0) {
+        ProgressOverlay.setIndeterminate();
+    } else {
+        ProgressOverlay.setProgress(percentage);
     }
-    
+
     if (percentage >= 100) {
         setTimeout(() => {
             hideLoadingOverlay();
-        }, 500);
+        }, 300);
     }
 }
 
@@ -2419,6 +2817,7 @@ async function loadGTFSDataOptimized() {
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
             updateLoadingProgress(progress);
+            ProgressOverlay.setLabel('Loading defer...');
         };
         
         updateProgress(0, 3);
@@ -2444,6 +2843,9 @@ async function loadGTFSDataOptimized() {
 
         updateProgress(1, 3);
         updateLoadingProgress(33);
+        setTimeout(() => {
+            ProgressOverlay.setLabel('Loading Lines...');
+        }, 100);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2479,6 +2881,9 @@ async function loadGTFSDataOptimized() {
         
         updateProgress(2, 3);
         updateLoadingProgress(66);
+        setTimeout(() => {
+            ProgressOverlay.setLabel('Loading Stops...');
+        }, 150);
         
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2503,8 +2908,13 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
         
-        updateProgress(3, 3);
-        updateLoadingProgress(100);
+        if (!window.updating) {
+            updateProgress(3, 3);
+            updateLoadingProgress(100);
+            setTimeout(() => {
+                ProgressOverlay.setLabel('Done !');
+            }, 200);
+        }
         
         apparaitrelelogo();
         
@@ -6407,7 +6817,17 @@ animationStyle.textContent = `
 `;
 document.head.appendChild(animationStyle);
 
+
+function cacheBoutonsenHaut() {
+    const actualiserbtn = document.getElementById('refresh-bouton-map');
+    const localiserbtn = document.getElementById('locate-bouton-map');
+
+    actualiserbtn.classList.toggle('hideblur');
+    localiserbtn.classList.toggle('hideblur');
+}
+
 function closeMenu() {
+    cacheBoutonsenHaut()
     safeVibrate([30], true);
     soundsUX('MBF_SelectedVehicle_DoorClose');
     const menu = document.getElementById('menu');
@@ -6443,6 +6863,8 @@ function closeMenu() {
         menubottom1.classList.add('slide-downb');
     }, 10);
 }
+
+
 
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
@@ -7743,6 +8165,7 @@ const menubottom1 = document.getElementById('menubtm');
 
 
         function showMenu() {
+            cacheBoutonsenHaut();
             soundsUX('MBF_SelectedVehicle_DoorOpen');
             window.isMenuShowed = true;
             const mapp = document.getElementById('map');
