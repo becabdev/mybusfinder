@@ -2345,7 +2345,7 @@ const ProgressOverlay = {
       #progress-overlay {
         position: fixed;
         bottom: 0px;
-        left: 0%;
+        left: 50%;
         transform: translateX(-50%) translateY(20px);
         z-index: 9999999;
         width: 100%;
