@@ -2313,6 +2313,308 @@ async function loadLineTerminusData(stopsFileContent) {
     }
 }
 
+const ProgressOverlay = {
+  overlay: null,
+  progressBar: null,
+  animationInterval: null,
+  isTransitioning: false,
+  pendingTransition: null,
+  currentProgress: 0,
+
+  injectStyles() {
+    if (document.getElementById('progress-overlay-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'progress-overlay-styles';
+    style.textContent = `
+      #progress-overlay {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%) translateY(20px);
+        z-index: 999999;
+        width: 360px;
+        max-width: calc(100vw - 40px);
+        background: rgba(30, 30, 30, 0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        padding: 16px 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
+        opacity: 0;
+        transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: none;
+      }
+
+      #progress-overlay.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0px);
+      }
+
+      #progress-overlay.hiding {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+
+      .po-label-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .po-label {
+        font-size: 12px;
+        color: #98989d;
+        font-weight: 500;
+      }
+
+      .po-percent {
+        font-size: 12px;
+        color: #98989d;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .po-container {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .po-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+        border-radius: 4px;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: absolute;
+        left: 0;
+      }
+
+      .po-bar.indeterminate {
+        width: 30%;
+        animation: po-move 2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+                   po-width 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        background: linear-gradient(90deg, #007aff 0%, #0051d5 100%);
+      }
+
+      .po-bar.completed {
+        background: linear-gradient(90deg, #34c759 0%, #30b350 100%);
+        width: 100% !important;
+      }
+
+      @keyframes po-move {
+        0%, 100% { left: 0; }
+        50% { left: 70%; }
+      }
+
+      @keyframes po-width {
+        0%, 50%, 100% { width: 5%; }
+        25%, 75% { width: 35%; }
+      }
+    `;
+    document.head.appendChild(style);
+  },
+
+  create(label = 'Chargement...') {
+    this.injectStyles();
+
+    if (document.getElementById('progress-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'progress-overlay';
+    overlay.innerHTML = `
+      <div class="po-label-row">
+        <span class="po-label" id="po-label-text">${label}</span>
+        <span class="po-percent" id="po-percent-text"></span>
+      </div>
+      <div class="po-container">
+        <div class="po-bar" id="po-bar"></div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    this.overlay = overlay;
+    this.progressBar = document.getElementById('po-bar');
+    this.currentProgress = 0;
+    this.isTransitioning = false;
+    this.pendingTransition = null;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.add('visible');
+      });
+    });
+  },
+
+  setIndeterminate(label) {
+    if (!this.overlay) this.create(label);
+    if (label) this.setLabel(label);
+    if (this.isTransitioning) return;
+
+    this.stopAnimation();
+    this.pendingTransition = null;
+    this.progressBar.classList.add('indeterminate');
+    this.progressBar.classList.remove('completed');
+    this.progressBar.style.width = '';
+    this.progressBar.style.left = '';
+    this.currentProgress = -1;
+    this.updatePercent('');
+  },
+
+  setProgress(percent, label) {
+    if (!this.overlay) this.create(label);
+    if (label) this.setLabel(label);
+
+    if (this.isTransitioning) return;
+
+    if (this.progressBar.classList.contains('indeterminate')) {
+      this.pendingTransition = { type: 'progress', value: percent };
+      this._waitForIndeterminateEnd();
+      return;
+    }
+
+    this.stopAnimation();
+    this.progressBar.classList.remove('indeterminate');
+
+    if (percent >= 100) {
+      this.progressBar.classList.add('completed');
+    } else {
+      this.progressBar.classList.remove('completed');
+    }
+
+    this.progressBar.style.width = percent + '%';
+    this.progressBar.style.left = '0';
+    this.currentProgress = percent;
+    this.updatePercent(percent >= 100 ? '' : Math.round(percent) + '%');
+  },
+
+  animate(durationMs = 4000, label) {
+    if (!this.overlay) this.create(label);
+    if (label) this.setLabel(label);
+
+    if (this.isTransitioning) return;
+    this.stopAnimation();
+
+    if (this.progressBar.classList.contains('indeterminate')) {
+      this.pendingTransition = { type: 'animate', duration: durationMs };
+      this._waitForIndeterminateEnd();
+    } else {
+      this._startAnimation(durationMs);
+    }
+  },
+
+  hide(delay = 0) {
+    if (!this.overlay) return;
+    this.stopAnimation();
+
+    setTimeout(() => {
+      if (!this.overlay) return;
+      this.overlay.classList.remove('visible');
+      this.overlay.classList.add('hiding');
+
+      setTimeout(() => {
+        if (this.overlay) {
+          this.overlay.remove();
+          this.overlay = null;
+          this.progressBar = null;
+        }
+      }, 400); 
+    }, delay);
+  },
+
+  setLabel(text) {
+    const el = document.getElementById('po-label-text');
+    if (el) el.textContent = text;
+  },
+
+  updatePercent(text) {
+    const el = document.getElementById('po-percent-text');
+    if (el) el.textContent = text;
+  },
+
+
+  stopAnimation() {
+    if (this.animationInterval) {
+      clearInterval(this.animationInterval);
+      this.animationInterval = null;
+    }
+  },
+
+  _startAnimation(durationMs) {
+    this.progressBar.classList.remove('completed', 'indeterminate');
+    this.progressBar.style.width = '0%';
+    this.progressBar.style.left = '0';
+    this.currentProgress = 0;
+
+    const steps = 100;
+    const intervalMs = durationMs / steps;
+
+    this.animationInterval = setInterval(() => {
+      if (this.currentProgress < 100) {
+        this.currentProgress += 1;
+        this.progressBar.style.width = this.currentProgress + '%';
+        this.updatePercent(this.currentProgress + '%');
+      } else {
+        this.stopAnimation();
+        this.progressBar.classList.add('completed');
+        this.updatePercent('');
+      }
+    }, intervalMs);
+  },
+
+  _waitForIndeterminateEnd() {
+    if (!this.progressBar.classList.contains('indeterminate')) return;
+
+    this.isTransitioning = true;
+    const startTime = Date.now();
+    const maxWait = 3000;
+
+    const check = () => {
+      const style = window.getComputedStyle(this.progressBar);
+      const left = parseFloat(style.left);
+      const width = parseFloat(style.width);
+      const containerWidth = this.progressBar.parentElement.offsetWidth;
+      const leftPct = (left / containerWidth) * 100;
+      const widthPct = (width / containerWidth) * 100;
+
+      if (leftPct < 2 && widthPct < 15) {
+        this._applyPendingTransition();
+      } else if (Date.now() - startTime < maxWait) {
+        requestAnimationFrame(check);
+      } else {
+        this._applyPendingTransition();
+      }
+    };
+
+    setTimeout(() => requestAnimationFrame(check), 100);
+  },
+
+  _applyPendingTransition() {
+    this.progressBar.classList.remove('indeterminate');
+
+    setTimeout(() => {
+      const t = this.pendingTransition;
+      this.pendingTransition = null;
+      this.isTransitioning = false;
+
+      if (!t) return;
+
+      if (t.type === 'progress') {
+        this.progressBar.style.width = '5%';
+        this.progressBar.style.left = '0';
+        setTimeout(() => this.setProgress(t.value), 150);
+      } else if (t.type === 'animate') {
+        this._startAnimation(t.duration || 4000);
+      }
+    }, 100);
+  }
+};
+
 function createLoadingOverlay() {
     let overlay = document.getElementById('gtfs-loading-overlay');
     
@@ -2380,28 +2682,22 @@ function createLoadingOverlay() {
 }
 
 function showLoadingOverlay() {
-    const overlay = createLoadingOverlay();
-    overlay.classList.add('visible');
+    ProgressOverlay.setIndeterminate();
     window.overlayVisible = true;
 }
 
 function hideLoadingOverlay() {
-    const overlay = document.getElementById('gtfs-loading-overlay');
     window.overlayVisible = false;
-    if (overlay) {
-        overlay.classList.remove('visible');
-    }
+    ProgressOverlay.hide();
 }
 
 function updateLoadingProgress(percentage) {
-    const progressFill = document.getElementById('progress-bar-fill');
-    const progressPercentage = document.getElementById('progress-percentage');
-    const loadingText = document.querySelector('.loading-text');
-    
-    if (progressFill) {
-        progressFill.style.width = `${percentage}%`;
+    if (percentage <= 0) {
+        ProgressOverlay.setIndeterminate();
+    } else {
+        ProgressOverlay.setProgress(percentage);
     }
-    
+
     if (percentage >= 100) {
         setTimeout(() => {
             hideLoadingOverlay();
