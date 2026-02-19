@@ -1919,6 +1919,7 @@ function hideLoadingScreen() {
         setTimeout(() => {
             ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
             setInterval(() => {
+                let progress = 0;
                 progress++;
                 updateLoadingProgress(progress);
                 if (progress >= 100) {
