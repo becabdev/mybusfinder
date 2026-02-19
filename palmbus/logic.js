@@ -2685,7 +2685,7 @@ function createLoadingOverlay() {
         style.textContent = `
             #gtfs-loading-overlay {
                 position: fixed;
-                bottom: 100px;
+                bottom: 300px;
                 left: 50%;
                 transform: translateX(-50%) translateY(20%);
                 z-index: 999999999999999999999;
@@ -2712,7 +2712,7 @@ function createLoadingOverlay() {
                 background: rgba(255, 255, 255, 0.2);
                 border-radius: 10px;
                 overflow: hidden;
-                margin-bottom: 25px;
+                margin-bottom: 10px;
                 box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
             }
             
