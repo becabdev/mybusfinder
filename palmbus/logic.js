@@ -2344,16 +2344,13 @@ const ProgressOverlay = {
     style.textContent = `
       #progress-overlay {
         position: fixed;
-        bottom: 120px;
-        left: 50%;
+        bottom: 0px;
         transform: translateX(-50%) translateY(20px);
         z-index: 999999;
-        width: 360px;
-        max-width: calc(100vw - 40px);
+        width: 100%;
         background: rgba(30, 30, 30, 0.92);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border-radius: 14px;
         border: 1px solid rgba(255, 255, 255, 0.12);
         box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
         padding: 16px 20px;
