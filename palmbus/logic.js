@@ -2413,7 +2413,7 @@ const ProgressOverlay = {
 
       @keyframes po-move {
         0%   { left: 0%; }
-        50%  { left: 100%; }
+        50%  { left: 95%; }
         100% { left: 0%; }
       }
 
@@ -2436,7 +2436,7 @@ const ProgressOverlay = {
     overlay.id = 'progress-overlay';
     overlay.innerHTML = `
       <div class="po-label-row">
-        <span class="po-label" id="po-label-text">${label}</span>
+        <span class="po-label" id="po-label-text">${label} 🥁</span>
         <span class="po-percent" id="po-percent-text"></span>
       </div>
       <div class="po-container">
@@ -2726,7 +2726,7 @@ function hideLoadingOverlay() {
     window.overlayVisible = false;
     setTimeout(() => {
         ProgressOverlay.hide();
-    }, 3300);
+    }, 300);
 
 }
 
@@ -2740,7 +2740,7 @@ function updateLoadingProgress(percentage) {
     if (percentage >= 100) {
         setTimeout(() => {
             hideLoadingOverlay();
-        }, 3300);
+        }, 300);
     }
 }
 
@@ -2778,7 +2778,7 @@ async function loadGTFSDataOptimized() {
         }
 
         updateProgress(1, 3);
-        updateLoadingProgress(33);
+        updateLoadingProgress('Loading Lines...', 33);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2813,7 +2813,7 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(2, 3);
-        updateLoadingProgress(66);
+        updateLoadingProgress('Loading Stops...', 66);
         
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2839,7 +2839,7 @@ async function loadGTFSDataOptimized() {
         });
         
         updateProgress(3, 3);
-        updateLoadingProgress(100);
+        updateLoadingProgress('Welcome to MyBusFinder!', 100);
         
         apparaitrelelogo();
         
