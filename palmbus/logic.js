@@ -2848,7 +2848,7 @@ async function loadGTFSDataOptimized() {
         updateProgress(3, 3);
         updateLoadingProgress(100);
         setTimeout(() => {
-            ProgressOverlay.setLabel('Welcome to MyBusFinder!');
+            ProgressOverlay.setLabel('Done !');
         }, 200);
         
         apparaitrelelogo();
