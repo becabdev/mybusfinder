@@ -2160,7 +2160,10 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         cursor: pointer;
         transform: scale(1);
-        transition: all cubic-bezier(0.25, 1.5, 0.5, 1) 0.3s;
+        transition:
+            transform 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+            opacity 0.3s ease,
+            filter 0.3s ease;
     }
 
     .refresh-bouton:active {
@@ -2181,7 +2184,11 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         cursor: pointer;
         transform: scale(1);
-        transition: all cubic-bezier(0.25, 1.5, 0.5, 1) 0.3s;
+        transition:
+            transform 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+            opacity 0.3s ease,
+            filter 0.3s ease;
+
     }
 
     .locate-bouton:active {
