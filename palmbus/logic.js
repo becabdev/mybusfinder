@@ -7162,10 +7162,23 @@ async function fetchVehiclePositions() {
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map(stop => {
-                        const timeLeft = stop.delay;
-                        const timeLeftText = timeLeft !== null 
-                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                            : '';
+                        const stopTime = stop.arrivalTime || stop.departureTime;
+                        let timeLeftText = '';
+
+                        if (stopTime && stopTime.includes(':')) {
+                            const parts = stopTime.split(':').map(Number);
+                            const now = new Date();
+                            const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+                            let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                            
+                            let diff = arrivalSeconds - nowSeconds;
+                            if (diff < -3600) diff += 86400;
+                            
+                            timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                        } else if (stopTime && !isNaN(stopTime)) {
+                            const diff = Math.floor(Number(stopTime) - Date.now() / 1000);
+                            timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                        }
                         
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
                                                 
