@@ -7474,7 +7474,7 @@ async function fetchVehiclePositions() {
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header" id="popup-header-${id}">${stopsHeaderText}</p>
+                                <div class="stops-header" id="popup-header-${id}">${stopsHeaderText}</div>
                                 <ul>
                                     <div id="popup-stops-${id}" class="nextStopsContent next-stops-content">
                                         ${nextStopsHTML}

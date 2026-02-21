@@ -2201,11 +2201,24 @@
     }
 
 
-    .stops-header-widget {
+.stops-header-widget {
     display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.stops-icons-row {
+    display: flex;
+    gap: 6px;
     align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
+}
+
+.stops-main-text {
+    font-size: 16px;
+    font-weight: 400;
+    font-family: 'League Spartan', sans-serif;
+    opacity: 0.9;
 }
 
 .stops-icon-badge {
@@ -2255,12 +2268,6 @@
 .stops-icon-badge:active .stops-badge-label {
     opacity: 1;
     max-width: 160px;
-}
-
-.stops-main-text {
-    font-size: 18px;
-    font-weight: 600;
-    font-family: 'League Spartan', sans-serif;
 }
 
 @keyframes stopsAppearSlide {
