@@ -7227,55 +7227,6 @@ async function fetchVehiclePositions() {
                     </div>
                 `;
 
-                if (!window.toggleTimeDisplay) {
-                    window.isAnimating = false;
-                    window.showTimeLeft = true;
-                    
-                    window.toggleTimeDisplay = function() {
-                        if (window.isAnimating) return;
-                        
-                        window.isAnimating = true;
-                        
-                        const timeDisplays = document.querySelectorAll('.time-display');
-                        const indicators = document.querySelectorAll('.time-indicator');
-                        
-                        timeDisplays.forEach(display => {
-                            display.classList.add('fade-out');
-                        });
-                        
-                        indicators.forEach(indicator => {
-                            indicator.classList.add('animate');
-                            
-                            setTimeout(() => {
-                                indicator.classList.remove('animate');
-                            }, 600);
-                        });
-                        
-                        setTimeout(() => {
-                            window.showTimeLeft = !window.showTimeLeft;
-                            
-                            timeDisplays.forEach(display => {
-                                const timeLeft = display.getAttribute('data-time-left');
-                                const departureTime = display.getAttribute('data-departure-time');
-                                display.textContent = window.showTimeLeft ? timeLeft : departureTime;
-                            });
-                            
-                            timeDisplays.forEach(display => {
-                                display.classList.remove('fade-out');
-                            });
-                            
-                            setTimeout(() => {
-                                window.isAnimating = false;
-                            }, 350);
-                        }, 350);
-                    };
-
-                    if (window.timeToggleInterval) {
-                        clearInterval(window.timeToggleInterval);
-                    }
-                    window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
-                }
-
                 if (!window.stopRowClickHandler) {
                     window.stopRowClickHandler = true;
                     document.addEventListener('click', function(e) {
