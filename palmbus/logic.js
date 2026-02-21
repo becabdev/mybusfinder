@@ -404,7 +404,6 @@
         position: relative;
         transform: scale(0);
         transition: transform 0.5s cubic-bezier(.99,0,.53,1.28);
-        border: 1px solid rgba(255, 255, 255, 0.5);
         color: #ffffff;
         margin-right: 20px;
         margin-left: 20px;
@@ -483,37 +482,11 @@
 
     .fluent-button-secondary {
         background-color: rgba(0, 0, 0, 0.05);
-        color: #000;
+        color: #ffffff;
     }
 
     .fluent-button-secondary:hover {
         background-color: rgba(0, 0, 0, 0.1);
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .fluent-popup {
-        background-color: rgba(32, 32, 32, 0.95);
-        color: #ffffff;
-        border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .fluent-popup-close {
-        color: #aaa;
-        }
-
-        .fluent-popup-close:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        }
-
-        .fluent-button-secondary {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        }
-
-        .fluent-button-secondary:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-        }
     }
     `;
 
@@ -8312,8 +8285,8 @@ const FluentSettingsMenu = (function() {
     styleElement.id = 'fluent-settings-styles';
     styleElement.textContent = `
       @keyframes fluentFadeIn {
-        from { opacity: 0; transform: translate(-50%, -48%); }
-        to { opacity: 1; transform: translate(-50%, -50%); }
+        from { transform: scale(0); }
+        to { transform: scale(1); }
       }
       
       @keyframes fluentBackdropFadeIn {
@@ -8640,7 +8613,7 @@ const FluentSettingsMenu = (function() {
     menuElement.container.style.opacity = '1';
     
     if (options.animation) {
-      menuElement.container.style.animation = 'fluentFadeIn 0.3s forwards';
+      menuElement.container.style.animation = 'fluentFadeIn 0.5s cubic-bezier(.99,0,.53,1.28)';
       menuElement.backdrop.style.animation = 'fluentBackdropFadeIn 0.3s forwards';
     }
     
