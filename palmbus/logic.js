@@ -382,33 +382,36 @@
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 99999999999;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.1s ease;
     }
 
     .fluent-popup {
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(0, 0, 0, 0.57);
         border-radius: 8px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         padding: 20px;
         max-width: 400px;
         width: 90%;
         font-family: 'League Spartan', sans-serif;
         position: relative;
-        transform: translateY(20px);
-        transition: transform 0.3s ease;
+        transform: scale(0);
+        transition: transform 0.5s cubic-bezier(.99,0,.53,1.28);
         border: 1px solid rgba(255, 255, 255, 0.5);
-        color: #202020;
+        color: #ffffff;
         margin-right: 20px;
         margin-left: 20px;
     }
 
     .fluent-popup.show {
-        transform: translateY(0);
+        transform: scale(1);
     }
 
     .fluent-popup-overlay.show {
@@ -459,8 +462,8 @@
     }
 
     .fluent-button {
-        padding: 8px 16px;
-        border-radius: 4px;
+        padding: 3px 14px;
+        border-radius: 16px;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
@@ -469,8 +472,9 @@
     }
 
     .fluent-button-primary {
-        background-color: #0078d4;
-        color: white;
+        background: #0a84ff;
+        color: #ffffff;
+        box-shadow: 0 1px 4px rgba(10, 132, 255, 0.3);
     }
 
     .fluent-button-primary:hover {
