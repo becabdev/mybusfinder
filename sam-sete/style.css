@@ -450,6 +450,8 @@
         width: 100%;
         height: 100%;
         z-index: 9999;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
     #accueil.hide {
         animation: 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards accueilCache;
@@ -765,8 +767,8 @@
         font-size: 20px;
         font-family: League Spartan;
         text-decoration: none;
-        height: 70px;
-        width: 70px;
+        height: 64px;
+        width: 62px;
         position: relative;
         transition: transform 0.3s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out, color 0.5s ease;
     }
@@ -785,7 +787,7 @@
         font-family: League Spartan;
         font-weight: 400;
         margin-bottom: 8px;
-        font-size: 14px;
+        font-size: 13px;
         text-align: center;
         opacity: 1;
         transition: transform 0.3s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out, color 0.5s ease;
@@ -1690,12 +1692,11 @@
     white-space: nowrap;
     scrollbar-width: thin;
     scrollbar-color: #888 #f1f1f1;
-    color: #ffffff;
 }
 
 .parc-badge {
     padding: 6px 10px;
-    background: #00000077;
+    background: #0000002e;
     font-weight: normal;
     white-space: nowrap;
     backdrop-filter: blur(8px);
@@ -1723,7 +1724,7 @@
 
 .model-badge {
     padding: 6px 10px;
-    background: #00000077;
+    background: #0000002e;
     font-weight: normal;
     white-space: nowrap;
     backdrop-filter: blur(8px);
@@ -2234,6 +2235,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     transition: gap 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
                 padding 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+                color 0.3s ease,
                 background 0.3s ease;
     max-width: 32px;
     overflow: hidden;
@@ -2246,6 +2248,7 @@
     max-width: 200px;
     background: rgba(0,0,0,0.35);
     padding: 5px 12px;
+    color: #fff;
 }
 
 .stops-icon-badge svg {
@@ -2302,3 +2305,11 @@
 .time-late-low { color: #f97316; }
 .time-late-high{ color: #ef4444; }
 .time-absolute { opacity: 0.75; }
+
+.stops-icon-badge:hover {
+    color: #ffffff;
+}
+
+.stops-icon-badge.active {
+    color: #ffffff;
+}
