@@ -7040,7 +7040,8 @@ async function fetchVehiclePositions() {
                         <span class="stops-badge-label">${occupancyStatusText}</span>
                     </span>` : "";
 
-                const iconStatus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+                const iconStatus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M8 14V15M16 14V15M5 11H19M6 18V19.5C6 19.7761 6.22386 20 6.5 20V20C6.77614 20 7 19.7761 7 19.5V18M17 18V19.5C17 19.7761 17.2239 20 17.5 20V20C17.7761 20 18 19.7761 18 19.5V18M19 6V6C19 4.34315 17.6569 3 16 3H8C6.34315 3 5 4.34315 5 6V6M19 6V16C19 17.1046 18.1046 18 17 18H7C5.89543 18 5 17.1046 5 16V6M19 6H5" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>`;
+
 
                 const statusBadge = status !== "" ? `
                     <span class="stops-icon-badge">
@@ -7139,74 +7140,41 @@ async function fetchVehiclePositions() {
                     }
                 }
 
-                if (!window.stopClickStates) window.stopClickStates = {};
-
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    stopsListHTML = filteredStops.map((stop, index) => {
+                    stopsListHTML = filteredStops.map(stop => {
                         const stopTime = stop.arrivalTime || stop.departureTime;
                         let timeLeftText = '';
-                        let absoluteTime = stopTime || t("unknown");
 
                         if (stopTime && stopTime.includes(':')) {
                             const parts = stopTime.split(':').map(Number);
                             const now = new Date();
                             const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
                             let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                            
                             let diff = arrivalSeconds - nowSeconds;
                             if (diff < -3600) diff += 86400;
+                            
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
-                            absoluteTime = `${String(parts[0]).padStart(2,'0')}:${String(parts[1]).padStart(2,'0')}`;
                         } else if (stopTime && !isNaN(stopTime)) {
                             const diff = Math.floor(Number(stopTime) - Date.now() / 1000);
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
                         }
-
-                        const stopDelaySeconds = stop.delay ?? null;
-                        let delayText = '';
-                        if (stopDelaySeconds !== null) {
-                            const stopDelayMin = Math.round(stopDelaySeconds / 60);
-                            if (Math.abs(stopDelayMin) <= 1) {
-                                delayText = t("ontime");
-                            } else if (stopDelayMin < -1) {
-                                delayText = `-${Math.abs(stopDelayMin)} min`;
-                            } else {
-                                delayText = `+${stopDelayMin} min`;
-                            }
-                        } else {
-                            delayText = t("unavailable") || "—";
-                        }
-
+                        
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                        const stateKey = `${tripId}_${index}`;
-
-                        const states = [
-                            { value: timeLeftText,  cls: "" },
-                            { value: absoluteTime,  cls: "time-absolute" },
-                            { value: delayText,     cls: stopDelaySeconds === null || Math.abs(Math.round(stopDelaySeconds/60)) <= 1
-                                                        ? "time-ontime"
-                                                        : Math.round(stopDelaySeconds/60) < -1
-                                                            ? "time-early"
-                                                            : Math.round(stopDelaySeconds/60) > 5
-                                                                ? "time-late-high"
-                                                                : "time-late-low" }
-                        ];
-
-                        const currentState = window.stopClickStates[stateKey] ?? 0;
-                        const { value: displayValue, cls: displayCls } = states[currentState];
-
+                                                
                         return `
-                        <li class="stop-row" data-state-key="${stateKey}" 
-                            data-states='${JSON.stringify(states)}'
-                            style="list-style: none; padding: 2px 0; display: flex; justify-content: space-between; cursor: pointer; user-select: none;">
+                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
                             <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
                                 <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
                                     <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
                                 </div>
                             </div>
                             <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                                <div class="time-display ${displayCls}" data-state-key="${stateKey}">
-                                    ${displayValue}
+                                <div class="time-display" 
+                                    data-time-left="${timeLeftText}" 
+                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                                    ${timeLeftText}
                                 </div>
                                 <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <g class="rss-waves">
@@ -7219,6 +7187,7 @@ async function fetchVehiclePositions() {
                         </li>`;
                     }).join('');
                 }
+
                 const nextStopsHTML = `
                     <div style="position: relative; max-height: 120px;">
                         <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
@@ -7227,29 +7196,53 @@ async function fetchVehiclePositions() {
                     </div>
                 `;
 
-                if (!window.stopRowClickHandler) {
-                    window.stopRowClickHandler = true;
-                    document.addEventListener('click', function(e) {
-                        const row = e.target.closest('.stop-row');
-                        if (!row) return;
-
-                        const key = row.dataset.stateKey;
-                        const states = JSON.parse(row.dataset.states);
-                        const current = window.stopClickStates[key] ?? 0;
-                        const next = (current + 1) % states.length;
-                        window.stopClickStates[key] = next;
-
-                        const display = row.querySelector(`.time-display[data-state-key="${key}"]`);
-                        if (!display) return;
-
-                        display.classList.add('fade-out');
+                if (!window.toggleTimeDisplay) {
+                    window.isAnimating = false;
+                    window.showTimeLeft = true;
+                    
+                    window.toggleTimeDisplay = function() {
+                        if (window.isAnimating) return;
+                        
+                        window.isAnimating = true;
+                        
+                        const timeDisplays = document.querySelectorAll('.time-display');
+                        const indicators = document.querySelectorAll('.time-indicator');
+                        
+                        timeDisplays.forEach(display => {
+                            display.classList.add('fade-out');
+                        });
+                        
+                        indicators.forEach(indicator => {
+                            indicator.classList.add('animate');
+                            
+                            setTimeout(() => {
+                                indicator.classList.remove('animate');
+                            }, 600);
+                        });
+                        
                         setTimeout(() => {
-                            display.textContent = states[next].value;
-                            display.className = `time-display ${states[next].cls}`;
-                            display.setAttribute('data-state-key', key);
-                            display.classList.remove('fade-out');
-                        }, 200);
-                    });
+                            window.showTimeLeft = !window.showTimeLeft;
+                            
+                            timeDisplays.forEach(display => {
+                                const timeLeft = display.getAttribute('data-time-left');
+                                const departureTime = display.getAttribute('data-departure-time');
+                                display.textContent = window.showTimeLeft ? timeLeft : departureTime;
+                            });
+                            
+                            timeDisplays.forEach(display => {
+                                display.classList.remove('fade-out');
+                            });
+                            
+                            setTimeout(() => {
+                                window.isAnimating = false;
+                            }, 350);
+                        }, 350);
+                    };
+
+                    if (window.timeToggleInterval) {
+                        clearInterval(window.timeToggleInterval);
+                    }
+                    window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
                 }
 
                 const delayInfo = tripUpdates[tripId] ? tripUpdates[tripId].stopUpdates.find(update => update.stopId === stopId) : null;
