@@ -2201,68 +2201,91 @@
     }
 
 
-    .stops-header-inner {
+    .stops-header-widget {
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
-.stops-badge {
+.stops-icon-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
+    gap: 0px;
+    padding: 5px 8px;
+    background: rgba(0,0,0,0.2);
     border-radius: 20px;
-    font-size: 0.7rem;
+    cursor: default;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: gap 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+                padding 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+                background 0.3s ease;
+    max-width: 32px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.stops-icon-badge:hover,
+.stops-icon-badge:active {
+    gap: 6px;
+    max-width: 200px;
+    background: rgba(0,0,0,0.35);
+    padding: 5px 12px;
+}
+
+.stops-icon-badge svg {
+    flex-shrink: 0;
+}
+
+.stops-badge-label {
+    font-size: 11px;
+    font-family: 'League Spartan', sans-serif;
     font-weight: 500;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255,255,255,0.2);
-    animation: badgeFadeIn 0.4s cubic-bezier(0.25, 1.5, 0.5, 1);
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity 0.25s ease 0.05s,
+                max-width 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
+    white-space: nowrap;
+}
+
+.stops-icon-badge:hover .stops-badge-label,
+.stops-icon-badge:active .stops-badge-label {
+    opacity: 1;
+    max-width: 160px;
 }
 
 .stops-main-text {
-    font-size: 1.1rem;
+    font-size: 18px;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    animation: slideUpText 0.4s cubic-bezier(0.25, 1.5, 0.5, 1);
+    font-family: 'League Spartan', sans-serif;
 }
 
-.stops-main-text .stops-icon {
-    font-size: 1rem;
-    animation: iconPop 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
+@keyframes stopsAppearSlide {
+    0% { opacity: 0; transform: translateX(12px); }
+    100% { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes badgeFadeIn {
-    from { opacity: 0; transform: translateX(10px); }
-    to   { opacity: 1; transform: translateX(0); }
+@keyframes stopsAppearPop {
+    0% { opacity: 0; transform: scale(0.7); }
+    60% { transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes slideUpText {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
+@keyframes stopsAppearFade {
+    0% { opacity: 0; transform: translateY(6px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes iconPop {
-    0%   { transform: scale(0); }
-    60%  { transform: scale(1.3); }
-    100% { transform: scale(1); }
+@keyframes stopsAppearBounce {
+    0% { opacity: 0; transform: translateY(-10px); }
+    60% { transform: translateY(3px); }
+    100% { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulseIcon {
-    0%, 100% { transform: scale(1); }
-    50%       { transform: scale(1.2); }
-}
-
-@keyframes spinnerRotate {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-}
-
-.stops-icon-spin {
-    display: inline-block;
-    animation: spinnerRotate 1s linear infinite;
-}
+.stops-anim-slide { animation: stopsAppearSlide 0.4s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
+.stops-anim-pop   { animation: stopsAppearPop   0.4s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
+.stops-anim-fade  { animation: stopsAppearFade  0.35s ease both; }
+.stops-anim-bounce{ animation: stopsAppearBounce 0.45s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
