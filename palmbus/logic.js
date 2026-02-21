@@ -7341,7 +7341,7 @@ async function fetchVehiclePositions() {
 
                     // nouvelle version
                     const popupContent = `
-                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}${transparenceSombre}; color: ${textColor};">
+                        <div class="popup-container" data-vehicle-id="${id}" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}${transparenceSombre}; color: ${textColor};">
                             
                             <button onclick="shareVehicleId('${vehicle.vehicle.id}')" title="${t("share")}" class="share-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -7360,7 +7360,7 @@ async function fetchVehiclePositions() {
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <strong class="vehicle-direction">➜ ${lastStopName}</strong>
+                                    <strong class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</strong>
                                     <div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
@@ -7391,9 +7391,9 @@ async function fetchVehiclePositions() {
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header">${stopsHeaderText}</p>
+                                <p class="stops-header" id="popup-header-${id}">${stopsHeaderText}</p>
                                 <ul>
-                                    <div id="nextStopsContent" class="next-stops-content">
+                                    <div id="popup-stops-${id}" class="nextStopsContent next-stops-content">
                                         ${nextStopsHTML}
                                     </div>   
                                 </div>
@@ -7646,6 +7646,42 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
     }
 }
 
+function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
+    if (!marker.isPopupOpen()) return false;
+
+    const popupNode = marker.getPopup()._contentNode;
+    if (!popupNode) return false;
+
+    let updated = false;
+
+    if (lastStopName !== undefined) {
+        const dirEl = popupNode.querySelector(`#popup-direction-${id}`);
+        if (dirEl && dirEl.textContent !== `➜ ${lastStopName}`) {
+            dirEl.textContent = `➜ ${lastStopName}`;
+            updated = true;
+        }
+    }
+
+    if (stopsHeaderText !== undefined) {
+        const headerEl = popupNode.querySelector(`#popup-header-${id}`);
+        if (headerEl && headerEl.innerHTML !== stopsHeaderText) {
+            headerEl.innerHTML = stopsHeaderText;
+            updated = true;
+        }
+    }
+
+    if (nextStopsHTML !== undefined) {
+        const stopsEl = popupNode.querySelector(`#popup-stops-${id}`);
+        if (stopsEl && stopsEl.innerHTML !== nextStopsHTML) {
+            stopsEl.innerHTML = nextStopsHTML;
+            updated = true;
+        }
+    }
+
+    return updated;
+}
+
+
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup) return false;
@@ -7730,14 +7766,14 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     marker.destination !== lastStopName ||
                     marker._lastNextStopsHTML !== nextStopsHTML
                 );
-                
+
                 if (hasChanges) {
                     marker.vehicleData = vehicle;
                     marker.destination = lastStopName;
-                    
+                    marker._lastNextStopsHTML = nextStopsHTML;
+
                     if (marker.line !== line) {
                         marker.line = line;
-                        marker._lastNextStopsHTML = nextStopsHTML;
                         markerPool.updateMarkerStyle(marker, line, bearing);
                         
                         if (marker.isPopupOpen()) {
@@ -7754,10 +7790,13 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     }
                     
                     updateLinesDisplay();
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+
+                    if (marker.isPopupOpen()) {
+                        patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText });
+                    } else {
+                        updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML,
+                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    }
                 }
                 
                 if (marker._icon) {
