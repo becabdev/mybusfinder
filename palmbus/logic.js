@@ -7047,9 +7047,11 @@ async function fetchVehiclePositions() {
                         label = `${delayMinutes} ${t("min")} ${t("late")}`;
                         color = delayMinutes > 5 ? "#e6a7a7" : "#f3bc95";
                     }
-                    return `<span class="stops-icon-badge" style="border: 1px solid ${color}44; ">
-                        <span style="color:${color}; display:flex; align-items:center;">${icon}</span>
-                        <span class="stops-badge-label" style="color:${color};">${label}</span>
+                    return `<span style="color:${color};">
+                        <span class="stops-icon-badge" style="border: 1px solid ${color}44; ">
+                            <span style="display:flex; align-items:center;">${icon}</span>
+                            <span class="stops-badge-label">${label}</span>
+                        </span>
                     </span>`;
                 })() : "";
 
