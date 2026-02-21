@@ -1,4 +1,7 @@
 <?php
+@ini_set('memory_limit', '4096M');
+set_time_limit(180);
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, HEAD, OPTIONS");
 header("Access-Control-Allow-Headers: X-Content-Only-Header");
@@ -8,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $url = 'https://rrgtfsfeeds.s3.amazonaws.com/gtfs_busco.zip';
-
 $cacheDir = __DIR__ . '/cache';
 $extractDir = $cacheDir . '/extracted';
 $coreCacheFile = $cacheDir . '/gtfs_core.json';
@@ -280,6 +282,41 @@ function buildTripIndex($extractDir, $tripIndexFile) {
     return $tripToRoute;
 }
 
+function buildStopTimesIndex($extractDir, $outputFile) {
+    $stopTimesFile = $extractDir . '/stop_times.txt';
+    if (!file_exists($stopTimesFile)) return;
+
+    $index = [];
+    $fh = fopen($stopTimesFile, 'r');
+    $headers = fgetcsv($fh);
+    $tripIdIdx    = array_search('trip_id',        $headers);
+    $stopIdIdx    = array_search('stop_id',         $headers);
+    $arrivalIdx   = array_search('arrival_time',    $headers);
+    $departureIdx = array_search('departure_time',  $headers);
+
+    $count = 0;
+    while (($row = fgetcsv($fh)) !== false) {
+        $tripId  = $row[$tripIdIdx]  ?? '';
+        $stopId  = $row[$stopIdIdx]  ?? '';
+        if (!$tripId || !$stopId) continue;
+
+        $index[$tripId][$stopId] = [
+            'a' => $row[$arrivalIdx]   ?? '', 
+            'd' => $row[$departureIdx] ?? ''  
+        ];
+
+        $count++;
+        if ($count % 10000 === 0) gc_collect_cycles();
+    }
+    fclose($fh);
+
+    $compressed = gzencode(json_encode($index), 6); 
+    file_put_contents($outputFile, $compressed);
+
+    unset($index);
+    gc_collect_cycles();
+}
+
 function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {
     $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
@@ -306,6 +343,7 @@ function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $opt
     
     // Créer index trip->route
     buildTripIndex($extractDir, $tripIndexFile);
+    buildStopTimesIndex($extractDir, $cacheDir . '/stop_times_index.json.gz');
     
     return true;
 }
@@ -374,6 +412,32 @@ if (isset($_GET['action'])) {
                 error_log("Envoi du fichier stops: " . filesize($optimizedStopsFile) . " bytes");
                 readfile($optimizedStopsFile);
                 break;
+
+            case 'stop_times':
+                $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
+                
+                if (!file_exists($stopTimesIndex)) {
+                    // Générer à la demande si pas encore fait
+                    if (!file_exists($extractDir . '/stop_times.txt')) {
+                        $zip = new ZipArchive();
+                        if ($zip->open($zipCacheFile) === TRUE) {
+                            $zip->extractTo($extractDir, 'stop_times.txt');
+                            $zip->close();
+                        }
+                    }
+                    buildStopTimesIndex($extractDir, $stopTimesIndex);
+                }
+                
+                if (!file_exists($stopTimesIndex)) {
+                    http_response_code(500);
+                    echo json_encode(['error' => 'stop_times index introuvable']);
+                    exit;
+                }
+                
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                readfile($stopTimesIndex);
+            break;
                 
             case 'info':
                 header("Content-Type: application/json");
@@ -509,67 +573,7 @@ if (isset($_GET['action'])) {
                         echo $json;
                     }
                     break;
-            
-            case 'theoretical_times':
-                $tripId = $_GET['trip_id'] ?? null;
                 
-                if (!$tripId) {
-                    http_response_code(400);
-                    echo json_encode(['error' => 'trip_id manquant']);
-                    exit;
-                }
-                
-                $theoreticalCacheFile = $cacheDir . '/theoretical_' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $tripId) . '.json';
-                
-                // Cache de 1 heure
-                if (file_exists($theoreticalCacheFile) && (time() - filemtime($theoreticalCacheFile)) < 3600) {
-                    header("Content-Type: application/json");
-                    readfile($theoreticalCacheFile);
-                    exit;
-                }
-                
-                // Extraire stop_times.txt si nécessaire
-                if (!file_exists($extractDir . '/stop_times.txt')) {
-                    $zip = new ZipArchive();
-                    if ($zip->open($zipCacheFile) !== TRUE) {
-                        throw new Exception('Impossible ouvrir ZIP');
-                    }
-                    $zip->extractTo($extractDir, 'stop_times.txt');
-                    $zip->close();
-                }
-                
-                $theoreticalTimes = [];
-                $stopTimesFile = $extractDir . '/stop_times.txt';
-                $fh = fopen($stopTimesFile, 'r');
-                $headers = fgetcsv($fh);
-                
-                $tripIdIdx = array_search('trip_id', $headers);
-                $stopIdIdx = array_search('stop_id', $headers);
-                $arrivalIdx = array_search('arrival_time', $headers);
-                $departureIdx = array_search('departure_time', $headers);
-                $sequenceIdx = array_search('stop_sequence', $headers);
-                
-                while (($row = fgetcsv($fh)) !== false) {
-                    if (($row[$tripIdIdx] ?? '') === $tripId) {
-                        $stopId = $row[$stopIdIdx] ?? '';
-                        $arrivalTime = $row[$arrivalIdx] ?? '';
-                        $departureTime = $row[$departureIdx] ?? '';
-                        
-                        $theoreticalTimes[$stopId] = [
-                            'arrival_time' => $arrivalTime,
-                            'departure_time' => $departureTime,
-                            'stop_sequence' => (int)($row[$sequenceIdx] ?? 0)
-                        ];
-                    }
-                }
-                fclose($fh);
-                
-                $result = json_encode($theoreticalTimes);
-                file_put_contents($theoreticalCacheFile, $result);
-                
-                header("Content-Type: application/json");
-                echo $result;
-                break;
             default:
                 error_log("Action invalide: " . $action);
                 header("Content-Type: application/json");

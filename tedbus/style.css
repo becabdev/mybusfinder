@@ -571,7 +571,7 @@
             opacity: 0.7;
         }
     }
-    #nextStopsContent div {
+    .nextStopsContent div {
         animation: 0.3s ease-in fadeInScroll;
         display: inherit;
     }
@@ -1642,7 +1642,6 @@
 
 .vehicle-info-section {
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.2);
     padding: 10px;
     text-align: center;
     overflow: hidden;
@@ -2200,3 +2199,106 @@
         filter: blur(5px);
         opacity: 0;
     }
+
+
+.stops-header-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+}
+
+.stops-icons-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.stops-main-text {
+    font-size: 16px;
+    font-weight: 400;
+    font-family: 'League Spartan', sans-serif;
+    opacity: 0.9;
+}
+
+.stops-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0px;
+    padding: 5px 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 20px;
+    cursor: default;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: gap 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+                padding 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+                background 0.3s ease;
+    max-width: 32px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.stops-icon-badge:hover,
+.stops-icon-badge:active {
+    gap: 6px;
+    max-width: 200px;
+    background: rgba(0,0,0,0.35);
+    padding: 5px 12px;
+}
+
+.stops-icon-badge svg {
+    flex-shrink: 0;
+}
+
+.stops-badge-label {
+    font-size: 11px;
+    font-family: 'League Spartan', sans-serif;
+    font-weight: 500;
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity 0.25s ease 0.05s,
+                max-width 0.3s cubic-bezier(0.25, 1.5, 0.5, 1);
+    white-space: nowrap;
+}
+
+.stops-icon-badge:hover .stops-badge-label,
+.stops-icon-badge:active .stops-badge-label {
+    opacity: 1;
+    max-width: 160px;
+}
+
+@keyframes stopsAppearSlide {
+    0% { opacity: 0; transform: translateX(12px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes stopsAppearPop {
+    0% { opacity: 0; transform: scale(0.7); }
+    60% { transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes stopsAppearFade {
+    0% { opacity: 0; transform: translateY(6px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stopsAppearBounce {
+    0% { opacity: 0; transform: translateY(-10px); }
+    60% { transform: translateY(3px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.stops-anim-slide { animation: stopsAppearSlide 0.4s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
+.stops-anim-pop   { animation: stopsAppearPop   0.4s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
+.stops-anim-fade  { animation: stopsAppearFade  0.35s ease both; }
+.stops-anim-bounce{ animation: stopsAppearBounce 0.45s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
+
+.time-ontime   { color: #22c55e; }
+.time-early    { color: #3b82f6; }
+.time-late-low { color: #f97316; }
+.time-late-high{ color: #ef4444; }
+.time-absolute { opacity: 0.75; }
