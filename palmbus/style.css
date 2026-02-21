@@ -765,8 +765,8 @@
         font-size: 20px;
         font-family: League Spartan;
         text-decoration: none;
-        height: 70px;
-        width: 70px;
+        height: 64px;
+        width: 59px;
         position: relative;
         transition: transform 0.3s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out, color 0.5s ease;
     }
@@ -785,7 +785,7 @@
         font-family: League Spartan;
         font-weight: 400;
         margin-bottom: 8px;
-        font-size: 14px;
+        font-size: 13px;
         text-align: center;
         opacity: 1;
         transition: transform 0.3s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out, color 0.5s ease;
