@@ -450,6 +450,8 @@
         width: 100%;
         height: 100%;
         z-index: 9999;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
     #accueil.hide {
         animation: 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards accueilCache;
