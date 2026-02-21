@@ -7087,11 +7087,11 @@ async function fetchVehiclePositions() {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
                             <div class="stops-icons-row">
+                                ${delayBadgeHTML}
                                 <span class="stops-icon-badge">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                                     <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                 </span>
-                                ${delayBadgeHTML}
                                 ${statusBadge}
                             </div>
                             <span class="stops-main-text">${t("notinservicemaj")}</span>
@@ -7105,11 +7105,11 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                         <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                     </span>
-                                    ${delayBadgeHTML}
                                     ${occupancyBadge}
                                     ${statusBadge}
                                 </div>
@@ -7119,11 +7119,11 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         ${iconClock}
                                         <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                     </span>
-                                    ${delayBadgeHTML}
                                     ${occupancyBadge}
                                     ${statusBadge}
                                 </div>
@@ -7133,11 +7133,11 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         ${iconClock}
                                         <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                     </span>
-                                    ${delayBadgeHTML}
                                     ${occupancyBadge}
                                     ${statusBadge}
                                 </div>
@@ -7147,11 +7147,11 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         ${iconClock}
                                         <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                     </span>
-                                    ${delayBadgeHTML}
                                     ${occupancyBadge}
                                     ${statusBadge}
                                 </div>
