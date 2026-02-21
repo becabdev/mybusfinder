@@ -2872,28 +2872,49 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
 
-        // ── STOP TIMES (chargement non bloquant) ────────────────────
+        // ── STOP TIMES (chargement non bloquant avec worker) ─────────
         updateProgress(3, 4);
         updateLoadingProgress(75);
         setTimeout(() => ProgressOverlay.setLabel('Loading Timetables...'), 200);
 
         window.staticStopTimes = {};
-        window.stopTimesReady = false;
+        window.stopTimesReady  = false;
 
-        const stopTimesPromise = fetch('proxy-cors/proxy_gtfs.php?action=stop_times', { cache: 'no-store' })
-            .then(res => res.ok ? res.json() : Promise.reject(res.status))
-            .then(data => {
-                window.staticStopTimes = data;
-                window.stopTimesReady = true;
-                console.log('Stop times chargés en arrière-plan :', Object.keys(data).length, 'trips');
-            })
-            .catch(err => {
-                console.warn('Erreur chargement stop_times :', err);
-                window.stopTimesReady = false;
-            });
+        const workerCode = `
+            self.onmessage = async ({ data: url }) => {
+                try {
+                    const res  = await fetch(url, { cache: 'no-store' });
+                    const text = await res.text();
+                    const json = JSON.parse(text);
+                    self.postMessage({ ok: true, json });
+                } catch (err) {
+                    self.postMessage({ ok: false, error: err.message });
+                }
+            };
+        `;
 
-        // j expose la promise si d'autres fonctions ont besoin dattendre
-        window.stopTimesPromise = stopTimesPromise;
+        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl  = URL.createObjectURL(workerBlob);
+
+        window.stopTimesPromise = new Promise((resolve) => {
+            const worker = new Worker(workerUrl);
+
+            worker.onmessage = ({ data }) => {
+                worker.terminate();
+                URL.revokeObjectURL(workerUrl);
+                if (data.ok) {
+                    window.staticStopTimes = data.json;
+                    window.stopTimesReady  = true;
+                    console.log('Stop times chargés en arrière plan', Object.keys(data.json).length, 'trips');
+                } else {
+                    console.warn('Erreur chargement stop times', data.error);
+                    window.stopTimesReady = false;
+                }
+                resolve();
+            };
+
+            worker.postMessage('proxy-cors/proxy_gtfs.php?action=stop_times');
+        });
 
         // ── FIN ──────────────────────────────────────────────────
         if (!window.updating) {
