@@ -382,33 +382,35 @@
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 99999999999;
         opacity: 0;
-        transition: opacity 0.3s ease;
+        transition: opacity 0.1s ease;
     }
 
     .fluent-popup {
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(0, 0, 0, 0.57);
         border-radius: 8px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         padding: 20px;
         max-width: 400px;
         width: 90%;
         font-family: 'League Spartan', sans-serif;
         position: relative;
-        transform: translateY(20px);
-        transition: transform 0.3s ease;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        color: #202020;
+        transform: scale(0);
+        transition: transform 0.5s cubic-bezier(.99,0,.53,1.28);
+        color: #ffffff;
         margin-right: 20px;
         margin-left: 20px;
     }
 
     .fluent-popup.show {
-        transform: translateY(0);
+        transform: scale(1);
     }
 
     .fluent-popup-overlay.show {
@@ -459,8 +461,8 @@
     }
 
     .fluent-button {
-        padding: 8px 16px;
-        border-radius: 4px;
+        padding: 3px 14px;
+        border-radius: 16px;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
@@ -469,8 +471,9 @@
     }
 
     .fluent-button-primary {
-        background-color: #0078d4;
-        color: white;
+        background: #0a84ff;
+        color: #ffffff;
+        box-shadow: 0 1px 4px rgba(10, 132, 255, 0.3);
     }
 
     .fluent-button-primary:hover {
@@ -479,37 +482,11 @@
 
     .fluent-button-secondary {
         background-color: rgba(0, 0, 0, 0.05);
-        color: #000;
+        color: #ffffff;
     }
 
     .fluent-button-secondary:hover {
         background-color: rgba(0, 0, 0, 0.1);
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .fluent-popup {
-        background-color: rgba(32, 32, 32, 0.95);
-        color: #ffffff;
-        border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .fluent-popup-close {
-        color: #aaa;
-        }
-
-        .fluent-popup-close:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        }
-
-        .fluent-button-secondary {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #fff;
-        }
-
-        .fluent-button-secondary:hover {
-        background-color: rgba(255, 255, 255, 0.15);
-        }
     }
     `;
 
@@ -2817,10 +2794,9 @@ async function loadGTFSDataOptimized() {
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
             updateLoadingProgress(progress);
-            ProgressOverlay.setLabel('Loading defer...');
         };
         
-        updateProgress(0, 3);
+        updateProgress(0, 4);
         soundsUX('MBF_Popup');
 
         console.log('Vérification des endpoints...');
@@ -2835,31 +2811,26 @@ async function loadGTFSDataOptimized() {
         }
         
         const serverInfo = await infoResponse.json();
-        console.log('📊 Info serveur:', serverInfo);
+        console.log('Info serveur:', serverInfo);
         
         if (!serverInfo.routes_exists) {
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
-        updateProgress(1, 3);
-        updateLoadingProgress(33);
-        setTimeout(() => {
-            ProgressOverlay.setLabel('Loading Lines...');
-        }, 100);
+        // ── ROUTES ──────────────────────────────────────────────
+        updateProgress(1, 4);
+        updateLoadingProgress(25);
+        setTimeout(() => ProgressOverlay.setLabel('Loading Lines...'), 100);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
             cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
         
         if (!routesResponse.ok) {
             const errorText = await routesResponse.text();
             console.error('Erreur routes', errorText);
-            
             try {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(`Erreur routes (${routesResponse.status}): ${errorJson.error || errorText}`);
@@ -2868,30 +2839,23 @@ async function loadGTFSDataOptimized() {
             }
         }
         
-        const contentType = routesResponse.headers.get('Content-Type');
-        console.log('Content-Type routes :', contentType);
-        
         const routesData = await routesResponse.json();
-        console.log('Routes chargées', Object.keys(routesData).length, 'lignes');
+        console.log('Routes chargées:', Object.keys(routesData).length, 'lignes');
         
         Object.entries(routesData).forEach(([routeId, data]) => {
             lineColors[routeId] = data.c ? `#${data.c}` : '#FFFFFF';
-            lineName[routeId] = data.s || data.l || routeId;
+            lineName[routeId]   = data.s || data.l || routeId;
         });
-        
-        updateProgress(2, 3);
-        updateLoadingProgress(66);
-        setTimeout(() => {
-            ProgressOverlay.setLabel('Loading Stops...');
-        }, 150);
-        
+
+        // ── STOPS ────────────────────────────────────────────────
+        updateProgress(2, 4);
+        updateLoadingProgress(50);
+        setTimeout(() => ProgressOverlay.setLabel('Loading Stops...'), 150);
+
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
             cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
         
         if (!stopsResponse.ok) {
@@ -2907,37 +2871,58 @@ async function loadGTFSDataOptimized() {
             stopIds.push(stopId);
             stopNameMap[stopId] = data.n || stopId;
         });
-        
+
+        // ── STOP TIMES (horaires statiques pour calcul retard) ───
+        updateProgress(3, 4);
+        updateLoadingProgress(75);
+        setTimeout(() => ProgressOverlay.setLabel('Loading Timetables...'), 200);
+
+        console.log('Chargement des horaires statiques...');
+        try {
+            ProgressOverlay.setLabel('Loading Schedules...');
+            const stopTimesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stop_times', {
+                cache: 'no-store'
+            });
+            if (stopTimesResponse.ok) {
+                const stopTimesData = await stopTimesResponse.json();
+                window.staticStopTimes = stopTimesData;
+                console.log('Stop times chargés', Object.keys(stopTimesData).length, 'trips');
+            }
+        } catch (stopTimesError) {
+            console.warn('Erreur chargement stop_times ', stopTimesError);
+            window.staticStopTimes = {};
+        }
+
+        // ── FIN ──────────────────────────────────────────────────
         if (!window.updating) {
-            updateProgress(3, 3);
+            updateProgress(4, 4);
             updateLoadingProgress(100);
-            setTimeout(() => {
-                ProgressOverlay.setLabel('Done !');
-            }, 200);
+            setTimeout(() => ProgressOverlay.setLabel('Done !'), 200);
         }
         
         apparaitrelelogo();
         
         console.log('Données GTFS chargées', {
-            routes: Object.keys(lineColors).length,
-            stops: stopIds.length,
-            memoryUsed: performance.memory ? 
-                `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB` : 
-                'N/A'
+            routes:    Object.keys(lineColors).length,
+            stops:     stopIds.length,
+            trips:     Object.keys(window.staticStopTimes || {}).length,
+            memoryUsed: performance.memory
+                ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB`
+                : 'N/A'
         });
         
         return {
             lineColors,
             lineName,
             stopIds,
-            stopNameMap
+            stopNameMap,
+            staticStopTimes: window.staticStopTimes
         };
         
     } catch (error) {
         console.error('Erreur lors du chargement gtfs', error);
         console.error('Stack:', error.stack);
         
-        // Masquer l'overlay en cas d'erreur
         hideLoadingOverlay();
         
         const errorMessage = error.message || 'Erreur inconnue';
@@ -6864,7 +6849,48 @@ function closeMenu() {
     }, 10);
 }
 
+function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
+    if (!window.staticStopTimes || !rtArrivalTime) return null;
 
+    const tripStops = window.staticStopTimes[tripId];
+    if (!tripStops) return null;
+
+    const cleanStopId = stopId.replace("0:", "").trim();
+    
+    const staticStop = tripStops[cleanStopId] 
+        || tripStops["0:" + cleanStopId]
+        || tripStops[stopId];
+        
+    if (!staticStop) return null;
+
+    const staticTimeStr = staticStop.a || staticStop.d; 
+    if (!staticTimeStr) return null;
+
+    function timeToSeconds(timeStr) {
+        const parts = timeStr.split(':');
+        if (parts.length < 2) return null;
+        const h = parseInt(parts[0]) || 0;
+        const m = parseInt(parts[1]) || 0;
+        const s = parseInt(parts[2]) || 0;
+        return h * 3600 + m * 60 + s;
+    }
+
+    const staticSecs = timeToSeconds(staticTimeStr);
+    if (staticSecs === null) return null;
+
+    let rtSecs;
+    if (typeof rtArrivalTime === 'number' && rtArrivalTime > 86400) {
+        const d = new Date(rtArrivalTime * 1000);
+        rtSecs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+    } else if (typeof rtArrivalTime === 'string' && rtArrivalTime.includes(':')) {
+        rtSecs = timeToSeconds(rtArrivalTime);
+    } else {
+        return null;
+    }
+
+    if (rtSecs === null) return null;
+    return rtSecs - staticSecs;
+}
 
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
@@ -6926,7 +6952,7 @@ async function fetchVehiclePositions() {
 
                 const scheduleRelationship = vehicle?.trip?.scheduleRelationship ?? 0;
                 const scheduleRelationshipMap = {
-                    0: t("nextstops"),                  // SCHEDULED
+                    0: t("scheduled"),                  // SCHEDULED
                     1: t("added"),                      // ADDED
                     2: t("unscheduled"),                // UNSCHEDULED
                     3: t("canceled"),                   // CANCELED
@@ -6935,7 +6961,7 @@ async function fetchVehiclePositions() {
                     6: t("newvec"),                     // NEW
                     7: t("deleted")                     // DETELED
                 };
-                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("nextstops");
+                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("scheduled");
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
@@ -6962,41 +6988,178 @@ async function fetchVehiclePositions() {
                     filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
                 }
 
+                filteredStops = filteredStops.map(stop => {
+                    const computedDelay = computeDelaySeconds(
+                        tripId,
+                        stop.stopId,
+                        stop.arrivalTime || stop.departureTime
+                    );
+                    return {
+                        ...stop,
+                        delay: computedDelay !== null ? computedDelay : stop.delay
+                    };
+                });
+
                 const stopSpinner = startWindowsSpinnerAnimation("win-spinner");
                 setTimeout(() => {
                     stopSpinner();
                 }, 8000);
                 
+                const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
+                const delaySeconds = firstStop?.delay ?? null;
+                const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
+
+                const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
+                    let icon, label, color;
+                    if (Math.abs(delayMinutes) <= 1) {
+                        icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                        label = t("ontime");
+                        color = "#8ecaa4";
+                    } else if (delayMinutes < -1) {
+                        icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
+                        label = `${Math.abs(delayMinutes)} ${t("min")} ${t("early")}`;
+                        color = "#acc9f8";
+                    } else {
+                        icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+                        label = `${delayMinutes} ${t("min")} ${t("late")}`;
+                        color = delayMinutes > 5 ? "#e6a7a7" : "#f3bc95";
+                    }
+                    return `<span class="stops-icon-badge" style="border: 1px solid ${color}44; ">
+                        <span style="color:${color}; display:flex; align-items:center;">${icon}</span>
+                        <span class="stops-badge-label" style="color:${color};">${label}</span>
+                    </span>`;
+                })() : "";
+
+                const iconClock = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+                const iconOccupancy = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+
+                const occupancyBadge = occupancyStatusText !== "" ? `
+                    <span class="stops-icon-badge">
+                        ${iconOccupancy}
+                        <span class="stops-badge-label">${occupancyStatusText}</span>
+                    </span>` : "";
+
+                const iconStatus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M8 14V15M16 14V15M5 11H19M6 18V19.5C6 19.7761 6.22386 20 6.5 20V20C6.77614 20 7 19.7761 7 19.5V18M17 18V19.5C17 19.7761 17.2239 20 17.5 20V20C17.7761 20 18 19.7761 18 19.5V18M19 6V6C19 4.34315 17.6569 3 16 3H8C6.34315 3 5 4.34315 5 6V6M19 6V16C19 17.1046 18.1046 18 17 18H7C5.89543 18 5 17.1046 5 16V6M19 6H5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>`;
+
+
+                const statusBadge = status !== "" ? `
+                    <span class="stops-icon-badge">
+                        ${iconStatus}
+                        <span class="stops-badge-label">${status}</span>
+                    </span>` : "";
 
                 if (filteredStops.length === 0) {
-                    stopsHeaderText = `<span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>  ${t("pleasewait")}<small style="display:block; font-style: italic; font-size: 0.7rem; margin-top:-4px;">${t("unavailabletrip")}</small>`;
+                    stopsHeaderText = `
+                        <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-icons-row">
+                                <span class="stops-icon-badge">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    <span class="stops-badge-label">${t("unavailabletrip")}</span>
+                                </span>
+                            </div>
+                            <span class="stops-main-text">
+                                <span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>
+                                ${t("pleasewait")}
+                            </span>
+                        </div>`;
+
+                } else if (line === 'Inconnu') {
+                    stopsHeaderText = `
+                        <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-icons-row">
+                                <span class="stops-icon-badge">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                    <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                </span>
+                                ${delayBadgeHTML}
+                                ${statusBadge}
+                            </div>
+                            <span class="stops-main-text">${t("notinservicemaj")}</span>
+                        </div>`;
+
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
-                    if (line === 'Inconnu') {
-                        stopsHeaderText = `${t("notinservicemaj")} <small style="display:block; font-size: 0.8rem; margin-top:-4px;">${scheduleRelationshipText}</small>`;
+                    if (filteredStops.length === 1 && minutes === 0) {
+                        stopsHeaderText = `
+                            <div class="stops-header-widget stops-anim-fade">
+                                <div class="stops-icons-row">
+                                    <span class="stops-icon-badge">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                    </span>
+                                    ${delayBadgeHTML}
+                                    ${occupancyBadge}
+                                    ${statusBadge}
+                                </div>
+                            </div>`;
+
+                    } else if (filteredStops.length === 1) {
+                        stopsHeaderText = `
+                            <div class="stops-header-widget stops-anim-fade">
+                                <div class="stops-icons-row">
+                                    <span class="stops-icon-badge">
+                                        ${iconClock}
+                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                    </span>
+                                    ${delayBadgeHTML}
+                                    ${occupancyBadge}
+                                    ${statusBadge}
+                                </div>
+                            </div>`;
+
+                    } else if (minutes > 3) {
+                        stopsHeaderText = `
+                            <div class="stops-header-widget stops-anim-fade">
+                                <div class="stops-icons-row">
+                                    <span class="stops-icon-badge">
+                                        ${iconClock}
+                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                    </span>
+                                    ${delayBadgeHTML}
+                                    ${occupancyBadge}
+                                    ${statusBadge}
+                                </div>
+                            </div>`;
+
                     } else {
-                        if (filteredStops.length === 1) {
-                            stopsHeaderText = minutes === 0
-                                ? `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${scheduleRelationshipText}</small>${t("imminentdeparture")}`
-                                : `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText}</small>${t("departurein")} ${minutes} ${t("minutes")}`;
-                        } else if (minutes > 3) {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-2px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${scheduleRelationshipText}</small>${t("estdepart")} ${minutes} ${t("minutes")}`;
-                        } else {
-                            stopsHeaderText = `<small style="display:block; font-size: 0.8rem; margin-bottom:-4px;">${occupancyStatusText !== "" ? occupancyStatusText + " | " : ""}${status}</small> ${scheduleRelationshipText}`;
-                        }
+                        stopsHeaderText = `
+                            <div class="stops-header-widget stops-anim-fade">
+                                <div class="stops-icons-row">
+                                    <span class="stops-icon-badge">
+                                        ${iconClock}
+                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                    </span>
+                                    ${delayBadgeHTML}
+                                    ${occupancyBadge}
+                                    ${statusBadge}
+                                </div>
+                            </div>`;
                     }
                 }
-
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map(stop => {
-                        const timeLeft = stop.delay;
-                        const timeLeftText = timeLeft !== null 
-                            ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                            : '';
+                        const stopTime = stop.arrivalTime || stop.departureTime;
+                        let timeLeftText = '';
+
+                        if (stopTime && stopTime.includes(':')) {
+                            const parts = stopTime.split(':').map(Number);
+                            const now = new Date();
+                            const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+                            let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                            
+                            let diff = arrivalSeconds - nowSeconds;
+                            if (diff < -3600) diff += 86400;
+                            
+                            timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                        } else if (stopTime && !isNaN(stopTime)) {
+                            const diff = Math.floor(Number(stopTime) - Date.now() / 1000);
+                            timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                        }
                         
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
                                                 
@@ -7364,7 +7527,7 @@ async function fetchVehiclePositions() {
 
                     // nouvelle version
                     const popupContent = `
-                        <div class="popup-container" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}${transparenceSombre}; color: ${textColor};">
+                        <div class="popup-container" data-vehicle-id="${id}" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}${transparenceSombre}; color: ${textColor};">
                             
                             <button onclick="shareVehicleId('${vehicle.vehicle.id}')" title="${t("share")}" class="share-button">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -7383,7 +7546,7 @@ async function fetchVehiclePositions() {
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <strong class="vehicle-direction">➜ ${lastStopName}</strong>
+                                    <strong class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</strong>
                                     <div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
@@ -7414,9 +7577,9 @@ async function fetchVehiclePositions() {
                             </div>
 
                             <div class="stops-section" style="color: ${textColor};">
-                                <p class="stops-header">${stopsHeaderText}</p>
+                                <div class="stops-header" id="popup-header-${id}">${stopsHeaderText}</div>
                                 <ul>
-                                    <div id="nextStopsContent" class="next-stops-content">
+                                    <div id="popup-stops-${id}" class="nextStopsContent next-stops-content">
                                         ${nextStopsHTML}
                                     </div>   
                                 </div>
@@ -7669,6 +7832,42 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
     }
 }
 
+function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
+    if (!marker.isPopupOpen()) return false;
+
+    const popupNode = marker.getPopup()._contentNode;
+    if (!popupNode) return false;
+
+    let updated = false;
+
+    if (lastStopName !== undefined) {
+        const dirEl = popupNode.querySelector(`#popup-direction-${id}`);
+        if (dirEl && dirEl.textContent !== `➜ ${lastStopName}`) {
+            dirEl.textContent = `➜ ${lastStopName}`;
+            updated = true;
+        }
+    }
+
+    if (stopsHeaderText !== undefined) {
+        const headerEl = popupNode.querySelector(`#popup-header-${id}`);
+        if (headerEl && headerEl.innerHTML !== stopsHeaderText) {
+            headerEl.innerHTML = stopsHeaderText;
+            updated = true;
+        }
+    }
+
+    if (nextStopsHTML !== undefined) {
+        const stopsEl = popupNode.querySelector(`#popup-stops-${id}`);
+        if (stopsEl && stopsEl.innerHTML !== nextStopsHTML) {
+            stopsEl.innerHTML = nextStopsHTML;
+            updated = true;
+        }
+    }
+
+    return updated;
+}
+
+
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
                     if (!popup) return false;
@@ -7753,14 +7952,14 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     marker.destination !== lastStopName ||
                     marker._lastNextStopsHTML !== nextStopsHTML
                 );
-                
+
                 if (hasChanges) {
                     marker.vehicleData = vehicle;
                     marker.destination = lastStopName;
-                    
+                    marker._lastNextStopsHTML = nextStopsHTML;
+
                     if (marker.line !== line) {
                         marker.line = line;
-                        marker._lastNextStopsHTML = nextStopsHTML;
                         markerPool.updateMarkerStyle(marker, line, bearing);
                         
                         if (marker.isPopupOpen()) {
@@ -7777,10 +7976,13 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
                     }
                     
                     updateLinesDisplay();
-                    const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                    updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, 
-                        vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+
+                    if (marker.isPopupOpen()) {
+                        patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText });
+                    } else {
+                        updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML,
+                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                    }
                 }
                 
                 if (marker._icon) {
@@ -8308,8 +8510,8 @@ const FluentSettingsMenu = (function() {
     styleElement.id = 'fluent-settings-styles';
     styleElement.textContent = `
       @keyframes fluentFadeIn {
-        from { opacity: 0; transform: translate(-50%, -48%); }
-        to { opacity: 1; transform: translate(-50%, -50%); }
+        from { transform: translate(-50%, -50%) scale(0); }
+        to { transform: translate(-50%, -50%) scale(1); }
       }
       
       @keyframes fluentBackdropFadeIn {
@@ -8636,7 +8838,7 @@ const FluentSettingsMenu = (function() {
     menuElement.container.style.opacity = '1';
     
     if (options.animation) {
-      menuElement.container.style.animation = 'fluentFadeIn 0.3s forwards';
+      menuElement.container.style.animation = 'fluentFadeIn 0.5s cubic-bezier(.99,0,.53,1.28)';
       menuElement.backdrop.style.animation = 'fluentBackdropFadeIn 0.3s forwards';
     }
     
