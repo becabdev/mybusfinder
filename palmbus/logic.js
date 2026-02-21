@@ -8285,8 +8285,8 @@ const FluentSettingsMenu = (function() {
     styleElement.id = 'fluent-settings-styles';
     styleElement.textContent = `
       @keyframes fluentFadeIn {
-        from { transform: scale(0); }
-        to { transform: scale(1); }
+        from { transform: translate(-50%, -50%) scale(0); }
+        to { transform: translate(-50%, -50%) scale(1); }
       }
       
       @keyframes fluentBackdropFadeIn {
