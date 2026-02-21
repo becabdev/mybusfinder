@@ -6948,12 +6948,14 @@ async function fetchVehiclePositions() {
                 if (filteredStops.length === 0) {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
-                            <span class="stops-icon-badge">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                                </svg>
-                                <span class="stops-badge-label">${t("unavailabletrip")}</span>
-                            </span>
+                            <div class="stops-icons-row">
+                                <span class="stops-icon-badge">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                                    </svg>
+                                    <span class="stops-badge-label">${t("unavailabletrip")}</span>
+                                </span>
+                            </div>
                             <span class="stops-main-text">
                                 <span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>
                                 ${t("pleasewait")}
@@ -6966,34 +6968,59 @@ async function fetchVehiclePositions() {
                     if (line === 'Inconnu') {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-slide">
-                                <span class="stops-icon-badge">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-                                    </svg>
-                                    <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                </span>
+                                <div class="stops-icons-row">
+                                    <span class="stops-icon-badge">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                        </svg>
+                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                    </span>
+                                </div>
                                 <span class="stops-main-text">${t("notinservicemaj")}</span>
                             </div>`;
                     } else {
                         if (filteredStops.length === 1) {
                             stopsHeaderText = minutes === 0
                                 ? `<div class="stops-header-widget stops-anim-pop">
-                                        <span class="stops-icon-badge">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <polygon points="5 3 19 12 5 21 5 3"/>
-                                            </svg>
-                                            <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                        </span>
-                                        ${occupancyStatusText !== "" ? `
-                                        <span class="stops-icon-badge">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                            </svg>
-                                            <span class="stops-badge-label">${occupancyStatusText}</span>
-                                        </span>` : ""}
+                                        <div class="stops-icons-row">
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                            </span>
+                                            ${occupancyStatusText !== "" ? `
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${occupancyStatusText}</span>
+                                            </span>` : ""}
+                                        </div>
                                         <span class="stops-main-text">${t("imminentdeparture")}</span>
                                 </div>`
                                 : `<div class="stops-header-widget stops-anim-bounce">
+                                        <div class="stops-icons-row">
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                            </span>
+                                            ${occupancyStatusText !== "" ? `
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${occupancyStatusText}</span>
+                                            </span>` : ""}
+                                        </div>
+                                        <span class="stops-main-text">${t("departurein")} ${minutes} ${t("minutes")}</span>
+                                </div>`;
+                        } else if (minutes > 3) {
+                            stopsHeaderText = `
+                                <div class="stops-header-widget stops-anim-slide">
+                                    <div class="stops-icons-row">
                                         <span class="stops-icon-badge">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -7007,42 +7034,27 @@ async function fetchVehiclePositions() {
                                             </svg>
                                             <span class="stops-badge-label">${occupancyStatusText}</span>
                                         </span>` : ""}
-                                        <span class="stops-main-text">${t("departurein")} ${minutes} ${t("minutes")}</span>
-                                </div>`;
-                        } else if (minutes > 3) {
-                            stopsHeaderText = `
-                                <div class="stops-header-widget stops-anim-slide">
-                                    <span class="stops-icon-badge">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                                        </svg>
-                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                    </span>
-                                    ${occupancyStatusText !== "" ? `
-                                    <span class="stops-icon-badge">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                        </svg>
-                                        <span class="stops-badge-label">${occupancyStatusText}</span>
-                                    </span>` : ""}
+                                    </div>
                                     <span class="stops-main-text">${t("estdepart")} ${minutes} ${t("minutes")}</span>
                                 </div>`;
                         } else {
                             stopsHeaderText = `
                                 <div class="stops-header-widget stops-anim-fade">
-                                    <span class="stops-icon-badge">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                                        </svg>
-                                        <span class="stops-badge-label">${status}</span>
-                                    </span>
-                                    ${occupancyStatusText !== "" ? `
-                                    <span class="stops-icon-badge">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                        </svg>
-                                        <span class="stops-badge-label">${occupancyStatusText}</span>
-                                    </span>` : ""}
+                                    <div class="stops-icons-row">
+                                        <span class="stops-icon-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                            </svg>
+                                            <span class="stops-badge-label">${status}</span>
+                                        </span>
+                                        ${occupancyStatusText !== "" ? `
+                                        <span class="stops-icon-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                            </svg>
+                                            <span class="stops-badge-label">${occupancyStatusText}</span>
+                                        </span>` : ""}
+                                    </div>
                                     <span class="stops-main-text">${scheduleRelationshipText}</span>
                                 </div>`;
                         }
