@@ -1642,7 +1642,6 @@
 
 .vehicle-info-section {
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.2);
     padding: 10px;
     text-align: center;
     overflow: hidden;
@@ -2200,3 +2199,70 @@
         filter: blur(5px);
         opacity: 0;
     }
+
+
+    .stops-header-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.stops-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+    animation: badgeFadeIn 0.4s cubic-bezier(0.25, 1.5, 0.5, 1);
+}
+
+.stops-main-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: slideUpText 0.4s cubic-bezier(0.25, 1.5, 0.5, 1);
+}
+
+.stops-main-text .stops-icon {
+    font-size: 1rem;
+    animation: iconPop 0.5s cubic-bezier(0.25, 1.5, 0.5, 1);
+}
+
+@keyframes badgeFadeIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideUpText {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes iconPop {
+    0%   { transform: scale(0); }
+    60%  { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+@keyframes pulseIcon {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.2); }
+}
+
+@keyframes spinnerRotate {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.stops-icon-spin {
+    display: inline-block;
+    animation: spinnerRotate 1s linear infinite;
+}

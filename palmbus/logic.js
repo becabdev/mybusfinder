@@ -6211,27 +6211,75 @@ const MenuManager = {
         let terminusInfo = '';
         
         if (filteredStops.length === 0) {
-            nextStopInfo = t("unavailabletrip");
+            stopsHeaderText = `
+                <div class="stops-header-inner">
+                    <span class="stops-badge" style="background: rgba(255,255,255,0.1);">
+                        <span class="stops-icon-spin">⟳</span> ${t("pleasewait")}
+                    </span>
+                    <span class="stops-main-text" style="opacity: 0.7; font-size: 0.85rem; font-style: italic;">
+                        ${t("unavailabletrip")}
+                    </span>
+                </div>`;
         } else {
-            const firstStopName = stopNameMap[filteredStops[0].stopId] || filteredStops[0].stopId;
             const firstStopDelay = filteredStops[0].delay || 0;
             const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
-            
+
             if (line === 'Inconnu') {
-                nextStopInfo = t("unknownline");
+                stopsHeaderText = `
+                    <div class="stops-header-inner">
+                        <span class="stops-badge" style="background: rgba(255,80,80,0.25); border-color: rgba(255,80,80,0.4);">
+                            🚫 ${scheduleRelationshipText}
+                        </span>
+                        <span class="stops-main-text">
+                            <span class="stops-icon">🔴</span>
+                            ${t("notinservicemaj")}
+                        </span>
+                    </div>`;
+            } else if (filteredStops.length === 1 && minutes === 0) {
+                stopsHeaderText = `
+                    <div class="stops-header-inner">
+                        <span class="stops-badge" style="background: rgba(255,200,0,0.2); border-color: rgba(255,200,0,0.4);">
+                            ${scheduleRelationshipText}
+                        </span>
+                        <span class="stops-main-text" style="animation: pulseIcon 1s ease-in-out infinite;">
+                            <span class="stops-icon">🟢</span>
+                            ${t("imminentdeparture")}
+                        </span>
+                    </div>`;
+            } else if (filteredStops.length === 1) {
+                stopsHeaderText = `
+                    <div class="stops-header-inner">
+                        <span class="stops-badge" style="background: rgba(255,255,255,0.12);">
+                            ${occupancyStatusText !== "" ? `🧍 ${occupancyStatusText} &nbsp;·&nbsp; ` : ""}${scheduleRelationshipText}
+                        </span>
+                        <span class="stops-main-text">
+                            <span class="stops-icon">🕐</span>
+                            ${t("departurein")} <strong>${minutes}</strong> ${t("minutes")}
+                        </span>
+                    </div>`;
+            } else if (minutes > 3) {
+                stopsHeaderText = `
+                    <div class="stops-header-inner">
+                        <span class="stops-badge" style="background: rgba(255,255,255,0.12);">
+                            ${occupancyStatusText !== "" ? `🧍 ${occupancyStatusText} &nbsp;·&nbsp; ` : ""}${scheduleRelationshipText}
+                        </span>
+                        <span class="stops-main-text">
+                            <span class="stops-icon">🕑</span>
+                            ${t("estdepart")} <strong>${minutes}</strong> ${t("minutes")}
+                        </span>
+                    </div>`;
             } else {
-                nextStopInfo = firstStopName;
-            }
-            
-            if (filteredStops.length > 1) {
-                const lastStop = filteredStops[filteredStops.length - 1];
-                const timeLeft = lastStop.delay;
-                const timeLeftText = timeLeft !== null 
-                    ? timeLeft <= 0 ? t("imminent") : `${Math.ceil(timeLeft / 60)} min`
-                    : '';
-                terminusInfo = `${t("arrivalat")} ${marker.destination} ${timeLeftText !== t("imminent") ? t("in") + ' ' + timeLeftText : t("imminent")}.`;
-            } else {
-                terminusInfo = `${t("indirectionof")} ${marker.destination}.`;
+                // minutes <= 3, en approche imminente
+                stopsHeaderText = `
+                    <div class="stops-header-inner">
+                        <span class="stops-badge" style="background: rgba(100,220,100,0.2); border-color: rgba(100,220,100,0.4);">
+                            ${occupancyStatusText !== "" ? `🧍 ${occupancyStatusText} &nbsp;·&nbsp; ` : ""}${status}
+                        </span>
+                        <span class="stops-main-text" style="animation: pulseIcon 1.5s ease-in-out infinite;">
+                            <span class="stops-icon">🚍</span>
+                            ${scheduleRelationshipText}
+                        </span>
+                    </div>`;
             }
         }
         
