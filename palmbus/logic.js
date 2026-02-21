@@ -2872,26 +2872,28 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
 
-        // ── STOP TIMES (horaires statiques pour calcul retard) ───
+        // ── STOP TIMES (chargement non bloquant) ────────────────────
         updateProgress(3, 4);
         updateLoadingProgress(75);
         setTimeout(() => ProgressOverlay.setLabel('Loading Timetables...'), 200);
 
-        console.log('Chargement des horaires statiques...');
-        try {
-            ProgressOverlay.setLabel('Loading Schedules...');
-            const stopTimesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stop_times', {
-                cache: 'no-store'
+        window.staticStopTimes = {};
+        window.stopTimesReady = false;
+
+        const stopTimesPromise = fetch('proxy-cors/proxy_gtfs.php?action=stop_times', { cache: 'no-store' })
+            .then(res => res.ok ? res.json() : Promise.reject(res.status))
+            .then(data => {
+                window.staticStopTimes = data;
+                window.stopTimesReady = true;
+                console.log('Stop times chargés en arrière-plan :', Object.keys(data).length, 'trips');
+            })
+            .catch(err => {
+                console.warn('Erreur chargement stop_times :', err);
+                window.stopTimesReady = false;
             });
-            if (stopTimesResponse.ok) {
-                const stopTimesData = await stopTimesResponse.json();
-                window.staticStopTimes = stopTimesData;
-                console.log('Stop times chargés', Object.keys(stopTimesData).length, 'trips');
-            }
-        } catch (stopTimesError) {
-            console.warn('Erreur chargement stop_times ', stopTimesError);
-            window.staticStopTimes = {};
-        }
+
+        // j expose la promise si d'autres fonctions ont besoin dattendre
+        window.stopTimesPromise = stopTimesPromise;
 
         // ── FIN ──────────────────────────────────────────────────
         if (!window.updating) {
