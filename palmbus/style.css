@@ -2303,3 +2303,11 @@
 .time-late-low { color: #f97316; }
 .time-late-high{ color: #ef4444; }
 .time-absolute { opacity: 0.75; }
+
+.stops-icon-badge:hover {
+    color: #ffffff;
+}
+
+.stops-icon-badge.active {
+    color: #ffffff;
+}
