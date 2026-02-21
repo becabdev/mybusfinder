@@ -7081,10 +7081,6 @@ async function fetchVehiclePositions() {
                                     <span class="stops-badge-label">${t("unavailabletrip")}</span>
                                 </span>
                             </div>
-                            <span class="stops-main-text">
-                                <span id="win-spinner" style="font-family: 'SegoeUIBoot'; font-size: 0.8rem; margin-right: 5px;"></span>
-                                ${t("pleasewait")}
-                            </span>
                         </div>`;
 
                 } else if (line === 'Inconnu') {

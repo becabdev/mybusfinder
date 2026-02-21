@@ -2234,6 +2234,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     transition: gap 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
                 padding 0.3s cubic-bezier(0.25, 1.5, 0.5, 1),
+                color 0.3s ease,
                 background 0.3s ease;
     max-width: 32px;
     overflow: hidden;
@@ -2246,6 +2247,7 @@
     max-width: 200px;
     background: rgba(0,0,0,0.35);
     padding: 5px 12px;
+    color: #fff;
 }
 
 .stops-icon-badge svg {
