@@ -7003,12 +7003,16 @@ async function fetchVehiclePositions() {
                 const now = Math.floor(Date.now() / 1000);
 
                 let filteredStops = [];
+                let currentStopIndexForScroll = 0;
+
                 if (currentStopIndex !== -1) {
-                    filteredStops = nextStops.slice(currentStopIndex).filter(stop => {
-                        return stop.delay === null || stop.delay >= -60;
-                    });
+                    const pastStart = Math.max(0, currentStopIndex - 3);
+                    filteredStops = nextStops.slice(pastStart);
+                    currentStopIndexForScroll = currentStopIndex - pastStart;
                 } else {
-                    filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
+                    const firstFutureIndex = nextStops.findIndex(stop => stop.delay === null || stop.delay > 0);
+                    filteredStops = nextStops.slice(Math.max(0, firstFutureIndex - 1));
+                    currentStopIndexForScroll = firstFutureIndex > 0 ? 1 : 0;
                 }
 
                 filteredStops = filteredStops.map(stop => {
@@ -7163,38 +7167,52 @@ async function fetchVehiclePositions() {
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    stopsListHTML = filteredStops.map(stop => {
+                    stopsListHTML = filteredStops.map((stop, index) => {
                         const stopTime = stop.arrivalTime || stop.departureTime;
                         let timeLeftText = '';
+                        let isPast = false;
+                        let isCurrent = index === currentStopIndexForScroll;
 
                         if (stopTime && stopTime.includes(':')) {
                             const parts = stopTime.split(':').map(Number);
                             const now = new Date();
                             const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
                             let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
-                            
                             let diff = arrivalSeconds - nowSeconds;
                             if (diff < -3600) diff += 86400;
-                            
+                            isPast = diff < -60;
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
                         } else if (stopTime && !isNaN(stopTime)) {
                             const diff = Math.floor(Number(stopTime) - Date.now() / 1000);
+                            isPast = diff < -60;
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
                         }
-                        
+
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                                                
+
+                        const pastStyle = isPast ? `opacity: 0.4; filter: grayscale(1);` : '';
+                        const currentStyle = isCurrent ? `font-weight: bold;` : '';
+                        const pastBadge = isPast
+                            ? `<span style="font-size: 9px; background: rgba(150,150,150,0.3); border-radius: 4px; padding: 1px 5px; margin-left: 5px; vertical-align: middle;">passé</span>`
+                            : '';
+                        const currentDot = isCurrent
+                            ? `<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:5px; vertical-align:middle;"></span>`
+                            : '';
+                        const scrollAttr = isCurrent ? `data-current-stop="true"` : '';
+
                         return `
-                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
+                        <li ${scrollAttr} style="list-style: none; padding: 2px 0; display: flex; justify-content: space-between; align-items: center; ${pastStyle} ${currentStyle}">
                             <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
                                 <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
+                                    <div class="stop-name" style="position: relative; display: inline-block;">
+                                        ${currentDot}${stopName}${pastBadge}
+                                    </div>
                                 </div>
                             </div>
                             <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
                                 <div class="time-display" 
                                     data-time-left="${timeLeftText}" 
-                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+                                    data-departure-time="${stop.arrivalTime || stop.departureTime || 'Inconnu'}">
                                     ${timeLeftText}
                                 </div>
                                 <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7210,12 +7228,22 @@ async function fetchVehiclePositions() {
                 }
 
                 const nextStopsHTML = `
-                    <div style="position: relative; max-height: 120px;">
-                        <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
+                    <div style="position: relative; max-height: 120px; overflow-y: auto;" id="stops-list-${id}">
+                        <ul style="padding: 0; margin: 0; list-style-type: none;">
                             ${stopsListHTML}
                         </ul>
                     </div>
                 `;
+
+                requestAnimationFrame(() => {
+                    const container = document.getElementById(`stops-list-${id}`);
+                    if (container) {
+                        const currentEl = container.querySelector('[data-current-stop="true"]');
+                        if (currentEl) {
+                            currentEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }
+                    }
+                });
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
