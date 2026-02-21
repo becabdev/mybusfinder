@@ -1945,7 +1945,7 @@ function hideLoadingScreen() {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
-        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
+        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '-' + window.BUILD_VERSION + '.js');
         let progress = 0;
 
         const intervalId = setInterval(() => {
@@ -2820,7 +2820,7 @@ async function loadGTFSDataOptimized() {
         // ── ROUTES ──────────────────────────────────────────────
         updateProgress(1, 4);
         updateLoadingProgress(25);
-        setTimeout(() => ProgressOverlay.setLabel('Loading Lines...'), 100);
+        setTimeout(() => ProgressOverlay.setLabel(t('loadingroutes')), 100);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2850,7 +2850,7 @@ async function loadGTFSDataOptimized() {
         // ── STOPS ────────────────────────────────────────────────
         updateProgress(2, 4);
         updateLoadingProgress(50);
-        setTimeout(() => ProgressOverlay.setLabel('Loading Stops...'), 150);
+        setTimeout(() => ProgressOverlay.setLabel(t('loadingstops')), 150);
 
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2875,7 +2875,7 @@ async function loadGTFSDataOptimized() {
         // ── STOP TIMES (chargement non bloquant avec worker) ─────────
         updateProgress(3, 4);
         updateLoadingProgress(75);
-        setTimeout(() => ProgressOverlay.setLabel('Loading Timetables...'), 200);
+        setTimeout(() => ProgressOverlay.setLabel(t('loadingtimetables')), 200);
 
         window.staticStopTimes = {};
         window.stopTimesReady  = false;
@@ -2920,7 +2920,7 @@ async function loadGTFSDataOptimized() {
         if (!window.updating) {
             updateProgress(4, 4);
             updateLoadingProgress(100);
-            setTimeout(() => ProgressOverlay.setLabel('Done !'), 200);
+            setTimeout(() => ProgressOverlay.setLabel(t('loadingdone')), 200);
         }
         
         apparaitrelelogo();

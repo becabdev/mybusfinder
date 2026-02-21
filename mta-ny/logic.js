@@ -1945,7 +1945,7 @@ function hideLoadingScreen() {
         disparaitrelelogo();
         const loadingtext = document.getElementById('loading-text');
         loadingtext.textContent = 'Mise à jour en cours ' + window.VERSION_NAME;
-        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '.js');
+        ProgressOverlay.setLabel('Copying logic-' + window.VERSION_NAME + '-' + window.BUILD_VERSION + '.js');
         let progress = 0;
 
         const intervalId = setInterval(() => {
@@ -2820,7 +2820,7 @@ async function loadGTFSDataOptimized() {
         // ── ROUTES ──────────────────────────────────────────────
         updateProgress(1, 4);
         updateLoadingProgress(25);
-        setTimeout(() => ProgressOverlay.setLabel('Loading Lines...'), 100);
+        setTimeout(() => ProgressOverlay.setLabel(t('loadingroutes')), 100);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
@@ -2850,7 +2850,7 @@ async function loadGTFSDataOptimized() {
         // ── STOPS ────────────────────────────────────────────────
         updateProgress(2, 4);
         updateLoadingProgress(50);
-        setTimeout(() => ProgressOverlay.setLabel('Loading Stops...'), 150);
+        setTimeout(() => ProgressOverlay.setLabel(t('loadingstops')), 150);
 
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
@@ -2872,32 +2872,55 @@ async function loadGTFSDataOptimized() {
             stopNameMap[stopId] = data.n || stopId;
         });
 
-        // ── STOP TIMES (horaires statiques pour calcul retard) ───
+        // ── STOP TIMES (chargement non bloquant avec worker) ─────────
         updateProgress(3, 4);
         updateLoadingProgress(75);
-        setTimeout(() => ProgressOverlay.setLabel('Loading Timetables...'), 200);
+        setTimeout(() => ProgressOverlay.setLabel(t('loadingtimetables')), 200);
 
-        console.log('Chargement des horaires statiques...');
-        try {
-            ProgressOverlay.setLabel('Loading Schedules...');
-            const stopTimesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stop_times', {
-                cache: 'no-store'
-            });
-            if (stopTimesResponse.ok) {
-                const stopTimesData = await stopTimesResponse.json();
-                window.staticStopTimes = stopTimesData;
-                console.log('Stop times chargés', Object.keys(stopTimesData).length, 'trips');
-            }
-        } catch (stopTimesError) {
-            console.warn('Erreur chargement stop_times ', stopTimesError);
-            window.staticStopTimes = {};
-        }
+        window.staticStopTimes = {};
+        window.stopTimesReady  = false;
+
+        const workerCode = `
+            self.onmessage = async ({ data: url }) => {
+                try {
+                    const res  = await fetch(url, { cache: 'no-store' });
+                    const text = await res.text();
+                    const json = JSON.parse(text);
+                    self.postMessage({ ok: true, json });
+                } catch (err) {
+                    self.postMessage({ ok: false, error: err.message });
+                }
+            };
+        `;
+
+        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl  = URL.createObjectURL(workerBlob);
+
+        window.stopTimesPromise = new Promise((resolve) => {
+            const worker = new Worker(workerUrl);
+
+            worker.onmessage = ({ data }) => {
+                worker.terminate();
+                URL.revokeObjectURL(workerUrl);
+                if (data.ok) {
+                    window.staticStopTimes = data.json;
+                    window.stopTimesReady  = true;
+                    console.log('Stop times chargés en arrière plan', Object.keys(data.json).length, 'trips');
+                } else {
+                    console.warn('Erreur chargement stop times', data.error);
+                    window.stopTimesReady = false;
+                }
+                resolve();
+            };
+
+            worker.postMessage('proxy-cors/proxy_gtfs.php?action=stop_times');
+        });
 
         // ── FIN ──────────────────────────────────────────────────
         if (!window.updating) {
             updateProgress(4, 4);
             updateLoadingProgress(100);
-            setTimeout(() => ProgressOverlay.setLabel('Done !'), 200);
+            setTimeout(() => ProgressOverlay.setLabel(t('loadingdone')), 200);
         }
         
         apparaitrelelogo();

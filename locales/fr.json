@@ -319,5 +319,10 @@
     "late": "retard",
     "scheduled": "Service planifié",
 
+    "loadingroutes": "Chargement defer...",
+    "loadingstops": "Chargement des arrêts...",
+    "loadingtimetables": "Chargement des horaires...",
+    "loadingdone": "Chargement terminé !",
+
     "langversion": "1.0.7.4"
   }
