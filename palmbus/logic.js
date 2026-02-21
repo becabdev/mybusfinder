@@ -6961,7 +6961,7 @@ async function fetchVehiclePositions() {
                     6: t("newvec"),                     // NEW
                     7: t("deleted")                     // DETELED
                 };
-                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("nextstops");
+                const scheduleRelationshipText = scheduleRelationshipMap[scheduleRelationship] || t("scheduled");
 
                 if (isNaN(latitude) || isNaN(longitude)) {
                     return; 
@@ -6988,10 +6988,6 @@ async function fetchVehiclePositions() {
                     filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
                 }
 
-                console.log('staticStopTimes loaded:', !!window.staticStopTimes, 
-                    'tripId', tripId,
-                    'trip exists', !!(window.staticStopTimes && window.staticStopTimes[tripId]));
-
                 filteredStops = filteredStops.map(stop => {
                     const computedDelay = computeDelaySeconds(
                         tripId,
@@ -7003,10 +6999,6 @@ async function fetchVehiclePositions() {
                         delay: computedDelay !== null ? computedDelay : stop.delay
                     };
                 });
-
-                if (filteredStops.length > 0) {
-                    console.log('Premier stop RT', JSON.stringify(filteredStops[0]));
-                }
 
                 const stopSpinner = startWindowsSpinnerAnimation("win-spinner");
                 setTimeout(() => {
@@ -7021,18 +7013,18 @@ async function fetchVehiclePositions() {
                     let icon, label, color;
                     if (Math.abs(delayMinutes) <= 1) {
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-                        label = t("ontime") || "À l'heure";
+                        label = t("ontime");
                         color = "#22c55e";
                     } else if (delayMinutes < -1) {
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
-                        label = `${Math.abs(delayMinutes)} min ${t("early") || "avance"}`;
+                        label = `${Math.abs(delayMinutes)} ${t("min")} ${t("early")}`;
                         color = "#3b82f6";
                     } else {
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-                        label = `+${delayMinutes} min`;
+                        label = `${delayMinutes} ${t("min")} ${t("late")}`;
                         color = delayMinutes > 5 ? "#ef4444" : "#f97316";
                     }
-                    return `<span class="stops-icon-badge" style="border: 1px solid ${color}44; background: ${color}22;">
+                    return `<span class="stops-icon-badge" style="border: 1px solid ${color}44; ">
                         <span style="color:${color}; display:flex; align-items:center;">${icon}</span>
                         <span class="stops-badge-label" style="color:${color};">${label}</span>
                     </span>`;
@@ -7046,6 +7038,14 @@ async function fetchVehiclePositions() {
                     <span class="stops-icon-badge">
                         ${iconOccupancy}
                         <span class="stops-badge-label">${occupancyStatusText}</span>
+                    </span>` : "";
+
+                const iconStatus = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+                const statusBadge = status !== "" ? `
+                    <span class="stops-icon-badge">
+                        ${iconStatus}
+                        <span class="stops-badge-label">${status}</span>
                     </span>` : "";
 
                 if (filteredStops.length === 0) {
@@ -7072,6 +7072,7 @@ async function fetchVehiclePositions() {
                                     <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                 </span>
                                 ${delayBadgeHTML}
+                                ${statusBadge}
                             </div>
                             <span class="stops-main-text">${t("notinservicemaj")}</span>
                         </div>`;
@@ -7090,6 +7091,7 @@ async function fetchVehiclePositions() {
                                     </span>
                                     ${delayBadgeHTML}
                                     ${occupancyBadge}
+                                    ${statusBadge}
                                 </div>
                             </div>`;
 
@@ -7103,6 +7105,7 @@ async function fetchVehiclePositions() {
                                     </span>
                                     ${delayBadgeHTML}
                                     ${occupancyBadge}
+                                    ${statusBadge}
                                 </div>
                             </div>`;
 
@@ -7116,6 +7119,7 @@ async function fetchVehiclePositions() {
                                     </span>
                                     ${delayBadgeHTML}
                                     ${occupancyBadge}
+                                    ${statusBadge}
                                 </div>
                             </div>`;
 
@@ -7129,6 +7133,7 @@ async function fetchVehiclePositions() {
                                     </span>
                                     ${delayBadgeHTML}
                                     ${occupancyBadge}
+                                    ${statusBadge}
                                 </div>
                             </div>`;
                     }
@@ -7136,47 +7141,74 @@ async function fetchVehiclePositions() {
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
-                    stopsListHTML = filteredStops.map(stop => {
+                    stopsListHTML = filteredStops.map((stop, index) => {
                         const stopTime = stop.arrivalTime || stop.departureTime;
                         let timeLeftText = '';
+                        let absoluteTimeText = '';
+                        let delayText = '';
 
                         if (stopTime && stopTime.includes(':')) {
                             const parts = stopTime.split(':').map(Number);
                             const now = new Date();
                             const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
                             let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
-                            
                             let diff = arrivalSeconds - nowSeconds;
                             if (diff < -3600) diff += 86400;
-                            
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                            absoluteTimeText = `${String(parts[0]).padStart(2,'0')}:${String(parts[1]).padStart(2,'0')}`;
                         } else if (stopTime && !isNaN(stopTime)) {
                             const diff = Math.floor(Number(stopTime) - Date.now() / 1000);
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                            const d = new Date(Number(stopTime) * 1000);
+                            absoluteTimeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
                         }
-                        
+
+                        if (stop.delay !== null && stop.delay !== undefined) {
+                            const stopDelayMin = Math.round(stop.delay / 60);
+                            if (Math.abs(stopDelayMin) <= 1) {
+                                delayText = t("ontime");
+                            } else if (stopDelayMin < -1) {
+                                delayText = `-${Math.abs(stopDelayMin)} min`;
+                            } else {
+                                delayText = `+${stopDelayMin} min`;
+                            }
+                        } else {
+                            delayText = "—";
+                        }
+
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                                                
+                        const isFirst = index === 0;
+
                         return `
-                        <li style="list-style: none; padding: 0px; display: flex; justify-content: space-between;">
-                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
-                                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
-                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
-                                </div>
+                        <li class="stop-row ${isFirst ? 'stop-row--current' : ''}"
+                            data-state="0"
+                            data-time-left="${timeLeftText}"
+                            data-absolute-time="${absoluteTimeText}"
+                            data-delay="${delayText}"
+                            onclick="
+                                const states = ['time-left', 'absolute', 'delay'];
+                                const icons = ['⏱', '🕐', '📊'];
+                                const next = (parseInt(this.dataset.state) + 1) % 3;
+                                this.dataset.state = next;
+                                const values = [this.dataset.timeLeft, this.dataset.absoluteTime, this.dataset.delay];
+                                this.querySelector('.time-display').textContent = values[next];
+                                this.querySelector('.stop-state-icon').textContent = icons[next];
+                            "
+                            style="list-style: none; padding: 5px 6px; display: flex; align-items: center; gap: 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s;">
+                            
+                            <span class="stop-index" style="font-size: 0.65rem; color: var(--text-muted, #888); min-width: 14px; text-align: center;">
+                                ${isFirst ? '▶' : index}
+                            </span>
+
+                            <div class="stop-name-container" style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.82rem;">
+                                ${stopName}
                             </div>
-                            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
-                                <div class="time-display" 
-                                    data-time-left="${timeLeftText}" 
-                                    data-departure-time="${stop.arrivalTime || stop.departureTime || "Inconnu"}">
+
+                            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
+                                <span class="stop-state-icon" style="font-size: 0.65rem;">⏱</span>
+                                <span class="time-display" style="font-size: 0.82rem; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right;">
                                     ${timeLeftText}
-                                </div>
-                                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <g class="rss-waves">
-                                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
-                                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
-                                    </g>
-                                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
-                                </svg>
+                                </span>
                             </div>
                         </li>`;
                     }).join('');

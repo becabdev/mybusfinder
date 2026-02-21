@@ -315,5 +315,8 @@
     "newvec": "Véhicule supplémentaire",
     "deleted": "❌ Véhicule supprimé",
 
+    "early": "avance",
+    "late": "retard",
+
     "langversion": "1.0.7.4"
   }
