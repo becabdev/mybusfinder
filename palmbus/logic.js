@@ -6855,19 +6855,28 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     const tripStops = window.staticStopTimes[tripId];
     if (!tripStops) return null;
 
-    const cleanStopId = stopId.replace("0:", "");
-    const staticStop = tripStops[cleanStopId];
+    const cleanStopId = stopId.replace("0:", "").trim();
+    
+    const staticStop = tripStops[cleanStopId] 
+        || tripStops["0:" + cleanStopId]
+        || tripStops[stopId];
+        
     if (!staticStop) return null;
 
-    const staticTimeStr = staticStop.arrival || staticStop.departure;
+    const staticTimeStr = staticStop.a || staticStop.d; 
     if (!staticTimeStr) return null;
 
     function timeToSeconds(timeStr) {
-        const [h, m, s] = timeStr.split(':').map(Number);
-        return h * 3600 + m * 60 + (s || 0);
+        const parts = timeStr.split(':');
+        if (parts.length < 2) return null;
+        const h = parseInt(parts[0]) || 0;
+        const m = parseInt(parts[1]) || 0;
+        const s = parseInt(parts[2]) || 0;
+        return h * 3600 + m * 60 + s;
     }
 
     const staticSecs = timeToSeconds(staticTimeStr);
+    if (staticSecs === null) return null;
 
     let rtSecs;
     if (typeof rtArrivalTime === 'number' && rtArrivalTime > 86400) {
@@ -6879,7 +6888,8 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
         return null;
     }
 
-    return rtSecs - staticSecs; 
+    if (rtSecs === null) return null;
+    return rtSecs - staticSecs;
 }
 
 async function fetchVehiclePositions() {
@@ -6978,6 +6988,10 @@ async function fetchVehiclePositions() {
                     filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
                 }
 
+                console.log('staticStopTimes loaded:', !!window.staticStopTimes, 
+                    'tripId', tripId,
+                    'trip exists', !!(window.staticStopTimes && window.staticStopTimes[tripId]));
+
                 filteredStops = filteredStops.map(stop => {
                     const computedDelay = computeDelaySeconds(
                         tripId,
@@ -6989,6 +7003,10 @@ async function fetchVehiclePositions() {
                         delay: computedDelay !== null ? computedDelay : stop.delay
                     };
                 });
+
+                if (filteredStops.length > 0) {
+                    console.log('Premier stop RT', JSON.stringify(filteredStops[0]));
+                }
 
                 const stopSpinner = startWindowsSpinnerAnimation("win-spinner");
                 setTimeout(() => {
