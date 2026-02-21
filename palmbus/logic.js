@@ -7017,7 +7017,7 @@ async function fetchVehiclePositions() {
                 const delaySeconds = firstStop?.delay ?? null;
                 const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
 
-                const delayBadgeHTML = delayMinutes !== null ? (() => {
+                const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
                     let icon, label, color;
                     if (Math.abs(delayMinutes) <= 1) {
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
@@ -7068,6 +7068,7 @@ async function fetchVehiclePositions() {
                                         </svg>
                                         <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                     </span>
+                                    ${delayBadgeHTML}
                                 </div>
                                 <span class="stops-main-text">${t("notinservicemaj")}</span>
                             </div>`;
@@ -7082,6 +7083,7 @@ async function fetchVehiclePositions() {
                                                 </svg>
                                                 <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                             </span>
+                                            ${delayBadgeHTML}
                                             ${occupancyStatusText !== "" ? `
                                             <span class="stops-icon-badge">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7100,6 +7102,7 @@ async function fetchVehiclePositions() {
                                                 </svg>
                                                 <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                             </span>
+                                            ${delayBadgeHTML}
                                             ${occupancyStatusText !== "" ? `
                                             <span class="stops-icon-badge">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7120,6 +7123,7 @@ async function fetchVehiclePositions() {
                                             </svg>
                                             <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                         </span>
+                                        ${delayBadgeHTML}
                                         ${occupancyStatusText !== "" ? `
                                         <span class="stops-icon-badge">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7140,6 +7144,7 @@ async function fetchVehiclePositions() {
                                             </svg>
                                             <span class="stops-badge-label">${status}</span>
                                         </span>
+                                        ${delayBadgeHTML}
                                         ${occupancyStatusText !== "" ? `
                                         <span class="stops-icon-badge">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -7153,7 +7158,6 @@ async function fetchVehiclePositions() {
                         }
                     }
                 }
-
 
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
