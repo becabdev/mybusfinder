@@ -7013,6 +7013,10 @@ async function fetchVehiclePositions() {
                     stopSpinner();
                 }, 8000);
                 
+                const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
+                const delaySeconds = firstStop?.delay ?? null;
+                const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
+
                 const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
                     let icon, label, color;
                     if (Math.abs(delayMinutes) <= 1) {
@@ -7034,22 +7038,14 @@ async function fetchVehiclePositions() {
                     </span>`;
                 })() : "";
 
-                const iconClock = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-
-                const iconOccupancy = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
-
-                const occupancyBadge = occupancyStatusText !== "" ? `
-                    <span class="stops-icon-badge">
-                        ${iconOccupancy}
-                        <span class="stops-badge-label">${occupancyStatusText}</span>
-                    </span>` : "";
-
                 if (filteredStops.length === 0) {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
                             <div class="stops-icons-row">
                                 <span class="stops-icon-badge">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                                    </svg>
                                     <span class="stops-badge-label">${t("unavailabletrip")}</span>
                                 </span>
                             </div>
@@ -7058,79 +7054,105 @@ async function fetchVehiclePositions() {
                                 ${t("pleasewait")}
                             </span>
                         </div>`;
-
-                } else if (line === 'Inconnu') {
-                    stopsHeaderText = `
-                        <div class="stops-header-widget stops-anim-fade">
-                            <div class="stops-icons-row">
-                                <span class="stops-icon-badge">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                                    <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                </span>
-                                ${delayBadgeHTML}
-                            </div>
-                            <span class="stops-main-text">${t("notinservicemaj")}</span>
-                        </div>`;
-
                 } else {
                     const firstStopDelay = filteredStops[0].delay || 0;
                     const minutes = Math.max(0, Math.ceil(firstStopDelay / 60));
 
-                    if (filteredStops.length === 1 && minutes === 0) {
-                        // Dernier arrêt restant — icône map-pin
+                    if (line === 'Inconnu') {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget stops-anim-slide">
                                 <div class="stops-icons-row">
                                     <span class="stops-icon-badge">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                                        </svg>
                                         <span class="stops-badge-label">${scheduleRelationshipText}</span>
                                     </span>
                                     ${delayBadgeHTML}
-                                    ${occupancyBadge}
                                 </div>
+                                <span class="stops-main-text">${t("notinservicemaj")}</span>
                             </div>`;
-
-                    } else if (filteredStops.length === 1) {
-                        // Dernier arrêt restant, mais pas encore arrivé — horloge
-                        stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
-                                <div class="stops-icons-row">
-                                    <span class="stops-icon-badge">
-                                        ${iconClock}
-                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                    </span>
-                                    ${delayBadgeHTML}
-                                    ${occupancyBadge}
-                                </div>
-                            </div>`;
-
-                    } else if (minutes > 3) {
-                        // En route, loin — horloge
-                        stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
-                                <div class="stops-icons-row">
-                                    <span class="stops-icon-badge">
-                                        ${iconClock}
-                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                    </span>
-                                    ${delayBadgeHTML}
-                                    ${occupancyBadge}
-                                </div>
-                            </div>`;
-
                     } else {
-                        // En approche (≤3 min) — horloge également, cohérent avec les cas ci-dessus
-                        stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
-                                <div class="stops-icons-row">
-                                    <span class="stops-icon-badge">
-                                        ${iconClock}
-                                        <span class="stops-badge-label">${scheduleRelationshipText}</span>
-                                    </span>
-                                    ${delayBadgeHTML}
-                                    ${occupancyBadge}
-                                </div>
-                            </div>`;
+                        if (filteredStops.length === 1) {
+                            stopsHeaderText = minutes === 0
+                                ? `<div class="stops-header-widget stops-anim-pop">
+                                        <div class="stops-icons-row">
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                            </span>
+                                            ${delayBadgeHTML}
+                                            ${occupancyStatusText !== "" ? `
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${occupancyStatusText}</span>
+                                            </span>` : ""}
+                                        </div>
+                                </div>`
+                                : `<div class="stops-header-widget stops-anim-bounce">
+                                        <div class="stops-icons-row">
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                            </span>
+                                            ${delayBadgeHTML}
+                                            ${occupancyStatusText !== "" ? `
+                                            <span class="stops-icon-badge">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                                </svg>
+                                                <span class="stops-badge-label">${occupancyStatusText}</span>
+                                            </span>` : ""}
+                                        </div>
+                                </div>`;
+                        } else if (minutes > 3) {
+                            stopsHeaderText = `
+                                <div class="stops-header-widget stops-anim-slide">
+                                    <div class="stops-icons-row">
+                                        <span class="stops-icon-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                            </svg>
+                                            <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                        </span>
+                                        ${delayBadgeHTML}
+                                        ${occupancyStatusText !== "" ? `
+                                        <span class="stops-icon-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                            </svg>
+                                            <span class="stops-badge-label">${occupancyStatusText}</span>
+                                        </span>` : ""}
+                                    </div>
+                                </div>`;
+                        } else {
+                            stopsHeaderText = `
+                                <div class="stops-header-widget stops-anim-fade">
+                                    <div class="stops-icons-row">
+                                        <span class="stops-icon-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                                            </svg>
+                                            <span class="stops-badge-label">${status}</span>
+                                        </span>
+                                        ${delayBadgeHTML}
+                                        ${occupancyStatusText !== "" ? `
+                                        <span class="stops-icon-badge">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                            </svg>
+                                            <span class="stops-badge-label">${occupancyStatusText}</span>
+                                        </span>` : ""}
+                                    </div>
+                                    <span class="stops-main-text">${scheduleRelationshipText}</span>
+                                </div>`;
+                        }
                     }
                 }
 
