@@ -4380,7 +4380,7 @@ function getVehicleOptionsBadges(parkNumber) {
         
         const badgeStyle = `
             padding: 6px 10px; 
-            background: #00000077; 
+            background: #0000002e; 
             font-weight: normal; 
             white-space: nowrap; 
             backdrop-filter: blur(8px);
