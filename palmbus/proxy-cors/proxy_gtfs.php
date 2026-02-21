@@ -282,6 +282,41 @@ function buildTripIndex($extractDir, $tripIndexFile) {
     return $tripToRoute;
 }
 
+function buildStopTimesIndex($extractDir, $outputFile) {
+    $stopTimesFile = $extractDir . '/stop_times.txt';
+    if (!file_exists($stopTimesFile)) return;
+
+    $index = [];
+    $fh = fopen($stopTimesFile, 'r');
+    $headers = fgetcsv($fh);
+    $tripIdIdx    = array_search('trip_id',        $headers);
+    $stopIdIdx    = array_search('stop_id',         $headers);
+    $arrivalIdx   = array_search('arrival_time',    $headers);
+    $departureIdx = array_search('departure_time',  $headers);
+
+    $count = 0;
+    while (($row = fgetcsv($fh)) !== false) {
+        $tripId  = $row[$tripIdIdx]  ?? '';
+        $stopId  = $row[$stopIdIdx]  ?? '';
+        if (!$tripId || !$stopId) continue;
+
+        $index[$tripId][$stopId] = [
+            'a' => $row[$arrivalIdx]   ?? '', 
+            'd' => $row[$departureIdx] ?? ''  
+        ];
+
+        $count++;
+        if ($count % 10000 === 0) gc_collect_cycles();
+    }
+    fclose($fh);
+
+    $compressed = gzencode(json_encode($index), 6); 
+    file_put_contents($outputFile, $compressed);
+
+    unset($index);
+    gc_collect_cycles();
+}
+
 function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {
     $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
@@ -308,6 +343,7 @@ function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $opt
     
     // Créer index trip->route
     buildTripIndex($extractDir, $tripIndexFile);
+    buildStopTimesIndex($extractDir, $cacheDir . '/stop_times_index.json.gz');
     
     return true;
 }
@@ -376,6 +412,32 @@ if (isset($_GET['action'])) {
                 error_log("Envoi du fichier stops: " . filesize($optimizedStopsFile) . " bytes");
                 readfile($optimizedStopsFile);
                 break;
+
+            case 'stop_times':
+                $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
+                
+                if (!file_exists($stopTimesIndex)) {
+                    // Générer à la demande si pas encore fait
+                    if (!file_exists($extractDir . '/stop_times.txt')) {
+                        $zip = new ZipArchive();
+                        if ($zip->open($zipCacheFile) === TRUE) {
+                            $zip->extractTo($extractDir, 'stop_times.txt');
+                            $zip->close();
+                        }
+                    }
+                    buildStopTimesIndex($extractDir, $stopTimesIndex);
+                }
+                
+                if (!file_exists($stopTimesIndex)) {
+                    http_response_code(500);
+                    echo json_encode(['error' => 'stop_times index introuvable']);
+                    exit;
+                }
+                
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                readfile($stopTimesIndex);
+            break;
                 
             case 'info':
                 header("Content-Type: application/json");

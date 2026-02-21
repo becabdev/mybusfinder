@@ -2794,10 +2794,9 @@ async function loadGTFSDataOptimized() {
         const updateProgress = (step, total) => {
             progress = Math.round((step / total) * 100);
             updateLoadingProgress(progress);
-            ProgressOverlay.setLabel('Loading defer...');
         };
         
-        updateProgress(0, 3);
+        updateProgress(0, 4);
         soundsUX('MBF_Popup');
 
         console.log('Vérification des endpoints...');
@@ -2812,31 +2811,26 @@ async function loadGTFSDataOptimized() {
         }
         
         const serverInfo = await infoResponse.json();
-        console.log('📊 Info serveur:', serverInfo);
+        console.log('Info serveur:', serverInfo);
         
         if (!serverInfo.routes_exists) {
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
-        updateProgress(1, 3);
-        updateLoadingProgress(33);
-        setTimeout(() => {
-            ProgressOverlay.setLabel('Loading Lines...');
-        }, 100);
+        // ── ROUTES ──────────────────────────────────────────────
+        updateProgress(1, 4);
+        updateLoadingProgress(25);
+        setTimeout(() => ProgressOverlay.setLabel('Loading Lines...'), 100);
 
         console.log('Chargement des lignes...');
         const routesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=routes', {
             cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
         
         if (!routesResponse.ok) {
             const errorText = await routesResponse.text();
             console.error('Erreur routes', errorText);
-            
             try {
                 const errorJson = JSON.parse(errorText);
                 throw new Error(`Erreur routes (${routesResponse.status}): ${errorJson.error || errorText}`);
@@ -2845,30 +2839,23 @@ async function loadGTFSDataOptimized() {
             }
         }
         
-        const contentType = routesResponse.headers.get('Content-Type');
-        console.log('Content-Type routes :', contentType);
-        
         const routesData = await routesResponse.json();
-        console.log('Routes chargées', Object.keys(routesData).length, 'lignes');
+        console.log('Routes chargées:', Object.keys(routesData).length, 'lignes');
         
         Object.entries(routesData).forEach(([routeId, data]) => {
             lineColors[routeId] = data.c ? `#${data.c}` : '#FFFFFF';
-            lineName[routeId] = data.s || data.l || routeId;
+            lineName[routeId]   = data.s || data.l || routeId;
         });
-        
-        updateProgress(2, 3);
-        updateLoadingProgress(66);
-        setTimeout(() => {
-            ProgressOverlay.setLabel('Loading Stops...');
-        }, 150);
-        
+
+        // ── STOPS ────────────────────────────────────────────────
+        updateProgress(2, 4);
+        updateLoadingProgress(50);
+        setTimeout(() => ProgressOverlay.setLabel('Loading Stops...'), 150);
+
         console.log('Chargement des stops...');
         const stopsResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stops', {
             cache: 'no-store',
-            headers: {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            }
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
         });
         
         if (!stopsResponse.ok) {
@@ -2884,37 +2871,58 @@ async function loadGTFSDataOptimized() {
             stopIds.push(stopId);
             stopNameMap[stopId] = data.n || stopId;
         });
-        
+
+        // ── STOP TIMES (horaires statiques pour calcul retard) ───
+        updateProgress(3, 4);
+        updateLoadingProgress(75);
+        setTimeout(() => ProgressOverlay.setLabel('Loading Timetables...'), 200);
+
+        console.log('Chargement des horaires statiques...');
+        try {
+            ProgressOverlay.setLabel('Loading Schedules...');
+            const stopTimesResponse = await fetch('proxy-cors/proxy_gtfs.php?action=stop_times', {
+                cache: 'no-store'
+            });
+            if (stopTimesResponse.ok) {
+                const stopTimesData = await stopTimesResponse.json();
+                window.staticStopTimes = stopTimesData;
+                console.log('Stop times chargés', Object.keys(stopTimesData).length, 'trips');
+            }
+        } catch (stopTimesError) {
+            console.warn('Erreur chargement stop_times ', stopTimesError);
+            window.staticStopTimes = {};
+        }
+
+        // ── FIN ──────────────────────────────────────────────────
         if (!window.updating) {
-            updateProgress(3, 3);
+            updateProgress(4, 4);
             updateLoadingProgress(100);
-            setTimeout(() => {
-                ProgressOverlay.setLabel('Done !');
-            }, 200);
+            setTimeout(() => ProgressOverlay.setLabel('Done !'), 200);
         }
         
         apparaitrelelogo();
         
         console.log('Données GTFS chargées', {
-            routes: Object.keys(lineColors).length,
-            stops: stopIds.length,
-            memoryUsed: performance.memory ? 
-                `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB` : 
-                'N/A'
+            routes:    Object.keys(lineColors).length,
+            stops:     stopIds.length,
+            trips:     Object.keys(window.staticStopTimes || {}).length,
+            memoryUsed: performance.memory
+                ? `${(performance.memory.usedJSHeapSize / 1048576).toFixed(2)} MB`
+                : 'N/A'
         });
         
         return {
             lineColors,
             lineName,
             stopIds,
-            stopNameMap
+            stopNameMap,
+            staticStopTimes: window.staticStopTimes
         };
         
     } catch (error) {
         console.error('Erreur lors du chargement gtfs', error);
         console.error('Stack:', error.stack);
         
-        // Masquer l'overlay en cas d'erreur
         hideLoadingOverlay();
         
         const errorMessage = error.message || 'Erreur inconnue';
@@ -6841,7 +6849,38 @@ function closeMenu() {
     }, 10);
 }
 
+function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
+    if (!window.staticStopTimes || !rtArrivalTime) return null;
 
+    const tripStops = window.staticStopTimes[tripId];
+    if (!tripStops) return null;
+
+    const cleanStopId = stopId.replace("0:", "");
+    const staticStop = tripStops[cleanStopId];
+    if (!staticStop) return null;
+
+    const staticTimeStr = staticStop.arrival || staticStop.departure;
+    if (!staticTimeStr) return null;
+
+    function timeToSeconds(timeStr) {
+        const [h, m, s] = timeStr.split(':').map(Number);
+        return h * 3600 + m * 60 + (s || 0);
+    }
+
+    const staticSecs = timeToSeconds(staticTimeStr);
+
+    let rtSecs;
+    if (typeof rtArrivalTime === 'number' && rtArrivalTime > 86400) {
+        const d = new Date(rtArrivalTime * 1000);
+        rtSecs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+    } else if (typeof rtArrivalTime === 'string' && rtArrivalTime.includes(':')) {
+        rtSecs = timeToSeconds(rtArrivalTime);
+    } else {
+        return null;
+    }
+
+    return rtSecs - staticSecs; 
+}
 
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
@@ -6939,11 +6978,47 @@ async function fetchVehiclePositions() {
                     filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
                 }
 
+                filteredStops = filteredStops.map(stop => {
+                    const computedDelay = computeDelaySeconds(
+                        tripId,
+                        stop.stopId,
+                        stop.arrivalTime || stop.departureTime
+                    );
+                    return {
+                        ...stop,
+                        delay: computedDelay !== null ? computedDelay : stop.delay
+                    };
+                });
+
                 const stopSpinner = startWindowsSpinnerAnimation("win-spinner");
                 setTimeout(() => {
                     stopSpinner();
                 }, 8000);
                 
+                const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
+                const delaySeconds = firstStop?.delay ?? null;
+                const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
+
+                const delayBadgeHTML = delayMinutes !== null ? (() => {
+                    let icon, label, color;
+                    if (Math.abs(delayMinutes) <= 1) {
+                        icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                        label = t("ontime") || "À l'heure";
+                        color = "#22c55e";
+                    } else if (delayMinutes < -1) {
+                        icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
+                        label = `${Math.abs(delayMinutes)} min ${t("early") || "avance"}`;
+                        color = "#3b82f6";
+                    } else {
+                        icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+                        label = `+${delayMinutes} min`;
+                        color = delayMinutes > 5 ? "#ef4444" : "#f97316";
+                    }
+                    return `<span class="stops-icon-badge" style="border: 1px solid ${color}44; background: ${color}22;">
+                        <span style="color:${color}; display:flex; align-items:center;">${icon}</span>
+                        <span class="stops-badge-label" style="color:${color};">${label}</span>
+                    </span>`;
+                })() : "";
 
                 if (filteredStops.length === 0) {
                     stopsHeaderText = `
