@@ -6998,7 +6998,7 @@ async function fetchVehiclePositions() {
                 const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied';
                 let lastStopName = lastStopNameun.replace("0:", "");
                 
-                const nextStops = tripUpdates[tripId]?.nextStops || [];
+                const nextStops = tripUpdates[tripId]?.stopUpdates || []; 
                 let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId.replace("0:", ""));
                 const now = Math.floor(Date.now() / 1000);
 
@@ -7235,15 +7235,7 @@ async function fetchVehiclePositions() {
                     </div>
                 `;
 
-                requestAnimationFrame(() => {
-                    const container = document.getElementById(`stops-list-${id}`);
-                    if (container) {
-                        const currentEl = container.querySelector('[data-current-stop="true"]');
-                        if (currentEl) {
-                            currentEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                        }
-                    }
-                });
+
 
                 if (!window.toggleTimeDisplay) {
                     window.isAnimating = false;
@@ -8070,6 +8062,17 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                             popupElement.classList.add('show');
                         }
                     }
+
+                    setTimeout(() => {
+                        const contentNode = e.popup._contentNode;
+                        if (!contentNode) return;
+                        const container = contentNode.querySelector('[id^="stops-list-"]');
+                        if (!container) return;
+                        const currentEl = container.querySelector('[data-current-stop="true"]');
+                        if (currentEl) {
+                            currentEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }
+                    }, 150); 
                 }, id);
 
                 eventManager.on(marker, 'popupclose', function (e) {
