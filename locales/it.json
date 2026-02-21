@@ -316,6 +316,10 @@
   "early": "anticipo",
   "late": "ritardo",
   "scheduled": "Servizio programmato",
+  "loadingroutes": "Caricamento defer...",
+  "loadingstops": "Caricamento delle fermate...",
+  "loadingtimetables": "Caricamento degli orari...",
+  "loadingdone": "Caricamento completato!",
 
   "langversion": "1.0.7.4",
   "no_results": "Questo autobus non prende passeggeri! Sembra che non siano stati trovati risultati :("

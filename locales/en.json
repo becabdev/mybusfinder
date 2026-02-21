@@ -314,6 +314,11 @@
   "deleted": "❌ Vehicle removed",
     "langversion": "1.0.7.4",
 
+    "loadingroutes": "Loading defer...",
+    "loadingstops": "Loading stops...",
+    "loadingtimetables": "Loading timetables...",
+    "loadingdone": "Done!",
+
     "early": "early",
     "late": "late",
     "scheduled": "Scheduled service",

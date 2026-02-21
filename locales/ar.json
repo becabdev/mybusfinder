@@ -311,6 +311,10 @@
   "replacement": "استبدال",
   "duplicated": "تعزيز الخط",
   "newvec": "مركبة إضافية",
+  "loadingroutes": "جاري تحميل الخطوط...",
+  "loadingstops": "جاري تحميل المحطات...",
+  "loadingtimetables": "جاري تحميل الجداول الزمنية...",
+  "loadingdone": "تم التحميل!",
 
   "early": "مبكر",
   "late": "متأخر",
