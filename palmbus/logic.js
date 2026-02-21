@@ -6952,7 +6952,7 @@ async function fetchVehiclePositions() {
 
                 const scheduleRelationship = vehicle?.trip?.scheduleRelationship ?? 0;
                 const scheduleRelationshipMap = {
-                    0: t("nextstops"),                  // SCHEDULED
+                    0: t("scheduled"),                  // SCHEDULED
                     1: t("added"),                      // ADDED
                     2: t("unscheduled"),                // UNSCHEDULED
                     3: t("canceled"),                   // CANCELED
@@ -7139,13 +7139,14 @@ async function fetchVehiclePositions() {
                     }
                 }
 
+                if (!window.stopClickStates) window.stopClickStates = {};
+
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map((stop, index) => {
                         const stopTime = stop.arrivalTime || stop.departureTime;
                         let timeLeftText = '';
-                        let absoluteTimeText = '';
-                        let delayText = '';
+                        let absoluteTime = stopTime || t("unknown");
 
                         if (stopTime && stopTime.includes(':')) {
                             const parts = stopTime.split(':').map(Number);
@@ -7155,16 +7156,16 @@ async function fetchVehiclePositions() {
                             let diff = arrivalSeconds - nowSeconds;
                             if (diff < -3600) diff += 86400;
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
-                            absoluteTimeText = `${String(parts[0]).padStart(2,'0')}:${String(parts[1]).padStart(2,'0')}`;
+                            absoluteTime = `${String(parts[0]).padStart(2,'0')}:${String(parts[1]).padStart(2,'0')}`;
                         } else if (stopTime && !isNaN(stopTime)) {
                             const diff = Math.floor(Number(stopTime) - Date.now() / 1000);
                             timeLeftText = diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
-                            const d = new Date(Number(stopTime) * 1000);
-                            absoluteTimeText = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
                         }
 
-                        if (stop.delay !== null && stop.delay !== undefined) {
-                            const stopDelayMin = Math.round(stop.delay / 60);
+                        const stopDelaySeconds = stop.delay ?? null;
+                        let delayText = '';
+                        if (stopDelaySeconds !== null) {
+                            const stopDelayMin = Math.round(stopDelaySeconds / 60);
                             if (Math.abs(stopDelayMin) <= 1) {
                                 delayText = t("ontime");
                             } else if (stopDelayMin < -1) {
@@ -7173,47 +7174,51 @@ async function fetchVehiclePositions() {
                                 delayText = `+${stopDelayMin} min`;
                             }
                         } else {
-                            delayText = "—";
+                            delayText = t("unavailable") || "—";
                         }
 
                         const stopName = stopNameMap[stop.stopId] || stop.stopId;
-                        const isFirst = index === 0;
+                        const stateKey = `${tripId}_${index}`;
+
+                        const states = [
+                            { value: timeLeftText,  cls: "" },
+                            { value: absoluteTime,  cls: "time-absolute" },
+                            { value: delayText,     cls: stopDelaySeconds === null || Math.abs(Math.round(stopDelaySeconds/60)) <= 1
+                                                        ? "time-ontime"
+                                                        : Math.round(stopDelaySeconds/60) < -1
+                                                            ? "time-early"
+                                                            : Math.round(stopDelaySeconds/60) > 5
+                                                                ? "time-late-high"
+                                                                : "time-late-low" }
+                        ];
+
+                        const currentState = window.stopClickStates[stateKey] ?? 0;
+                        const { value: displayValue, cls: displayCls } = states[currentState];
 
                         return `
-                        <li class="stop-row ${isFirst ? 'stop-row--current' : ''}"
-                            data-state="0"
-                            data-time-left="${timeLeftText}"
-                            data-absolute-time="${absoluteTimeText}"
-                            data-delay="${delayText}"
-                            onclick="
-                                const states = ['time-left', 'absolute', 'delay'];
-                                const icons = ['⏱', '🕐', '📊'];
-                                const next = (parseInt(this.dataset.state) + 1) % 3;
-                                this.dataset.state = next;
-                                const values = [this.dataset.timeLeft, this.dataset.absoluteTime, this.dataset.delay];
-                                this.querySelector('.time-display').textContent = values[next];
-                                this.querySelector('.stop-state-icon').textContent = icons[next];
-                            "
-                            style="list-style: none; padding: 5px 6px; display: flex; align-items: center; gap: 8px; border-radius: 6px; cursor: pointer; transition: background 0.15s;">
-                            
-                            <span class="stop-index" style="font-size: 0.65rem; color: var(--text-muted, #888); min-width: 14px; text-align: center;">
-                                ${isFirst ? '▶' : index}
-                            </span>
-
-                            <div class="stop-name-container" style="flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 0.82rem;">
-                                ${stopName}
+                        <li class="stop-row" data-state-key="${stateKey}" 
+                            data-states='${JSON.stringify(states)}'
+                            style="list-style: none; padding: 2px 0; display: flex; justify-content: space-between; cursor: pointer; user-select: none;">
+                            <div class="stop-name-container" style="position: relative; overflow: hidden; max-width: 70%; white-space: nowrap;">
+                                <div class="stop-name-wrapper" style="position: relative; display: inline-block; padding-right: 10px;">
+                                    <div class="stop-name" style="position: relative; display: inline-block;">${stopName}</div>
+                                </div>
                             </div>
-
-                            <div style="display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                                <span class="stop-state-icon" style="font-size: 0.65rem;">⏱</span>
-                                <span class="time-display" style="font-size: 0.82rem; font-variant-numeric: tabular-nums; min-width: 38px; text-align: right;">
-                                    ${timeLeftText}
-                                </span>
+                            <div class="time-container" style="position: relative; min-height: 1.2em; text-align: right;">
+                                <div class="time-display ${displayCls}" data-state-key="${stateKey}">
+                                    ${displayValue}
+                                </div>
+                                <svg class="time-indicator" xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <g class="rss-waves">
+                                        <path class="rss-arc-large" d="M4 4a16 16 0 0 1 16 16"></path>
+                                        <path class="rss-arc-small" d="M4 11a9 9 0 0 1 9 9"></path>
+                                    </g>
+                                    <circle class="rss-dot" cx="5" cy="19" r="1"></circle>
+                                </svg>
                             </div>
                         </li>`;
                     }).join('');
                 }
-
                 const nextStopsHTML = `
                     <div style="position: relative; max-height: 120px;">
                         <ul style="padding: 0; margin: 0; list-style-type: none; max-height: 120px;">
@@ -7269,6 +7274,31 @@ async function fetchVehiclePositions() {
                         clearInterval(window.timeToggleInterval);
                     }
                     window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
+                }
+
+                if (!window.stopRowClickHandler) {
+                    window.stopRowClickHandler = true;
+                    document.addEventListener('click', function(e) {
+                        const row = e.target.closest('.stop-row');
+                        if (!row) return;
+
+                        const key = row.dataset.stateKey;
+                        const states = JSON.parse(row.dataset.states);
+                        const current = window.stopClickStates[key] ?? 0;
+                        const next = (current + 1) % states.length;
+                        window.stopClickStates[key] = next;
+
+                        const display = row.querySelector(`.time-display[data-state-key="${key}"]`);
+                        if (!display) return;
+
+                        display.classList.add('fade-out');
+                        setTimeout(() => {
+                            display.textContent = states[next].value;
+                            display.className = `time-display ${states[next].cls}`;
+                            display.setAttribute('data-state-key', key);
+                            display.classList.remove('fade-out');
+                        }, 200);
+                    });
                 }
 
                 const delayInfo = tripUpdates[tripId] ? tripUpdates[tripId].stopUpdates.find(update => update.stopId === stopId) : null;

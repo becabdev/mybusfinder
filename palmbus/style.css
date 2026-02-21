@@ -2296,3 +2296,9 @@
 .stops-anim-pop   { animation: stopsAppearPop   0.4s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
 .stops-anim-fade  { animation: stopsAppearFade  0.35s ease both; }
 .stops-anim-bounce{ animation: stopsAppearBounce 0.45s cubic-bezier(0.25, 1.5, 0.5, 1) both; }
+
+.time-ontime   { color: #22c55e; }
+.time-early    { color: #3b82f6; }
+.time-late-low { color: #f97316; }
+.time-late-high{ color: #ef4444; }
+.time-absolute { opacity: 0.75; }

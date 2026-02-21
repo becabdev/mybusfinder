@@ -317,6 +317,7 @@
 
     "early": "avance",
     "late": "retard",
+    "scheduled": "Service planifié",
 
     "langversion": "1.0.7.4"
   }

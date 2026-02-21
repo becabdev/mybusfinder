@@ -316,6 +316,7 @@
 
     "early": "early",
     "late": "late",
+    "scheduled": "Scheduled service",
     "no_results": "This bus doesn't take passengers! It seems no results were found :("
 
 
