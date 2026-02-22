@@ -17,9 +17,8 @@ $coreCacheFile = $cacheDir . '/gtfs_core.json';
 $tripIndexFile = $cacheDir . '/trip_index.json';
 $zipCacheFile = $cacheDir . '/gtfs.zip';
 $cacheMarkerFile = $cacheDir . '/cache_created.txt';
-$cacheTTL = 4 * 24 * 60 * 60; // 4 jours
+$cacheTTL = 4 * 24 * 60 * 60; 
 
-// Fichiers optimisés et compressés
 $optimizedCoreFile = $cacheDir . '/gtfs_core_optimized.json.gz';
 $optimizedRoutesFile = $cacheDir . '/gtfs_routes_optimized.json.gz';
 $optimizedStopsFile = $cacheDir . '/gtfs_stops_optimized.json.gz';
@@ -51,6 +50,13 @@ function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
                 if (is_file($file)) unlink($file);
             }
         }
+
+        if (is_dir($extractDir . '/../shards')) {
+            $shardFiles = glob($extractDir . '/../shards/*.json.gz');
+            foreach ($shardFiles as $file) {
+                unlink($file);
+            }
+        }
         
         file_put_contents($cacheMarkerFile, time());
     }
@@ -58,7 +64,6 @@ function checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL) {
 
 checkAndCleanExpiredCache($cacheDir, $cacheMarkerFile, $cacheTTL);
 
-// Parse CSV en streaming pour économiser la RAM
 function parseCSVStream($filepath, $callback, $maxRows = null) {
     if (!file_exists($filepath)) return 0;
     
@@ -92,24 +97,21 @@ function parseCSVStream($filepath, $callback, $maxRows = null) {
     return $count;
 }
 
-// Créer un fichier optimisé pour routes (seulement les champs nécessaires)
 function createOptimizedRoutes($extractDir, $outputFile) {
     $routes = [];
     
     parseCSVStream($extractDir . '/routes.txt', function($item) use (&$routes) {
         $routeId = $item['route_id'] ?? '';
         if ($routeId) {
-            // Ne garder que les champs essentiels
             $routes[$routeId] = [
-                's' => $item['route_short_name'] ?? '',  // short_name
-                'l' => $item['route_long_name'] ?? '',    // long_name
-                'c' => $item['route_color'] ?? 'FFFFFF', // color
-                't' => $item['route_text_color'] ?? '000000' // text_color
+                's' => $item['route_short_name'] ?? '',
+                'l' => $item['route_long_name'] ?? '',
+                'c' => $item['route_color'] ?? 'FFFFFF',
+                't' => $item['route_text_color'] ?? '000000'
             ];
         }
     });
     
-    // Compression GZIP
     $json = json_encode($routes);
     $compressed = gzencode($json, 9);
     file_put_contents($outputFile, $compressed);
@@ -120,23 +122,20 @@ function createOptimizedRoutes($extractDir, $outputFile) {
     return true;
 }
 
-// Créer un fichier optimisé pour stops (seulement les champs nécessaires)
 function createOptimizedStops($extractDir, $outputFile) {
     $stops = [];
     
     parseCSVStream($extractDir . '/stops.txt', function($item) use (&$stops) {
         $stopId = $item['stop_id'] ?? '';
         if ($stopId) {
-            // Ne garder que les champs essentiels
             $stops[$stopId] = [
-                'n' => $item['stop_name'] ?? '',     // name
-                'lat' => $item['stop_lat'] ?? '',    // latitude
-                'lon' => $item['stop_lon'] ?? ''     // longitude
+                'n' => $item['stop_name'] ?? '',
+                'lat' => $item['stop_lat'] ?? '',
+                'lon' => $item['stop_lon'] ?? '' 
             ];
         }
     });
     
-    // Compression GZIP
     $json = json_encode($stops);
     $compressed = gzencode($json, 9);
     file_put_contents($outputFile, $compressed);
@@ -148,17 +147,14 @@ function createOptimizedStops($extractDir, $outputFile) {
 }
 
 function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) {
-    // Charger les routes optimisées
     $routesCompressed = file_get_contents($routesFile);
     $routesJson = gzdecode($routesCompressed);
     $routes = json_decode($routesJson, true);
     
-    // Charger les stops optimisés
     $stopsCompressed = file_get_contents($stopsFile);
     $stopsJson = gzdecode($stopsCompressed);
     $stops = json_decode($stopsJson, true);
     
-    // Convertir le format compact en format complet pour le client
     $routesExpanded = [];
     foreach ($routes as $id => $r) {
         $routesExpanded[$id] = [
@@ -203,7 +199,6 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
         return $result;
     };
     
-    // Parser calendar.txt
     $calendarArray = $parseCSV($extractDir . '/calendar.txt');
     $calendarById = [];
     foreach ($calendarArray as $item) {
@@ -213,7 +208,6 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
         }
     }
     
-    // Parser calendar_dates.txt
     $calendarDatesArray = $parseCSV($extractDir . '/calendar_dates.txt');
     $calendarDatesByDate = [];
     foreach ($calendarDatesArray as $cd) {
@@ -231,7 +225,6 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
         }
     }
     
-    // Forcer objet vide si aucune donnée
     if (empty($calendarById)) {
         $calendarById = new stdClass();
     }
@@ -244,7 +237,6 @@ function createOptimizedCore($extractDir, $routesFile, $stopsFile, $outputFile) 
         'generated' => time()
     ];
 
-    // Compression GZIP
     $json = json_encode($core);
     $compressed = gzencode($json, 9);
     file_put_contents($outputFile, $compressed);
@@ -396,10 +388,13 @@ if (isset($_GET['action'])) {
     error_log("Action demandée: " . $action);
     
     try {
-        // Vérifier si les fichiers optimisés existent
+        $shardDir = $cacheDir . '/shards';
+
         $needsOptimization = !file_exists($optimizedCoreFile) || 
                             !file_exists($optimizedRoutesFile) || 
-                            !file_exists($optimizedStopsFile);
+                            !file_exists($optimizedStopsFile) ||
+                            !is_dir($shardDir) ||
+                            count(glob($shardDir . '/*.json.gz')) === 0;
         
         error_log("Needs optimization: " . ($needsOptimization ? 'OUI' : 'NON'));
         

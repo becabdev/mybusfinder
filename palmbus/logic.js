@@ -7023,6 +7023,57 @@ async function fetchVehiclePositions() {
                 setTimeout(() => {
                     stopSpinner();
                 }, 8000);
+
+                function getTerminusInfo(tripId, stopId, staticStopTimes) {
+                    if (!window.stopTimesReady || !staticStopTimes[tripId]) return null;
+                    
+                    const tripStops = staticStopTimes[tripId];
+                    const stopIds = Object.keys(tripStops);
+                    
+                    // le terminus de depart = premier arrêt du trip (stop_sequence la plus basse)
+                    // les stops sont indexés par stopId , y faut trouver le premier
+                    // On compare avec le stopId actuel du vehicule
+                    const cleanCurrentStopId = stopId.replace("0:", "").trim();
+                    
+                    // vérifier si le stopId actuel est le premier arrêt
+                    // en cherchant l'heure de départ la plus tot dans le trip
+                    let earliestTime = null;
+                    let earliestStopId = null;
+                    
+                    for (const [sid, times] of Object.entries(tripStops)) {
+                        const timeStr = times.a || times.d;
+                        if (!timeStr) continue;
+                        
+                        const parts = timeStr.split(':').map(Number);
+                        const secs = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                        
+                        if (earliestTime === null || secs < earliestTime) {
+                            earliestTime = secs;
+                            earliestStopId = sid.replace("0:", "").trim();
+                        }
+                    }
+                    
+                    // le bus est-il au premier arrêt ?
+                    if (earliestStopId !== cleanCurrentStopId) return null;
+                    
+                    // calculer le temps avant départ
+                    const departureStr = tripStops[earliestStopId]?.d || tripStops["0:" + earliestStopId]?.d;
+                    if (!departureStr) return null;
+                    
+                    const parts = departureStr.split(':').map(Number);
+                    const now = new Date();
+                    const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+                    let depSecs = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                    
+                    // gérer le passage minuit
+                    let diff = depSecs - nowSecs;
+                    if (diff < -3600) diff += 86400;
+                    
+                    // seulement afficher si depart dans moins de 30 minutes et pas déjà parti
+                    if (diff < 0 || diff > 30 * 60) return null;
+                    
+                    return diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                }
                 
                 const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
                 const delayMinutes = (firstStop?.computedDelay != null && window.stopTimesReady)
@@ -7071,6 +7122,16 @@ async function fetchVehiclePositions() {
                         <span class="stops-badge-label">${status}</span>
                     </span>` : "";
 
+                const terminusWait = getTerminusInfo(tripId, stopId, window.staticStopTimes);
+                const terminusBadgeHTML = terminusWait ? `
+                    <span class="stops-icon-badge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span class="stops-badge-label">${t("departurein")} ${terminusWait}</span>
+                    </span>` : "";
+
                 if (filteredStops.length === 0) {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
@@ -7086,6 +7147,7 @@ async function fetchVehiclePositions() {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
                             <div class="stops-icons-row">
+                                ${terminusBadgeHTML}
                                 ${delayBadgeHTML}
                                 <span class="stops-icon-badge">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
@@ -7104,6 +7166,7 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -7118,6 +7181,7 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         ${iconClock}
@@ -7132,6 +7196,7 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         ${iconClock}
@@ -7146,6 +7211,7 @@ async function fetchVehiclePositions() {
                         stopsHeaderText = `
                             <div class="stops-header-widget stops-anim-fade">
                                 <div class="stops-icons-row">
+                                    ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
                                     <span class="stops-icon-badge">
                                         ${iconClock}
