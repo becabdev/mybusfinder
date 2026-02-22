@@ -417,14 +417,6 @@ if (isset($_GET['action'])) {
                 $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
                 
                 if (!file_exists($stopTimesIndex)) {
-                    // Générer à la demande si pas encore fait
-                    if (!file_exists($extractDir . '/stop_times.txt')) {
-                        $zip = new ZipArchive();
-                        if ($zip->open($zipCacheFile) === TRUE) {
-                            $zip->extractTo($extractDir, 'stop_times.txt');
-                            $zip->close();
-                        }
-                    }
                     buildStopTimesIndex($extractDir, $stopTimesIndex);
                 }
                 
@@ -434,10 +426,18 @@ if (isset($_GET['action'])) {
                     exit;
                 }
                 
+                $testDecode = gzdecode(file_get_contents($stopTimesIndex));
+                if ($testDecode === false) {
+                    unlink($stopTimesIndex); 
+                    http_response_code(500);
+                    echo json_encode(['error' => 'Fichier corrompu, relancer']);
+                    exit;
+                }
+                
                 header("Content-Type: application/json");
                 header("Content-Encoding: gzip");
                 readfile($stopTimesIndex);
-            break;
+                break;
                 
             case 'info':
                 header("Content-Type: application/json");
@@ -600,7 +600,6 @@ if (isset($_GET['action'])) {
     exit;
 }
 
-// Fallback ZIP (pour compatibilité)
 if (isset($_SERVER['HTTP_X_CONTENT_ONLY_HEADER'])) {
     $context = stream_context_create([
         'http' => [

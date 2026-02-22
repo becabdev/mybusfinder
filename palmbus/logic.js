@@ -2908,7 +2908,7 @@ async function loadGTFSDataOptimized() {
                 resolve();
             };
 
-            worker.postMessage(window.location.origin + 'proxy-cors/proxy_gtfs.php?action=stop_times');
+            worker.postMessage(window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'proxy-cors/proxy_gtfs.php?action=stop_times');
         });
 
         // ── FIN ──────────────────────────────────────────────────
