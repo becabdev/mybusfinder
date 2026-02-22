@@ -323,6 +323,7 @@
     "loadingstops": "Chargement des arrêts...",
     "loadingtimetables": "Chargement des horaires...",
     "loadingdone": "Chargement terminé !",
+    "installingrequirements": "Installation des prérequis... Si l'interface est bloquée à cette étape, veuillez redémarrer l'application.",
 
     "langversion": "1.0.7.4"
   }
