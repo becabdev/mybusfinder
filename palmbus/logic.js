@@ -7072,7 +7072,7 @@ async function fetchVehiclePositions() {
                     // seulement afficher si depart dans moins de 30 minutes et pas déjà parti
                     if (diff < 0 || diff > 30 * 60) return null;
                     
-                    return diff <= 60 ? t("imminent") : `${Math.ceil(diff / 60)} min`;
+                    return diff <= 60 ? "imminent" : `${Math.ceil(diff / 60)} min`;
                 }
                 
                 const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
@@ -7083,20 +7083,23 @@ async function fetchVehiclePositions() {
                 const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
                     let icon, label, color;
                     if (Math.abs(delayMinutes) <= 1) {
+                        if (terminusWait) return "";
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
                         label = t("ontime");
                         color = "#15d85d";
                     } else if (delayMinutes < -1) {
+                        if (terminusWait) return "";
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
                         label = `${Math.abs(delayMinutes)} ${t("min")} ${t("early")}`;
                         color = "#1a5ecc";
                     } else {
+                        if (terminusWait) return "";
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
                         label = `${delayMinutes} ${t("min")} ${t("late")}`;
                         color = delayMinutes > 5 ? "#b31313" : "#db6a18";
                     }
-                    return `<span style="color:${color};">
-                        <span class="stops-icon-badge" style="border: 1px solid ${color}44; ">
+                    return `<span>
+                        <span class="stops-icon-badge" style="border: 2px solid ${color}44; ">
                             <span style="display:flex; align-items:center;">${icon}</span>
                             <span class="stops-badge-label">${label}</span>
                         </span>
@@ -7125,11 +7128,20 @@ async function fetchVehiclePositions() {
                 const terminusWait = getTerminusInfo(tripId, stopId, window.staticStopTimes);
                 const terminusBadgeHTML = terminusWait ? `
                     <span class="stops-icon-badge">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+
+                            <path d="M16 16.01L16.01 15.9989"/>
+                            <path d="M6 16.01L6.01 15.9989"/>
+                            <path d="M20 22V15V8M20 8H18L18 2H22V8H20Z"/>
+                            <path d="M4 20V22H6V20H4Z"/>
+                            <path d="M14 20V22H16V20H14Z"/>
+                            <path d="M16 20H2.6C2.26863 20 2 19.7314 2 19.4V12.6C2 12.2686 2.26863 12 2.6 12H16"/>
+                            <path d="M14 8H6M14 2H6C3.79086 2 2 3.79086 2 6V8"/>
+
                         </svg>
-                        <span class="stops-badge-label">${t("departurein")} ${terminusWait}</span>
+                        <span class="stops-badge-label">${terminusWait === "imminent" ? t("imminentdeparture") : t("terminus_departure") + " " + terminusWait}</span>
                     </span>` : "";
 
                 if (filteredStops.length === 0) {
