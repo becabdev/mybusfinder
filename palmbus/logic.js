@@ -7019,7 +7019,7 @@ async function fetchVehiclePositions() {
                     );
                     return {
                         ...stop,
-                        delay: computedDelay !== null ? computedDelay : stop.delay
+                        computedDelay: computedDelay, 
                     };
                 });
 
@@ -7029,9 +7029,9 @@ async function fetchVehiclePositions() {
                 }, 8000);
                 
                 const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
-                const delaySeconds = firstStop?.delay ?? null;
-                const isRealisticDelay = delaySeconds !== null && Math.abs(delaySeconds) < 3600;
-                const delayMinutes = isRealisticDelay ? Math.round(delaySeconds / 60) : null;
+                const delayMinutes = (firstStop?.computedDelay != null && window.stopTimesReady)
+                    ? Math.round(firstStop.computedDelay / 60)
+                    : null;
 
                 const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
                     let icon, label, color;
