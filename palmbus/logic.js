@@ -1,5 +1,4 @@
 
-let map;
 
         if (!window.requestIdleCallback) {
             window.requestIdleCallback = function(callback, options) {
@@ -1078,6 +1077,8 @@ const vehicleTypes = {
     'clim': new Set()
 };
 
+let map;
+
 async function changeColorBkg(selectedTheme = null) {
     const data = await getSetvar();
     const defaultColor = data && data.colorbkg ? data.colorbkg : "#005A9E";
@@ -1345,6 +1346,10 @@ function locateUser() {
     
     locateMe();
 }
+
+(async function() {
+    map = await initMap();
+})();
 
 const sunOverlay = document.getElementById('sun-overlay');
     let isSunOrientationVisible = false; 
@@ -2908,7 +2913,7 @@ async function loadGTFSDataOptimized() {
                 resolve();
             };
 
-            worker.postMessage(window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/') + 'proxy-cors/proxy_gtfs.php?action=stop_times');
+            worker.postMessage('proxy-cors/proxy_gtfs.php?action=stop_times');
         });
 
         // ── FIN ──────────────────────────────────────────────────
@@ -7025,31 +7030,11 @@ async function fetchVehiclePositions() {
                 
                 const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
                 const delaySeconds = firstStop?.delay ?? null;
-                const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
+                const isRealisticDelay = delaySeconds !== null && Math.abs(delaySeconds) < 3600;
+                const delayMinutes = isRealisticDelay ? Math.round(delaySeconds / 60) : null;
 
-                function getRealDelayFromStop(stop) {
-                    const rawTime = stop.rawArrivalTime || stop.rawDepartureTime;
-                    const scheduledStr = stop.arrivalTime || stop.departureTime;
-                    
-                    if (!rawTime || !scheduledStr) return null;
-                    
-                    const parts = scheduledStr.split(':').map(Number);
-                    const scheduledSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
-                    
-                    const rtDate = new Date(rawTime * 1000);
-                    const rtSeconds = rtDate.getHours() * 3600 + rtDate.getMinutes() * 60 + rtDate.getSeconds();
-                    
-                    return rtSeconds - scheduledSeconds; 
-                }
-
-                const realDelaySeconds = filteredStops.length > 0 
-                    ? getRealDelayFromStop(filteredStops[0]) 
-                    : null;
-
-                const delayBadgeHTML = (realDelaySeconds !== null) ? (() => {
-                    const delayMinutes = Math.round(realDelaySeconds / 60);
+                const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
                     let icon, label, color;
-                    
                     if (Math.abs(delayMinutes) <= 1) {
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
                         label = t("ontime");
@@ -7063,9 +7048,8 @@ async function fetchVehiclePositions() {
                         label = `${delayMinutes} ${t("min")} ${t("late")}`;
                         color = delayMinutes > 5 ? "#b31313" : "#db6a18";
                     }
-                    
                     return `<span style="color:${color};">
-                        <span class="stops-icon-badge" style="border: 1px solid ${color}44;">
+                        <span class="stops-icon-badge" style="border: 1px solid ${color}44; ">
                             <span style="display:flex; align-items:center;">${icon}</span>
                             <span class="stops-badge-label">${label}</span>
                         </span>
@@ -7178,10 +7162,6 @@ async function fetchVehiclePositions() {
                     }
                 }
 
-                console.log('filteredStops:', JSON.stringify(filteredStops.slice(0, 3)));
-                console.log('stop.delay:', filteredStops[0]?.delay);
-                console.log('stop.arrivalTime:', filteredStops[0]?.arrivalTime);
-
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map(stop => {
@@ -7193,10 +7173,6 @@ async function fetchVehiclePositions() {
                             const now = new Date();
                             const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
                             let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
-
-                            if (stop.delay !== null && stop.delay !== undefined) {
-                                arrivalSeconds += stop.delay;
-                            }
                             
                             let diff = arrivalSeconds - nowSeconds;
                             if (diff < -3600) diff += 86400;
@@ -9775,13 +9751,11 @@ function startFetchUpdates() {
 }
 
 
-
 async function main() {
     try {
         initWorker();
         await initializeGTFS();
         gtfsInitialized = true;
-        map = await initMap();
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),

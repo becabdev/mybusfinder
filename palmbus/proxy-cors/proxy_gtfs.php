@@ -284,10 +284,7 @@ function buildTripIndex($extractDir, $tripIndexFile) {
 
 function buildStopTimesIndex($extractDir, $outputFile) {
     $stopTimesFile = $extractDir . '/stop_times.txt';
-    if (!file_exists($stopTimesFile)) {
-        error_log('stop_times.txt introuvable dans ' . $extractDir);
-        return;
-    }
+    if (!file_exists($stopTimesFile)) return;
 
     $index = [];
     $fh = fopen($stopTimesFile, 'r');
@@ -313,14 +310,8 @@ function buildStopTimesIndex($extractDir, $outputFile) {
     }
     fclose($fh);
 
-    $compressed = gzencode(json_encode($index), 6);
-    if ($compressed === false) {
-        error_log('Échec compression gzip');
-        return;
-    }
-    
-    $written = file_put_contents($outputFile, $compressed);
-    error_log('stop_times_index écrit: ' . $written . ' bytes, ' . count($index) . ' trips');
+    $compressed = gzencode(json_encode($index), 6); 
+    file_put_contents($outputFile, $compressed);
 
     unset($index);
     gc_collect_cycles();
@@ -426,6 +417,14 @@ if (isset($_GET['action'])) {
                 $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
                 
                 if (!file_exists($stopTimesIndex)) {
+                    // Générer à la demande si pas encore fait
+                    if (!file_exists($extractDir . '/stop_times.txt')) {
+                        $zip = new ZipArchive();
+                        if ($zip->open($zipCacheFile) === TRUE) {
+                            $zip->extractTo($extractDir, 'stop_times.txt');
+                            $zip->close();
+                        }
+                    }
                     buildStopTimesIndex($extractDir, $stopTimesIndex);
                 }
                 
@@ -435,18 +434,10 @@ if (isset($_GET['action'])) {
                     exit;
                 }
                 
-                $testDecode = gzdecode(file_get_contents($stopTimesIndex));
-                if ($testDecode === false) {
-                    unlink($stopTimesIndex); 
-                    http_response_code(500);
-                    echo json_encode(['error' => 'Fichier corrompu, relancer']);
-                    exit;
-                }
-                
                 header("Content-Type: application/json");
                 header("Content-Encoding: gzip");
                 readfile($stopTimesIndex);
-                break;
+            break;
                 
             case 'info':
                 header("Content-Type: application/json");
@@ -609,6 +600,7 @@ if (isset($_GET['action'])) {
     exit;
 }
 
+// Fallback ZIP (pour compatibilité)
 if (isset($_SERVER['HTTP_X_CONTENT_ONLY_HEADER'])) {
     $context = stream_context_create([
         'http' => [
