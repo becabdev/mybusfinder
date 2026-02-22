@@ -7167,6 +7167,10 @@ async function fetchVehiclePositions() {
                             const now = new Date();
                             const nowSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
                             let arrivalSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+
+                            if (stop.delay !== null && stop.delay !== undefined) {
+                                arrivalSeconds += stop.delay;
+                            }
                             
                             let diff = arrivalSeconds - nowSeconds;
                             if (diff < -3600) diff += 86400;
