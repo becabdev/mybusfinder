@@ -574,7 +574,6 @@
         }
     }
     .nextStopsContent div {
-        animation: 0.3s ease-in fadeInScroll;
         display: inherit;
     }
     @keyframes fadeInScroll {
@@ -1420,7 +1419,7 @@
         animation: 3s linear infinite rainbowShadow;
     }
     .vehicle-thumbnail {
-        background: #0000006b;
+        background: #0000002e;
         font-weight: 400;
         white-space: nowrap;
         border-radius: 10px;
@@ -1428,6 +1427,8 @@
         align-items: center;
         gap: 6px;
         padding: 0 1px;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
     }
     .vehicle-thumbnaill {
         font-weight: 400;
