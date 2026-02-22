@@ -7156,6 +7156,10 @@ async function fetchVehiclePositions() {
                     }
                 }
 
+                console.log('filteredStops:', JSON.stringify(filteredStops.slice(0, 3)));
+                console.log('stop.delay:', filteredStops[0]?.delay);
+                console.log('stop.arrivalTime:', filteredStops[0]?.arrivalTime);
+
                 let stopsListHTML = '';
                 if (filteredStops.length > 0) {
                     stopsListHTML = filteredStops.map(stop => {
