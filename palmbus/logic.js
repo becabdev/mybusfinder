@@ -1,4 +1,5 @@
 
+let map;
 
         if (!window.requestIdleCallback) {
             window.requestIdleCallback = function(callback, options) {
@@ -1077,8 +1078,6 @@ const vehicleTypes = {
     'clim': new Set()
 };
 
-let map;
-
 async function changeColorBkg(selectedTheme = null) {
     const data = await getSetvar();
     const defaultColor = data && data.colorbkg ? data.colorbkg : "#005A9E";
@@ -1346,10 +1345,6 @@ function locateUser() {
     
     locateMe();
 }
-
-(async function() {
-    map = await initMap();
-})();
 
 const sunOverlay = document.getElementById('sun-overlay');
     let isSunOrientationVisible = false; 
@@ -9750,11 +9745,13 @@ function startFetchUpdates() {
 }
 
 
+
 async function main() {
     try {
         initWorker();
         await initializeGTFS();
         gtfsInitialized = true;
+        map = await initMap();
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),
