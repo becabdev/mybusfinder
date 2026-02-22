@@ -7023,7 +7023,7 @@ async function fetchVehiclePositions() {
                     stopSpinner();
                 }, 8000);
                 
-                const firstStop = filteredStops.length > 0 ? filteredStops[1] : null;
+                const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
                 const delaySeconds = firstStop?.delay ?? null;
                 const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
 
