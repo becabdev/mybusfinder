@@ -489,9 +489,6 @@ if (isset($_GET['action'])) {
                     'core_size' => file_exists($optimizedCoreFile) ? filesize($optimizedCoreFile) : 0,
                     'routes_size' => file_exists($optimizedRoutesFile) ? filesize($optimizedRoutesFile) : 0,
                     'stops_size' => file_exists($optimizedStopsFile) ? filesize($optimizedStopsFile) : 0,
-                    $shardDir = $cacheDir . '/shards';
-                    $info['shards_exists'] = is_dir($shardDir);
-                    $info['shards_count']  = is_dir($shardDir) ? count(glob($shardDir . '/*.json.gz')) : 0;
                     'total_size' => 0,
                     'cache_age_hours' => 0,
                     'cache_dir' => $cacheDir,
@@ -499,6 +496,9 @@ if (isset($_GET['action'])) {
                 ];
                 
                 $info['total_size'] = $info['core_size'] + $info['routes_size'] + $info['stops_size'];
+                $shardDir = $cacheDir . '/shards';
+                $info['shards_exists'] = is_dir($shardDir);
+                $info['shards_count']  = is_dir($shardDir) ? count(glob($shardDir . '/*.json.gz')) : 0;
                 
                 if (file_exists($cacheMarkerFile)) {
                     $cacheTime = (int)file_get_contents($cacheMarkerFile);
