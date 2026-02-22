@@ -343,12 +343,13 @@ function buildStopTimesShards($extractDir, $shardDir) {
         );
     }
 
+    file_put_contents($shardDir . '/.built', time());
+
     unset($shards);
     gc_collect_cycles();
 }
 
-function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {
-    $zip = new ZipArchive();
+function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $cacheDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {    $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
         throw new Exception('Impossible ouvrir ZIP');
     }
@@ -390,11 +391,10 @@ if (isset($_GET['action'])) {
     try {
         $shardDir = $cacheDir . '/shards';
 
-        $needsOptimization = !file_exists($optimizedCoreFile) || 
+    $needsOptimization = !file_exists($optimizedCoreFile) || 
                             !file_exists($optimizedRoutesFile) || 
                             !file_exists($optimizedStopsFile) ||
-                            !is_dir($shardDir) ||
-                            count(glob($shardDir . '/*.json.gz')) === 0;
+                            !file_exists($shardDir . '/.built');
         
         error_log("Needs optimization: " . ($needsOptimization ? 'OUI' : 'NON'));
         
@@ -413,7 +413,7 @@ if (isset($_GET['action'])) {
             
             // Extraction et optimisation
             error_log("Extraction et optimisation...");
-            extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile);
+            extractAndOptimizeGTFS($zipCacheFile, $extractDir, $cacheDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile);
             error_log("Optimisation terminée");
         }
         
