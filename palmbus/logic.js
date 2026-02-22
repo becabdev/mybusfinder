@@ -2913,7 +2913,7 @@ async function loadGTFSDataOptimized() {
                 resolve();
             };
 
-            worker.postMessage('proxy-cors/proxy_gtfs.php?action=stop_times');
+            worker.postMessage(new URL('proxy-cors/proxy_gtfs.php?action=stop_times', window.location.href).href);
         });
 
         // ── FIN ──────────────────────────────────────────────────
