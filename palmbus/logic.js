@@ -6906,34 +6906,32 @@ async function fetchVehiclePositions() {
             if (tripId && tripId !== 'Inconnu') activeTripIds.add(tripId);
         });
 
-        // Charger uniquement les stop times nécessaires si pas encore fait
-        const missingTripIds = [...activeTripIds].filter(id => !window.staticStopTimes[id]);
+        const missingTripIds = [...activeTripIds].filter(id => !window.staticStopTimes?.[id]);
 
         if (missingTripIds.length > 0 && !window.stopTimesLoading) {
             window.stopTimesLoading = true;
-            
-            requestIdleCallback(async () => {
-                try {
-                    const url = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
-                    const chunkSize = 50; 
-                    
-                    for (let i = 0; i < missingTripIds.length; i += chunkSize) {
-                        const chunk = missingTripIds.slice(i, i + chunkSize);
-                        const res = await fetch(
-                            `${url}?action=stop_times_by_trips&trip_ids=${chunk.join(',')}`
-                        );
-                        const data = await res.json();
-                        
-                        Object.assign(window.staticStopTimes, data);
-                    }
-                    
-                    window.stopTimesReady  = true;
-                    window.stopTimesLoading = false;
-                    
-                } catch (err) {
-                    console.warn('Erreur chargement stop times ciblé:', err);
-                    window.stopTimesLoading = false;
-                }
+
+            const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
+            const chunkSize = 80; 
+            const chunks = [];
+            for (let i = 0; i < missingTripIds.length; i += chunkSize) {
+                chunks.push(missingTripIds.slice(i, i + chunkSize));
+            }
+
+            Promise.all(
+                chunks.map(chunk =>
+                    fetch(`${baseUrl}?action=stop_times_by_trips&trip_ids=${chunk.join(',')}`)
+                        .then(r => r.json())
+                        .then(json => {
+                            Object.assign(window.staticStopTimes, json);
+                            if (!window.stopTimesReady) {
+                                window.stopTimesReady = true;
+                            }
+                        })
+                        .catch(err => console.warn('Chunk error:', err))
+                )
+            ).finally(() => {
+                window.stopTimesLoading = false;
             });
         }
 

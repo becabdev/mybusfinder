@@ -317,6 +317,44 @@ function buildStopTimesIndex($extractDir, $outputFile) {
     gc_collect_cycles();
 }
 
+function buildStopTimesShards($extractDir, $shardDir) {
+    if (!is_dir($shardDir)) mkdir($shardDir, 0755, true);
+
+    $stopTimesFile = $extractDir . '/stop_times.txt';
+    if (!file_exists($stopTimesFile)) return;
+
+    $shards = [];
+    $fh = fopen($stopTimesFile, 'r');
+    $headers     = fgetcsv($fh);
+    $tripIdIdx   = array_search('trip_id',       $headers);
+    $stopIdIdx   = array_search('stop_id',        $headers);
+    $arrivalIdx  = array_search('arrival_time',   $headers);
+    $departIdx   = array_search('departure_time', $headers);
+
+    while (($row = fgetcsv($fh)) !== false) {
+        $tripId = $row[$tripIdIdx] ?? '';
+        $stopId = $row[$stopIdIdx] ?? '';
+        if (!$tripId || !$stopId) continue;
+
+        $shardKey = substr(md5($tripId), 0, 2); 
+        $shards[$shardKey][$tripId][$stopId] = [
+            'a' => $row[$arrivalIdx] ?? '',
+            'd' => $row[$departIdx]  ?? ''
+        ];
+    }
+    fclose($fh);
+
+    foreach ($shards as $shardKey => $data) {
+        file_put_contents(
+            $shardDir . '/' . $shardKey . '.json.gz',
+            gzencode(json_encode($data), 6)
+        );
+    }
+
+    unset($shards);
+    gc_collect_cycles();
+}
+
 function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $optimizedCoreFile, $optimizedRoutesFile, $optimizedStopsFile, $tripIndexFile) {
     $zip = new ZipArchive();
     if ($zip->open($zipCacheFile) !== TRUE) {
@@ -344,6 +382,7 @@ function extractAndOptimizeGTFS($zipCacheFile, $extractDir, $coreCacheFile, $opt
     // Créer index trip->route
     buildTripIndex($extractDir, $tripIndexFile);
     buildStopTimesIndex($extractDir, $cacheDir . '/stop_times_index.json.gz');
+    buildStopTimesShards($extractDir, $cacheDir . '/shards');
     
     return true;
 }
@@ -472,57 +511,45 @@ if (isset($_GET['action'])) {
                     echo json_encode(['error' => 'trip_ids manquant']);
                     exit;
                 }
-                
+
                 $requestedTrips = array_flip(explode(',', $tripIdsParam));
-                $stopTimesFile  = $extractDir . '/stop_times.txt';
-                
-                // Si stop_times.txt pas extrait, l'extraire
-                if (!file_exists($stopTimesFile)) {
-                    $zip = new ZipArchive();
-                    if ($zip->open($zipCacheFile) === TRUE) {
-                        $zip->extractTo($extractDir, 'stop_times.txt');
-                        $zip->close();
-                    }
-                }
-                
-                // Chercher dans l'index gzip si dispo (beaucoup plus rapide)
-                $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
-                if (file_exists($stopTimesIndex)) {
-                    $allData  = json_decode(gzdecode(file_get_contents($stopTimesIndex)), true);
-                    $filtered = [];
+                $result = [];
+
+                $shardDir = $cacheDir . '/shards';
+                if (is_dir($shardDir)) {
                     foreach ($requestedTrips as $tripId => $_) {
-                        if (isset($allData[$tripId])) {
-                            $filtered[$tripId] = $allData[$tripId];
+                        $shardFile = $shardDir . '/' . substr(md5($tripId), 0, 2) . '.json.gz';
+                        if (file_exists($shardFile)) {
+                            static $shardCache = [];
+                            $shardKey = basename($shardFile);
+                            if (!isset($shardCache[$shardKey])) {
+                                $shardCache[$shardKey] = json_decode(
+                                    gzdecode(file_get_contents($shardFile)), true
+                                );
+                            }
+                            if (isset($shardCache[$shardKey][$tripId])) {
+                                $result[$tripId] = $shardCache[$shardKey][$tripId];
+                            }
                         }
                     }
-                    unset($allData);
                     header("Content-Type: application/json");
-                    echo json_encode($filtered);
+                    header("Content-Encoding: gzip");
+                    echo gzencode(json_encode($result), 1); 
                     exit;
                 }
-                
-                // Fallback : lire stop_times.txt en streaming
-                $result = [];
-                $fh = fopen($stopTimesFile, 'r');
-                $headers     = fgetcsv($fh);
-                $tripIdIdx   = array_search('trip_id',        $headers);
-                $stopIdIdx   = array_search('stop_id',         $headers);
-                $arrivalIdx  = array_search('arrival_time',    $headers);
-                $departIdx   = array_search('departure_time',  $headers);
 
-                while (($row = fgetcsv($fh)) !== false) {
-                    $tripId = $row[$tripIdIdx] ?? '';
-                    if (!isset($requestedTrips[$tripId])) continue;
-                    $stopId = $row[$stopIdIdx] ?? '';
-                    $result[$tripId][$stopId] = [
-                        'a' => $row[$arrivalIdx]  ?? '',
-                        'd' => $row[$departIdx]   ?? ''
-                    ];
+                $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
+                if (file_exists($stopTimesIndex)) {
+                    $allData = json_decode(gzdecode(file_get_contents($stopTimesIndex)), true);
+                    foreach ($requestedTrips as $tripId => $_) {
+                        if (isset($allData[$tripId])) $result[$tripId] = $allData[$tripId];
+                    }
+                    unset($allData);
                 }
-                fclose($fh);
 
                 header("Content-Type: application/json");
-                echo json_encode($result);
+                header("Content-Encoding: gzip");
+                echo gzencode(json_encode($result), 1);
                 break;
 
             case 'route':
