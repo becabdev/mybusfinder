@@ -284,7 +284,10 @@ function buildTripIndex($extractDir, $tripIndexFile) {
 
 function buildStopTimesIndex($extractDir, $outputFile) {
     $stopTimesFile = $extractDir . '/stop_times.txt';
-    if (!file_exists($stopTimesFile)) return;
+    if (!file_exists($stopTimesFile)) {
+        error_log('stop_times.txt introuvable dans ' . $extractDir);
+        return;
+    }
 
     $index = [];
     $fh = fopen($stopTimesFile, 'r');
@@ -310,8 +313,14 @@ function buildStopTimesIndex($extractDir, $outputFile) {
     }
     fclose($fh);
 
-    $compressed = gzencode(json_encode($index), 6); 
-    file_put_contents($outputFile, $compressed);
+    $compressed = gzencode(json_encode($index), 6);
+    if ($compressed === false) {
+        error_log('Échec compression gzip');
+        return;
+    }
+    
+    $written = file_put_contents($outputFile, $compressed);
+    error_log('stop_times_index écrit: ' . $written . ' bytes, ' . count($index) . ' trips');
 
     unset($index);
     gc_collect_cycles();
