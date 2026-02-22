@@ -7024,10 +7024,40 @@ async function fetchVehiclePositions() {
                 }, 8000);
                 
                 const firstStop = filteredStops.length > 0 ? filteredStops[0] : null;
-                const delaySeconds = firstStop?.arrivalDelay ?? null;
+                const delaySeconds = firstStop?.delay ?? null;
                 const delayMinutes = delaySeconds !== null ? Math.round(delaySeconds / 60) : null;
 
-                const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
+                function getRealDelay(tripId, stop) {
+                    if (!window.staticStopTimes || !window.stopTimesReady) return null;
+                    
+                    const tripStops = window.staticStopTimes[tripId];
+                    if (!tripStops) return null;
+                    
+                    const cleanStopId = stop.stopId.replace("0:", "").trim();
+                    const staticStop = tripStops[cleanStopId] || tripStops["0:" + cleanStopId];
+                    if (!staticStop) return null;
+                    
+                    const staticTimeStr = staticStop.a || staticStop.d;
+                    if (!staticTimeStr) return null;
+                    
+                    const parts = staticTimeStr.split(':').map(Number);
+                    const staticSeconds = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                    
+                    const rawTime = stop.rawArrivalTime || stop.rawDepartureTime;
+                    if (!rawTime) return null;
+                    
+                    const rtDate = new Date(rawTime * 1000);
+                    const rtSeconds = rtDate.getHours() * 3600 + rtDate.getMinutes() * 60 + rtDate.getSeconds();
+                    
+                    return rtSeconds - staticSeconds;
+                }
+
+                const realDelaySeconds = filteredStops.length > 1 
+                    ? getRealDelay(tripId, filteredStops[1]) 
+                    : null;
+
+                const delayBadgeHTML = (realDelaySeconds !== null) ? (() => {
+                    const delayMinutes = Math.round(realDelaySeconds / 60);
                     let icon, label, color;
                     if (Math.abs(delayMinutes) <= 1) {
                         icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
