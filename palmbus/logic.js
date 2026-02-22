@@ -2873,48 +2873,45 @@ async function loadGTFSDataOptimized() {
         });
 
         // ── STOP TIMES (chargement non bloquant avec worker) ─────────
-        updateProgress(3, 4);
-        updateLoadingProgress(75);
-        setTimeout(() => ProgressOverlay.setLabel(t('loadingtimetables')), 200);
-
         window.staticStopTimes = {};
-        window.stopTimesReady  = false;
+        window.stopTimesReady = false;
+        window.stopTimesCache = new Map(); 
+        window.stopTimesPending = new Set(); 
 
-        const workerCode = `
-            self.onmessage = async ({ data: url }) => {
-                try {
-                    const res  = await fetch(url, { cache: 'no-store' });
-                    const text = await res.text();
-                    const json = JSON.parse(text);
-                    self.postMessage({ ok: true, json });
-                } catch (err) {
-                    self.postMessage({ ok: false, error: err.message });
-                }
-            };
-        `;
-
-        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
-        const workerUrl  = URL.createObjectURL(workerBlob);
-
-        window.stopTimesPromise = new Promise((resolve) => {
-            const worker = new Worker(workerUrl);
-
-            worker.onmessage = ({ data }) => {
-                worker.terminate();
-                URL.revokeObjectURL(workerUrl);
-                if (data.ok) {
-                    window.staticStopTimes = data.json;
-                    window.stopTimesReady  = true;
-                    console.log('Stop times chargés en arrière plan', Object.keys(data.json).length, 'trips');
-                } else {
-                    console.warn('Erreur chargement stop times', data.error);
-                    window.stopTimesReady = false;
-                }
-                resolve();
-            };
-
-            worker.postMessage(new URL('proxy-cors/proxy_gtfs.php?action=stop_times', window.location.href).href);
-        });
+        async function fetchStopTimesForTrips(tripIds) {
+            const toFetch = tripIds.filter(id => 
+                id && 
+                id !== 'Inconnu' && 
+                !window.stopTimesCache.has(id) && 
+                !window.stopTimesPending.has(id)
+            );
+            
+            if (toFetch.length === 0) return;
+            
+            toFetch.forEach(id => window.stopTimesPending.add(id));
+            
+            try {
+                const url = new URL('proxy-cors/proxy_gtfs.php', window.location.href);
+                url.searchParams.set('action', 'stop_times_by_trips');
+                url.searchParams.set('trip_ids', toFetch.join(','));
+                
+                const response = await fetch(url.href, { cache: 'no-store' });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                
+                Object.entries(data).forEach(([tripId, stops]) => {
+                    window.stopTimesCache.set(tripId, stops);
+                });
+                
+                window.stopTimesReady = true;
+                
+            } catch (err) {
+                console.warn('Erreur fetch stop times:', err);
+            } finally {
+                toFetch.forEach(id => window.stopTimesPending.delete(id));
+            }
+        }
 
         // ── FIN ──────────────────────────────────────────────────
         if (!window.updating) {
@@ -6873,29 +6870,25 @@ function closeMenu() {
 }
 
 function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
-    if (!window.staticStopTimes || !rtArrivalTime) return null;
+    if (!rtArrivalTime) return null;
 
-    const tripStops = window.staticStopTimes[tripId];
+    const tripStops = window.stopTimesCache?.get(tripId) 
+                   || window.staticStopTimes?.[tripId];
     if (!tripStops) return null;
 
     const cleanStopId = stopId.replace("0:", "").trim();
-    
     const staticStop = tripStops[cleanStopId] 
-        || tripStops["0:" + cleanStopId]
-        || tripStops[stopId];
-        
+                    || tripStops["0:" + cleanStopId]
+                    || tripStops[stopId];
     if (!staticStop) return null;
 
-    const staticTimeStr = staticStop.a || staticStop.d; 
+    const staticTimeStr = staticStop.a || staticStop.d;
     if (!staticTimeStr) return null;
 
     function timeToSeconds(timeStr) {
         const parts = timeStr.split(':');
         if (parts.length < 2) return null;
-        const h = parseInt(parts[0]) || 0;
-        const m = parseInt(parts[1]) || 0;
-        const s = parseInt(parts[2]) || 0;
-        return h * 3600 + m * 60 + s;
+        return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + (parseInt(parts[2]) || 0);
     }
 
     const staticSecs = timeToSeconds(staticTimeStr);
@@ -6933,7 +6926,7 @@ async function fetchVehiclePositions() {
             const bounds = map.getBounds();
             return bounds.contains(L.latLng(lat, lng));
         }
-
+            const activeTripIds = [];
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
                 if (vehicle) {
@@ -6945,6 +6938,7 @@ async function fetchVehiclePositions() {
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
                 activeVehicleIds.add(id);
+
 
                 const statusMap = {
                     0: t("notinservicemaj"), // ❌ Hors service commercial
@@ -7009,6 +7003,10 @@ async function fetchVehiclePositions() {
                     });
                 } else {
                     filteredStops = nextStops.filter(stop => stop.delay === null || stop.delay > 0);
+                }
+
+                if (tripId && tripId !== 'Inconnu') {
+                    activeTripIds.push(tripId);
                 }
 
                 filteredStops = filteredStops.map(stop => {
@@ -8072,7 +8070,9 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
         }
 });
 
-
+if (activeTripIds.length > 0) {
+    fetchStopTimesForTrips(activeTripIds).catch(console.warn);
+}
 
 const activeIds = Array.from(markerPool.active.keys());
 activeIds.forEach(id => {

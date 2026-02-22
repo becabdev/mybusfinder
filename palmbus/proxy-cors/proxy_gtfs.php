@@ -465,6 +465,62 @@ if (isset($_GET['action'])) {
                 echo json_encode($info, JSON_PRETTY_PRINT);
                 break;
 
+            case 'stop_times_by_trips':
+                $tripIdsParam = $_GET['trip_ids'] ?? '';
+                if (!$tripIdsParam) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'trip_ids manquant']);
+                    exit;
+                }
+                
+                $requestedTrips = array_filter(explode(',', $tripIdsParam));
+                if (empty($requestedTrips)) {
+                    echo json_encode([]);
+                    exit;
+                }
+                
+                // Limiter à 50 trips max par requête
+                $requestedTrips = array_slice($requestedTrips, 0, 50);
+                $requestedSet = array_flip($requestedTrips);
+                
+                $stopTimesIndex = $cacheDir . '/stop_times_index.json.gz';
+                
+                // Générer l'index si absent
+                if (!file_exists($stopTimesIndex)) {
+                    if (!file_exists($extractDir . '/stop_times.txt')) {
+                        $zip = new ZipArchive();
+                        if ($zip->open($zipCacheFile) === TRUE) {
+                            $zip->extractTo($extractDir, 'stop_times.txt');
+                            $zip->close();
+                        }
+                    }
+                    buildStopTimesIndex($extractDir, $stopTimesIndex);
+                }
+                
+                if (!file_exists($stopTimesIndex)) {
+                    http_response_code(500);
+                    echo json_encode(['error' => 'index introuvable']);
+                    exit;
+                }
+                
+                // Lire uniquement les trips demandés
+                $compressed = file_get_contents($stopTimesIndex);
+                $allTrips = json_decode(gzdecode($compressed), true);
+                
+                $result = [];
+                foreach ($requestedTrips as $tripId) {
+                    if (isset($allTrips[$tripId])) {
+                        $result[$tripId] = $allTrips[$tripId];
+                    }
+                }
+                
+                unset($allTrips);
+                
+                header("Content-Type: application/json");
+                header("Content-Encoding: gzip");
+                echo gzencode(json_encode($result), 6);
+                break;
+
                 case 'route':
                     $routeId = $_GET['route_id'] ?? null;
                     if (!$routeId) {
