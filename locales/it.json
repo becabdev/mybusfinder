@@ -320,6 +320,7 @@
   "loadingstops": "Caricamento delle fermate...",
   "loadingtimetables": "Caricamento degli orari...",
   "loadingdone": "Caricamento completato!",
+  "installingrequirements": "Installazione dei requisiti... Se l'interfaccia è bloccata a questo punto, si prega di riavviare l'applicazione.",
 
   "langversion": "1.0.7.4",
   "no_results": "Questo autobus non prende passeggeri! Sembra che non siano stati trovati risultati :("

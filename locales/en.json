@@ -318,6 +318,7 @@
     "loadingstops": "Loading stops...",
     "loadingtimetables": "Loading timetables...",
     "loadingdone": "Done!",
+    "installingrequirements": "Installing requirements... If the interface is stuck at this step, please restart the application.",
 
     "early": "early",
     "late": "late",
