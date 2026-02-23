@@ -7143,16 +7143,15 @@ async function fetchVehiclePositions() {
 
                 if (terminusWait) {
                     stopsHeaderText = `
-                        <div class="stops-header-widget stops-anim-fade">
+                        <div class="stops-header-widget">
                             <div class="stops-icons-row">
                                 ${terminusBadgeHTML}
-                                ${delayBadgeHTML}
                                 ${statusBadge}
                             </div>
                         </div>`;
                 } else if (filteredStops.length === 0) {
                     stopsHeaderText = `
-                        <div class="stops-header-widget stops-anim-fade">
+                        <div class="stops-header-widget">
                             <div class="stops-icons-row">
                                 ${terminusBadgeHTML}
                                 ${delayBadgeHTML}
@@ -7171,7 +7170,7 @@ async function fetchVehiclePositions() {
 
                     if (filteredStops.length === 1 && minutes === 0) {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -7186,7 +7185,7 @@ async function fetchVehiclePositions() {
 
                     } else if (filteredStops.length === 1) {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -7201,7 +7200,7 @@ async function fetchVehiclePositions() {
 
                     } else if (minutes > 3) {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -7216,7 +7215,7 @@ async function fetchVehiclePositions() {
 
                     } else {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -9555,10 +9554,10 @@ let worker;
 let fetchInProgress = false;
 
 const FetchManager = {
-    baseInterval: 4000,
-    currentInterval: 4000,
-    minInterval: 4000,
-    maxInterval: 30000,
+    baseInterval: 500,
+    currentInterval: 500,
+    minInterval: 500,
+    maxInterval: 4000,
     consecutiveErrors: 0,
     consecutiveSuccess: 0,
     
