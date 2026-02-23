@@ -2476,7 +2476,7 @@ const ProgressOverlay = {
     overlay.id = 'progress-overlay';
     overlay.innerHTML = `
       <div class="po-label-row">
-        <span class="po-label" id="po-label-text">${label} ${t("installingrequirements") || "Installing requirements... If you are stuck at this step, please restart the application."}</span>
+        <span class="po-label" id="po-label-text">${label} Installing requirements... If you are stuck at this step, please restart the app.</span>
         <span class="po-percent" id="po-percent-text"></span>
       </div>
       <div class="po-container">
