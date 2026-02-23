@@ -7151,17 +7151,13 @@ async function fetchVehiclePositions() {
                         </div>`;
                 } else if (filteredStops.length === 0) {
                     stopsHeaderText = `
-                        <div class="stops-header-widget">
+                        <div class="stops-header-widget" style="margin-bottom: 8px;">
                             <div class="stops-icons-row">
-                                ${terminusBadgeHTML}
-                                ${delayBadgeHTML}
                                 <span class="stops-icon-badge">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                                    <span class="stops-badge-label">${scheduleRelationshipText}</span>
+                                    <span class="stops-badge-label">${t("notinservicemaj")}</span>
                                 </span>
-                                ${statusBadge}
                             </div>
-                            <span class="stops-main-text">${t("notinservicemaj")}</span>
                         </div>`;
 
                 } else {
