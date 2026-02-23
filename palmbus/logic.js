@@ -6919,38 +6919,76 @@ async function ensureStopTimes(tripIds) {
     }
 }
 
-function fetchStopTimesInBackground(tripIds, onReady) {
-    const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
+fetchStopTimesInBackground(activeTripIds, (loadedTripIds) => {
+    if (!loadedTripIds) return;
 
-    const missing = tripIds.filter(id =>
-        !window.staticStopTimes[id] &&
-        !window._pendingTripIds.has(id)
-    );
+    data.entity.forEach(entity => {
+        const vehicle = entity.vehicle;
+        if (!vehicle) return;
 
-    if (missing.length === 0) {
-        onReady?.(); // tout est déjà en cache, callback immediat
-        return;
-    }
+        const tripId = vehicle.trip?.tripId;
+        if (!tripId || !loadedTripIds.includes(tripId)) return;
 
-    missing.forEach(id => window._pendingTripIds.add(id));
+        const id = vehicle.vehicle.label || vehicle.vehicle.id || entity.id;
+        const marker = markerPool.get(id);
+        if (!marker) return;
 
-    fetch(`${baseUrl}?action=stop_times_by_trips`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `trip_ids=${missing.join(',')}`
-    })
-    .then(r => r.json())
-    .then(json => {
-        Object.assign(window.staticStopTimes, json);
-        window.stopTimesReady = true;
-        missing.forEach(id => window._pendingTripIds.delete(id));
-        onReady?.(missing);
-    })
-    .catch(err => {
-        console.warn('Erreur stop times:', err);
-        missing.forEach(id => window._pendingTripIds.delete(id));
+        const nextStops = tripUpdates[tripId]?.nextStops || [];
+        const stopIdun = vehicle.stopId || 'Inconnu';
+        const stopId = stopIdun.replace("0:", "");
+
+        let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId);
+        let filteredStops = currentStopIndex !== -1
+            ? nextStops.slice(currentStopIndex).filter(s => s.delay === null || s.delay >= -60)
+            : nextStops.filter(s => s.delay === null || s.delay > 0);
+
+        filteredStops = filteredStops.map(stop => ({
+            ...stop,
+            computedDelay: computeDelaySeconds(tripId, stop.stopId, stop.arrivalTime || stop.departureTime)
+        }));
+
+        const firstStop = filteredStops[0] ?? null;
+        const delayMinutes = firstStop?.computedDelay != null
+            ? Math.round(firstStop.computedDelay / 60)
+            : null;
+
+        if (delayMinutes === null) return;
+
+        let icon, label, color;
+        if (Math.abs(delayMinutes) <= 1) {
+            icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+            label = t("ontime"); color = "#15d85d";
+        } else if (delayMinutes < -1) {
+            icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
+            label = `${Math.abs(delayMinutes)} ${t("min")} ${t("early")}`; color = "#1a5ecc";
+        } else {
+            icon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+            label = `${delayMinutes} ${t("min")} ${t("late")}`;
+            color = delayMinutes > 5 ? "#b31313" : "#db6a18";
+        }
+
+        const newBadgeHTML = `<span class="stops-icon-badge" style="border: 2px solid ${color}44;">
+            <span style="display:flex;align-items:center;">${icon}</span>
+            <span class="stops-badge-label">${label}</span>
+        </span>`;
+
+        if (marker.isPopupOpen()) {
+            const popupNode = marker.getPopup()?._contentNode;
+            if (popupNode) {
+                let badgeWrapper = popupNode.querySelector('.delay-badge-wrapper');
+                if (!badgeWrapper) {
+                    const row = popupNode.querySelector(`#popup-header-${id} .stops-icons-row`);
+                    if (row) {
+                        badgeWrapper = document.createElement('span');
+                        badgeWrapper.className = 'delay-badge-wrapper';
+                        row.insertBefore(badgeWrapper, row.firstChild);
+                    }
+                }
+                if (badgeWrapper) badgeWrapper.innerHTML = newBadgeHTML;
+            }
+        }
     });
-}
+});
 
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) return;
@@ -7144,13 +7182,13 @@ async function fetchVehiclePositions() {
                         label = `${delayMinutes} ${t("min")} ${t("late")}`;
                         color = delayMinutes > 5 ? "#b31313" : "#db6a18";
                     }
-                    return `<span>
-                        <span class="stops-icon-badge" style="border: 2px solid ${color}44; ">
+                    return `<span class="delay-badge-wrapper">
+                        <span class="stops-icon-badge" style="border: 2px solid ${color}44;">
                             <span style="display:flex; align-items:center;">${icon}</span>
                             <span class="stops-badge-label">${label}</span>
                         </span>
                     </span>`;
-                })() : "";
+                })() : `<span class="delay-badge-wrapper"></span>`;
 
                 const iconClock = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
 
