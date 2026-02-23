@@ -7138,10 +7138,19 @@ async function fetchVehiclePositions() {
                             <path d="M14 8H6M14 2H6C3.79086 2 2 3.79086 2 6V8"/>
 
                         </svg>
-                        <span class="stops-badge-label">${terminusWait === "imminent" ? t("imminentdeparture") : t("terminus_departure") + " " + terminusWait}</span>
+                        <span class="stops-badge-label">${terminusWait === "imminent" ? t("imminentdeparture") : t("departurein") + " " + terminusWait}</span>
                     </span>` : "";
 
-                if (filteredStops.length === 0) {
+                if (terminusWait) {
+                    stopsHeaderText = `
+                        <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-icons-row">
+                                ${terminusBadgeHTML}
+                                ${delayBadgeHTML}
+                                ${statusBadge}
+                            </div>
+                        </div>`;
+                } else if (filteredStops.length === 0) {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
                             <div class="stops-icons-row">
