@@ -4430,7 +4430,7 @@ function getVehicleBrandHtml(parkNumber) {
             <div class="vehicle-model">
 
                 <img src="${model.thumbnail}" 
-                     onerror="this.onerror=null; this.src='${defaultImagePath}';" 
+                     onerror="this.style.display='none';" 
                      alt="${model.name}" 
                      class="vehicle-thumbnail"  />
             </div>
@@ -6885,20 +6885,12 @@ async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
     }
-    if (document.hidden) {
-        return;
-    }
     try {
         const response = await fetch('proxy-cors/proxy_vehpos.php');
         const buffer = await response.arrayBuffer();
         const data = await decodeProtobuf(buffer);
 
         const activeVehicleIds = new Set();
-        
-        function isInViewport(lat, lng) {
-            const bounds = map.getBounds();
-            return bounds.contains(L.latLng(lat, lng));
-        }
 
         const activeTripIds = new Set();
         data.entity.forEach(entity => {
@@ -7622,8 +7614,11 @@ async function fetchVehiclePositions() {
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <strong class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</strong>
+                                    <p class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</p>
                                     <div>
+                                        <div class="vehicle-brand-container">
+                                            ${vehicleBrandHtml}
+                                        </div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
                                                 <!-- Contenu défilant horizontalement -->
@@ -7640,15 +7635,7 @@ async function fetchVehiclePositions() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="vehicle-brand-container">
-                                            ${vehicleBrandHtml}
-                                        </div>
                                     </div>
-                                </div>
-
-                                <!-- Texte en arrière-plan -->
-                                <div class="background-text" style="color: ${textColor};">
-                                    ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
                                 </div>
                             </div>
 
