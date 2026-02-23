@@ -1676,6 +1676,7 @@
     position: relative;
     display: flex;
     align-items: center;
+    margin-top: 6px;
 }
 
 .options-scroll-area {
@@ -1757,7 +1758,6 @@
 }
 
 .vehicle-brand-container {
-    margin-top: 10px;
     text-align: right;
 }
 

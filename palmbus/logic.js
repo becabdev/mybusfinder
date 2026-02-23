@@ -4430,7 +4430,7 @@ function getVehicleBrandHtml(parkNumber) {
             <div class="vehicle-model">
 
                 <img src="${model.thumbnail}" 
-                     onerror="this.onerror=null; this.src='${defaultImagePath}';" 
+                     onerror="this.style.display='none';" 
                      alt="${model.name}" 
                      class="vehicle-thumbnail"  />
             </div>
@@ -6881,54 +6881,62 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     return rtSecs - staticSecs;
 }
 
-async function fetchVehiclePositions() {
-    if (!gtfsInitialized) {
-        return;
-    }
-    if (document.hidden) {
-        return;
-    }
+window.staticStopTimes  ??= {};
+window.stopTimesReady   ??= false;
+window.stopTimesLoading ??= false;
+window._pendingTripIds  ??= new Set(); // évite les doublons de requetes en vol
+
+async function ensureStopTimes(tripIds) {
+    const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
+
+    //seulement les IDs absents du cache et pas déjà en cours de fetch
+    const missing = tripIds.filter(id =>
+        !window.staticStopTimes[id] &&
+        !window._pendingTripIds.has(id)
+    );
+
+    if (missing.length === 0) return; // tout est déjà en cache
+
+    // marquer comme "en cours" pour eviter les requetes dupliquées
+    missing.forEach(id => window._pendingTripIds.add(id));
+
     try {
-        const response = await fetch('proxy-cors/proxy_vehpos.php');
-        const buffer = await response.arrayBuffer();
-        const data = await decodeProtobuf(buffer);
-
-        const activeVehicleIds = new Set();
-        
-        function isInViewport(lat, lng) {
-            const bounds = map.getBounds();
-            return bounds.contains(L.latLng(lat, lng));
-        }
-
-        const activeTripIds = new Set();
-        data.entity.forEach(entity => {
-            const tripId = entity.vehicle?.trip?.tripId;
-            if (tripId && tripId !== 'Inconnu') activeTripIds.add(tripId);
+        const response = await fetch(`${baseUrl}?action=stop_times_by_trips`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `trip_ids=${missing.join(',')}`
         });
 
-        const missingTripIds = [...activeTripIds].filter(id => !window.staticStopTimes?.[id]);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        if (missingTripIds.length > 0 && !window.stopTimesLoading) {
-            window.stopTimesLoading = true;
-            
-            const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
-            
-            fetch(`${baseUrl}?action=stop_times_by_trips`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `trip_ids=${missingTripIds.join(',')}`
-            })
-            .then(r => r.json())
-            .then(json => {
-                Object.assign(window.staticStopTimes, json);
-                window.stopTimesReady   = true;
-                window.stopTimesLoading = false;
-            })
-            .catch(err => {
-                console.warn('Erreur stop times:', err);
-                window.stopTimesLoading = false;
-            });
-        }
+        const json = await response.json();
+        Object.assign(window.staticStopTimes, json);
+        window.stopTimesReady = true;
+    } catch (err) {
+        console.warn('Erreur stop times:', err);
+    } finally {
+        missing.forEach(id => window._pendingTripIds.delete(id));
+    }
+}
+
+
+async function fetchVehiclePositions() {
+    if (!gtfsInitialized) return;
+
+    try {
+        const response = await fetch('proxy-cors/proxy_vehpos.php');
+        const buffer   = await response.arrayBuffer();
+        const data     = await decodeProtobuf(buffer);
+
+        const activeVehicleIds = new Set();
+
+        const activeTripIds = [];
+        data.entity.forEach(entity => {
+            const tripId = entity.vehicle?.trip?.tripId;
+            if (tripId && tripId !== 'Inconnu') activeTripIds.push(tripId);
+        });
+
+        await ensureStopTimes(activeTripIds);
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
@@ -7622,8 +7630,11 @@ async function fetchVehiclePositions() {
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <strong class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</strong>
+                                    <p class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</p>
                                     <div>
+                                        <div class="vehicle-brand-container">
+                                            ${vehicleBrandHtml}
+                                        </div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
                                                 <!-- Contenu défilant horizontalement -->
@@ -7640,15 +7651,7 @@ async function fetchVehiclePositions() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="vehicle-brand-container">
-                                            ${vehicleBrandHtml}
-                                        </div>
                                     </div>
-                                </div>
-
-                                <!-- Texte en arrière-plan -->
-                                <div class="background-text" style="color: ${textColor};">
-                                    ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
                                 </div>
                             </div>
 
