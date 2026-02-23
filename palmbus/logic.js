@@ -7138,21 +7138,19 @@ async function fetchVehiclePositions() {
                             <path d="M14 8H6M14 2H6C3.79086 2 2 3.79086 2 6V8"/>
 
                         </svg>
-                        <span class="stops-badge-label">${terminusWait === "imminent" ? t("imminentdeparture") : t("terminus_departure") + " " + terminusWait}</span>
+                        <span class="stops-badge-label">${terminusWait === "imminent" ? t("imminentdeparture") : t("departurein") + " " + terminusWait}</span>
                     </span>` : "";
 
-                if (filteredStops.length === 0) {
+                if (terminusWait) {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
                             <div class="stops-icons-row">
-                                <span class="stops-icon-badge">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                    <span class="stops-badge-label">${t("unavailabletrip")}</span>
-                                </span>
+                                ${terminusBadgeHTML}
+                                ${delayBadgeHTML}
+                                ${statusBadge}
                             </div>
                         </div>`;
-
-                } else if (line === 'Inconnu') {
+                } else if (filteredStops.length === 0) {
                     stopsHeaderText = `
                         <div class="stops-header-widget stops-anim-fade">
                             <div class="stops-icons-row">
