@@ -7622,7 +7622,7 @@ async function fetchVehiclePositions() {
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <strong class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</strong>
+                                    <p class="vehicle-direction" id="popup-direction-${id}">${t("indirectionof")} <strong>${lastStopName}</strong></p>
                                     <div>
                                         <div class="vehicle-brand-container">
                                             ${vehicleBrandHtml}
