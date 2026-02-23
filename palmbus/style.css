@@ -1427,12 +1427,6 @@
         gap: 6px;
         padding: 0 1px;
     }
-    .testbkg {
-        background: #0000002e;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border-radius: 10px;
-    }
     .vehicle-thumbnaill {
         font-weight: 400;
         white-space: nowrap;
