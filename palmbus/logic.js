@@ -6955,28 +6955,29 @@ function fetchStopTimesInBackground(tripIds, onReady) {
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) return;
 
-    const response = await fetch('proxy-cors/proxy_vehpos.php');
-    const buffer   = await response.arrayBuffer();
-    const data     = await decodeProtobuf(buffer);
+    try {
+        const response = await fetch('proxy-cors/proxy_vehpos.php');
+        const buffer   = await response.arrayBuffer();
+        const data     = await decodeProtobuf(buffer);
 
-    const activeVehicleIds = new Set();
-    const activeTripIds    = [];
+        const activeVehicleIds = new Set();
+        const activeTripIds    = [];
 
-    data.entity.forEach(entity => {
-        const tripId = entity.vehicle?.trip?.tripId;
-        if (tripId && tripId !== 'Inconnu') activeTripIds.push(tripId);
-    });
+        data.entity.forEach(entity => {
+            const tripId = entity.vehicle?.trip?.tripId;
+            if (tripId && tripId !== 'Inconnu') activeTripIds.push(tripId);
+        });
 
-    renderVehicles(data.entity);
+        renderVehicles(data.entity);
 
-    fetchStopTimesInBackground(activeTripIds, (loadedTripIds) => {
-        if (!loadedTripIds) return;
+        fetchStopTimesInBackground(activeTripIds, (loadedTripIds) => {
+            if (!loadedTripIds) return;
 
-        const toRefresh = data.entity.filter(entity =>
-            loadedTripIds.includes(entity.vehicle?.trip?.tripId)
-        );
-        renderVehicles(toRefresh);
-    });
+            const toRefresh = data.entity.filter(entity =>
+                loadedTripIds.includes(entity.vehicle?.trip?.tripId)
+            );
+            renderVehicles(toRefresh);
+        });
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
