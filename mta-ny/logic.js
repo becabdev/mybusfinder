@@ -7143,27 +7143,15 @@ async function fetchVehiclePositions() {
 
                 if (terminusWait) {
                     stopsHeaderText = `
-                        <div class="stops-header-widget stops-anim-fade">
+                        <div class="stops-header-widget">
                             <div class="stops-icons-row">
                                 ${terminusBadgeHTML}
-                                ${delayBadgeHTML}
                                 ${statusBadge}
                             </div>
                         </div>`;
                 } else if (filteredStops.length === 0) {
                     stopsHeaderText = `
-                        <div class="stops-header-widget stops-anim-fade">
-                            <div class="stops-icons-row">
-                                <span class="stops-icon-badge">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                                    <span class="stops-badge-label">${t("unavailabletrip")}</span>
-                                </span>
-                            </div>
-                        </div>`;
-
-                } else if (line === 'Inconnu') {
-                    stopsHeaderText = `
-                        <div class="stops-header-widget stops-anim-fade">
+                        <div class="stops-header-widget">
                             <div class="stops-icons-row">
                                 ${terminusBadgeHTML}
                                 ${delayBadgeHTML}
@@ -7182,7 +7170,7 @@ async function fetchVehiclePositions() {
 
                     if (filteredStops.length === 1 && minutes === 0) {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -7197,7 +7185,7 @@ async function fetchVehiclePositions() {
 
                     } else if (filteredStops.length === 1) {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -7212,7 +7200,7 @@ async function fetchVehiclePositions() {
 
                     } else if (minutes > 3) {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
@@ -7227,7 +7215,7 @@ async function fetchVehiclePositions() {
 
                     } else {
                         stopsHeaderText = `
-                            <div class="stops-header-widget stops-anim-fade">
+                            <div class="stops-header-widget">
                                 <div class="stops-icons-row">
                                     ${terminusBadgeHTML}
                                     ${delayBadgeHTML}
