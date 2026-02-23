@@ -6881,50 +6881,61 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     return rtSecs - staticSecs;
 }
 
+window.staticStopTimes  ??= {};
+window.stopTimesReady   ??= false;
+window.stopTimesLoading ??= false;
+window._pendingTripIds  ??= new Set(); // évite les doublons de requetes en vol
+
+async function ensureStopTimes(tripIds) {
+    const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
+
+    //seulement les IDs absents du cache et pas déjà en cours de fetch
+    const missing = tripIds.filter(id =>
+        !window.staticStopTimes[id] &&
+        !window._pendingTripIds.has(id)
+    );
+
+    if (missing.length === 0) return; // tout est déjà en cache
+
+    // marquer comme "en cours" pour eviter les requetes dupliquées
+    missing.forEach(id => window._pendingTripIds.add(id));
+
+    try {
+        const response = await fetch(`${baseUrl}?action=stop_times_by_trips`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `trip_ids=${missing.join(',')}`
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const json = await response.json();
+        Object.assign(window.staticStopTimes, json);
+        window.stopTimesReady = true;
+    } catch (err) {
+        console.warn('Erreur stop times:', err);
+    } finally {
+        missing.forEach(id => window._pendingTripIds.delete(id));
+    }
+}
+
 async function fetchVehiclePositions() {
-    if (!gtfsInitialized) {
-        return;
-    }
-    if (document.hidden) {
-        return;
-    }
+    if (!gtfsInitialized) return;
+
     try {
         const response = await fetch('proxy-cors/proxy_vehpos.php');
-        const buffer = await response.arrayBuffer();
-        const data = await decodeProtobuf(buffer);
+        const buffer   = await response.arrayBuffer();
+        const data     = await decodeProtobuf(buffer);
 
         const activeVehicleIds = new Set();
-        
-        function isInViewport(lat, lng) {
-            const bounds = map.getBounds();
-            return bounds.contains(L.latLng(lat, lng));
-        }
 
-        const activeTripIds = new Set();
+        const activeTripIds = [];
+        data.entity.forEach(entity => {
+            const tripId = entity.vehicle?.trip?.tripId;
+            if (tripId && tripId !== 'Inconnu') activeTripIds.push(tripId);
+        });
 
-        const missingTripIds = [...activeTripIds].filter(id => !window.staticStopTimes?.[id]);
-
-        if (missingTripIds.length > 0 && !window.stopTimesLoading) {
-            window.stopTimesLoading = true;
-            
-            const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
-            
-            fetch(`${baseUrl}?action=stop_times_by_trips`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `trip_ids=${missingTripIds.join(',')}`
-            })
-            .then(r => r.json())
-            .then(json => {
-                Object.assign(window.staticStopTimes, json);
-                window.stopTimesReady   = true;
-                window.stopTimesLoading = false;
-            })
-            .catch(err => {
-                console.warn('Erreur stop times:', err);
-                window.stopTimesLoading = false;
-            });
-        }
+        await ensureStopTimes(activeTripIds);
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
@@ -6936,8 +6947,6 @@ async function fetchVehiclePositions() {
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
-                const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
-                if (tripId && tripId !== 'Inconnu') activeTripIds.add(tripId);
                 activeVehicleIds.add(id);
 
                 const statusMap = {
@@ -6986,6 +6995,7 @@ async function fetchVehiclePositions() {
 
                 const speed = vehicle.position.speed ? (vehicle.position.speed).toFixed(0) + ' km/h' : 'Arrêté';
                 const bearing = vehicle.position.bearing || 'Inconnu';
+                const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
                 const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied';
