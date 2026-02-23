@@ -6901,10 +6901,6 @@ async function fetchVehiclePositions() {
         }
 
         const activeTripIds = new Set();
-        data.entity.forEach(entity => {
-            const tripId = entity.vehicle?.trip?.tripId;
-            if (tripId && tripId !== 'Inconnu') activeTripIds.add(tripId);
-        });
 
         const missingTripIds = [...activeTripIds].filter(id => !window.staticStopTimes?.[id]);
 
@@ -6940,6 +6936,8 @@ async function fetchVehiclePositions() {
                 const vehicleBrandHtml = getVehicleBrandHtml(id);
                 const line = vehicle.trip && vehicle.trip.routeId ? vehicle.trip.routeId : 'Inconnu';
                 const directionId = vehicle.trip ? vehicle.trip.directionId : undefined;
+                const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
+                if (tripId && tripId !== 'Inconnu') activeTripIds.add(tripId);
                 activeVehicleIds.add(id);
 
                 const statusMap = {
@@ -6988,7 +6986,6 @@ async function fetchVehiclePositions() {
 
                 const speed = vehicle.position.speed ? (vehicle.position.speed).toFixed(0) + ' km/h' : 'Arrêté';
                 const bearing = vehicle.position.bearing || 'Inconnu';
-                const tripId = vehicle.trip && vehicle.trip.tripId ? vehicle.trip.tripId : 'Inconnu';
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
                 const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied';
@@ -7622,7 +7619,7 @@ async function fetchVehiclePositions() {
                                 <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
-                                    <p class="vehicle-direction" id="popup-direction-${id}">${t("indirectionof")} <strong>${lastStopName}</strong></p>
+                                    <p class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</p>
                                     <div>
                                         <div class="vehicle-brand-container">
                                             ${vehicleBrandHtml}
@@ -7644,11 +7641,6 @@ async function fetchVehiclePositions() {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- Texte en arrière-plan -->
-                                <div class="background-text" style="color: ${textColor};">
-                                    ${t("line")} ${lineName[line] || "🚌🚍🚌🚍🚌🚍🚌"}
                                 </div>
                             </div>
 
