@@ -4430,7 +4430,7 @@ function getVehicleBrandHtml(parkNumber) {
             <div class="vehicle-model">
 
                 <img src="${model.thumbnail}" 
-                     onerror="this.onerror=null; this.src='${defaultImagePath}';" 
+                     onerror="this.style.display='none';" 
                      alt="${model.name}" 
                      class="vehicle-thumbnail"  />
             </div>
@@ -7624,6 +7624,9 @@ async function fetchVehiclePositions() {
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
                                     <strong class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</strong>
                                     <div>
+                                        <div class="vehicle-brand-container">
+                                            ${vehicleBrandHtml}
+                                        </div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
                                                 <!-- Contenu défilant horizontalement -->
@@ -7639,9 +7642,6 @@ async function fetchVehiclePositions() {
                                                     ${vehicleOptionsBadges}
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="vehicle-brand-container">
-                                            ${vehicleBrandHtml}
                                         </div>
                                     </div>
                                 </div>
