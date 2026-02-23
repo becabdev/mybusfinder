@@ -6919,23 +6919,64 @@ async function ensureStopTimes(tripIds) {
     }
 }
 
+function fetchStopTimesInBackground(tripIds, onReady) {
+    const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
+
+    const missing = tripIds.filter(id =>
+        !window.staticStopTimes[id] &&
+        !window._pendingTripIds.has(id)
+    );
+
+    if (missing.length === 0) {
+        onReady?.(); // tout est déjà en cache, callback immediat
+        return;
+    }
+
+    missing.forEach(id => window._pendingTripIds.add(id));
+
+    fetch(`${baseUrl}?action=stop_times_by_trips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `trip_ids=${missing.join(',')}`
+    })
+    .then(r => r.json())
+    .then(json => {
+        Object.assign(window.staticStopTimes, json);
+        window.stopTimesReady = true;
+        missing.forEach(id => window._pendingTripIds.delete(id));
+        onReady?.(missing);
+    })
+    .catch(err => {
+        console.warn('Erreur stop times:', err);
+        missing.forEach(id => window._pendingTripIds.delete(id));
+    });
+}
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) return;
 
-    try {
-        const response = await fetch('proxy-cors/proxy_vehpos.php');
-        const buffer   = await response.arrayBuffer();
-        const data     = await decodeProtobuf(buffer);
+    const response = await fetch('proxy-cors/proxy_vehpos.php');
+    const buffer   = await response.arrayBuffer();
+    const data     = await decodeProtobuf(buffer);
 
-        const activeVehicleIds = new Set();
+    const activeVehicleIds = new Set();
+    const activeTripIds    = [];
 
-        const activeTripIds = [];
-        data.entity.forEach(entity => {
-            const tripId = entity.vehicle?.trip?.tripId;
-            if (tripId && tripId !== 'Inconnu') activeTripIds.push(tripId);
-        });
+    data.entity.forEach(entity => {
+        const tripId = entity.vehicle?.trip?.tripId;
+        if (tripId && tripId !== 'Inconnu') activeTripIds.push(tripId);
+    });
 
-        await ensureStopTimes(activeTripIds);
+    renderVehicles(data.entity);
+
+    fetchStopTimesInBackground(activeTripIds, (loadedTripIds) => {
+        if (!loadedTripIds) return;
+
+        const toRefresh = data.entity.filter(entity =>
+            loadedTripIds.includes(entity.vehicle?.trip?.tripId)
+        );
+        renderVehicles(toRefresh);
+    });
 
             data.entity.forEach(entity => {
                 const vehicle = entity.vehicle;
