@@ -9817,6 +9817,7 @@ async function main() {
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
+        toastBottomRight.info("Map data from OpenStreetMap Contributors, licensed under ODbL.");
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
