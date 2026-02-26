@@ -239,10 +239,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        new RippleEffect();
+        setTimeout(() => {
+            new RippleEffect();
+        }, 1000);
     });
 
-    VERSION_NAME = '3.4.0';
+    VERSION_NAME = '3.4.1';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
