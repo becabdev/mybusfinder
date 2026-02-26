@@ -1,462 +1,274 @@
-// Toast Notification — Liquid Glass Edition
-// Inspired by Apple's visionOS / iOS Liquid Glass aesthetic
-// By Becab Systems - redesigned with Liquid Glass
+// Simple Toast Notifications — minimal & clean
+// Usage: toast.error/info/warning/success('Message...');
+// By Becab Systems — reworked minimal edition (without ai this time haha, because it was making unnecessary complications with the code structure and readability)
 
 class ToastNotification {
   constructor(options = {}) {
     this.options = {
-      duration: options.duration || 3000,
-      maxToasts: options.maxToasts || 5,
-      containerClass: options.containerClass || 'toast-container',
-      toastClass: options.toastClass || 'toast',
-      blurAmount: options.blurAmount || '24px',
-      position: options.position || 'bottom-right',
-      transition: {
-        bezier: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-        duration: '0.55s',
-        filterDuration: '0.3s'
-      },
+      duration:  options.duration  ?? 4000,
+      maxToasts: options.maxToasts ?? 5,
+      position:  options.position  || 'bottom-right',
       ...options
     };
-
-    this.toasts = [];
+    this.toasts    = [];
     this.container = null;
-    this._injectStyles();
-    this.initContainer();
+    this._initStyles();
+    this._initContainer();
   }
 
-  _injectStyles() {
-    if (document.getElementById('toast-liquid-glass-styles')) return;
-
+  _initStyles() {
+    if (document.getElementById('toast-macos-css')) return;
     const style = document.createElement('style');
-    style.id = 'toast-liquid-glass-styles';
+    style.id = 'toast-macos-css';
     style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600&display=swap');
-
-      .toast-lg {
-        font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-        position: relative;
-        cursor: default;
-        border-radius: 20px;
-        max-width: 340px;
-        min-width: 260px;
-        overflow: hidden;
-        color: #fff;
-        isolation: isolate;
-        transform: translateY(60px) scale(0.88);
-        opacity: 0;
-        transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
-                    opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-        will-change: transform, opacity;
-      }
-
-      /* Glass shell */
-      .toast-lg::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        backdrop-filter: blur(24px) saturate(180%) brightness(1.12);
-        -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.12);
-        z-index: 0;
-        transition: backdrop-filter 0.3s ease;
-      }
-
-      /* Glossy inner border */
-      .toast-lg::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        border: 1px solid rgba(255,255,255,0.28);
-        background: linear-gradient(
-          135deg,
-          rgba(255,255,255,0.22) 0%,
-          rgba(255,255,255,0.06) 40%,
-          rgba(255,255,255,0.00) 70%,
-          rgba(255,255,255,0.08) 100%
-        );
-        z-index: 1;
+      .toast-wrap {
+        position: fixed;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 20px;
         pointer-events: none;
       }
+      .toast-wrap.top-right    { top: 0;    right: 0;  align-items: flex-end; }
+      .toast-wrap.top-left     { top: 0;    left: 0;   align-items: flex-start; }
+      .toast-wrap.bottom-right { bottom: 0; right: 0;  align-items: flex-end; }
+      .toast-wrap.bottom-left  { bottom: 0; left: 0;   align-items: flex-start; }
 
-      .toast-lg-bg {
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        z-index: 0;
-        transition: opacity 0.5s ease;
-      }
-
-      /* Specular highlight — top shine */
-      .toast-lg-shine {
-        position: absolute;
-        top: 0;
-        left: 10%;
-        right: 10%;
-        height: 40%;
-        border-radius: 0 0 60% 60%;
-        background: linear-gradient(
-          to bottom,
-          rgba(255,255,255,0.30) 0%,
-          rgba(255,255,255,0.00) 100%
-        );
-        z-index: 2;
-        pointer-events: none;
-        filter: blur(1px);
-      }
-
-      /* Ambient glow blob */
-      .toast-lg-glow {
-        position: absolute;
-        width: 120%;
-        height: 120%;
-        top: -10%;
-        left: -10%;
-        border-radius: 50%;
-        z-index: 0;
-        pointer-events: none;
-        opacity: 0.55;
-        filter: blur(30px);
-        transition: opacity 0.4s ease;
-      }
-
-      .toast-lg-content {
-        position: relative;
+      .toast-item {
+        pointer-events: all;
         display: flex;
         align-items: center;
+        gap: 12px;
         padding: 13px 16px;
-        gap: 11px;
-        z-index: 3;
-      }
-
-      .toast-lg-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        background: rgba(255,255,255,0.18);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,0.3);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.35);
-        transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
-      }
-
-      .toast-lg:hover .toast-lg-icon {
-        transform: scale(1.1);
-      }
-
-      .toast-lg-icon svg {
-        filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
-      }
-
-      .toast-lg-text {
-        flex: 1;
-        min-width: 0;
-      }
-
-      .toast-lg-title {
+        border-radius: 14px;
+        min-width: 260px;
+        max-width: 340px;
+        font-family: -apple-system, 'Helvetica Neue', sans-serif;
         font-size: 13.5px;
-        font-weight: 600;
-        line-height: 1.3;
-        letter-spacing: -0.01em;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.25);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .toast-lg-subtitle {
-        font-size: 12px;
         font-weight: 400;
-        opacity: 0.78;
-        margin-top: 1px;
-        line-height: 1.3;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        white-space: nowrap;
+        line-height: 1.45;
+        letter-spacing: -0.01em;
+        color: rgba(255,255,255,0.92);
+
+        background: rgba(40, 40, 42, 0.72);
+        backdrop-filter: saturate(180%) blur(28px);
+        -webkit-backdrop-filter: saturate(180%) blur(28px);
+
+        border: 1px solid rgba(255,255,255,0.10);
+        box-shadow:
+          0 2px 6px rgba(0,0,0,0.18),
+          0 8px 32px rgba(0,0,0,0.28),
+          inset 0 1px 0 rgba(255,255,255,0.08);
+
+        cursor: default;
+        opacity: 0;
+        transform: translateY(8px) scale(0.97);
+        transition:
+          opacity 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+          transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        position: relative;
         overflow: hidden;
-        text-overflow: ellipsis;
       }
 
-      .toast-lg-close {
+      .toast-item.show {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      .toast-item.hide {
+        opacity: 0;
+        transform: translateY(6px) scale(0.97);
+        transition-duration: 0.22s;
+      }
+
+      .toast-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.15);
-        border: 1px solid rgba(255,255,255,0.2);
-        cursor: pointer;
         flex-shrink: 0;
+      }
+
+      .toast-item.success .toast-icon { background: #30d158; }
+      .toast-item.error   .toast-icon { background: #ff453a; }
+      .toast-item.warning .toast-icon { background: #ffd60a; }
+      .toast-item.info    .toast-icon { background: rgba(255,255,255,0.15); }
+
+      .toast-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .toast-title {
+        font-weight: 590;
+        font-size: 13.5px;
+        letter-spacing: -0.015em;
+        color: rgba(255,255,255,0.95);
+      }
+
+      .toast-msg {
+        font-size: 12.5px;
+        color: rgba(255,255,255,0.55);
+        line-height: 1.4;
+      }
+
+      .toast-item.no-title .toast-msg {
+        font-size: 13.5px;
+        color: rgba(255,255,255,0.88);
+      }
+
+      .toast-close {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        cursor: pointer;
         opacity: 0;
-        transform: scale(0.8);
-        transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.15s ease;
+        transition: opacity 0.15s, background 0.15s;
+        margin-left: 2px;
       }
 
-      .toast-lg:hover .toast-lg-close {
-        opacity: 1;
-        transform: scale(1);
-      }
+      .toast-item:hover .toast-close { opacity: 1; }
+      .toast-close:hover { background: rgba(255,255,255,0.2); }
 
-      .toast-lg-close:hover {
-        background: rgba(255,255,255,0.28) !important;
-      }
-
-      .toast-lg-progress {
-        position: relative;
-        height: 2.5px;
-        width: 100%;
-        border-radius: 0 0 20px 20px;
-        overflow: hidden;
-        z-index: 3;
-      }
-
-      .toast-lg-progress-track {
+      .toast-progress {
         position: absolute;
-        inset: 0;
+        bottom: 0; left: 0;
+        height: 2px;
+        width: 100%;
+        transform-origin: left;
+        transform: scaleX(1);
+        border-radius: 0 0 14px 14px;
         background: rgba(255,255,255,0.12);
       }
 
-      .toast-lg-progress-bar {
-        position: absolute;
-        top: 0; left: 0; bottom: 0;
-        width: 100%;
-        transform-origin: left;
-        border-radius: inherit;
-        transition: transform linear;
-        background: rgba(255,255,255,0.55);
-        box-shadow: 0 0 6px rgba(255,255,255,0.4);
-      }
-
-      /* Entrance keyframe for icon bounce */
-      @keyframes toast-icon-pop {
-        0%   { transform: scale(0.5) rotate(-10deg); }
-        70%  { transform: scale(1.15) rotate(3deg); }
-        100% { transform: scale(1) rotate(0deg); }
-      }
-
-      .toast-lg.toast-visible .toast-lg-icon {
-        animation: toast-icon-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.1s both;
-      }
+      .toast-item.success .toast-progress { background: rgba(48,209,88,0.4); }
+      .toast-item.error   .toast-progress { background: rgba(255,69,58,0.4); }
+      .toast-item.warning .toast-progress { background: rgba(255,214,10,0.4); }
     `;
     document.head.appendChild(style);
   }
 
-  initContainer() {
-    const containerId = `${this.options.containerClass}-${this.options.position}`;
-    if (!document.querySelector(`.${containerId}`)) {
+  _initContainer() {
+    const id = `toast-macos-${this.options.position}`;
+    this.container = document.getElementById(id);
+    if (!this.container) {
       this.container = document.createElement('div');
-      this.container.className = `${this.options.containerClass} ${containerId}`;
-      Object.assign(this.container.style, {
-        position: 'fixed',
-        zIndex: '4000000',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        padding: '16px',
-        pointerEvents: 'none'
-      });
-
-      const positions = {
-        'top-right':    { top: '0', right: '0', alignItems: 'flex-end' },
-        'top-left':     { top: '0', left: '0', alignItems: 'flex-start' },
-        'bottom-right': { bottom: '0', right: '0', alignItems: 'flex-end' },
-        'bottom-left':  { bottom: '0', left: '0', alignItems: 'flex-start' }
-      };
-      Object.assign(this.container.style, positions[this.options.position] || positions['bottom-right']);
+      this.container.id = id;
+      this.container.className = `toast-wrap ${this.options.position}`;
       document.body.appendChild(this.container);
-    } else {
-      this.container = document.querySelector(`.${containerId}`);
     }
   }
 
-  getTypeConfig(type) {
-    return {
-      success: {
-        bg: 'rgba(16, 200, 120, 0.22)',
-        glow: '#0fba75',
-        accent: 'rgba(16, 200, 120, 0.75)',
-        label: 'Succès',
-        icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
-      },
-      error: {
-        bg: 'rgba(255, 69, 69, 0.22)',
-        glow: '#ff4545',
-        accent: 'rgba(255, 69, 69, 0.75)',
-        label: 'Erreur',
-        icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
-      },
-      warning: {
-        bg: 'rgba(255, 165, 40, 0.22)',
-        glow: '#ff9f28',
-        accent: 'rgba(255, 165, 40, 0.75)',
-        label: 'Attention',
-        icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
-      },
-      info: {
-        bg: 'rgba(80, 160, 255, 0.22)',
-        glow: '#4fa3ff',
-        accent: 'rgba(80, 160, 255, 0.75)',
-        label: 'Info',
-        icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
-      }
-    }[type] || this.getTypeConfig('info');
+  _icon(type) {
+    const icons = {
+      success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+      error:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+      warning: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1c1c1e" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="17" r="1" fill="#1c1c1e" stroke="none"/></svg>`,
+      info:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="12" x2="12" y2="17"/><circle cx="12" cy="8" r="1" fill="rgba(255,255,255,0.65)" stroke="none"/></svg>`,
+    };
+    return icons[type] || icons.info;
   }
 
   show(message, type = 'info', customOptions = {}) {
     if (this.toasts.length >= this.options.maxToasts) {
-      this.removeToast(this.toasts[0].element, true);
+      this._remove(this.toasts[0], true);
     }
 
-    const config = this.getTypeConfig(type);
-    const duration = customOptions.duration !== undefined ? customOptions.duration : this.options.duration;
+    const duration = customOptions.duration ?? this.options.duration;
+    const title    = customOptions.title || null;
 
-    const toast = document.createElement('div');
-    toast.className = `toast-lg toast-lg-${type}`;
-    toast.style.pointerEvents = 'all';
-    Object.assign(toast.style, {
-      boxShadow: `0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.20)`
-    });
+    const el = document.createElement('div');
+    el.className = `toast-item ${type}${!title ? ' no-title' : ''}`;
 
-    const parts = message.split(' | ');
-    const title = parts[0];
-    const subtitle = parts[1] || '';
-
-    toast.innerHTML = `
-      <div class="toast-lg-bg" style="background: ${config.bg};"></div>
-      <div class="toast-lg-glow" style="background: radial-gradient(ellipse at center, ${config.glow}88, transparent 70%);"></div>
-      <div class="toast-lg-shine"></div>
-      <div class="toast-lg-content">
-        <div class="toast-lg-icon">${config.icon}</div>
-        <div class="toast-lg-text">
-          <div class="toast-lg-title">${title}</div>
-          ${subtitle ? `<div class="toast-lg-subtitle">${subtitle}</div>` : ''}
-        </div>
-        <div class="toast-lg-close">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </div>
+    el.innerHTML = `
+      <div class="toast-icon">${this._icon(type)}</div>
+      <div class="toast-body">
+        ${title ? `<div class="toast-title">${title}</div>` : ''}
+        <div class="toast-msg">${message}</div>
       </div>
-      <div class="toast-lg-progress">
-        <div class="toast-lg-progress-track"></div>
-        <div class="toast-lg-progress-bar" style="transition-duration: ${duration / 1000}s;"></div>
+      <div class="toast-close">
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
       </div>
+      <div class="toast-progress"></div>
     `;
 
-    this.container.appendChild(toast);
-    void toast.offsetWidth;
+    this.container.appendChild(el);
+    void el.offsetWidth;
+    el.classList.add('show');
 
-    // Animate in
-    setTimeout(() => {
-      toast.style.transform = 'translateY(0) scale(1)';
-      toast.style.opacity = '1';
-      toast.classList.add('toast-visible');
+    const bar = el.querySelector('.toast-progress');
+    bar.style.transition = `transform ${duration}ms linear`;
+    setTimeout(() => { bar.style.transform = 'scaleX(0)'; }, 30);
 
-      setTimeout(() => {
-        const bar = toast.querySelector('.toast-lg-progress-bar');
-        if (bar) bar.style.transform = 'scaleX(0)';
-      }, 30);
-    }, 20);
+    const info = { el, removing: false, timeout: null, backup: null };
 
-    const toastId = `${Date.now()}-${Math.random().toString(36).substr(2,9)}`;
-    toast.dataset.toastId = toastId;
-
-    const toastInfo = {
-      id: toastId,
-      element: toast,
-      removing: false,
-      timeout: setTimeout(() => this.removeToast(toast, false), duration)
+    const schedule = (delay) => {
+      clearTimeout(info.timeout);
+      clearTimeout(info.backup);
+      info.timeout = setTimeout(() => this._remove(info, false), delay);
+      info.backup  = setTimeout(() => { if (!info.removing) this._remove(info, true); }, delay + 600);
     };
 
-    toastInfo.backupTimeout = setTimeout(() => {
-      const idx = this.toasts.findIndex(t => t.id === toastId);
-      if (idx !== -1 && !this.toasts[idx].removing) this.removeToast(toast, true);
-    }, duration + 1200);
+    schedule(duration);
+    this.toasts.push(info);
 
-    this.toasts.push(toastInfo);
+    el.querySelector('.toast-close').addEventListener('click', () => this._remove(info, false));
 
-    // Close button
-    toast.querySelector('.toast-lg-close').addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.removeToast(toast, false);
+    el.addEventListener('mouseenter', () => {
+      clearTimeout(info.timeout);
+      clearTimeout(info.backup);
+      bar.style.transitionProperty = 'none';
     });
 
-    // Pause on hover
-    toast.addEventListener('mouseenter', () => {
-      clearTimeout(toastInfo.timeout);
-      clearTimeout(toastInfo.backupTimeout);
-      const bar = toast.querySelector('.toast-lg-progress-bar');
-      if (bar) bar.style.transitionProperty = 'none';
+    el.addEventListener('mouseleave', () => {
+      const scaleX    = parseFloat(getComputedStyle(bar).transform.split(',')[0].replace('matrix(', '')) || 0;
+      const remaining = Math.max(400, duration * scaleX);
+      bar.style.transitionProperty = 'transform';
+      bar.style.transitionDuration = `${remaining}ms`;
+      bar.style.transform = 'scaleX(0)';
+      schedule(remaining);
     });
 
-    toast.addEventListener('mouseleave', () => {
-      if (toastInfo.removing) return;
-      const bar = toast.querySelector('.toast-lg-progress-bar');
-      let remaining = duration * 0.25;
-      if (bar) {
-        const mat = window.getComputedStyle(bar).transform;
-        const scaleX = parseFloat(mat.split(',')[0].split('(')[1]) || 0;
-        remaining = Math.max(400, duration * scaleX);
-        bar.style.transitionProperty = 'transform';
-        bar.style.transitionDuration = `${remaining / 1000}s`;
-      }
-      toastInfo.timeout = setTimeout(() => this.removeToast(toast, false), remaining);
-      toastInfo.backupTimeout = setTimeout(() => {
-        const idx = this.toasts.findIndex(t => t.id === toastId);
-        if (idx !== -1 && !this.toasts[idx].removing) this.removeToast(toast, true);
-      }, remaining + 1200);
-    });
-
-    return toastInfo;
+    return info;
   }
 
-  removeToast(toast, force = false) {
-    let index = -1;
-    if (typeof toast === 'string') {
-      index = this.toasts.findIndex(t => t.id === toast);
-    } else {
-      const id = toast.dataset?.toastId;
-      index = this.toasts.findIndex(t => t.id === id || t.element === toast);
-    }
-    if (index === -1) return;
-
-    this.toasts[index].removing = true;
-    clearTimeout(this.toasts[index].timeout);
-    clearTimeout(this.toasts[index].backupTimeout);
-
-    const el = this.toasts[index].element;
-    el.style.transform = 'translateY(40px) scale(0.9)';
-    el.style.opacity = '0';
-
+  _remove(info, force = false) {
+    if (info.removing) return;
+    info.removing = true;
+    clearTimeout(info.timeout);
+    clearTimeout(info.backup);
+    info.el.classList.remove('show');
+    info.el.classList.add('hide');
     setTimeout(() => {
-      if (el?.parentNode) el.parentNode.removeChild(el);
-      const idx = this.toasts.findIndex(t => t.id === this.toasts[index]?.id);
-      if (idx !== -1) this.toasts.splice(idx, 1);
-    }, force ? 80 : 480);
+      info.el.remove();
+      this.toasts = this.toasts.filter(t => t !== info);
+    }, force ? 0 : 280);
   }
 
-  success(message, options = {}) { return this.show(message, 'success', options); }
-  error(message, options = {})   { return this.show(message, 'error', options); }
-  warning(message, options = {}) { return this.show(message, 'warning', options); }
-  info(message, options = {})    { return this.show(message, 'info', options); }
+  success(msg, opts) { return this.show(msg, 'success', opts || {}); }
+  error(msg, opts)   { return this.show(msg, 'error',   opts || {}); }
+  warning(msg, opts) { return this.show(msg, 'warning', opts || {}); }
+  info(msg, opts)    { return this.show(msg, 'info',    opts || {}); }
 
   clear() {
-    this.toasts.forEach(t => {
-      clearTimeout(t.timeout);
-      clearTimeout(t.backupTimeout);
-      t.removing = true;
-      if (t.element?.parentNode) t.element.parentNode.removeChild(t.element);
-    });
+    this.toasts.forEach(t => { clearTimeout(t.timeout); clearTimeout(t.backup); t.el.remove(); });
     this.toasts = [];
   }
 }
 
-const toastTopRight    = new ToastNotification({ position: 'top-right',    duration: 3000, maxToasts: 5 });
-const toastTopLeft     = new ToastNotification({ position: 'top-left',     duration: 3000, maxToasts: 5 });
-const toastBottomRight = new ToastNotification({ position: 'bottom-right', duration: 3000, maxToasts: 5 });
-const toastBottomLeft  = new ToastNotification({ position: 'bottom-left',  duration: 3000, maxToasts: 5 });
+const toastTopRight    = new ToastNotification({ position: 'top-right' });
+const toastTopLeft     = new ToastNotification({ position: 'top-left' });
+const toastBottomRight = new ToastNotification({ position: 'bottom-right' });
+const toastBottomLeft  = new ToastNotification({ position: 'bottom-left' });
