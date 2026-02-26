@@ -239,10 +239,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        new RippleEffect();
+        setTimeout(() => {
+            new RippleEffect();
+        }, 1000);
     });
 
-    VERSION_NAME = '3.4.0';
+    VERSION_NAME = '3.4.1';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
@@ -9817,6 +9819,7 @@ async function main() {
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
+        toastBottomRight.info("Map data from OpenStreetMap Contributors, licensed under ODbL.");
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
