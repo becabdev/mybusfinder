@@ -6712,18 +6712,6 @@ function updateMenu() {
     } else {
         MenuManager.updateData(busesByLineAndDestination);
     }
-
-    const oldPanel = document.getElementById('stats-panel');
-    if (oldPanel) oldPanel.remove();
-    this._createStatsPanel();
-    const searchContainer = document.getElementById('search-container');
-    const spacer = document.getElementById('menu-spacer');
-    if (searchContainer && spacer) {
-        this.container.insertBefore(
-            document.getElementById('stats-panel'),
-            spacer
-        );
-    }
 }
 
 
@@ -8849,6 +8837,18 @@ const menubottom1 = document.getElementById('menubtm');
             }
             }, { once: true });
             MenuManager._handleScrollAnimations();
+
+            const oldPanel = document.getElementById('stats-panel');
+            if (oldPanel) oldPanel.remove();
+            MenuManager._createStatsPanel();
+            const searchContainer = document.getElementById('search-container');
+            const spacer = document.getElementById('menu-spacer');
+            if (searchContainer && spacer) {
+                MenuManager.container.insertBefore(
+                    document.getElementById('stats-panel'),
+                    spacer
+                );
+            }
 
         }
 
