@@ -357,6 +357,11 @@
 "historicmax": "أعلى رقم متزامن",
 "statsconsulted": "الإحصائيات التي تم الاطلاع عليها",
 "usagefrom": "الاستخدام منذ",
+"times": "مرات",
+"refresh": "تحديث",
+"moving": "قيد الحركة",
+"stopped": "متوقف",
+"mobility": "التنقل",
 
   "early": "مبكر",
   "late": "متأخر",

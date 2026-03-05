@@ -361,6 +361,12 @@
 "statsconsulted": "Stats viewed",
 "usagefrom": "Usage since",
 
+"times": "times",
+"refresh": "Refresh",
+"moving": "Moving",
+"stopped": "Stopped",
+"mobility": "Mobility",
+
     "early": "early",
     "late": "late",
     "scheduled": "Scheduled service",
