@@ -6684,7 +6684,7 @@ const MenuManager = {
         const peakBadge = s.isPeakHour
             ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">📈 Heure de pointe</span>`
             : `<span style="font-size:10px;opacity:.7;color:#15d85d;">● Trafic normal</span>`;
-            
+
         const onTimePct = s.onTimePercent ?? 0;
         const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
         const earlyPct = s.delayCount > 0 ? Math.round((s.earlyCount / s.delayCount) * 100) : 0;
@@ -6715,11 +6715,11 @@ const MenuManager = {
             const pct = Math.round((val / bucketMax) * 100);
             return `
                 <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                    <div style="font-size:9px;opacity:.4;color:white;">${val > 0 ? val : ''}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,0.55);">${val > 0 ? val : ''}</div>
                     <div style="width:100%;background:rgba(255,255,255,.06);border-radius:3px 3px 0 0;height:44px;display:flex;align-items:flex-end;overflow:hidden;">
                         <div style="width:100%;height:${Math.max(pct, val > 0 ? 8 : 0)}%;background:${bucketColors[key]};opacity:0.85;transition:height 0.8s ease;border-radius:3px 3px 0 0;"></div>
                     </div>
-                    <div style="font-size:8px;opacity:.35;color:white;text-align:center;line-height:1.3;">${bucketLabels[key]}</div>
+                    <div style="font-size:8px;color:rgba(255,255,255,0.45);text-align:center;line-height:1.3;">${bucketLabels[key]}</div>
                 </div>`;
         }).join('') : '';
 
@@ -6740,13 +6740,11 @@ const MenuManager = {
             </div>`).join('')
             : `<div style="opacity:.5;font-size:13px;padding:8px 0;">Données indisponibles</div>`;
 
-        // Score santé réseau — arc
-        const arcAngle = (s.healthScore / 100) * 180;
-        const r = 38, cx = 50, cy = 50;
+        const r = 40, cx = 50, cy = 56;
         const toRad = a => (a - 180) * Math.PI / 180;
-        const x1 = cx + r * Math.cos(toRad(0)), y1 = cy + r * Math.sin(toRad(0));
-        const x2 = cx + r * Math.cos(toRad(arcAngle)), y2 = cy + r * Math.sin(toRad(arcAngle));
-        const largeArc = arcAngle > 180 ? 1 : 0;
+        const arcAngle = Math.min((s.healthScore / 100) * 180, 179.9);
+        const x2 = cx + r * Math.cos(toRad(arcAngle));
+        const y2 = cy + r * Math.sin(toRad(arcAngle));
 
         const busiestLineName = s.busiestLine ? (lineName[s.busiestLine] || s.busiestLine) : '—';
         const busiestLineColor = s.busiestLine ? (lineColors[s.busiestLine] || '#555') : '#555';
@@ -6777,10 +6775,9 @@ const MenuManager = {
                 font-size: 10px;
                 text-transform: uppercase;
                 letter-spacing: 0.8px;
-                opacity: 0.4;
+                color: rgba(255,255,255,0.5);
                 margin-bottom: 10px;
                 font-weight: 600;
-                color: white;
             }
             .stats-row {
                 display: flex;
@@ -6805,9 +6802,8 @@ const MenuManager = {
             }
             .stats-tile-label {
                 font-size: 10px;
-                opacity: 0.45;
+                color: rgba(255,255,255,0.5);
                 margin-top: 3px;
-                color: white;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -6822,8 +6818,7 @@ const MenuManager = {
             .stats-inline-row:last-child { border-bottom: none; }
             .stats-inline-label {
                 font-size: 13px;
-                opacity: 0.75;
-                color: white;
+                color: rgba(255,255,255,0.6);
             }
             .stats-inline-value {
                 font-size: 13px;
@@ -6875,12 +6870,13 @@ const MenuManager = {
                 flex-direction:column;
                 justify-content:space-between;
                 backdrop-filter:blur(20px);
+                color:white;
             ">
                 <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;opacity:.4;margin-bottom:8px;">Santé réseau</div>
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <svg width="52" height="32" viewBox="0 0 100 58">
-                        <path d="M 10 54 A 42 42 0 0 1 90 54" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="9" stroke-linecap="round"/>
-                        <path d="M 10 54 A 42 42 0 ${arcAngle > 180 ? 1 : 0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${s.healthColor}" stroke-width="9" stroke-linecap="round"/>
+                    <svg width="90" height="52" viewBox="0 0 100 58">
+                        <path d="M 10 56 A 40 40 0 0 1 90 56" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M 10 56 A 40 40 0 ${arcAngle > 179.9 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}" fill="none" stroke="${s.healthColor}" stroke-width="8" stroke-linecap="round"/>
                     </svg>
                     <div>
                         <div style="font-size:22px;font-weight:700;color:${s.healthColor};line-height:1;">${s.healthScore}</div>
