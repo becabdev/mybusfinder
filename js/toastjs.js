@@ -35,7 +35,7 @@ class ToastNotification {
 
       .toast-wrap {
         position: fixed;
-        z-index: 99999;
+        z-index: 9999999999999999999999999999999999999999999999999999999;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -291,10 +291,7 @@ class ToastNotification {
       info.backup  = setTimeout(() => { if (!info.removing) this._remove(info, true); }, delay + 600);
     };
 
-    // Pause auto-dismiss if there are buttons
-    if (buttons.length === 0) {
-      schedule(duration);
-    }
+    schedule(duration);
 
     this.toasts.push(info);
 
@@ -319,7 +316,6 @@ class ToastNotification {
     });
 
     el.addEventListener('mouseleave', () => {
-      if (buttons.length > 0) return; // don't restart timer if there are buttons
       const scaleX    = parseFloat(getComputedStyle(bar).transform.split(',')[0].replace('matrix(', '')) || 0;
       const remaining = Math.max(400, duration * scaleX);
       bar.style.transitionProperty = 'transform';

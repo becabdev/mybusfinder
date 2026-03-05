@@ -9819,7 +9819,36 @@ async function main() {
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
-        toastTopLeft.info("Map data from OpenStreetMap Contributors, licensed under ODbL.");
+        toastBottomRight.info('Map data from OSM contributors, licensed under ODbL.', {
+            duration: 7000,
+            buttons: [
+                {
+                label: 'See more',
+                style: 'primary',
+                onClick: (close) => {
+                    close();
+                    showFluentPopup({
+                    title: "OpenStreetMap data",
+                    message: "OpenStreetMap (OSM) is a free, collaborative mapping project built by volunteers worldwide. It provides open geographic data : roads, paths, transit stops, used by My Bus Finder to display the map. The data is licensed under the Open Database License (ODbL), which allows free use as long as attribution is preserved.",
+                    buttons: {
+                        primary: "Understood",
+                        primaryAction: () => { fluentPopupManager.close(); },
+                        secondary: "Discover more",
+                        secondaryAction: () => {
+                        window.open('https://www.openstreetmap.org', '_blank');
+                        fluentPopupManager.close();
+                        }
+                    }
+                    });
+                }
+                },
+                {
+                label: 'OK',
+                style: 'ghost',
+                onClick: (close) => close()
+                }
+            ]
+        });
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
