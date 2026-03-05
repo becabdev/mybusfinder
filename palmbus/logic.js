@@ -6682,9 +6682,9 @@ const MenuManager = {
             : `${s.avgDelayMinutes.toFixed(1)} min`;
 
         const peakBadge = s.isPeakHour
-            ? `<span style="background:#ff6b3522;border:1px solid #ff6b3566;color:#ff9966;padding:2px 10px;border-radius:20px;font-size:11px;">📈 Heure de pointe</span>`
-            : `<span style="background:#15d85d22;border:1px solid #15d85d44;color:#15d85d;padding:2px 10px;border-radius:20px;font-size:11px;">🟢 Trafic normal</span>`;
-
+            ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">📈 Heure de pointe</span>`
+            : `<span style="font-size:10px;opacity:.7;color:#15d85d;">● Trafic normal</span>`;
+            
         const onTimePct = s.onTimePercent ?? 0;
         const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
         const earlyPct = s.delayCount > 0 ? Math.round((s.earlyCount / s.delayCount) * 100) : 0;
@@ -6714,12 +6714,12 @@ const MenuManager = {
         const distributionHTML = s.delayCount > 0 ? Object.entries(s.delayBuckets).map(([key, val]) => {
             const pct = Math.round((val / bucketMax) * 100);
             return `
-                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
-                    <div style="font-size:10px;opacity:.6;color:white;">${val}</div>
-                    <div style="width:100%;background:rgba(255,255,255,.08);border-radius:4px;height:50px;display:flex;align-items:flex-end;overflow:hidden;">
-                        <div style="width:100%;height:${pct}%;background:${bucketColors[key]};border-radius:4px 4px 0 0;transition:height 0.8s ease;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                    <div style="font-size:9px;opacity:.4;color:white;">${val > 0 ? val : ''}</div>
+                    <div style="width:100%;background:rgba(255,255,255,.06);border-radius:3px 3px 0 0;height:44px;display:flex;align-items:flex-end;overflow:hidden;">
+                        <div style="width:100%;height:${Math.max(pct, val > 0 ? 8 : 0)}%;background:${bucketColors[key]};opacity:0.85;transition:height 0.8s ease;border-radius:3px 3px 0 0;"></div>
                     </div>
-                    <div style="font-size:9px;opacity:.5;color:white;text-align:center;line-height:1.2;">${bucketLabels[key]}</div>
+                    <div style="font-size:8px;opacity:.35;color:white;text-align:center;line-height:1.3;">${bucketLabels[key]}</div>
                 </div>`;
         }).join('') : '';
 
@@ -6762,236 +6762,326 @@ const MenuManager = {
         statsView.innerHTML = `
         <style>
             .stats-card {
-                background: rgba(0,0,0,0.35);
-                border-radius: 16px;
+                background: rgba(28, 28, 30, 0.75);
+                border-radius: 14px;
                 padding: 14px 16px;
-                margin-bottom: 10px;
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                border: 1px solid rgba(255,255,255,0.07);
+                margin-bottom: 8px;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255,255,255,0.06);
                 color: white;
                 font-family: 'League Spartan', sans-serif;
                 animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
             }
             .stats-card-title {
-                font-size: 11px;
+                font-size: 10px;
                 text-transform: uppercase;
-                letter-spacing: 1px;
-                opacity: 0.55;
+                letter-spacing: 0.8px;
+                opacity: 0.4;
                 margin-bottom: 10px;
                 font-weight: 600;
+                color: white;
             }
-            .stats-kpi-row { display:flex; gap:10px; margin-bottom:10px; }
-            .stats-kpi {
-                flex:1; background:rgba(255,255,255,0.06);
-                border-radius:12px; padding:12px 10px;
-                text-align:center; border:1px solid rgba(255,255,255,0.08);
+            .stats-row {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
             }
-            .stats-kpi-value { font-size:26px; font-weight:700; line-height:1.1; }
-            .stats-kpi-label { font-size:10px; opacity:.6; margin-top:2px; }
+            .stats-tile {
+                flex: 1;
+                background: rgba(44, 44, 46, 0.8);
+                border-radius: 12px;
+                padding: 12px 10px;
+                text-align: center;
+                border: 1px solid rgba(255,255,255,0.05);
+                min-width: 0;
+            }
+            .stats-tile-value {
+                font-size: 24px;
+                font-weight: 700;
+                line-height: 1.1;
+                color: white;
+                letter-spacing: -0.5px;
+            }
+            .stats-tile-label {
+                font-size: 10px;
+                opacity: 0.45;
+                margin-top: 3px;
+                color: white;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .stats-inline-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 7px 0;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+            }
+            .stats-inline-row:last-child { border-bottom: none; }
+            .stats-inline-label {
+                font-size: 13px;
+                opacity: 0.75;
+                color: white;
+            }
+            .stats-inline-value {
+                font-size: 13px;
+                font-weight: 600;
+                color: white;
+                text-align: right;
+            }
+            .stats-line-badge {
+                padding: 2px 9px;
+                border-radius: 6px;
+                font-weight: 700;
+                font-size: 12px;
+                display: inline-block;
+            }
             .stats-pill {
-                display:inline-flex; align-items:center; gap:5px;
-                background:rgba(255,255,255,0.08); border-radius:20px;
-                padding:4px 10px; font-size:12px; color:white;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                background: rgba(255,255,255,0.07);
+                border-radius: 20px;
+                padding: 3px 10px;
+                font-size: 11px;
+                color: rgba(255,255,255,0.7);
+                border: 1px solid rgba(255,255,255,0.06);
+            }
+            .stats-progress-track {
+                height: 5px;
+                border-radius: 3px;
+                background: rgba(255,255,255,0.08);
+                overflow: hidden;
+                margin: 2px 0;
+            }
+            .stats-progress-fill {
+                height: 100%;
+                border-radius: 3px;
+                transition: width 0.9s cubic-bezier(0.4,0,0.2,1);
             }
         </style>
 
-        <!-- Score santé réseau -->
-        <div class="stats-card" style="animation-delay:0s">
-            <div class="stats-card-title">Santé du réseau</div>
-            <div style="display:flex;align-items:center;gap:16px;">
-                <svg width="100" height="60" viewBox="0 0 100 60">
-                    <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
-                    <path d="M 12 50 A 38 38 0 ${largeArc} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${s.healthColor}" stroke-width="8" stroke-linecap="round" style="transition:all 1s ease;"/>
-                    <text x="50" y="48" text-anchor="middle" fill="white" font-size="16" font-weight="700" font-family="League Spartan">${s.healthScore}</text>
-                </svg>
-                <div>
-                    <div style="font-size:22px;font-weight:700;color:${s.healthColor};">${s.healthLabel}</div>
-                    <div style="font-size:12px;opacity:.6;margin-top:2px;">Score sur 100</div>
-                    <div style="margin-top:8px;">${peakBadge}</div>
+        <!-- Score santé + KPIs en une seule ligne -->
+        <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0s both">
+            <div style="
+                flex:1.2;
+                background: rgba(28,28,30,0.75);
+                border-radius:14px;
+                padding:14px;
+                border:1px solid rgba(255,255,255,0.06);
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+                backdrop-filter:blur(20px);
+            ">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;opacity:.4;margin-bottom:8px;">Santé réseau</div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <svg width="52" height="32" viewBox="0 0 100 58">
+                        <path d="M 10 54 A 42 42 0 0 1 90 54" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="9" stroke-linecap="round"/>
+                        <path d="M 10 54 A 42 42 0 ${arcAngle > 180 ? 1 : 0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${s.healthColor}" stroke-width="9" stroke-linecap="round"/>
+                    </svg>
+                    <div>
+                        <div style="font-size:22px;font-weight:700;color:${s.healthColor};line-height:1;">${s.healthScore}</div>
+                        <div style="font-size:11px;opacity:.5;margin-top:1px;">${s.healthLabel}</div>
+                    </div>
+                </div>
+                <div style="margin-top:8px;">${peakBadge}</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                <div class="stats-tile">
+                    <div class="stats-tile-value">${s.totalVehicles}</div>
+                    <div class="stats-tile-label">🚌 En service</div>
+                </div>
+                <div class="stats-tile">
+                    <div class="stats-tile-value">${s.totalLines}</div>
+                    <div class="stats-tile-label">🗺️ Lignes actives</div>
                 </div>
             </div>
         </div>
 
-        <!-- KPIs principaux -->
-        <div class="stats-kpi-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
-            <div class="stats-kpi">
-                <div class="stats-kpi-value">${s.totalVehicles}</div>
-                <div class="stats-kpi-label">🚌 En service</div>
+        <!-- Retard + vitesse -->
+        <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
+            <div class="stats-tile">
+                <div class="stats-tile-value" style="color:${delayColor};">${delayLabel}</div>
+                <div class="stats-tile-label">Retard moyen</div>
+                <div style="margin-top:4px;font-size:11px;color:${s.delayTrendColor};opacity:.8;">${s.delayTrendLabel}</div>
             </div>
-            <div class="stats-kpi">
-                <div class="stats-kpi-value">${s.totalLines}</div>
-                <div class="stats-kpi-label">🗺️ Lignes</div>
-            </div>
-            <div class="stats-kpi">
-                <div class="stats-kpi-value">${s.uniqueDestinations}</div>
-                <div class="stats-kpi-label">📍 Destinations</div>
-            </div>
-        </div>
-
-        <!-- Retard moyen + tendance -->
-        <div class="stats-kpi-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.08s both">
-            <div class="stats-kpi">
-                <div class="stats-kpi-value" style="color:${delayColor};">${delayLabel}</div>
-                <div class="stats-kpi-label">⏱ Retard moyen</div>
-            </div>
-            <div class="stats-kpi">
-                <div class="stats-kpi-value" style="color:${s.delayTrendColor};font-size:18px;">${s.delayTrendLabel}</div>
-                <div class="stats-kpi-label">📉 Tendance</div>
+            <div class="stats-tile">
+                <div class="stats-tile-value">${s.uniqueDestinations}</div>
+                <div class="stats-tile-label">📍 Destinations</div>
             </div>
             ${s.avgSpeed !== null ? `
-            <div class="stats-kpi">
-                <div class="stats-kpi-value">${s.avgSpeed}<span style="font-size:13px;font-weight:400;"> km/h</span></div>
-                <div class="stats-kpi-label">🏎 Vitesse moy.</div>
+            <div class="stats-tile">
+                <div class="stats-tile-value">${s.avgSpeed}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
+                <div class="stats-tile-label">Vitesse moy.</div>
             </div>` : ''}
         </div>
 
         <!-- Ponctualité -->
         ${s.delayCount > 0 ? `
-        <div class="stats-card" style="animation-delay:0.1s">
-            <div class="stats-card-title">Ponctualité réseau</div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <div style="font-size:22px;font-weight:700;color:${delayColor};">${onTimePct}% <span style="font-size:13px;font-weight:400;opacity:.7;">à l'heure</span></div>
-                <div style="font-size:12px;opacity:.6;">${s.delayCount} mesures</div>
+        <div class="stats-card" style="animation-delay:0.08s">
+            <div class="stats-card-title">Ponctualité</div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+                <div>
+                    <span style="font-size:28px;font-weight:700;color:${delayColor};letter-spacing:-1px;">${onTimePct}%</span>
+                    <span style="font-size:12px;opacity:.45;margin-left:4px;">à l'heure</span>
+                </div>
+                <div style="font-size:11px;opacity:.35;">${s.delayCount} mesures</div>
             </div>
-            <div style="height:10px;border-radius:6px;overflow:hidden;display:flex;background:rgba(255,255,255,.08);margin-bottom:6px;">
-                <div style="width:${onTimePct}%;background:#15d85d;transition:width 1s ease;"></div>
-                <div style="width:${earlyPct}%;background:#1a5ecc;transition:width 1s ease;"></div>
-                <div style="width:${latePct}%;background:${latePct > 20 ? '#b31313' : '#db6a18'};transition:width 1s ease;"></div>
+            <div style="height:5px;border-radius:3px;overflow:hidden;display:flex;gap:2px;margin-bottom:8px;">
+                <div style="width:${onTimePct}%;background:#15d85d;transition:width 1s ease;border-radius:3px;"></div>
+                <div style="width:${earlyPct}%;background:#0a84ff;transition:width 1s ease;border-radius:3px;"></div>
+                <div style="width:${latePct}%;background:${latePct > 20 ? '#ff453a' : '#ff9f0a'};transition:width 1s ease;border-radius:3px;"></div>
             </div>
-            <div style="display:flex;gap:12px;font-size:11px;opacity:.7;flex-wrap:wrap;">
-                <span>🟢 À l'heure ${onTimePct}%</span>
-                <span>🔵 Avance ${earlyPct}%</span>
-                <span>🔴 Retard ${latePct}%</span>
+            <div style="display:flex;gap:14px;font-size:11px;">
+                <span style="color:#15d85d;">● ${onTimePct}% à l'heure</span>
+                <span style="color:#0a84ff;">● ${earlyPct}% avance</span>
+                <span style="color:${latePct > 20 ? '#ff453a' : '#ff9f0a'};">● ${latePct}% retard</span>
             </div>
             ${s.maxDelay > 2 ? `
-            <div style="margin-top:10px;padding:8px 10px;background:rgba(179,19,19,.15);border-radius:10px;border:1px solid rgba(179,19,19,.3);display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:12px;opacity:.8;">Retard max détecté</span>
+            <div style="margin-top:10px;padding:8px 10px;background:rgba(255,69,58,0.1);border-radius:10px;border:1px solid rgba(255,69,58,0.2);display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:12px;opacity:.6;">Retard max</span>
                 <div style="display:flex;align-items:center;gap:8px;">
-                    <div style="background:${maxDelayLineColor};color:${getTextColor(maxDelayLineColor)};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;">${maxDelayLineName}</div>
-                    <span style="color:#ff6b6b;font-weight:700;">+${s.maxDelay.toFixed(1)} min</span>
+                    <span class="stats-line-badge" style="background:${maxDelayLineColor};color:${getTextColor(maxDelayLineColor)};">${maxDelayLineName}</span>
+                    <span style="color:#ff453a;font-weight:700;font-size:13px;">+${s.maxDelay.toFixed(1)} min</span>
                 </div>
             </div>` : ''}
         </div>` : ''}
 
-        <!-- Distribution des retards -->
+        <!-- Distribution retards -->
         ${s.delayCount > 0 ? `
-        <div class="stats-card" style="animation-delay:0.13s">
+        <div class="stats-card" style="animation-delay:0.11s">
             <div class="stats-card-title">Distribution des retards</div>
-            <div style="display:flex;gap:4px;align-items:flex-end;height:80px;">
+            <div style="display:flex;gap:3px;align-items:flex-end;height:64px;margin-bottom:6px;">
                 ${distributionHTML}
             </div>
         </div>` : ''}
 
-        <!-- Lignes les plus chargées -->
+        <!-- Répartition véhicules par ligne -->
         ${topLines.length > 0 ? `
-        <div class="stats-card" style="animation-delay:0.16s">
-            <div class="stats-card-title">Répartition des véhicules</div>
-            ${topLinesHTML}
-            <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <div class="stats-card" style="animation-delay:0.14s">
+            <div class="stats-card-title">Véhicules par ligne</div>
+            ${topLines.map(([line, count]) => {
+                const color = lineColors[line] || '#555';
+                const name = lineName[line] || line;
+                const width = topLines[0][1] > 0 ? Math.round((count / topLines[0][1]) * 100) : 0;
+                return `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+                    <span class="stats-line-badge" style="background:${color};color:${getTextColor(color)};min-width:32px;text-align:center;">${name}</span>
+                    <div style="flex:1;">
+                        <div class="stats-progress-track">
+                            <div class="stats-progress-fill" style="width:${width}%;background:${color};"></div>
+                        </div>
+                    </div>
+                    <span style="font-size:12px;opacity:.5;min-width:20px;text-align:right;">${count}</span>
+                </div>`;
+            }).join('')}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                 <div class="stats-pill">
-                    🔥 Plus chargée :
-                    <span style="background:${busiestLineColor};color:${getTextColor(busiestLineColor)};padding:1px 8px;border-radius:6px;font-weight:700;font-size:11px;">${busiestLineName}</span>
-                    <span style="opacity:.7;">${s.busiestCount} bus</span>
+                    🔥
+                    <span class="stats-line-badge" style="background:${busiestLineColor};color:${getTextColor(busiestLineColor)};">${busiestLineName}</span>
+                    <span>${s.busiestCount} bus</span>
                 </div>
                 ${s.quietestLine ? `
                 <div class="stats-pill">
-                    😴 Moins chargée :
-                    <span style="background:${quietestLineColor};color:${getTextColor(quietestLineColor)};padding:1px 8px;border-radius:6px;font-weight:700;font-size:11px;">${quietestLineName}</span>
-                    <span style="opacity:.7;">${s.quietestCount} bus</span>
+                    😴
+                    <span class="stats-line-badge" style="background:${quietestLineColor};color:${getTextColor(quietestLineColor)};">${quietestLineName}</span>
+                    <span>${s.quietestCount} bus</span>
                 </div>` : ''}
             </div>
         </div>` : ''}
 
-        <!-- Mobilité & vitesse -->
+        <!-- Mobilité -->
         ${s.movingPercent !== null ? `
-        <div class="stats-card" style="animation-delay:0.19s">
-            <div class="stats-card-title">Mobilité instantanée</div>
-            <div style="display:flex;gap:10px;">
-                <div class="stats-kpi" style="flex:1;">
-                    <div class="stats-kpi-value" style="color:#15d85d;">${s.movingPercent}%</div>
-                    <div class="stats-kpi-label">🟢 En mouvement</div>
-                </div>
-                <div class="stats-kpi" style="flex:1;">
-                    <div class="stats-kpi-value">${s.stoppedCount}</div>
-                    <div class="stats-kpi-label">🔴 À l'arrêt</div>
-                </div>
-                ${s.avgSpeed !== null ? `
-                <div class="stats-kpi" style="flex:1;">
-                    <div class="stats-kpi-value">${s.avgSpeed}</div>
-                    <div class="stats-kpi-label">km/h moy.</div>
-                </div>` : ''}
+        <div class="stats-card" style="animation-delay:0.17s">
+            <div class="stats-card-title">Mobilité</div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">En mouvement</span>
+                <span class="stats-inline-value" style="color:#15d85d;">${s.movingCount} <span style="opacity:.4;font-weight:400;">(${s.movingPercent}%)</span></span>
             </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">À l'arrêt</span>
+                <span class="stats-inline-value" style="color:#ff453a;">${s.stoppedCount}</span>
+            </div>
+            ${s.avgSpeed !== null ? `
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Vitesse moyenne</span>
+                <span class="stats-inline-value">${s.avgSpeed} km/h</span>
+            </div>` : ''}
         </div>` : ''}
 
         <!-- Fréquentation -->
         ${s.occupancyCount > 0 ? `
-        <div class="stats-card" style="animation-delay:0.22s">
-            <div class="stats-card-title">Fréquentation réseau</div>
-            <div style="display:flex;gap:10px;">
-                <div class="stats-kpi" style="flex:2;">
-                    <div class="stats-kpi-value" style="font-size:18px;">${s.avgOccupancyLabel || '—'}</div>
-                    <div class="stats-kpi-label">Niveau moyen</div>
-                </div>
-                <div class="stats-kpi" style="flex:1;">
-                    <div class="stats-kpi-value" style="color:#b31313;">${s.fullCount}</div>
-                    <div class="stats-kpi-label">🔴 Pleins</div>
-                </div>
-                <div class="stats-kpi" style="flex:1;">
-                    <div class="stats-kpi-value" style="color:#15d85d;">${s.emptyCount}</div>
-                    <div class="stats-kpi-label">🟢 Vides</div>
-                </div>
+        <div class="stats-card" style="animation-delay:0.2s">
+            <div class="stats-card-title">Fréquentation</div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Niveau moyen</span>
+                <span class="stats-inline-value">${s.avgOccupancyLabel || '—'}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Véhicules bondés</span>
+                <span class="stats-inline-value" style="color:#ff453a;">${s.fullCount}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Véhicules vides</span>
+                <span class="stats-inline-value" style="color:#15d85d;">${s.emptyCount}</span>
             </div>
         </div>` : ''}
 
         <!-- Flotte -->
         ${s.totalVehicles > 0 ? `
-        <div class="stats-card" style="animation-delay:0.25s">
-            <div class="stats-card-title">Composition de la flotte</div>
-            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px;">
-                <span style="font-size:26px;font-weight:700;color:#15d85d;">${s.greenPercent}%</span>
-                <span style="font-size:12px;opacity:.7;">de véhicules propres en service</span>
+        <div class="stats-card" style="animation-delay:0.23s">
+            <div class="stats-card-title">Flotte propre</div>
+            <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:10px;">
+                <span style="font-size:28px;font-weight:700;color:#15d85d;letter-spacing:-1px;">${s.greenPercent}%</span>
+                <span style="font-size:11px;opacity:.4;">propre en service</span>
             </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                ${fleetHTML}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${fleetItems.length > 0 ? fleetItems.map(f => `
+                <div style="flex:1;min-width:56px;background:rgba(44,44,46,0.8);border-radius:10px;padding:9px 6px;text-align:center;border:1px solid ${f.color}30;">
+                    <div style="font-size:16px;">${f.emoji}</div>
+                    <div style="font-size:18px;font-weight:700;color:${f.color};">${f.count}</div>
+                    <div style="font-size:9px;opacity:.5;">${f.label}</div>
+                </div>`).join('') : `<span style="opacity:.4;font-size:12px;">Aucune donnée disponible</span>`}
             </div>
         </div>` : ''}
 
-        <!-- Statistiques personnelles -->
-        <div class="stats-card" style="animation-delay:0.28s">
+        <!-- Votre utilisation -->
+        <div class="stats-card" style="animation-delay:0.26s">
             <div class="stats-card-title">Votre utilisation</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
-                    <div style="font-size:20px;font-weight:700;">🚌 ${s.vehiclesConsulted}</div>
-                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Véhicules consultés</div>
-                </div>
-                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
-                    <div style="font-size:20px;font-weight:700;">📈 ${s.historicMax}</div>
-                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Record simultané</div>
-                </div>
-                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
-                    <div style="font-size:20px;font-weight:700;">🗓️ ${daysSinceFirstLabel}</div>
-                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Depuis 1ère utilisation</div>
-                </div>
-                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
-                    <div style="font-size:20px;font-weight:700;">👁️ ${s.sessionsCount}</div>
-                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Stats consultées</div>
-                </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Véhicules consultés</span>
+                <span class="stats-inline-value" style="color:#0a84ff;">${s.vehiclesConsulted}</span>
             </div>
-            <div style="font-size:11px;opacity:.4;text-align:right;">
-                Depuis le ${new Date(s.firstUse).toLocaleDateString('fr-FR')}
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Record simultané</span>
+                <span class="stats-inline-value">${s.historicMax} véhicules</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Stats consultées</span>
+                <span class="stats-inline-value">${s.sessionsCount} fois</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">Utilisation depuis</span>
+                <span class="stats-inline-value" style="opacity:.6;">${new Date(s.firstUse).toLocaleDateString('fr-FR')}</span>
             </div>
         </div>
 
         <!-- Actualiser -->
-        <div style="text-align:center;margin-top:6px;">
+        <div style="text-align:center;margin-top:4px;margin-bottom:4px;">
             <div onclick="MenuManager._refreshStatsView()" style="
                 display:inline-flex;align-items:center;gap:6px;
-                background:rgba(255,255,255,.08);border-radius:20px;
-                padding:7px 16px;cursor:pointer;font-size:12px;color:white;
-                opacity:.7;transition:opacity 0.2s;
-            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                background:rgba(255,255,255,0.06);
+                border:1px solid rgba(255,255,255,0.08);
+                border-radius:20px;padding:7px 18px;
+                cursor:pointer;font-size:12px;
+                color:rgba(255,255,255,0.5);
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'"
+            onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)'">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                 </svg>
@@ -6999,7 +7089,8 @@ const MenuManager = {
             </div>
         </div>
         `;
-    }
+
+}
 };
 
 function updateMenu() {
