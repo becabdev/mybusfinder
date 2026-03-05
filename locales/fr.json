@@ -366,5 +366,11 @@
     "statsconsulted": "Stats consultées",
     "usagefrom": "Utilisation depuis",
 
+    "times": "fois",
+    "refresh": "Actualiser",
+    "moving": "En mouvement",
+    "stopped": "Arrêté",
+    "mobility": "Mobilité",
+
     "langversion": "1.0.8"
   }

@@ -6795,7 +6795,7 @@ const MenuManager = {
         statsView.innerHTML = `
         <style>
             .stats-card {
-                background: rgba(28, 28, 30, 0.5);
+                background: rgba(28, 28, 30, 0.75);
                 border-radius: 14px;
                 padding: 14px 16px;
                 margin-bottom: 8px;
@@ -6898,11 +6898,11 @@ const MenuManager = {
             }
         </style>
 
-        <!-- Score santé + KPIs en une seule ligne -->
+        <!-- Score santé + KPI en une seule ligne -->
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0s both">
             <div style="
                 flex:1.2;
-                background: rgba(28,28,30,0.5);
+                background: rgba(28,28,30,0.75);
                 border-radius:14px;
                 padding:14px;
                 border:1px solid rgba(255,255,255,0.06);
@@ -7091,11 +7091,11 @@ const MenuManager = {
             </div>
             <div class="stats-inline-row">
                 <span class="stats-inline-label">${t('historicmax')}</span>
-                <span class="stats-inline-value">${s.historicMax} véhicules</span>
+                <span class="stats-inline-value">${s.historicMax} ${t('vehicles')}</span>
             </div>
             <div class="stats-inline-row">
                 <span class="stats-inline-label">${t('statsconsulted')}</span>
-                <span class="stats-inline-value">${s.sessionsCount} fois</span>
+                <span class="stats-inline-value">${s.sessionsCount} ${t('times')}</span>
             </div>
             <div class="stats-inline-row">
                 <span class="stats-inline-label">${t('usagefrom')}</span>
@@ -7119,7 +7119,7 @@ const MenuManager = {
                     <polyline points="23 4 23 10 17 10"/>
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
                 </svg>
-                Actualiser
+                <div>${t('refresh')}</div>
             </div>
         </div>
         `;
