@@ -6577,7 +6577,8 @@ const MenuManager = {
         const delayTrend = avgDelayMinutes - lastAvgDelay;
         localStorage.setItem('mbf_last_avg_delay', avgDelayMinutes.toFixed(2));
         const delayTrendLabel = Math.abs(delayTrend) < 0.3 ? 'stable'
-            : delayTrend > 0 ? `+${delayTrend.toFixed(1)} min` : `${delayTrend.toFixed(1)} min`;
+            : delayTrend > 0 ? `+${Math.round(delayTrend)} min`
+            : `${Math.round(delayTrend)} min`;
         const delayTrendColor = Math.abs(delayTrend) < 0.3 ? '#aaa'
             : delayTrend > 0 ? '#b31313' : '#15d85d';
 
@@ -6678,8 +6679,8 @@ const MenuManager = {
 
         const delayLabel = s.delayCount === 0 ? '—'
             : Math.abs(s.avgDelayMinutes) <= 1 ? 'À l\'heure'
-            : s.avgDelayMinutes > 0 ? `+${s.avgDelayMinutes.toFixed(1)} min`
-            : `${s.avgDelayMinutes.toFixed(1)} min`;
+            : s.avgDelayMinutes > 0 ? `+${Math.round(s.avgDelayMinutes)} min`
+            : `${Math.round(s.avgDelayMinutes)} min`;
 
         const peakBadge = s.isPeakHour
             ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">📈 Heure de pointe</span>`
@@ -6707,21 +6708,54 @@ const MenuManager = {
                 </div>`;
         }).join('');
 
-        // Distribution retards
+        const bucketLabels = {
+            '-5':  'Très\nen avance',
+            '-2':  'En\navance',
+            '0':   'À\nl\'heure',
+            '2':   'Léger\nretard',
+            '5':   'Retard\nmoyen',
+            '10+': 'Gros\nretard'
+        };
+        const bucketColors = {
+            '-5': '#0a84ff',
+            '-2': '#40c8e0',
+            '0':  '#15d85d',
+            '2':  '#ff9f0a',
+            '5':  '#ff6b3a',
+            '10+':'#ff453a'
+        };
         const bucketMax = Math.max(...Object.values(s.delayBuckets), 1);
-        const bucketLabels = { '-5': '< -5min', '-2': '-5 à -2', '0': '±2min', '2': '2 à 5', '5': '5 à 10', '10+': '> 10min' };
-        const bucketColors = { '-5': '#1a5ecc', '-2': '#4a90d9', '0': '#15d85d', '2': '#f5a623', '5': '#e05c2a', '10+': '#b31313' };
-        const distributionHTML = s.delayCount > 0 ? Object.entries(s.delayBuckets).map(([key, val]) => {
-            const pct = Math.round((val / bucketMax) * 100);
-            return `
-                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                    <div style="font-size:9px;color:rgba(255,255,255,0.55);">${val > 0 ? val : ''}</div>
-                    <div style="width:100%;background:rgba(255,255,255,.06);border-radius:3px 3px 0 0;height:44px;display:flex;align-items:flex-end;overflow:hidden;">
-                        <div style="width:100%;height:${Math.max(pct, val > 0 ? 8 : 0)}%;background:${bucketColors[key]};opacity:0.85;transition:height 0.8s ease;border-radius:3px 3px 0 0;"></div>
-                    </div>
-                    <div style="font-size:8px;color:rgba(255,255,255,0.45);text-align:center;line-height:1.3;">${bucketLabels[key]}</div>
-                </div>`;
-        }).join('') : '';
+
+        const distributionHTML = s.delayCount > 0 ? `
+            <div style="display:flex;gap:6px;align-items:flex-end;justify-content:center;height:90px;margin-bottom:10px;">
+                ${Object.entries(s.delayBuckets).map(([key, val]) => {
+                    const pct = Math.round((val / bucketMax) * 100);
+                    const heightPx = Math.max(val > 0 ? Math.round(pct * 0.6) : 0, val > 0 ? 6 : 0);
+                    return `
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;">
+                        <div style="font-size:11px;font-weight:600;color:${val > 0 ? bucketColors[key] : 'rgba(255,255,255,0.2)'};">
+                            ${val > 0 ? val : '·'}
+                        </div>
+                        <div style="
+                            width:100%;
+                            height:${heightPx}px;
+                            background:${bucketColors[key]};
+                            opacity:${val > 0 ? 0.85 : 0.12};
+                            border-radius:5px 5px 0 0;
+                            transition:height 0.8s cubic-bezier(0.4,0,0.2,1);
+                            min-height:3px;
+                        "></div>
+                    </div>`;
+                }).join('')}
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;">
+                ${Object.entries(bucketLabels).map(([key, label]) => `
+                <div style="flex:1;text-align:center;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:${bucketColors[key]};margin:0 auto 3px;"></div>
+                    <div style="font-size:8.5px;color:rgba(255,255,255,0.45);line-height:1.3;white-space:pre-line;">${label}</div>
+                </div>`).join('')}
+            </div>
+        ` : '';
 
         // Flotte
         const fleetItems = [
@@ -6792,7 +6826,12 @@ const MenuManager = {
                 text-align: center;
                 border: 1px solid rgba(255,255,255,0.05);
                 min-width: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
             }
+
             .stats-tile-value {
                 font-size: 24px;
                 font-weight: 700;
@@ -6812,7 +6851,7 @@ const MenuManager = {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 7px 0;
+                padding: 8px 0;
                 border-bottom: 1px solid rgba(255,255,255,0.05);
             }
             .stats-inline-row:last-child { border-bottom: none; }
@@ -6873,17 +6912,17 @@ const MenuManager = {
                 color:white;
             ">
                 <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;opacity:.4;margin-bottom:8px;">Santé réseau</div>
-                <div style="display:flex;align-items:center;gap:10px;">
+                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:4px;">
                     <svg width="90" height="52" viewBox="0 0 100 58">
                         <path d="M 10 56 A 40 40 0 0 1 90 56" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
                         <path d="M 10 56 A 40 40 0 ${arcAngle > 179.9 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}" fill="none" stroke="${s.healthColor}" stroke-width="8" stroke-linecap="round"/>
                     </svg>
-                    <div>
-                        <div style="font-size:22px;font-weight:700;color:${s.healthColor};line-height:1;">${s.healthScore}</div>
-                        <div style="font-size:11px;opacity:.5;margin-top:1px;">${s.healthLabel}</div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;">
+                        <div style="font-size:26px;font-weight:700;color:${s.healthColor};line-height:1;">${s.healthScore}</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;">${s.healthLabel}</div>
                     </div>
                 </div>
-                <div style="margin-top:8px;">${peakBadge}</div>
+                <div style="margin-top:10px;display:flex;justify-content:center;">${peakBadge}</div>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
                 <div class="stats-tile">
@@ -6910,7 +6949,7 @@ const MenuManager = {
             </div>
             ${s.avgSpeed !== null ? `
             <div class="stats-tile">
-                <div class="stats-tile-value">${s.avgSpeed}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
+                <div class="stats-tile-value">${Math.round(s.avgSpeed)}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
                 <div class="stats-tile-label">Vitesse moy.</div>
             </div>` : ''}
         </div>
@@ -6941,7 +6980,7 @@ const MenuManager = {
                 <span style="font-size:12px;opacity:.6;">Retard max</span>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span class="stats-line-badge" style="background:${maxDelayLineColor};color:${getTextColor(maxDelayLineColor)};">${maxDelayLineName}</span>
-                    <span style="color:#ff453a;font-weight:700;font-size:13px;">+${s.maxDelay.toFixed(1)} min</span>
+                    <span style="color:#ff453a;font-weight:700;font-size:13px;">+${Math.round(s.maxDelay)} min</span>
                 </div>
             </div>` : ''}
         </div>` : ''}
