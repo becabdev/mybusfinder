@@ -5693,7 +5693,7 @@ const MenuManager = {
             left: 0;
             background-color: #00000075;
             color: white;
-            padding: 9px 33px 9px 9px;
+            padding: 9px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -6467,7 +6467,7 @@ const MenuManager = {
         let delaySum = 0, delayCount = 0;
         let onTimeCount = 0, lateCount = 0, earlyCount = 0;
         let maxDelay = 0, maxDelayLine = null;
-        let delayBuckets = { '-5': 0, '-2': 0, '0': 0, '2': 0, '5': 0, '10': 0, '10+': 0 };
+        let delayBuckets = { '-5': 0, '-2': 0, '0': 0, '2': 0, '5': 0, '10+': 0 };
 
         markerPool.active.forEach((marker) => {
             const tripId = marker.vehicleData?.trip?.tripId;
@@ -6569,7 +6569,7 @@ const MenuManager = {
         // Score de santé réseau (0-100)
         let healthScore = 100;
         if (onTimePercent !== null) healthScore = Math.round(onTimePercent * 0.6 + (movingPercent ?? 50) * 0.2 + Math.min(greenPercent, 100) * 0.2);
-        const healthColor = healthScore >= 80 ? '#15d85d' : healthScore >= 60 ? '#db6a18' : '#b31313';
+        const healthColor = healthScore >= 80 ? '#a1d1b3' : healthScore >= 60 ? '#d1ac91' : '#c69090';
         const healthLabel = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Correct' : 'Dégradé';
 
         // Tendance retard (comparaison avec dernière valeur stockée)
@@ -6580,7 +6580,7 @@ const MenuManager = {
             : delayTrend > 0 ? `+${Math.round(delayTrend)} min`
             : `${Math.round(delayTrend)} min`;
         const delayTrendColor = Math.abs(delayTrend) < 0.3 ? '#aaa'
-            : delayTrend > 0 ? '#b31313' : '#15d85d';
+            : delayTrend > 0 ? '#c89292' : '#a5d1b5';
 
         return {
             totalVehicles, totalLines, uniqueDestinations,
@@ -6674,8 +6674,8 @@ const MenuManager = {
         const s = this._computeNetworkStats();
 
         const delayColor = Math.abs(s.avgDelayMinutes) <= 1 ? '#15d85d'
-            : s.avgDelayMinutes > 5 ? '#b31313'
-            : s.avgDelayMinutes > 1 ? '#db6a18' : '#1a5ecc';
+            : s.avgDelayMinutes > 5 ? '#c07c7c'
+            : s.avgDelayMinutes > 1 ? '#d7ab8b' : '#829cc7';
 
         const delayLabel = s.delayCount === 0 ? '—'
             : Math.abs(s.avgDelayMinutes) <= 1 ? 'À l\'heure'
@@ -6794,7 +6794,7 @@ const MenuManager = {
         statsView.innerHTML = `
         <style>
             .stats-card {
-                background: rgba(28, 28, 30, 0.75);
+                background: rgba(28, 28, 30, 0.5);
                 border-radius: 14px;
                 padding: 14px 16px;
                 margin-bottom: 8px;
@@ -6941,7 +6941,6 @@ const MenuManager = {
             <div class="stats-tile">
                 <div class="stats-tile-value" style="color:${delayColor};">${delayLabel}</div>
                 <div class="stats-tile-label">Retard moyen</div>
-                <div style="margin-top:4px;font-size:11px;color:${s.delayTrendColor};opacity:.8;">${s.delayTrendLabel}</div>
             </div>
             <div class="stats-tile">
                 <div class="stats-tile-value">${s.uniqueDestinations}</div>
@@ -6989,7 +6988,7 @@ const MenuManager = {
         ${s.delayCount > 0 ? `
         <div class="stats-card" style="animation-delay:0.11s">
             <div class="stats-card-title">Distribution des retards</div>
-            <div style="display:flex;gap:3px;align-items:flex-end;height:64px;margin-bottom:6px;">
+            <div style="display:contents;align-items:flex-end;height:64px;margin-bottom:6px;">
                 ${distributionHTML}
             </div>
         </div>` : ''}
