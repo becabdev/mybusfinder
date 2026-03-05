@@ -5778,27 +5778,20 @@ const MenuManager = {
     },
 
     _handleScrollAnimations() {
+        const wrapper = document.getElementById('menu-main-content-wrapper');
+        const containerToCheck = wrapper || this.container;
         const containerRect = this.container.getBoundingClientRect();
-        const sections = this.container.querySelectorAll('.linesection');
-        
+        const sections = containerToCheck.querySelectorAll('.linesection');
+
         sections.forEach(section => {
             const sectionRect = section.getBoundingClientRect();
             const sectionTop = sectionRect.top - containerRect.top;
             const sectionBottom = sectionRect.bottom - containerRect.top;
-            
             const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
 
-            
             if (isVisible) {
-                    section.dataset.currentlyVisible = 'true';
-                    section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
-            } else {
-                if (section.dataset.currentlyVisible === 'true') {
-                    section.dataset.currentlyVisible = 'false';
-                    section.style.animation = 'none';
-                    section.style.opacity = '0';
-                    section.style.transform = 'scale(0.9)';
-                }
+                section.style.opacity = '1';
+                section.style.transform = 'scale(1) translateY(0)';
             }
         });
     },
@@ -6124,22 +6117,25 @@ const MenuManager = {
     _addLine(line, destinations) {
         const lineSection = this._createLineSection(line);
         this.sections.set(line, lineSection);
-        
+
+        const wrapper = document.getElementById('menu-main-content-wrapper');
+        const target = wrapper || this.container;
+
         const sortedLines = this._getSortedLines();
         const index = sortedLines.indexOf(line);
-        
+
         if (index === -1 || index === sortedLines.length - 1) {
-            this.container.appendChild(lineSection.element);
+            target.appendChild(lineSection.element);
         } else {
             const nextLine = sortedLines[index + 1];
             const nextElement = this.sections.get(nextLine)?.element;
-            if (nextElement) {
-                this.container.insertBefore(lineSection.element, nextElement);
+            if (nextElement && target.contains(nextElement)) {
+                target.insertBefore(lineSection.element, nextElement);
             } else {
-                this.container.appendChild(lineSection.element);
+                target.appendChild(lineSection.element);
             }
         }
-        
+
         Object.keys(destinations).sort().forEach(dest => {
             this._addDestinationToSection(lineSection, line, dest, destinations[dest]);
         });
@@ -6268,11 +6264,14 @@ const MenuManager = {
     _updateStatistics() {
         const statsElement = document.getElementById('menu-statistics');
         if (!statsElement) return;
-        
+
+        const statsView = document.getElementById('menu-stats-view');
+        if (statsView && statsView.style.display !== 'none') return;
+
         let totalLines = Object.keys(this.busesByLineAndDestination).length;
         let totalVehicles = 0;
         let activeLines = 0;
-        
+
         Object.values(this.busesByLineAndDestination).forEach(destinations => {
             let lineVehicleCount = 0;
             Object.values(destinations).forEach(buses => {
@@ -6281,9 +6280,9 @@ const MenuManager = {
             totalVehicles += lineVehicleCount;
             if (lineVehicleCount > 0) activeLines++;
         });
-        
+
         const sameNumber = (activeLines === totalLines);
-        
+
         if (sameNumber) {
             statsElement.innerHTML = `
                 <div>${t("network")}</div>
@@ -6299,7 +6298,7 @@ const MenuManager = {
                 </div>
             `;
         }
-    },
+},
     
     _getSortedLines() {
         return Object.keys(this.busesByLineAndDestination).sort((a, b) => {
