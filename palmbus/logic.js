@@ -7451,13 +7451,15 @@ async function cleanup(menu, button) {
 const animationStyle = document.createElement('style');
 animationStyle.textContent = `
     @keyframes topBarExpand {
-        0%   { filter: blur(4px); transform: scaleX(1.1); }
-        100% { filter: blur(0px); transform: scaleX(1); }
+        0%   { filter: blur(4px); transform: scale(0.96); opacity: 0.6; }
+        60%  { filter: blur(1px); transform: scale(1.01); opacity: 1; }
+        100% { filter: blur(0px); transform: scale(1);    opacity: 1; }
     }
 
     @keyframes topBarShrink {
-        0%   { filter: blur(4px); transform: scaleX(1); }
-        100% { filter: blur(0px); transform: scaleX(1.1); }
+        0%   { filter: blur(4px); transform: scale(1.04); opacity: 0.6; }
+        60%  { filter: blur(1px); transform: scale(0.99); opacity: 1; }
+        100% { filter: blur(0px); transform: scale(1);    opacity: 1; }
     }
 
     .topbar-anim-expand {
