@@ -3456,6 +3456,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
         safeVibrate([50]);
+        const consulted = parseInt(localStorage.getItem('mbf_vehicles_consulted') || '0', 10);
+        localStorage.setItem('mbf_vehicles_consulted', (consulted + 1).toString());
         soundsUX('MBF_VehicleOpen');
         saveAndFilterSingleLine(route_id);
 
@@ -5054,7 +5056,6 @@ const MenuManager = {
         
         // Barre de recherche
         this._createSearchBar();
-        this._createStatsPanel();
         
         // Spacer
         const spacer = document.createElement('div');
@@ -5086,13 +5087,13 @@ const MenuManager = {
         const searchContainer = document.createElement('div');
         searchContainer.id = 'search-container';
         searchContainer.style.cssText = `
-            position: sticky;
             top: 78px;
             left: 0;
             right: 0;
             padding: 0 16px 10px;
             z-index: 0;
             transition: transform 0.3s ease;
+            margin-top: 10px;
         `;
         
         const searchWrapper = document.createElement('div');
@@ -5230,373 +5231,6 @@ const MenuManager = {
         searchContainer.appendChild(this.searchResults);
         
         this.container.appendChild(searchContainer);
-    },
-
-    _createStatsPanel() {
-        const wrapper = document.createElement('div');
-        wrapper.id = 'stats-panel';
-        wrapper.style.cssText = `
-            padding: 0 16px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        `;
-
-        let totalVehicles = 0;
-        let delaySum = 0;
-        let delayCount = 0;
-        let onTimeCount = 0;
-        let lateCount = 0;
-        let earlyCount = 0;
-        let activeLines = new Set();
-        const lineVehicleCounts = {};
-
-        markerPool.active.forEach((marker) => {
-            totalVehicles++;
-            const line = marker.line;
-            if (line) {
-                activeLines.add(line);
-                lineVehicleCounts[line] = (lineVehicleCounts[line] || 0) + 1;
-            }
-
-            const tripId = marker.vehicleData?.trip?.tripId;
-            const nextStops = tripUpdates[tripId]?.nextStops || [];
-
-            if (nextStops.length > 0 && window.stopTimesReady && window.staticStopTimes) {
-                const firstStop = nextStops[0];
-                const stopId = firstStop.stopId;
-                const tripStops = window.staticStopTimes?.[tripId];
-                if (tripStops) {
-                    const cleanStop = stopId.replace('0:', '').trim();
-                    const staticStop = tripStops[cleanStop] || tripStops['0:' + cleanStop];
-                    if (staticStop) {
-                        const timeStr = staticStop.a || staticStop.d;
-                        if (timeStr) {
-                            const parts = timeStr.split(':').map(Number);
-                            const staticSecs = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
-                            const rtTime = firstStop.arrivalTime || firstStop.departureTime;
-                            if (rtTime) {
-                                let rtSecs;
-                                if (typeof rtTime === 'number' && rtTime > 86400) {
-                                    const d = new Date(rtTime * 1000);
-                                    rtSecs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
-                                } else if (typeof rtTime === 'string' && rtTime.includes(':')) {
-                                    const p = rtTime.split(':').map(Number);
-                                    rtSecs = p[0] * 3600 + p[1] * 60 + (p[2] || 0);
-                                }
-                                if (rtSecs !== undefined) {
-                                    const delayMin = Math.round((rtSecs - staticSecs) / 60);
-                                    delaySum += delayMin;
-                                    delayCount++;
-                                    if (Math.abs(delayMin) <= 1) onTimeCount++;
-                                    else if (delayMin > 1) lateCount++;
-                                    else earlyCount++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        const avgDelay = delayCount > 0 ? Math.round(delaySum / delayCount) : null;
-
-        // Busiest line
-        let busiestLine = null;
-        let busiestCount = 0;
-        Object.entries(lineVehicleCounts).forEach(([line, count]) => {
-            if (count > busiestCount) { busiestCount = count; busiestLine = line; }
-        });
-
-        // Stats persistantes (localStorage)
-        const consultedKey = 'mbf_vehicles_consulted';
-        const sessionKey   = 'mbf_session_vehicles';
-        const firstUseKey  = 'mbf_first_use_date';
-        const refreshKey   = 'mbf_refresh_count';
-
-        let totalConsulted = parseInt(localStorage.getItem(consultedKey) || '0');
-        let sessionVehicles = JSON.parse(sessionStorage.getItem(sessionKey) || '[]');
-        let firstUseDate = localStorage.getItem(firstUseKey);
-        if (!firstUseDate) {
-            firstUseDate = new Date().toLocaleDateString('fr-FR');
-            localStorage.setItem(firstUseKey, firstUseDate);
-        }
-        let refreshCount = parseInt(localStorage.getItem(refreshKey) || '0') + 1;
-        localStorage.setItem(refreshKey, refreshCount);
-
-        // Ecouter les ouvertures de popup pour incrémenter le compteur
-        if (!window._statsPopupListenerAdded) {
-            window._statsPopupListenerAdded = true;
-            document.addEventListener('click', (e) => {
-                const popup = e.target.closest('.popup-container');
-                if (popup) {
-                    const vid = popup.dataset.vehicleId;
-                    if (vid && !sessionVehicles.includes(vid)) {
-                        sessionVehicles.push(vid);
-                        sessionStorage.setItem(sessionKey, JSON.stringify(sessionVehicles));
-                        totalConsulted++;
-                        localStorage.setItem(consultedKey, totalConsulted);
-                    }
-                }
-            });
-        }
-
-        const onTimePct = delayCount > 0 ? Math.round((onTimeCount / delayCount) * 100) : null;
-
-        const makeRow = (cards) => {
-            const row = document.createElement('div');
-            row.style.cssText = `display: flex; gap: 8px;`;
-            cards.forEach(c => row.appendChild(c));
-            return row;
-        };
-
-        const makeCard = ({
-            icon, title, value, sub, color = 'rgba(255,255,255,0.08)',
-            accent = 'white', flex = 1, badge = null, progress = null
-        }) => {
-            const card = document.createElement('div');
-            card.style.cssText = `
-                flex: ${flex};
-                background: ${color};
-                border-radius: 14px;
-                padding: 12px 14px;
-                backdrop-filter: blur(10px);
-                -webkit-backdrop-filter: blur(10px);
-                border: 1px solid rgba(255,255,255,0.08);
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-                position: relative;
-                overflow: hidden;
-            `;
-
-            // Glow décoratif
-            const glow = document.createElement('div');
-            glow.style.cssText = `
-                position: absolute;
-                width: 60px; height: 60px;
-                border-radius: 50%;
-                background: ${accent};
-                opacity: 0.06;
-                top: -15px; right: -15px;
-                pointer-events: none;
-            `;
-            card.appendChild(glow);
-
-            const iconEl = document.createElement('div');
-            iconEl.style.cssText = `font-size: 18px; line-height: 1;`;
-            iconEl.textContent = icon;
-
-            const titleEl = document.createElement('div');
-            titleEl.style.cssText = `font-size: 10px; color: rgba(255,255,255,0.55); font-weight: 500; letter-spacing: 0.3px; text-transform: uppercase;`;
-            titleEl.textContent = title;
-
-            const valueEl = document.createElement('div');
-            valueEl.style.cssText = `font-size: 22px; font-weight: 700; color: ${accent}; line-height: 1.1;`;
-            valueEl.textContent = value;
-
-            card.appendChild(iconEl);
-            card.appendChild(titleEl);
-            card.appendChild(valueEl);
-
-            if (badge) {
-                const badgeEl = document.createElement('div');
-                badgeEl.style.cssText = `
-                    font-size: 10px;
-                    background: rgba(255,255,255,0.12);
-                    border-radius: 6px;
-                    padding: 2px 6px;
-                    color: rgba(255,255,255,0.7);
-                    width: fit-content;
-                `;
-                badgeEl.textContent = badge;
-                card.appendChild(badgeEl);
-            }
-
-            if (sub) {
-                const subEl = document.createElement('div');
-                subEl.style.cssText = `font-size: 11px; color: rgba(255,255,255,0.5);`;
-                subEl.textContent = sub;
-                card.appendChild(subEl);
-            }
-
-            if (progress !== null) {
-                const trackEl = document.createElement('div');
-                trackEl.style.cssText = `
-                    height: 4px;
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 4px;
-                    overflow: hidden;
-                    margin-top: 4px;
-                `;
-                const fillEl = document.createElement('div');
-                fillEl.style.cssText = `
-                    height: 100%;
-                    width: 0%;
-                    background: ${accent};
-                    border-radius: 4px;
-                    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
-                `;
-                trackEl.appendChild(fillEl);
-                card.appendChild(trackEl);
-                setTimeout(() => { fillEl.style.width = Math.min(100, progress) + '%'; }, 100);
-            }
-
-            return card;
-        };
-
-        const sectionTitle = document.createElement('div');
-        sectionTitle.style.cssText = `
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(255,255,255,0.4);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 4px 2px 0;
-        `;
-        sectionTitle.textContent = t('stats') || 'Statistiques réseau';
-        wrapper.appendChild(sectionTitle);
-
-        wrapper.appendChild(makeRow([
-            makeCard({
-                icon: '🚌',
-                title: t('vehicles_in_service') || 'Véhicules en service',
-                value: totalVehicles,
-                sub: `${activeLines.size} ${t('lines') || 'lignes'}`,
-                color: 'rgba(0,122,255,0.18)',
-                accent: '#4da6ff',
-                flex: 1
-            }),
-            makeCard({
-                icon: '⏱️',
-                title: t('avg_delay') || 'Retard moyen',
-                value: avgDelay === null ? '—'
-                    : avgDelay > 0 ? `+${avgDelay} min`
-                    : avgDelay < 0 ? `${avgDelay} min`
-                    : '✓ À l\'heure',
-                color: avgDelay === null ? 'rgba(255,255,255,0.08)'
-                    : avgDelay > 3 ? 'rgba(255,59,48,0.18)'
-                    : avgDelay < -1 ? 'rgba(10,132,255,0.18)'
-                    : 'rgba(52,199,89,0.18)',
-                accent: avgDelay === null ? 'white'
-                    : avgDelay > 3 ? '#ff6b6b'
-                    : avgDelay < -1 ? '#4da6ff'
-                    : '#34c759',
-                flex: 1,
-                badge: delayCount > 0 ? `sur ${delayCount} bus` : null
-            })
-        ]));
-
-        if (delayCount > 0) {
-            const punctCard = document.createElement('div');
-            punctCard.style.cssText = `
-                background: rgba(255,255,255,0.06);
-                border-radius: 14px;
-                padding: 12px 14px;
-                border: 1px solid rgba(255,255,255,0.08);
-                display: flex;
-                flex-direction: column;
-                gap: 6px;
-            `;
-
-            const punctHeader = document.createElement('div');
-            punctHeader.style.cssText = `display: flex; align-items: center; justify-content: space-between;`;
-            punctHeader.innerHTML = `
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:16px;">📊</span>
-                    <span style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">${t('punctuality') || 'Ponctualité'}</span>
-                </div>
-                <span style="font-size:18px;font-weight:700;color:${onTimePct >= 70 ? '#34c759' : onTimePct >= 50 ? '#ff9f0a' : '#ff6b6b'};">${onTimePct}%</span>
-            `;
-            punctCard.appendChild(punctHeader);
-
-            // Barre segmentée
-            const barRow = document.createElement('div');
-            barRow.style.cssText = `display: flex; height: 6px; border-radius: 6px; overflow: hidden; gap: 2px;`;
-
-            const segments = [
-                { count: onTimeCount, color: '#34c759' },
-                { count: earlyCount,  color: '#4da6ff' },
-                { count: lateCount,   color: '#ff6b6b' }
-            ];
-            segments.forEach(({ count, color }) => {
-                const seg = document.createElement('div');
-                const pct = Math.round((count / delayCount) * 100);
-                seg.style.cssText = `flex: ${pct}; background: ${color}; border-radius: 4px; transition: flex 0.8s ease;`;
-                barRow.appendChild(seg);
-            });
-            punctCard.appendChild(barRow);
-
-            const legendRow = document.createElement('div');
-            legendRow.style.cssText = `display: flex; gap: 12px;`;
-            [
-                { label: t('on_time') || 'À l\'heure', count: onTimeCount, color: '#34c759' },
-                { label: t('early')   || 'En avance',  count: earlyCount,  color: '#4da6ff' },
-                { label: t('late')    || 'En retard',   count: lateCount,   color: '#ff6b6b' }
-            ].forEach(({ label, count, color }) => {
-                const dot = document.createElement('div');
-                dot.style.cssText = `display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.6);`;
-                dot.innerHTML = `<div style="width:6px;height:6px;border-radius:50%;background:${color};"></div>${count} ${label}`;
-                legendRow.appendChild(dot);
-            });
-            punctCard.appendChild(legendRow);
-            wrapper.appendChild(punctCard);
-        }
-
-        wrapper.appendChild(makeRow([
-            busiestLine ? makeCard({
-                icon: '🔥',
-                title: t('busiest_line') || 'Ligne la + chargée',
-                value: `Ligne ${lineName[busiestLine] || busiestLine}`,
-                sub: `${busiestCount} ${t('vehicles') || 'véhicules'}`,
-                color: `${lineColors[busiestLine] || '#333'}44`,
-                accent: lineColors[busiestLine] || 'white',
-                flex: 1,
-                progress: Math.round((busiestCount / totalVehicles) * 100)
-            }) : makeCard({
-                icon: '🔥',
-                title: t('busiest_line') || 'Ligne la + chargée',
-                value: '—',
-                flex: 1
-            }),
-            makeCard({
-                icon: '👁️',
-                title: t('vehicles_viewed') || 'Bus consultés',
-                value: totalConsulted,
-                sub: `depuis ${firstUseDate}`,
-                color: 'rgba(175,82,222,0.18)',
-                accent: '#bf5af2',
-                flex: 1,
-                badge: sessionVehicles.length > 0 ? `${sessionVehicles.length} aujourd'hui` : null
-            })
-        ]));
-
-        wrapper.appendChild(makeRow([
-            makeCard({
-                icon: '🔄',
-                title: t('refreshes') || 'Actualisations',
-                value: refreshCount,
-                sub: t('since_opening') || 'depuis ouverture',
-                color: 'rgba(255,159,10,0.15)',
-                accent: '#ff9f0a',
-                flex: 1
-            }),
-            makeCard({
-                icon: '📡',
-                title: t('data_source') || 'Données temps réel',
-                value: `${Object.keys(tripUpdates).length}`,
-                sub: t('trips_tracked') || 'trips suivis',
-                color: 'rgba(52,199,89,0.12)',
-                accent: '#34c759',
-                flex: 1
-            })
-        ]));
-
-        const sep = document.createElement('div');
-        sep.style.cssText = `height: 1px; background: rgba(255,255,255,0.06); margin: 2px 0 4px;`;
-        wrapper.appendChild(sep);
-
-        this.container.appendChild(wrapper);
     },
         
     _buildBusIndex() {
@@ -6062,6 +5696,7 @@ const MenuManager = {
             padding: 9px 33px 9px 9px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             z-index: 1001;
             transition: transform 0.3s ease;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -6070,6 +5705,7 @@ const MenuManager = {
             width: fit-content;
             margin: 10px 15px 0px;
             border-radius: 33px;
+            gap: 12px;
         `;
         
         const backButton = document.createElement('div');
@@ -6084,7 +5720,7 @@ const MenuManager = {
             justify-content: center;
             cursor: pointer;
             padding: 8px;
-            margin-right: 15px;
+            margin-right: 5px;
             border-radius: 33px;
             transition: background 0.2s ease;
         `;
@@ -6097,16 +5733,38 @@ const MenuManager = {
         title.id = 'menu-statistics';
         title.textContent = t("network");
         title.style.cssText = `font-size: 20px; font-weight: 500;`;
+
+        const statsButton = document.createElement('div');
+        statsButton.id = 'menu-stats-toggle-btn';
+        statsButton.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 3V21H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7 16L11 10L15 13L20 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        statsButton.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 33px;
+            transition: background 0.2s ease;
+            opacity: 0.85;
+        `;
+        statsButton.onmouseover = () => statsButton.style.background = 'rgba(255, 255, 255, 0.15)';
+        statsButton.onmouseout = () => statsButton.style.background = 'transparent';
+        statsButton.onclick = () => this._toggleStatsView();
         
         topBar.appendChild(backButton);
         topBar.appendChild(title);
+        topBar.appendChild(statsButton);
         this.container.appendChild(topBar);
 
         let lastScrollTop = 0;
 
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
-            const searchContainer = document.getElementById('search-container');
             
             if (scrollTop > lastScrollTop && scrollTop > 50) {
                 topBar.style.transform = 'translateY(-130%)';
@@ -6249,6 +5907,8 @@ const MenuManager = {
             }
             safeVibrate([50, 30, 50], true);
             soundsUX('MBF_Menu_LineSelect');
+            const lc = parseInt(localStorage.getItem('mbf_lines_consulted') || '0', 10);
+            localStorage.setItem('mbf_lines_consulted', (lc + 1).toString());
             selectedLine = line;
             filterByLine(line);
             closeMenu();
@@ -6681,6 +6341,475 @@ const MenuManager = {
             
             return a.localeCompare(b);
         });
+    },
+
+    _toggleStatsView() {
+        const statsView = document.getElementById('menu-stats-view');
+        const mainContent = document.getElementById('menu-main-content-wrapper');
+        const searchContainer = document.getElementById('search-container');
+        const spacer = document.getElementById('menu-spacer');
+        const statsBtn = document.getElementById('menu-stats-toggle-btn');
+        const titleEl = document.getElementById('menu-statistics');
+
+        if (!statsView) {
+            this._buildStatsView();
+            return;
+        }
+
+        const isStatsVisible = statsView.style.display !== 'none';
+
+        if (isStatsVisible) {
+            statsView.style.opacity = '0';
+            statsView.style.transform = 'translateX(100%)';
+            setTimeout(() => { statsView.style.display = 'none'; }, 350);
+
+            if (mainContent) {
+                mainContent.style.display = 'block';
+                mainContent.style.opacity = '0';
+                mainContent.style.transform = 'translateX(-30px)';
+                setTimeout(() => {
+                    mainContent.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    mainContent.style.opacity = '1';
+                    mainContent.style.transform = 'translateX(0)';
+                }, 20);
+            }
+            if (searchContainer) searchContainer.style.display = '';
+            if (spacer) spacer.style.display = '';
+
+            statsBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 3V21H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 16L11 10L15 13L20 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`;
+            if (titleEl) titleEl.innerHTML = `<div>${t("network")}</div><div style="font-size:12px;opacity:.8;">${Object.keys(this.busesByLineAndDestination).length} ${t('lines')} • ${this._countTotalVehicles()} ${t('vehicles')}</div>`;
+
+        } else {
+            this._refreshStatsView();
+            statsView.style.display = 'block';
+            statsView.style.opacity = '0';
+            statsView.style.transform = 'translateX(30px)';
+            setTimeout(() => {
+                statsView.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                statsView.style.opacity = '1';
+                statsView.style.transform = 'translateX(0)';
+            }, 20);
+
+            if (mainContent) {
+                mainContent.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                mainContent.style.opacity = '0';
+                mainContent.style.transform = 'translateX(-30px)';
+                setTimeout(() => { mainContent.style.display = 'none'; }, 200);
+            }
+            if (searchContainer) searchContainer.style.display = 'none';
+            if (spacer) spacer.style.display = 'none';
+
+            statsBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 3H5C3.89543 3 3 3.89543 3 5V9C3 10.1046 3.89543 11 5 11H9C10.1046 11 11 10.1046 11 9V5C11 3.89543 10.1046 3 9 3Z" stroke="white" stroke-width="2"/>
+                    <path d="M19 3H15C13.8954 3 13 3.89543 13 5V9C13 10.1046 13.8954 11 15 11H19C20.1046 11 21 10.1046 21 9V5C21 3.89543 20.1046 3 19 3Z" stroke="white" stroke-width="2"/>
+                    <path d="M9 13H5C3.89543 13 3 13.8954 3 15V19C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19V15C11 13.8954 10.1046 13 9 13Z" stroke="white" stroke-width="2"/>
+                    <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
+                </svg>`;
+            if (titleEl) titleEl.innerHTML = `<div>Statistiques</div>`;
+        }
+    },
+
+    _countTotalVehicles() {
+        let total = 0;
+        Object.values(this.busesByLineAndDestination).forEach(destinations => {
+            Object.values(destinations).forEach(buses => { total += buses.length; });
+        });
+        return total;
+    },
+
+    _computeNetworkStats() {
+        const now = Date.now() / 1000;
+
+        let totalVehicles = 0;
+        let totalLines = Object.keys(this.busesByLineAndDestination).length;
+        let totalDestinations = 0;
+        const lineVehicleCounts = {};
+        const destinationSet = new Set();
+
+        Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
+            let lineCount = 0;
+            Object.entries(destinations).forEach(([dest, buses]) => {
+                destinationSet.add(dest);
+                lineCount += buses.length;
+                totalVehicles += buses.length;
+            });
+            lineVehicleCounts[line] = lineCount;
+            totalDestinations++;
+        });
+
+        // Ligne la plus chargée
+        let busiestLine = null, busiestCount = 0;
+        Object.entries(lineVehicleCounts).forEach(([line, count]) => {
+            if (count > busiestCount) { busiestCount = count; busiestLine = line; }
+        });
+
+        // Calcul du retard moyen réseau
+        let delaySum = 0, delayCount = 0;
+        let onTimeCount = 0, lateCount = 0, earlyCount = 0;
+
+        markerPool.active.forEach((marker) => {
+            const tripId = marker.vehicleData?.trip?.tripId;
+            const stopId = (marker.vehicleData?.stopId || '').replace('0:', '');
+            const nextStops = tripUpdates[tripId]?.nextStops || [];
+
+            nextStops.slice(0, 3).forEach(stop => {
+                const computed = computeDelaySeconds(tripId, stop.stopId, stop.arrivalTime || stop.departureTime);
+                if (computed !== null) {
+                    delaySum += computed;
+                    delayCount++;
+                    const mins = computed / 60;
+                    if (Math.abs(mins) <= 1) onTimeCount++;
+                    else if (mins > 1) lateCount++;
+                    else earlyCount++;
+                }
+            });
+        });
+
+        const avgDelaySeconds = delayCount > 0 ? delaySum / delayCount : 0;
+        const avgDelayMinutes = avgDelaySeconds / 60;
+        const onTimePercent = delayCount > 0 ? Math.round((onTimeCount / delayCount) * 100) : null;
+
+        // Véhicules électriques / hybrides / GNV
+        let elecCount = 0, hybridCount = 0, gnvCount = 0;
+        markerPool.active.forEach((marker) => {
+            const vehicleLabel = marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id;
+            if (!vehicleLabel) return;
+            const id = String(vehicleLabel);
+            if (vehicleTypes['elec']?.has(id)) elecCount++;
+            if (vehicleTypes['hybrid']?.has(id)) hybridCount++;
+            if (vehicleTypes['gnv']?.has(id)) gnvCount++;
+        });
+        const greenCount = elecCount + hybridCount + gnvCount;
+        const greenPercent = totalVehicles > 0 ? Math.round((greenCount / totalVehicles) * 100) : 0;
+
+        // Stats de session stockées
+        const sessionKey = 'mbf_session_stats';
+        let sessionStats = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+        const firstUse = localStorage.getItem('mbf_first_use') || new Date().toISOString();
+        if (!localStorage.getItem('mbf_first_use')) localStorage.setItem('mbf_first_use', firstUse);
+
+        // Compteur de véhicules consultés (popup ouverts)
+        const vehiclesConsulted = parseInt(localStorage.getItem('mbf_vehicles_consulted') || '0', 10);
+        const linesConsulted = parseInt(localStorage.getItem('mbf_lines_consulted') || '0', 10);
+
+        // Calculer le max historique de véhicules simultanés
+        const currentTotal = totalVehicles;
+        const historicMax = Math.max(parseInt(localStorage.getItem('mbf_max_vehicles') || '0', 10), currentTotal);
+        localStorage.setItem('mbf_max_vehicles', historicMax.toString());
+
+        // Heure de pointe estimée (plus de véhicules = heure de pointe)
+        const hour = new Date().getHours();
+        const isPeakHour = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);
+
+        // Jours depuis première utilisation
+        const daysSinceFirst = Math.floor((Date.now() - new Date(firstUse).getTime()) / (1000 * 60 * 60 * 24));
+
+        return {
+            totalVehicles, totalLines, totalDestinations: destinationSet.size,
+            busiestLine, busiestCount,
+            avgDelayMinutes, avgDelaySeconds, onTimePercent, onTimeCount, lateCount, earlyCount, delayCount,
+            elecCount, hybridCount, gnvCount, greenCount, greenPercent,
+            vehiclesConsulted, linesConsulted,
+            historicMax, isPeakHour, daysSinceFirst, firstUse,
+            lineVehicleCounts
+        };
+    },
+
+    _buildStatsView() {
+        const statsView = document.createElement('div');
+        statsView.id = 'menu-stats-view';
+        statsView.style.cssText = `
+            padding: 10px 10px 20px;
+            display: none;
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        `;
+        this.container.appendChild(statsView);
+
+        // Wrapper le contenu existant (sections de lignes + search)
+        const existingSections = this.container.querySelectorAll('.linesection');
+        const searchContainer = document.getElementById('search-container');
+        const spacer = document.getElementById('menu-spacer');
+
+        let wrapper = document.getElementById('menu-main-content-wrapper');
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.id = 'menu-main-content-wrapper';
+            wrapper.style.cssText = `transition: opacity 0.2s ease, transform 0.2s ease;`;
+
+            if (searchContainer) this.container.insertBefore(wrapper, searchContainer);
+            else this.container.appendChild(wrapper);
+
+            if (searchContainer) wrapper.appendChild(searchContainer);
+            if (spacer) wrapper.appendChild(spacer);
+            existingSections.forEach(s => wrapper.appendChild(s));
+        }
+
+        this._refreshStatsView();
+
+        statsView.style.display = 'block';
+        statsView.style.opacity = '0';
+        statsView.style.transform = 'translateX(30px)';
+        setTimeout(() => {
+            statsView.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            statsView.style.opacity = '1';
+            statsView.style.transform = 'translateX(0)';
+        }, 20);
+
+        if (wrapper) {
+            wrapper.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            wrapper.style.opacity = '0';
+            wrapper.style.transform = 'translateX(-30px)';
+            setTimeout(() => { wrapper.style.display = 'none'; }, 200);
+        }
+        if (searchContainer) searchContainer.style.display = 'none';
+        if (spacer) spacer.style.display = 'none';
+
+        const statsBtn = document.getElementById('menu-stats-toggle-btn');
+        const titleEl = document.getElementById('menu-statistics');
+        if (statsBtn) statsBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M9 3H5C3.89543 3 3 3.89543 3 5V9C3 10.1046 3.89543 11 5 11H9C10.1046 11 11 10.1046 11 9V5C11 3.89543 10.1046 3 9 3Z" stroke="white" stroke-width="2"/>
+                <path d="M19 3H15C13.8954 3 13 3.89543 13 5V9C13 10.1046 13.8954 11 15 11H19C20.1046 11 21 10.1046 21 9V5C21 3.89543 20.1046 3 19 3Z" stroke="white" stroke-width="2"/>
+                <path d="M9 13H5C3.89543 13 3 13.8954 3 15V19C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19V15C11 13.8954 10.1046 13 9 13Z" stroke="white" stroke-width="2"/>
+                <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
+            </svg>`;
+        if (titleEl) titleEl.innerHTML = `<div>Statistiques</div>`;
+    },
+
+    _refreshStatsView() {
+        const statsView = document.getElementById('menu-stats-view');
+        if (!statsView) return;
+
+        const s = this._computeNetworkStats();
+
+        // Couleur pour retard moyen
+        const delayColor = Math.abs(s.avgDelayMinutes) <= 1 ? '#15d85d'
+            : s.avgDelayMinutes > 5 ? '#b31313'
+            : s.avgDelayMinutes > 1 ? '#db6a18' : '#1a5ecc';
+
+        const delayLabel = Math.abs(s.avgDelayMinutes) <= 1 ? 'À l\'heure'
+            : s.avgDelayMinutes > 0
+                ? `+${s.avgDelayMinutes.toFixed(1)} min`
+                : `${s.avgDelayMinutes.toFixed(1)} min`;
+
+        const delayEmoji = Math.abs(s.avgDelayMinutes) <= 1 ? '✅'
+            : s.avgDelayMinutes > 5 ? '🔴' : '🟠';
+
+        const busiestLineName = s.busiestLine ? (lineName[s.busiestLine] || s.busiestLine) : '—';
+        const busiestLineColor = s.busiestLine ? (lineColors[s.busiestLine] || '#555') : '#555';
+
+        // Barre de ponctualité
+        const onTimePct = s.onTimePercent ?? 0;
+        const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
+        const earlyPct = s.delayCount > 0 ? Math.round((s.earlyCount / s.delayCount) * 100) : 0;
+
+        // Top 3 lignes les plus chargées
+        const topLines = Object.entries(s.lineVehicleCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+
+        const topLinesHTML = topLines.map(([line, count], i) => {
+            const color = lineColors[line] || '#555';
+            const name = lineName[line] || line;
+            const width = topLines[0][1] > 0 ? Math.round((count / topLines[0][1]) * 100) : 0;
+            return `
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                    <div style="
+                        background:${color};
+                        color:white;
+                        padding:3px 10px;
+                        border-radius:8px;
+                        font-weight:600;
+                        font-size:13px;
+                        min-width:38px;
+                        text-align:center;
+                    ">${name}</div>
+                    <div style="flex:1; background:rgba(255,255,255,0.1); border-radius:6px; height:8px; overflow:hidden;">
+                        <div style="width:${width}%; height:100%; background:${color}; border-radius:6px; transition:width 0.8s ease;"></div>
+                    </div>
+                    <div style="font-size:12px; opacity:0.75; min-width:24px; text-align:right;">${count}</div>
+                </div>`;
+        }).join('');
+
+        // Compo flotte
+        const fleetHTML = [
+            { label: 'Élec.', count: s.elecCount, color: '#15d85d', emoji: '⚡' },
+            { label: 'Hybride', count: s.hybridCount, color: '#1a5ecc', emoji: '🔋' },
+            { label: 'GNV', count: s.gnvCount, color: '#db6a18', emoji: '🌿' },
+        ].filter(f => f.count > 0).map(f => `
+            <div style="
+                flex:1; background:${f.color}22; border:1px solid ${f.color}44;
+                border-radius:12px; padding:10px 8px; text-align:center;
+            ">
+                <div style="font-size:18px;">${f.emoji}</div>
+                <div style="font-size:18px; font-weight:700; color:white;">${f.count}</div>
+                <div style="font-size:10px; opacity:0.7;">${f.label}</div>
+            </div>`).join('') || `<div style="opacity:0.5; font-size:13px; padding:8px 0;">Données non disponibles</div>`;
+
+        const peakBadge = s.isPeakHour
+            ? `<span style="background:#ff6b3522; border:1px solid #ff6b3566; color:#ff9966; padding:2px 10px; border-radius:20px; font-size:11px;">📈 Heure de pointe</span>`
+            : `<span style="background:#15d85d22; border:1px solid #15d85d44; color:#15d85d; padding:2px 10px; border-radius:20px; font-size:11px;">🟢 Trafic normal</span>`;
+
+        const daysSinceFirstLabel = s.daysSinceFirst === 0 ? "Aujourd'hui"
+            : s.daysSinceFirst === 1 ? 'Hier'
+            : `Il y a ${s.daysSinceFirst} jours`;
+
+        statsView.innerHTML = `
+            <style>
+                .stats-card {
+                    background: rgba(0,0,0,0.35);
+                    border-radius: 16px;
+                    padding: 14px 16px;
+                    margin-bottom: 10px;
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.07);
+                    color: white;
+                    font-family: 'League Spartan', sans-serif;
+                    animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+                }
+                .stats-card-title {
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    opacity: 0.55;
+                    margin-bottom: 8px;
+                    font-weight: 600;
+                }
+                .stats-kpi-row {
+                    display: flex;
+                    gap: 10px;
+                    margin-bottom: 10px;
+                }
+                .stats-kpi {
+                    flex: 1;
+                    background: rgba(255,255,255,0.06);
+                    border-radius: 12px;
+                    padding: 12px 10px;
+                    text-align: center;
+                    border: 1px solid rgba(255,255,255,0.08);
+                }
+                .stats-kpi-value {
+                    font-size: 26px;
+                    font-weight: 700;
+                    line-height: 1.1;
+                }
+                .stats-kpi-label {
+                    font-size: 10px;
+                    opacity: 0.6;
+                    margin-top: 2px;
+                }
+                .stats-ponctualite-bar {
+                    height: 10px;
+                    border-radius: 6px;
+                    overflow: hidden;
+                    display: flex;
+                    background: rgba(255,255,255,0.08);
+                    margin: 8px 0 4px;
+                }
+            </style>
+
+            <!-- KPIs principaux -->
+            <div class="stats-kpi-row" style="animation-delay:0s">
+                <div class="stats-kpi">
+                    <div class="stats-kpi-value">${s.totalVehicles}</div>
+                    <div class="stats-kpi-label">🚌 En service</div>
+                </div>
+                <div class="stats-kpi">
+                    <div class="stats-kpi-value">${s.totalLines}</div>
+                    <div class="stats-kpi-label">🗺️ Lignes</div>
+                </div>
+                <div class="stats-kpi">
+                    <div class="stats-kpi-value" style="color:${delayColor};">${s.delayCount > 0 ? delayLabel : '—'}</div>
+                    <div class="stats-kpi-label">⏱ Retard moy.</div>
+                </div>
+            </div>
+
+            <!-- Ponctualité -->
+            ${s.delayCount > 0 ? `
+            <div class="stats-card" style="animation-delay:0.05s">
+                <div class="stats-card-title">Ponctualité réseau</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <div style="font-size:22px; font-weight:700; color:${delayColor};">${onTimePct}% <span style="font-size:13px;font-weight:400;opacity:.7;">à l'heure</span></div>
+                    ${peakBadge}
+                </div>
+                <div class="stats-ponctualite-bar">
+                    <div style="width:${onTimePct}%; background:#15d85d; transition:width 1s ease;"></div>
+                    <div style="width:${earlyPct}%; background:#1a5ecc; transition:width 1s ease;"></div>
+                    <div style="width:${latePct}%; background:${latePct > 20 ? '#b31313' : '#db6a18'}; transition:width 1s ease;"></div>
+                </div>
+                <div style="display:flex; gap:12px; font-size:11px; opacity:0.7; margin-top:4px;">
+                    <span>🟢 À l'heure ${onTimePct}%</span>
+                    <span>🔵 Avance ${earlyPct}%</span>
+                    <span>🔴 Retard ${latePct}%</span>
+                </div>
+            </div>` : ''}
+
+            <!-- Lignes les plus chargées -->
+            ${topLines.length > 0 ? `
+            <div class="stats-card" style="animation-delay:0.1s">
+                <div class="stats-card-title">Lignes les plus chargées</div>
+                ${topLinesHTML}
+            </div>` : ''}
+
+            <!-- Flotte verte -->
+            ${s.totalVehicles > 0 ? `
+            <div class="stats-card" style="animation-delay:0.15s">
+                <div class="stats-card-title">Composition de la flotte</div>
+                <div style="display:flex; align-items:baseline; gap:6px; margin-bottom:10px;">
+                    <span style="font-size:26px; font-weight:700; color:#15d85d;">${s.greenPercent}%</span>
+                    <span style="font-size:12px; opacity:.7;">de véhicules propres en service</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    ${fleetHTML}
+                </div>
+            </div>` : ''}
+
+            <!-- Statistiques personnelles -->
+            <div class="stats-card" style="animation-delay:0.2s">
+                <div class="stats-card-title">Votre utilisation</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:100px; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:center;">
+                        <div style="font-size:22px; font-weight:700;">🚌 ${s.vehiclesConsulted}</div>
+                        <div style="font-size:10px; opacity:.6; margin-top:2px;">Véhicules consultés</div>
+                    </div>
+                    <div style="flex:1; min-width:100px; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:center;">
+                        <div style="font-size:22px; font-weight:700;">📈 ${s.historicMax}</div>
+                        <div style="font-size:10px; opacity:.6; margin-top:2px;">Record simultané</div>
+                    </div>
+                    <div style="flex:1; min-width:100px; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:center;">
+                        <div style="font-size:22px; font-weight:700;">🗓️ ${s.daysSinceFirst}</div>
+                        <div style="font-size:10px; opacity:.6; margin-top:2px;">Jours d'utilisation</div>
+                    </div>
+                </div>
+                <div style="margin-top:8px; font-size:11px; opacity:.45; text-align:right;">
+                    Première utilisation : ${new Date(s.firstUse).toLocaleDateString('fr-FR')}
+                </div>
+            </div>
+
+            <!-- Refresh -->
+            <div style="text-align:center; margin-top:6px;">
+                <div onclick="MenuManager._refreshStatsView()" style="
+                    display:inline-flex; align-items:center; gap:6px;
+                    background:rgba(255,255,255,0.08); border-radius:20px;
+                    padding:7px 16px; cursor:pointer; font-size:12px; color:white;
+                    opacity:0.7; transition:opacity 0.2s;
+                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                    Actualiser
+                </div>
+            </div>
+        `;
     }
 };
 
@@ -8837,18 +8966,6 @@ const menubottom1 = document.getElementById('menubtm');
             }
             }, { once: true });
             MenuManager._handleScrollAnimations();
-
-            const oldPanel = document.getElementById('stats-panel');
-            if (oldPanel) oldPanel.remove();
-            MenuManager._createStatsPanel();
-            const searchContainer = document.getElementById('search-container');
-            const spacer = document.getElementById('menu-spacer');
-            if (searchContainer && spacer) {
-                MenuManager.container.insertBefore(
-                    document.getElementById('stats-panel'),
-                    spacer
-                );
-            }
 
         }
 
