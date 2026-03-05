@@ -3456,6 +3456,8 @@ function createColoredMarker(lat, lon, route_id, bearing = 0) {
     marker.on('popupopen', function(e) {
         const menubtm = document.getElementById('menubtm');
         safeVibrate([50]);
+        const consulted = parseInt(localStorage.getItem('mbf_vehicles_consulted') || '0', 10);
+        localStorage.setItem('mbf_vehicles_consulted', (consulted + 1).toString());
         soundsUX('MBF_VehicleOpen');
         saveAndFilterSingleLine(route_id);
 
@@ -5085,13 +5087,13 @@ const MenuManager = {
         const searchContainer = document.createElement('div');
         searchContainer.id = 'search-container';
         searchContainer.style.cssText = `
-            position: sticky;
             top: 78px;
             left: 0;
             right: 0;
             padding: 0 16px 10px;
             z-index: 0;
             transition: transform 0.3s ease;
+            margin-top: 10px;
         `;
         
         const searchWrapper = document.createElement('div');
@@ -5691,9 +5693,10 @@ const MenuManager = {
             left: 0;
             background-color: #00000075;
             color: white;
-            padding: 9px 33px 9px 9px;
+            padding: 9px;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             z-index: 1001;
             transition: transform 0.3s ease;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
@@ -5702,6 +5705,7 @@ const MenuManager = {
             width: fit-content;
             margin: 10px 15px 0px;
             border-radius: 33px;
+            gap: 12px;
         `;
         
         const backButton = document.createElement('div');
@@ -5716,7 +5720,7 @@ const MenuManager = {
             justify-content: center;
             cursor: pointer;
             padding: 8px;
-            margin-right: 15px;
+            margin-right: 5px;
             border-radius: 33px;
             transition: background 0.2s ease;
         `;
@@ -5729,16 +5733,38 @@ const MenuManager = {
         title.id = 'menu-statistics';
         title.textContent = t("network");
         title.style.cssText = `font-size: 20px; font-weight: 500;`;
+
+        const statsButton = document.createElement('div');
+        statsButton.id = 'menu-stats-toggle-btn';
+        statsButton.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 3V21H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M7 16L11 10L15 13L20 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        statsButton.style.cssText = `
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 33px;
+            transition: background 0.2s ease;
+            opacity: 0.85;
+        `;
+        statsButton.onmouseover = () => statsButton.style.background = 'rgba(255, 255, 255, 0.15)';
+        statsButton.onmouseout = () => statsButton.style.background = 'transparent';
+        statsButton.onclick = () => this._toggleStatsView();
         
         topBar.appendChild(backButton);
         topBar.appendChild(title);
+        topBar.appendChild(statsButton);
         this.container.appendChild(topBar);
 
         let lastScrollTop = 0;
 
         this.container.addEventListener('scroll', () => {
             const scrollTop = this.container.scrollTop;
-            const searchContainer = document.getElementById('search-container');
             
             if (scrollTop > lastScrollTop && scrollTop > 50) {
                 topBar.style.transform = 'translateY(-130%)';
@@ -5752,27 +5778,20 @@ const MenuManager = {
     },
 
     _handleScrollAnimations() {
+        const wrapper = document.getElementById('menu-main-content-wrapper');
+        const containerToCheck = wrapper || this.container;
         const containerRect = this.container.getBoundingClientRect();
-        const sections = this.container.querySelectorAll('.linesection');
-        
+        const sections = containerToCheck.querySelectorAll('.linesection');
+
         sections.forEach(section => {
             const sectionRect = section.getBoundingClientRect();
             const sectionTop = sectionRect.top - containerRect.top;
             const sectionBottom = sectionRect.bottom - containerRect.top;
-            
             const isVisible = sectionBottom > 0 && sectionTop < containerRect.height;
 
-            
             if (isVisible) {
-                    section.dataset.currentlyVisible = 'true';
-                    section.style.animation = 'scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
-            } else {
-                if (section.dataset.currentlyVisible === 'true') {
-                    section.dataset.currentlyVisible = 'false';
-                    section.style.animation = 'none';
-                    section.style.opacity = '0';
-                    section.style.transform = 'scale(0.9)';
-                }
+                section.style.opacity = '1';
+                section.style.transform = 'scale(1) translateY(0)';
             }
         });
     },
@@ -5881,6 +5900,8 @@ const MenuManager = {
             }
             safeVibrate([50, 30, 50], true);
             soundsUX('MBF_Menu_LineSelect');
+            const lc = parseInt(localStorage.getItem('mbf_lines_consulted') || '0', 10);
+            localStorage.setItem('mbf_lines_consulted', (lc + 1).toString());
             selectedLine = line;
             filterByLine(line);
             closeMenu();
@@ -6096,22 +6117,25 @@ const MenuManager = {
     _addLine(line, destinations) {
         const lineSection = this._createLineSection(line);
         this.sections.set(line, lineSection);
-        
+
+        const wrapper = document.getElementById('menu-main-content-wrapper');
+        const target = wrapper || this.container;
+
         const sortedLines = this._getSortedLines();
         const index = sortedLines.indexOf(line);
-        
+
         if (index === -1 || index === sortedLines.length - 1) {
-            this.container.appendChild(lineSection.element);
+            target.appendChild(lineSection.element);
         } else {
             const nextLine = sortedLines[index + 1];
             const nextElement = this.sections.get(nextLine)?.element;
-            if (nextElement) {
-                this.container.insertBefore(lineSection.element, nextElement);
+            if (nextElement && target.contains(nextElement)) {
+                target.insertBefore(lineSection.element, nextElement);
             } else {
-                this.container.appendChild(lineSection.element);
+                target.appendChild(lineSection.element);
             }
         }
-        
+
         Object.keys(destinations).sort().forEach(dest => {
             this._addDestinationToSection(lineSection, line, dest, destinations[dest]);
         });
@@ -6240,11 +6264,14 @@ const MenuManager = {
     _updateStatistics() {
         const statsElement = document.getElementById('menu-statistics');
         if (!statsElement) return;
-        
+
+        const statsView = document.getElementById('menu-stats-view');
+        if (statsView && statsView.style.display !== 'none') return;
+
         let totalLines = Object.keys(this.busesByLineAndDestination).length;
         let totalVehicles = 0;
         let activeLines = 0;
-        
+
         Object.values(this.busesByLineAndDestination).forEach(destinations => {
             let lineVehicleCount = 0;
             Object.values(destinations).forEach(buses => {
@@ -6253,9 +6280,9 @@ const MenuManager = {
             totalVehicles += lineVehicleCount;
             if (lineVehicleCount > 0) activeLines++;
         });
-        
+
         const sameNumber = (activeLines === totalLines);
-        
+
         if (sameNumber) {
             statsElement.innerHTML = `
                 <div>${t("network")}</div>
@@ -6271,7 +6298,7 @@ const MenuManager = {
                 </div>
             `;
         }
-    },
+},
     
     _getSortedLines() {
         return Object.keys(this.busesByLineAndDestination).sort((a, b) => {
@@ -6313,7 +6340,791 @@ const MenuManager = {
             
             return a.localeCompare(b);
         });
-    }
+    },
+
+    _toggleStatsView() {
+        const statsView = document.getElementById('menu-stats-view');
+        const mainContent = document.getElementById('menu-main-content-wrapper');
+        const searchContainer = document.getElementById('search-container');
+        const spacer = document.getElementById('menu-spacer');
+        const statsBtn = document.getElementById('menu-stats-toggle-btn');
+        const titleEl = document.getElementById('menu-statistics');
+
+        if (!statsView) {
+            this._buildStatsView();
+            return;
+        }
+
+        const isStatsVisible = statsView.style.display !== 'none';
+
+        if (isStatsVisible) {
+            statsView.style.opacity = '0';
+            statsView.style.transform = 'translateX(100%)';
+            setTimeout(() => { statsView.style.display = 'none'; }, 350);
+
+            if (mainContent) {
+                mainContent.style.display = 'block';
+                mainContent.style.opacity = '0';
+                mainContent.style.transform = 'translateX(-30px)';
+                setTimeout(() => {
+                    mainContent.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    mainContent.style.opacity = '1';
+                    mainContent.style.transform = 'translateX(0)';
+                }, 20);
+            }
+            if (searchContainer) searchContainer.style.display = '';
+            if (spacer) spacer.style.display = '';
+
+            statsBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 3V21H21" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M7 16L11 10L15 13L20 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`;
+            if (titleEl) titleEl.innerHTML = `<div>${t("network")}</div><div style="font-size:12px;opacity:.8;">${Object.keys(this.busesByLineAndDestination).length} ${t('lines')} • ${this._countTotalVehicles()} ${t('vehicles')}</div>`;
+            const topBar = document.getElementById('menu-top-bar');
+            if (topBar) {
+                topBar.classList.remove('topbar-anim-expand', 'topbar-anim-shrink');
+                void topBar.offsetWidth;
+                topBar.classList.add('topbar-anim-shrink');
+            }
+        } else {
+            this._refreshStatsView();
+            statsView.style.display = 'block';
+            statsView.style.opacity = '0';
+            statsView.style.transform = 'translateX(30px)';
+            setTimeout(() => {
+                statsView.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                statsView.style.opacity = '1';
+                statsView.style.transform = 'translateX(0)';
+            }, 20);
+
+            if (mainContent) {
+                mainContent.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                mainContent.style.opacity = '0';
+                mainContent.style.transform = 'translateX(-30px)';
+                setTimeout(() => { mainContent.style.display = 'none'; }, 200);
+            }
+            if (searchContainer) searchContainer.style.display = 'none';
+            if (spacer) spacer.style.display = 'none';
+
+            statsBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 3H5C3.89543 3 3 3.89543 3 5V9C3 10.1046 3.89543 11 5 11H9C10.1046 11 11 10.1046 11 9V5C11 3.89543 10.1046 3 9 3Z" stroke="white" stroke-width="2"/>
+                    <path d="M19 3H15C13.8954 3 13 3.89543 13 5V9C13 10.1046 13.8954 11 15 11H19C20.1046 11 21 10.1046 21 9V5C21 3.89543 20.1046 3 19 3Z" stroke="white" stroke-width="2"/>
+                    <path d="M9 13H5C3.89543 13 3 13.8954 3 15V19C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19V15C11 13.8954 10.1046 13 9 13Z" stroke="white" stroke-width="2"/>
+                    <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
+                </svg>`;
+            if (titleEl) titleEl.innerHTML = `<div>${t('statistics')}</div>`;
+            const topBar = document.getElementById('menu-top-bar');
+            if (topBar) {
+                topBar.classList.remove('topbar-anim-expand', 'topbar-anim-shrink');
+                void topBar.offsetWidth;
+                topBar.classList.add('topbar-anim-expand');
+            }
+        }
+    },
+
+    _countTotalVehicles() {
+        let total = 0;
+        Object.values(this.busesByLineAndDestination).forEach(destinations => {
+            Object.values(destinations).forEach(buses => { total += buses.length; });
+        });
+        return total;
+    },
+
+    _computeNetworkStats() {
+        const now = Date.now() / 1000;
+
+        // Compteurs de base
+        let totalVehicles = 0;
+        let totalLines = Object.keys(this.busesByLineAndDestination).length;
+        const lineVehicleCounts = {};
+        const destinationSet = new Set();
+
+        Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
+            let lineCount = 0;
+            Object.entries(destinations).forEach(([dest, buses]) => {
+                destinationSet.add(dest);
+                lineCount += buses.length;
+                totalVehicles += buses.length;
+            });
+            lineVehicleCounts[line] = lineCount;
+        });
+
+        // Ligne la plus chargée
+        let busiestLine = null, busiestCount = 0;
+        Object.entries(lineVehicleCounts).forEach(([line, count]) => {
+            if (count > busiestCount) { busiestCount = count; busiestLine = line; }
+        });
+
+        // Ligne la moins chargée (au moins 1 véhicule)
+        let quietestLine = null, quietestCount = Infinity;
+        Object.entries(lineVehicleCounts).forEach(([line, count]) => {
+            if (count > 0 && count < quietestCount) { quietestCount = count; quietestLine = line; }
+        });
+
+        // Calcul retard moyen + distrib
+        let delaySum = 0, delayCount = 0;
+        let onTimeCount = 0, lateCount = 0, earlyCount = 0;
+        let maxDelay = 0, maxDelayLine = null;
+        let delayBuckets = { 'early_big': 0, 'early': 0, 'ontime': 0, 'late_small': 0, 'late_mid': 0, 'late_big': 0 };
+
+        markerPool.active.forEach((marker) => {
+            const tripId = marker.vehicleData?.trip?.tripId;
+            const nextStops = tripUpdates[tripId]?.nextStops || [];
+
+            nextStops.slice(0, 3).forEach(stop => {
+                const computed = computeDelaySeconds(tripId, stop.stopId, stop.arrivalTime || stop.departureTime);
+                if (computed !== null) {
+                    delaySum += computed;
+                    delayCount++;
+                    const mins = computed / 60;
+                    if (Math.abs(mins) <= 1) onTimeCount++;
+                    else if (mins > 1) lateCount++;
+                    else earlyCount++;
+
+                    if (mins > maxDelay) {
+                        maxDelay = mins;
+                        maxDelayLine = marker.line;
+                    }
+
+                    if (mins < -5) delayBuckets['early_big']++;
+                    else if (mins < -2) delayBuckets['early']++;
+                    else if (mins <= 2) delayBuckets['ontime']++;
+                    else if (mins <= 5) delayBuckets['late_small']++;
+                    else if (mins <= 10) delayBuckets['late_mid']++;
+                    else delayBuckets['late_big']++;
+                }
+            });
+        });
+
+        const avgDelaySeconds = delayCount > 0 ? delaySum / delayCount : 0;
+        const avgDelayMinutes = avgDelaySeconds / 60;
+        const onTimePercent = delayCount > 0 ? Math.round((onTimeCount / delayCount) * 100) : null;
+
+        // Véhicules par type
+        let elecCount = 0, hybridCount = 0, gnvCount = 0;
+        let usbCount = 0, acCount = 0;
+        markerPool.active.forEach((marker) => {
+            const id = String(marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id || '');
+            if (!id) return;
+            if (vehicleTypes['elec']?.has(id)) elecCount++;
+            if (vehicleTypes['hybrid']?.has(id)) hybridCount++;
+            if (vehicleTypes['gnv']?.has(id)) gnvCount++;
+            if (vehicleTypes['usb']?.has(id)) usbCount++;
+            if (vehicleTypes['clim']?.has(id)) acCount++;
+        });
+        const greenCount = elecCount + hybridCount + gnvCount;
+        const greenPercent = totalVehicles > 0 ? Math.round((greenCount / totalVehicles) * 100) : 0;
+
+        // Vitesse moyenne estimée (depuis les données position)
+        let speedSum = 0, speedCount = 0, stoppedCount = 0, movingCount = 0;
+        markerPool.active.forEach((marker) => {
+            const speed = marker.vehicleData?.position?.speed;
+            if (speed !== undefined && speed !== null) {
+                speedSum += speed;
+                speedCount++;
+                if (speed < 2) stoppedCount++;
+                else movingCount++;
+            }
+        });
+        const avgSpeed = speedCount > 0 ? (speedSum / speedCount).toFixed(1) : null;
+        const movingPercent = totalVehicles > 0 ? Math.round((movingCount / totalVehicles) * 100) : null;
+
+        // Occupancy globale
+        let occupancySum = 0, occupancyCount = 0;
+        let fullCount = 0, emptyCount = 0;
+        markerPool.active.forEach((marker) => {
+            const occ = marker.vehicleData?.occupancyStatus;
+            if (occ !== null && occ !== undefined) {
+                occupancySum += occ;
+                occupancyCount++;
+                if (occ >= 5) fullCount++;
+                if (occ <= 1) emptyCount++;
+            }
+        });
+        const avgOccupancy = occupancyCount > 0 ? occupancySum / occupancyCount : null;
+        const occupancyLabels = [t('empty'), t('slightly_full'), t('available_seats'), t('standing_room'), t('crowded'), t('full'), t('not_applicable')];
+        const avgOccupancyLabel = avgOccupancy !== null ? occupancyLabels[Math.min(Math.round(avgOccupancy), 6)] : null;
+
+        // Destinations uniques
+        const uniqueDestinations = destinationSet.size;
+
+        // Stats personnelles
+        const firstUse = localStorage.getItem('mbf_first_use') || new Date().toISOString();
+        if (!localStorage.getItem('mbf_first_use')) localStorage.setItem('mbf_first_use', firstUse);
+        const vehiclesConsulted = parseInt(localStorage.getItem('mbf_vehicles_consulted') || '0', 10);
+        const linesConsulted = parseInt(localStorage.getItem('mbf_lines_consulted') || '0', 10);
+        const historicMax = Math.max(parseInt(localStorage.getItem('mbf_max_vehicles') || '0', 10), totalVehicles);
+        localStorage.setItem('mbf_max_vehicles', historicMax.toString());
+        const daysSinceFirst = Math.floor((Date.now() - new Date(firstUse).getTime()) / (1000 * 60 * 60 * 24));
+
+        // Sessions (incrémente à chaque ouverture du menu stats)
+        const sessionsCount = parseInt(localStorage.getItem('mbf_stats_opened') || '0', 10);
+
+        // Heure de pointe
+        const hour = new Date().getHours();
+        const isPeakHour = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);
+
+        // Score de santé réseau (0-100)
+        let healthScore = 100;
+        if (onTimePercent !== null) healthScore = Math.round(onTimePercent * 0.6 + (movingPercent ?? 50) * 0.2 + Math.min(greenPercent, 100) * 0.2);
+        const healthColor = healthScore >= 80 ? '#a1d1b3' : healthScore >= 60 ? '#d1ac91' : '#c69090';
+        const healthLabel = healthScore >= 80 ? t('excellent') : healthScore >= 60 ? t('correct') : t('degraded');
+
+        // Tendance retard (comparaison avec dernière valeur stockée)
+        const lastAvgDelay = parseFloat(localStorage.getItem('mbf_last_avg_delay') || '0');
+        const delayTrend = avgDelayMinutes - lastAvgDelay;
+        localStorage.setItem('mbf_last_avg_delay', avgDelayMinutes.toFixed(2));
+        const delayTrendLabel = Math.abs(delayTrend) < 0.3 ? t('stable')
+            : delayTrend > 0 ? `+${Math.round(delayTrend)} min`
+            : `${Math.round(delayTrend)} min`;
+        const delayTrendColor = Math.abs(delayTrend) < 0.3 ? '#aaa'
+            : delayTrend > 0 ? '#c89292' : '#a5d1b5';
+
+        return {
+            totalVehicles, totalLines, uniqueDestinations,
+            busiestLine, busiestCount, quietestLine, quietestCount,
+            avgDelayMinutes, avgDelaySeconds, onTimePercent,
+            onTimeCount, lateCount, earlyCount, delayCount,
+            maxDelay, maxDelayLine, delayBuckets,
+            delayTrend, delayTrendLabel, delayTrendColor,
+            elecCount, hybridCount, gnvCount, usbCount, acCount,
+            greenCount, greenPercent,
+            avgSpeed, movingPercent, stoppedCount, movingCount,
+            avgOccupancy, avgOccupancyLabel, fullCount, emptyCount, occupancyCount,
+            vehiclesConsulted, linesConsulted, historicMax,
+            daysSinceFirst, firstUse, sessionsCount,
+            isPeakHour, healthScore, healthColor, healthLabel,
+            lineVehicleCounts
+        };
+    },
+
+    _buildStatsView() {
+        const statsView = document.createElement('div');
+        statsView.id = 'menu-stats-view';
+        statsView.style.cssText = `
+            padding: 10px 10px 20px;
+            display: none;
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        `;
+        this.container.appendChild(statsView);
+
+        // Wrapper le contenu existant (sections de lignes + search)
+        const existingSections = this.container.querySelectorAll('.linesection');
+        const searchContainer = document.getElementById('search-container');
+        const spacer = document.getElementById('menu-spacer');
+
+        let wrapper = document.getElementById('menu-main-content-wrapper');
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.id = 'menu-main-content-wrapper';
+            wrapper.style.cssText = `transition: opacity 0.2s ease, transform 0.2s ease;`;
+
+            if (searchContainer) this.container.insertBefore(wrapper, searchContainer);
+            else this.container.appendChild(wrapper);
+
+            if (searchContainer) wrapper.appendChild(searchContainer);
+            if (spacer) wrapper.appendChild(spacer);
+            existingSections.forEach(s => wrapper.appendChild(s));
+        }
+
+        this._refreshStatsView();
+
+        statsView.style.display = 'block';
+        statsView.style.opacity = '0';
+        statsView.style.transform = 'translateX(30px)';
+        setTimeout(() => {
+            statsView.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            statsView.style.opacity = '1';
+            statsView.style.transform = 'translateX(0)';
+        }, 20);
+
+        if (wrapper) {
+            wrapper.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+            wrapper.style.opacity = '0';
+            wrapper.style.transform = 'translateX(-30px)';
+            setTimeout(() => { wrapper.style.display = 'none'; }, 200);
+        }
+        if (searchContainer) searchContainer.style.display = 'none';
+        if (spacer) spacer.style.display = 'none';
+
+        const statsBtn = document.getElementById('menu-stats-toggle-btn');
+        const titleEl = document.getElementById('menu-statistics');
+        if (statsBtn) statsBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M9 3H5C3.89543 3 3 3.89543 3 5V9C3 10.1046 3.89543 11 5 11H9C10.1046 11 11 10.1046 11 9V5C11 3.89543 10.1046 3 9 3Z" stroke="white" stroke-width="2"/>
+                <path d="M19 3H15C13.8954 3 13 3.89543 13 5V9C13 10.1046 13.8954 11 15 11H19C20.1046 11 21 10.1046 21 9V5C21 3.89543 20.1046 3 19 3Z" stroke="white" stroke-width="2"/>
+                <path d="M9 13H5C3.89543 13 3 13.8954 3 15V19C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19V15C11 13.8954 10.1046 13 9 13Z" stroke="white" stroke-width="2"/>
+                <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
+            </svg>`;
+        if (titleEl) titleEl.innerHTML = `<div>${t('statistics')}</div>`;
+    },
+
+    _refreshStatsView() {
+        const statsView = document.getElementById('menu-stats-view');
+        if (!statsView) return;
+
+        // Incrémenter le compteur d'ouvertures
+        const sessionsCount = parseInt(localStorage.getItem('mbf_stats_opened') || '0', 10);
+        localStorage.setItem('mbf_stats_opened', (sessionsCount + 1).toString());
+
+        const s = this._computeNetworkStats();
+
+        const delayColor = Math.abs(s.avgDelayMinutes) <= 1 ? '#15d85d'
+            : s.avgDelayMinutes > 5 ? '#c07c7c'
+            : s.avgDelayMinutes > 1 ? '#d7ab8b' : '#829cc7';
+
+        const delayLabel = s.delayCount === 0 ? '—'
+            : Math.abs(s.avgDelayMinutes) <= 1 ? t('on_time')
+            : s.avgDelayMinutes > 0 ? `+${Math.round(s.avgDelayMinutes)} min`
+            : `${Math.round(s.avgDelayMinutes)} min`;
+
+        const peakBadge = s.isPeakHour
+            ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">${t('peak_hour')}</span>`
+            : `<span style="font-size:10px;opacity:.7;color:#15d85d;">${t('normal_traffic')}</span>`;
+
+        const onTimePct = s.onTimePercent ?? 0;
+        const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
+        const earlyPct = s.delayCount > 0 ? Math.round((s.earlyCount / s.delayCount) * 100) : 0;
+
+        // Top 3 lignes
+        const topLines = Object.entries(s.lineVehicleCounts)
+            .sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+        const topLinesHTML = topLines.map(([line, count]) => {
+            const color = lineColors[line] || '#555';
+            const name = lineName[line] || line;
+            const width = topLines[0][1] > 0 ? Math.round((count / topLines[0][1]) * 100) : 0;
+            return `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div style="background:${color};color:${getTextColor(color)};padding:3px 10px;border-radius:8px;font-weight:600;font-size:13px;min-width:38px;text-align:center;">${name}</div>
+                    <div style="flex:1;background:rgba(255,255,255,0.1);border-radius:6px;height:8px;overflow:hidden;">
+                        <div style="width:${width}%;height:100%;background:${color};border-radius:6px;transition:width 0.8s ease;"></div>
+                    </div>
+                    <div style="font-size:12px;opacity:0.75;min-width:24px;text-align:right;">${count}</div>
+                </div>`;
+        }).join('');
+
+        const bucketLabels = {
+            'early_big':   t('early_big'),
+            'early':       t('early'),
+            'ontime':      t('on_time'),
+            'late_small':  t('late_small'),
+            'late_mid':    t('late_mid'),
+            'late_big':    t('late_big')
+        };
+        const bucketColors = {
+            'early_big':  '#0a84ff',
+            'early':      '#40c8e0',
+            'ontime':     '#15d85d',
+            'late_small': '#ff9f0a',
+            'late_mid':   '#ff6b3a',
+            'late_big':   '#ff453a'
+        };
+
+        const bucketMax = Math.max(...Object.values(s.delayBuckets), 1);
+
+        const distributionHTML = s.delayCount > 0 ? `
+            <div style="display:flex;gap:6px;align-items:flex-end;justify-content:center;height:90px;margin-bottom:10px;">
+                ${Object.entries(s.delayBuckets).map(([key, val]) => {
+                    const pct = Math.round((val / bucketMax) * 100);
+                    const heightPx = Math.max(val > 0 ? Math.round(pct * 0.6) : 0, val > 0 ? 6 : 0);
+                    return `
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;">
+                        <div style="font-size:11px;font-weight:600;color:${val > 0 ? bucketColors[key] : 'rgba(255,255,255,0.2)'};">
+                            ${val > 0 ? val : '·'}
+                        </div>
+                        <div style="
+                            width:100%;
+                            height:${heightPx}px;
+                            background:${bucketColors[key]};
+                            opacity:${val > 0 ? 0.85 : 0.12};
+                            border-radius:5px 5px 0 0;
+                            transition:height 0.8s cubic-bezier(0.4,0,0.2,1);
+                            min-height:3px;
+                        "></div>
+                    </div>`;
+                }).join('')}
+            </div>
+            <div style="display:flex;gap:6px;justify-content:center;">
+                ${Object.entries(bucketLabels).map(([key, label]) => `
+                <div style="flex:1;text-align:center;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:${bucketColors[key]};margin:0 auto 3px;"></div>
+                    <div style="font-size:8.5px;color:rgba(255,255,255,0.45);line-height:1.3;white-space:pre-line;">${label}</div>
+                </div>`).join('')}
+            </div>
+        ` : '';
+
+        // Flotte
+        const fleetItems = [
+            { label: t('electric'), count: s.elecCount, color: '#15d85d', emoji: '⚡' },
+            { label: t('hybrid'), count: s.hybridCount, color: '#1a5ecc', emoji: '🔋' },
+            { label: t('gnv'), count: s.gnvCount, color: '#db6a18', emoji: '🌿' },
+            { label: t('usb'), count: s.usbCount, color: '#a855f7', emoji: '🔌' },
+            { label: t('ac'), count: s.acCount, color: '#38bdf8', emoji: '❄️' },
+        ].filter(f => f.count > 0);
+
+        const fleetHTML = fleetItems.length > 0 ? fleetItems.map(f => `
+            <div style="flex:1;min-width:60px;background:${f.color}22;border:1px solid ${f.color}44;border-radius:12px;padding:10px 8px;text-align:center;">
+                <div style="font-size:18px;">${f.emoji}</div>
+                <div style="font-size:18px;font-weight:700;color:white;">${f.count}</div>
+                <div style="font-size:10px;opacity:.7;">${f.label}</div>
+            </div>`).join('')
+            : `<div style="opacity:.5;font-size:13px;padding:8px 0;">${t('nodata')}</div>`;
+
+        const r = 40, cx = 50, cy = 56;
+        const toRad = a => (a - 180) * Math.PI / 180;
+        const arcAngle = Math.min((s.healthScore / 100) * 180, 179.9);
+        const x2 = cx + r * Math.cos(toRad(arcAngle));
+        const y2 = cy + r * Math.sin(toRad(arcAngle));
+
+        const busiestLineName = s.busiestLine ? (lineName[s.busiestLine] || s.busiestLine) : '—';
+        const busiestLineColor = s.busiestLine ? (lineColors[s.busiestLine] || '#555') : '#555';
+        const quietestLineName = s.quietestLine ? (lineName[s.quietestLine] || s.quietestLine) : '—';
+        const quietestLineColor = s.quietestLine ? (lineColors[s.quietestLine] || '#555') : '#555';
+        const maxDelayLineName = s.maxDelayLine ? (lineName[s.maxDelayLine] || s.maxDelayLine) : '—';
+        const maxDelayLineColor = s.maxDelayLine ? (lineColors[s.maxDelayLine] || '#555') : '#555';
+
+        const daysSinceFirstLabel = s.daysSinceFirst === 0 ? t('today')
+            : s.daysSinceFirst === 1 ? t('yesterday')
+            : `${s.daysSinceFirst} ${t('days')}`;
+
+        statsView.innerHTML = `
+        <style>
+            .stats-card {
+                background: rgba(28, 28, 30, 0.75);
+                border-radius: 14px;
+                padding: 14px 16px;
+                margin-bottom: 8px;
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255,255,255,0.06);
+                color: white;
+                font-family: 'League Spartan', sans-serif;
+                animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+            }
+            .stats-card-title {
+                font-size: 10px;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: rgba(255,255,255,0.5);
+                margin-bottom: 10px;
+                font-weight: 600;
+            }
+            .stats-row {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            .stats-tile {
+                flex: 1;
+                background: rgba(44, 44, 46, 0.8);
+                border-radius: 12px;
+                padding: 12px 10px;
+                text-align: center;
+                border: 1px solid rgba(255,255,255,0.05);
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .stats-tile-value {
+                font-size: 24px;
+                font-weight: 700;
+                line-height: 1.1;
+                color: white;
+                letter-spacing: -0.5px;
+            }
+            .stats-tile-label {
+                font-size: 10px;
+                color: rgba(255,255,255,0.5);
+                margin-top: 3px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .stats-inline-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(255,255,255,0.05);
+            }
+            .stats-inline-row:last-child { border-bottom: none; }
+            .stats-inline-label {
+                font-size: 13px;
+                color: rgba(255,255,255,0.6);
+            }
+            .stats-inline-value {
+                font-size: 13px;
+                font-weight: 600;
+                color: white;
+                text-align: right;
+            }
+            .stats-line-badge {
+                padding: 2px 9px;
+                border-radius: 6px;
+                font-weight: 700;
+                font-size: 12px;
+                display: inline-block;
+            }
+            .stats-pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                background: rgba(255,255,255,0.07);
+                border-radius: 20px;
+                padding: 3px 10px;
+                font-size: 11px;
+                color: rgba(255,255,255,0.7);
+                border: 1px solid rgba(255,255,255,0.06);
+            }
+            .stats-progress-track {
+                height: 5px;
+                border-radius: 3px;
+                background: rgba(255,255,255,0.08);
+                overflow: hidden;
+                margin: 2px 0;
+            }
+            .stats-progress-fill {
+                height: 100%;
+                border-radius: 3px;
+                transition: width 0.9s cubic-bezier(0.4,0,0.2,1);
+            }
+        </style>
+
+        <!-- Score santé + KPI en une seule ligne -->
+        <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0s both">
+            <div style="
+                flex:1.2;
+                background: rgba(28,28,30,0.75);
+                border-radius:14px;
+                padding:14px;
+                border:1px solid rgba(255,255,255,0.06);
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+                backdrop-filter:blur(20px);
+                color:white;
+            ">
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;opacity:.4;margin-bottom:8px;">${t('networkhealth')}</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:4px;">
+                    <svg width="90" height="52" viewBox="0 0 100 58">
+                        <path d="M 10 56 A 40 40 0 0 1 90 56" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
+                        <path d="M 10 56 A 40 40 0 ${arcAngle > 179.9 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}" fill="none" stroke="${s.healthColor}" stroke-width="8" stroke-linecap="round"/>
+                    </svg>
+                    <div style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;">
+                        <div style="font-size:26px;font-weight:700;color:${s.healthColor};line-height:1;">${s.healthScore}</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;">${s.healthLabel}</div>
+                    </div>
+                </div>
+                <div style="margin-top:10px;display:flex;justify-content:center;">${peakBadge}</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                <div class="stats-tile">
+                    <div class="stats-tile-value">${s.totalVehicles}</div>
+                    <div class="stats-tile-label">🚌 ${t('vehicles')}</div>
+                </div>
+                <div class="stats-tile">
+                    <div class="stats-tile-value">${s.totalLines}</div>
+                    <div class="stats-tile-label">🗺️ ${t('lines')}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Retard + vitesse -->
+        <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
+            <div class="stats-tile">
+                <div class="stats-tile-value" style="color:${delayColor};">${delayLabel}</div>
+                <div class="stats-tile-label">⏰ ${t('avgdelay')}</div>
+            </div>
+            <div class="stats-tile">
+                <div class="stats-tile-value">${s.uniqueDestinations}</div>
+                <div class="stats-tile-label">📍 ${t('destinations')}</div>
+            </div>
+            ${s.avgSpeed !== null ? `
+            <div class="stats-tile">
+                <div class="stats-tile-value">${Math.round(s.avgSpeed)}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
+                <div class="stats-tile-label">🚄 ${t('avgspeed')}</div>
+            </div>` : ''}
+        </div>
+
+        <!-- Ponctualité -->
+        ${s.delayCount > 0 ? `
+        <div class="stats-card" style="animation-delay:0.08s">
+            <div class="stats-card-title">${t('punctuality')}</div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+                <div>
+                    <span style="font-size:28px;font-weight:700;color:${delayColor};letter-spacing:-1px;">${onTimePct}%</span>
+                    <span style="font-size:12px;opacity:.45;margin-left:4px;">${t('onTime')}</span>
+                </div>
+            </div>
+            <div style="height:5px;border-radius:3px;overflow:hidden;display:flex;gap:2px;margin-bottom:8px;">
+                <div style="width:${onTimePct}%;background:#15d85d;transition:width 1s ease;border-radius:3px;"></div>
+                <div style="width:${earlyPct}%;background:#0a84ff;transition:width 1s ease;border-radius:3px;"></div>
+                <div style="width:${latePct}%;background:${latePct > 20 ? '#ff453a' : '#ff9f0a'};transition:width 1s ease;border-radius:3px;"></div>
+            </div>
+            <div style="display:flex;gap:14px;font-size:11px;">
+                <span style="color:#15d85d;">● ${onTimePct}% ${t('onTime')}</span>
+                <span style="color:#0a84ff;">● ${earlyPct}% ${t('early')}</span>
+                <span style="color:${latePct > 20 ? '#ff453a' : '#ff9f0a'};">● ${latePct}% ${t('late')}</span>
+            </div>
+            ${s.maxDelay > 2 ? `
+            <div style="margin-top:10px;padding:8px 10px;background:rgba(255,69,58,0.1);border-radius:10px;border:1px solid rgba(255,69,58,0.2);display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:12px;opacity:.6;">${t('maxdelay')}</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="stats-line-badge" style="background:${maxDelayLineColor};color:${getTextColor(maxDelayLineColor)};">${maxDelayLineName}</span>
+                    <span style="color:#ff453a;font-weight:700;font-size:13px;">+${Math.round(s.maxDelay)} min</span>
+                </div>
+            </div>` : ''}
+        </div>` : ''}
+
+        <!-- Distribution retards -->
+        ${s.delayCount > 0 ? `
+        <div class="stats-card" style="animation-delay:0.11s">
+            <div class="stats-card-title">${t('regulation')}</div>
+            <div style="display:contents;align-items:flex-end;height:64px;margin-bottom:6px;">
+                ${distributionHTML}
+            </div>
+        </div>` : ''}
+
+        <!-- Répartition véhicules par ligne -->
+        ${topLines.length > 0 ? `
+        <div class="stats-card" style="animation-delay:0.14s">
+            <div class="stats-card-title">${t('vehiclesbyline')}</div>
+            ${topLines.map(([line, count]) => {
+                const color = lineColors[line] || '#555';
+                const name = lineName[line] || line;
+                const width = topLines[0][1] > 0 ? Math.round((count / topLines[0][1]) * 100) : 0;
+                return `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+                    <span class="stats-line-badge" style="background:${color};color:${getTextColor(color)};min-width:32px;text-align:center;">${name}</span>
+                    <div style="flex:1;">
+                        <div class="stats-progress-track">
+                            <div class="stats-progress-fill" style="width:${width}%;background:${color};"></div>
+                        </div>
+                    </div>
+                    <span style="font-size:12px;opacity:.5;min-width:20px;text-align:right;">${count}</span>
+                </div>`;
+            }).join('')}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                <div class="stats-pill">
+                    +
+                    <span class="stats-line-badge" style="background:${busiestLineColor};color:${getTextColor(busiestLineColor)};">${busiestLineName}</span>
+                    <span>${s.busiestCount} bus</span>
+                </div>
+                ${s.quietestLine ? `
+                <div class="stats-pill">
+                    -
+                    <span class="stats-line-badge" style="background:${quietestLineColor};color:${getTextColor(quietestLineColor)};">${quietestLineName}</span>
+                    <span>${s.quietestCount} bus</span>
+                </div>` : ''}
+            </div>
+        </div>` : ''}
+
+        <!-- Mobilité -->
+        ${s.movingPercent !== null ? `
+        <div class="stats-card" style="animation-delay:0.17s">
+            <div class="stats-card-title">${t('mobility')}</div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('moving')}</span>
+                <span class="stats-inline-value" style="color:#15d85d;">${s.movingCount} <span style="opacity:.4;font-weight:400;">(${s.movingPercent}%)</span></span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('stopped')}</span>
+                <span class="stats-inline-value" style="color:#ff453a;">${s.stoppedCount}</span>
+            </div>
+            ${s.avgSpeed !== null ? `
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('avgspeed')}</span>
+                <span class="stats-inline-value">${s.avgSpeed} km/h</span>
+            </div>` : ''}
+        </div>` : ''}
+
+        <!-- Fréquentation -->
+        ${s.occupancyCount > 0 ? `
+        <div class="stats-card" style="animation-delay:0.2s">
+            <div class="stats-card-title">${t('occupancy')}</div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('avgoccupancy')}</span>
+                <span class="stats-inline-value">${s.avgOccupancyLabel || '—'}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('fullvehicles')}</span>
+                <span class="stats-inline-value" style="color:#ff453a;">${s.fullCount}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('emptyvehicles')}</span>
+                <span class="stats-inline-value" style="color:#15d85d;">${s.emptyCount}</span>
+            </div>
+        </div>` : ''}
+
+        <!-- Flotte -->
+        ${s.totalVehicles > 0 ? `
+        <div class="stats-card" style="animation-delay:0.23s">
+            <div class="stats-card-title">${t('fleet')}</div>
+            <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:10px;">
+                <span style="font-size:28px;font-weight:700;color:#15d85d;letter-spacing:-1px;">${s.greenPercent}%</span>
+                <span style="font-size:11px;opacity:.4;">propre en service</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${fleetItems.length > 0 ? fleetItems.map(f => `
+                <div style="flex:1;min-width:56px;background:rgba(44,44,46,0.8);border-radius:10px;padding:9px 6px;text-align:center;border:1px solid ${f.color}30;">
+                    <div style="font-size:16px;">${f.emoji}</div>
+                    <div style="font-size:18px;font-weight:700;color:${f.color};">${f.count}</div>
+                    <div style="font-size:9px;opacity:.5;">${f.label}</div>
+                </div>`).join('') : `<span style="opacity:.4;font-size:12px;">Aucune donnée disponible</span>`}
+            </div>
+        </div>` : ''}
+
+        <!-- Votre utilisation -->
+        <div class="stats-card" style="animation-delay:0.26s">
+            <div class="stats-card-title">${t('yourusage')}</div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('vehiclesconsulted')}</span>
+                <span class="stats-inline-value" style="color:#0a84ff;">${s.vehiclesConsulted}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('historicmax')}</span>
+                <span class="stats-inline-value">${s.historicMax} ${t('vehicles')}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('statsconsulted')}</span>
+                <span class="stats-inline-value">${s.sessionsCount} ${t('times')}</span>
+            </div>
+            <div class="stats-inline-row">
+                <span class="stats-inline-label">${t('usagefrom')}</span>
+                <span class="stats-inline-value" style="opacity:.6;">${new Date(s.firstUse).toLocaleDateString('fr-FR')}</span>
+            </div>
+        </div>
+
+        <!-- Actualiser -->
+        <div style="text-align:center;margin-top:4px;margin-bottom:4px;">
+            <div onclick="MenuManager._refreshStatsView()" style="
+                display:inline-flex;align-items:center;gap:6px;
+                background:rgba(255,255,255,0.06);
+                border:1px solid rgba(255,255,255,0.08);
+                border-radius:20px;padding:7px 18px;
+                cursor:pointer;font-size:12px;
+                color:rgba(255,255,255,0.5);
+                transition:all 0.2s;
+            " onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='white'"
+            onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)'">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                <div>${t('refresh')}</div>
+            </div>
+        </div>
+        `;
+
+}
 };
 
 function updateMenu() {
@@ -6639,6 +7450,26 @@ async function cleanup(menu, button) {
 
 const animationStyle = document.createElement('style');
 animationStyle.textContent = `
+    @keyframes topBarExpand {
+        0%   { filter: blur(4px); transform: scale(0.96); opacity: 0.6; }
+        60%  { filter: blur(1px); transform: scale(1.01); opacity: 1; }
+        100% { filter: blur(0px); transform: scale(1);    opacity: 1; }
+    }
+
+    @keyframes topBarShrink {
+        0%   { filter: blur(4px); transform: scale(1.04); opacity: 0.6; }
+        60%  { filter: blur(1px); transform: scale(0.99); opacity: 1; }
+        100% { filter: blur(0px); transform: scale(1);    opacity: 1; }
+    }
+
+    .topbar-anim-expand {
+        animation: topBarExpand 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .topbar-anim-shrink {
+        animation: topBarShrink 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
     .linesection {
         transition: transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
@@ -9819,7 +10650,39 @@ async function main() {
         ]);
         loadGeoJsonLines();
         startFetchUpdates();
-        toastTopLeft.info("Map data from OpenStreetMap Contributors, licensed under ODbL.");
+
+        setTimeout(() => {
+            toastTopRight.info('Map data from OSM contributors, licensed under ODbL.', {
+                duration: 7000,
+                buttons: [
+                    {
+                    label: 'See more',
+                    style: 'primary',
+                    onClick: (close) => {
+                        close();
+                        showFluentPopup({
+                        title: "OpenStreetMap data",
+                        message: "OpenStreetMap (OSM) is a free, collaborative mapping project built by volunteers worldwide. It provides open geographic data : roads, paths, transit stops, used by My Bus Finder to display the map. The data is licensed under the Open Database License (ODbL), which allows free use as long as attribution is preserved.",
+                        buttons: {
+                            primary: "Understood",
+                            primaryAction: () => { fluentPopupManager.close(); },
+                            secondary: "Discover more",
+                            secondaryAction: () => {
+                            window.open('https://www.openstreetmap.org', '_blank');
+                            fluentPopupManager.close();
+                            }
+                        }
+                        });
+                    }
+                    },
+                    {
+                    label: 'OK',
+                    style: 'ghost',
+                    onClick: (close) => close()
+                    }
+                ]
+            });
+        }, 3000);
         
     } catch (error) {
         console.error("Erreur critique dans main():", error);
