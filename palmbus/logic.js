@@ -6414,7 +6414,7 @@ const MenuManager = {
                     <path d="M9 13H5C3.89543 13 3 13.8954 3 15V19C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19V15C11 13.8954 10.1046 13 9 13Z" stroke="white" stroke-width="2"/>
                     <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
                 </svg>`;
-            if (titleEl) titleEl.innerHTML = `<div>Statistiques</div>`;
+            if (titleEl) titleEl.innerHTML = `<div>${t('statistics')}</div>`;
             const topBar = document.getElementById('menu-top-bar');
             if (topBar) {
                 topBar.classList.remove('topbar-anim-expand', 'topbar-anim-shrink');
@@ -6467,7 +6467,7 @@ const MenuManager = {
         let delaySum = 0, delayCount = 0;
         let onTimeCount = 0, lateCount = 0, earlyCount = 0;
         let maxDelay = 0, maxDelayLine = null;
-        let delayBuckets = { '-5': 0, '-2': 0, '0': 0, '2': 0, '5': 0, '10+': 0 };
+        let delayBuckets = { 'early_big': 0, 'early': 0, 'ontime': 0, 'late_small': 0, 'late_mid': 0, 'late_big': 0 };
 
         markerPool.active.forEach((marker) => {
             const tripId = marker.vehicleData?.trip?.tripId;
@@ -6488,12 +6488,12 @@ const MenuManager = {
                         maxDelayLine = marker.line;
                     }
 
-                    if (mins < -5) delayBuckets['-5']++;
-                    else if (mins < -2) delayBuckets['-2']++;
-                    else if (mins <= 2) delayBuckets['0']++;
-                    else if (mins <= 5) delayBuckets['2']++;
-                    else if (mins <= 10) delayBuckets['5']++;
-                    else delayBuckets['10+']++;
+                    if (mins < -5) delayBuckets['early_big']++;
+                    else if (mins < -2) delayBuckets['early']++;
+                    else if (mins <= 2) delayBuckets['ontime']++;
+                    else if (mins <= 5) delayBuckets['late_small']++;
+                    else if (mins <= 10) delayBuckets['late_mid']++;
+                    else delayBuckets['late_big']++;
                 }
             });
         });
@@ -6544,7 +6544,7 @@ const MenuManager = {
             }
         });
         const avgOccupancy = occupancyCount > 0 ? occupancySum / occupancyCount : null;
-        const occupancyLabels = ['Vide', 'Peu chargé', 'Places dispo', 'Debout', 'Bondé', 'Plein', 'N/A'];
+        const occupancyLabels = [t('empty'), t('slightly_full'), t('available_seats'), t('standing_room'), t('crowded'), t('full'), t('not_applicable')];
         const avgOccupancyLabel = avgOccupancy !== null ? occupancyLabels[Math.min(Math.round(avgOccupancy), 6)] : null;
 
         // Destinations uniques
@@ -6570,13 +6570,13 @@ const MenuManager = {
         let healthScore = 100;
         if (onTimePercent !== null) healthScore = Math.round(onTimePercent * 0.6 + (movingPercent ?? 50) * 0.2 + Math.min(greenPercent, 100) * 0.2);
         const healthColor = healthScore >= 80 ? '#a1d1b3' : healthScore >= 60 ? '#d1ac91' : '#c69090';
-        const healthLabel = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Correct' : 'Dégradé';
+        const healthLabel = healthScore >= 80 ? t('excellent') : healthScore >= 60 ? t('correct') : t('degraded');
 
         // Tendance retard (comparaison avec dernière valeur stockée)
         const lastAvgDelay = parseFloat(localStorage.getItem('mbf_last_avg_delay') || '0');
         const delayTrend = avgDelayMinutes - lastAvgDelay;
         localStorage.setItem('mbf_last_avg_delay', avgDelayMinutes.toFixed(2));
-        const delayTrendLabel = Math.abs(delayTrend) < 0.3 ? 'stable'
+        const delayTrendLabel = Math.abs(delayTrend) < 0.3 ? t('stable')
             : delayTrend > 0 ? `+${Math.round(delayTrend)} min`
             : `${Math.round(delayTrend)} min`;
         const delayTrendColor = Math.abs(delayTrend) < 0.3 ? '#aaa'
@@ -6660,7 +6660,7 @@ const MenuManager = {
                 <path d="M9 13H5C3.89543 13 3 13.8954 3 15V19C3 20.1046 3.89543 21 5 21H9C10.1046 21 11 20.1046 11 19V15C11 13.8954 10.1046 13 9 13Z" stroke="white" stroke-width="2"/>
                 <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
             </svg>`;
-        if (titleEl) titleEl.innerHTML = `<div>Statistiques</div>`;
+        if (titleEl) titleEl.innerHTML = `<div>${t('statistics')}</div>`;
     },
 
     _refreshStatsView() {
@@ -6678,13 +6678,13 @@ const MenuManager = {
             : s.avgDelayMinutes > 1 ? '#d7ab8b' : '#829cc7';
 
         const delayLabel = s.delayCount === 0 ? '—'
-            : Math.abs(s.avgDelayMinutes) <= 1 ? 'À l\'heure'
+            : Math.abs(s.avgDelayMinutes) <= 1 ? t('on_time')
             : s.avgDelayMinutes > 0 ? `+${Math.round(s.avgDelayMinutes)} min`
             : `${Math.round(s.avgDelayMinutes)} min`;
 
         const peakBadge = s.isPeakHour
-            ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">📈 Heure de pointe</span>`
-            : `<span style="font-size:10px;opacity:.7;color:#15d85d;">● Trafic normal</span>`;
+            ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">${t('peak_hour')}</span>`
+            : `<span style="font-size:10px;opacity:.7;color:#15d85d;">${t('normal_traffic')}</span>`;
 
         const onTimePct = s.onTimePercent ?? 0;
         const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
@@ -6709,21 +6709,22 @@ const MenuManager = {
         }).join('');
 
         const bucketLabels = {
-            '-5':  'Très\nen avance',
-            '-2':  'En\navance',
-            '0':   'À\nl\'heure',
-            '2':   'Léger\nretard',
-            '5':   'Retard\nmoyen',
-            '10+': 'Gros\nretard'
+            'early_big':   t('early_big'),
+            'early':       t('early'),
+            'ontime':      t('on_time'),
+            'late_small':  t('late_small'),
+            'late_mid':    t('late_mid'),
+            'late_big':    t('late_big')
         };
         const bucketColors = {
-            '-5': '#0a84ff',
-            '-2': '#40c8e0',
-            '0':  '#15d85d',
-            '2':  '#ff9f0a',
-            '5':  '#ff6b3a',
-            '10+':'#ff453a'
+            'early_big':  '#0a84ff',
+            'early':      '#40c8e0',
+            'ontime':     '#15d85d',
+            'late_small': '#ff9f0a',
+            'late_mid':   '#ff6b3a',
+            'late_big':   '#ff453a'
         };
+
         const bucketMax = Math.max(...Object.values(s.delayBuckets), 1);
 
         const distributionHTML = s.delayCount > 0 ? `
@@ -6759,11 +6760,11 @@ const MenuManager = {
 
         // Flotte
         const fleetItems = [
-            { label: 'Élec.', count: s.elecCount, color: '#15d85d', emoji: '⚡' },
-            { label: 'Hybride', count: s.hybridCount, color: '#1a5ecc', emoji: '🔋' },
-            { label: 'GNV', count: s.gnvCount, color: '#db6a18', emoji: '🌿' },
-            { label: 'USB', count: s.usbCount, color: '#a855f7', emoji: '🔌' },
-            { label: 'Clim.', count: s.acCount, color: '#38bdf8', emoji: '❄️' },
+            { label: t('electric'), count: s.elecCount, color: '#15d85d', emoji: '⚡' },
+            { label: t('hybrid'), count: s.hybridCount, color: '#1a5ecc', emoji: '🔋' },
+            { label: t('gnv'), count: s.gnvCount, color: '#db6a18', emoji: '🌿' },
+            { label: t('usb'), count: s.usbCount, color: '#a855f7', emoji: '🔌' },
+            { label: t('ac'), count: s.acCount, color: '#38bdf8', emoji: '❄️' },
         ].filter(f => f.count > 0);
 
         const fleetHTML = fleetItems.length > 0 ? fleetItems.map(f => `
@@ -6772,7 +6773,7 @@ const MenuManager = {
                 <div style="font-size:18px;font-weight:700;color:white;">${f.count}</div>
                 <div style="font-size:10px;opacity:.7;">${f.label}</div>
             </div>`).join('')
-            : `<div style="opacity:.5;font-size:13px;padding:8px 0;">Données indisponibles</div>`;
+            : `<div style="opacity:.5;font-size:13px;padding:8px 0;">${t('nodata')}</div>`;
 
         const r = 40, cx = 50, cy = 56;
         const toRad = a => (a - 180) * Math.PI / 180;
@@ -6787,9 +6788,9 @@ const MenuManager = {
         const maxDelayLineName = s.maxDelayLine ? (lineName[s.maxDelayLine] || s.maxDelayLine) : '—';
         const maxDelayLineColor = s.maxDelayLine ? (lineColors[s.maxDelayLine] || '#555') : '#555';
 
-        const daysSinceFirstLabel = s.daysSinceFirst === 0 ? "Aujourd'hui"
-            : s.daysSinceFirst === 1 ? 'Hier'
-            : `${s.daysSinceFirst} jours`;
+        const daysSinceFirstLabel = s.daysSinceFirst === 0 ? t('today')
+            : s.daysSinceFirst === 1 ? t('yesterday')
+            : `${s.daysSinceFirst} ${t('days')}`;
 
         statsView.innerHTML = `
         <style>
@@ -6901,7 +6902,7 @@ const MenuManager = {
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0s both">
             <div style="
                 flex:1.2;
-                background: rgba(28,28,30,0.75);
+                background: rgba(28,28,30,0.5);
                 border-radius:14px;
                 padding:14px;
                 border:1px solid rgba(255,255,255,0.06);
@@ -6911,7 +6912,7 @@ const MenuManager = {
                 backdrop-filter:blur(20px);
                 color:white;
             ">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;opacity:.4;margin-bottom:8px;">Santé réseau</div>
+                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;opacity:.4;margin-bottom:8px;">${t('networkhealth')}</div>
                 <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:4px;">
                     <svg width="90" height="52" viewBox="0 0 100 58">
                         <path d="M 10 56 A 40 40 0 0 1 90 56" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
@@ -6927,11 +6928,11 @@ const MenuManager = {
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
                 <div class="stats-tile">
                     <div class="stats-tile-value">${s.totalVehicles}</div>
-                    <div class="stats-tile-label">🚌 En service</div>
+                    <div class="stats-tile-label">🚌 ${t('vehicles')}</div>
                 </div>
                 <div class="stats-tile">
                     <div class="stats-tile-value">${s.totalLines}</div>
-                    <div class="stats-tile-label">🗺️ Lignes actives</div>
+                    <div class="stats-tile-label">🗺️ ${t('lines')}</div>
                 </div>
             </div>
         </div>
@@ -6940,29 +6941,28 @@ const MenuManager = {
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
             <div class="stats-tile">
                 <div class="stats-tile-value" style="color:${delayColor};">${delayLabel}</div>
-                <div class="stats-tile-label">Retard moyen</div>
+                <div class="stats-tile-label">⏰ ${t('avgdelay')}</div>
             </div>
             <div class="stats-tile">
                 <div class="stats-tile-value">${s.uniqueDestinations}</div>
-                <div class="stats-tile-label">📍 Destinations</div>
+                <div class="stats-tile-label">📍 ${t('destinations')}</div>
             </div>
             ${s.avgSpeed !== null ? `
             <div class="stats-tile">
                 <div class="stats-tile-value">${Math.round(s.avgSpeed)}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
-                <div class="stats-tile-label">Vitesse moy.</div>
+                <div class="stats-tile-label">🚄 ${t('avgspeed')}</div>
             </div>` : ''}
         </div>
 
         <!-- Ponctualité -->
         ${s.delayCount > 0 ? `
         <div class="stats-card" style="animation-delay:0.08s">
-            <div class="stats-card-title">Ponctualité</div>
+            <div class="stats-card-title">${t('punctuality')}</div>
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
                 <div>
                     <span style="font-size:28px;font-weight:700;color:${delayColor};letter-spacing:-1px;">${onTimePct}%</span>
-                    <span style="font-size:12px;opacity:.45;margin-left:4px;">à l'heure</span>
+                    <span style="font-size:12px;opacity:.45;margin-left:4px;">${t('onTime')}</span>
                 </div>
-                <div style="font-size:11px;opacity:.35;">${s.delayCount} mesures</div>
             </div>
             <div style="height:5px;border-radius:3px;overflow:hidden;display:flex;gap:2px;margin-bottom:8px;">
                 <div style="width:${onTimePct}%;background:#15d85d;transition:width 1s ease;border-radius:3px;"></div>
@@ -6970,13 +6970,13 @@ const MenuManager = {
                 <div style="width:${latePct}%;background:${latePct > 20 ? '#ff453a' : '#ff9f0a'};transition:width 1s ease;border-radius:3px;"></div>
             </div>
             <div style="display:flex;gap:14px;font-size:11px;">
-                <span style="color:#15d85d;">● ${onTimePct}% à l'heure</span>
-                <span style="color:#0a84ff;">● ${earlyPct}% avance</span>
-                <span style="color:${latePct > 20 ? '#ff453a' : '#ff9f0a'};">● ${latePct}% retard</span>
+                <span style="color:#15d85d;">● ${onTimePct}% ${t('onTime')}</span>
+                <span style="color:#0a84ff;">● ${earlyPct}% ${t('early')}</span>
+                <span style="color:${latePct > 20 ? '#ff453a' : '#ff9f0a'};">● ${latePct}% ${t('late')}</span>
             </div>
             ${s.maxDelay > 2 ? `
             <div style="margin-top:10px;padding:8px 10px;background:rgba(255,69,58,0.1);border-radius:10px;border:1px solid rgba(255,69,58,0.2);display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-size:12px;opacity:.6;">Retard max</span>
+                <span style="font-size:12px;opacity:.6;">${t('maxdelay')}</span>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span class="stats-line-badge" style="background:${maxDelayLineColor};color:${getTextColor(maxDelayLineColor)};">${maxDelayLineName}</span>
                     <span style="color:#ff453a;font-weight:700;font-size:13px;">+${Math.round(s.maxDelay)} min</span>
@@ -6987,7 +6987,7 @@ const MenuManager = {
         <!-- Distribution retards -->
         ${s.delayCount > 0 ? `
         <div class="stats-card" style="animation-delay:0.11s">
-            <div class="stats-card-title">Distribution des retards</div>
+            <div class="stats-card-title">${t('regulation')}</div>
             <div style="display:contents;align-items:flex-end;height:64px;margin-bottom:6px;">
                 ${distributionHTML}
             </div>
@@ -6996,7 +6996,7 @@ const MenuManager = {
         <!-- Répartition véhicules par ligne -->
         ${topLines.length > 0 ? `
         <div class="stats-card" style="animation-delay:0.14s">
-            <div class="stats-card-title">Véhicules par ligne</div>
+            <div class="stats-card-title">${t('vehiclesbyline')}</div>
             ${topLines.map(([line, count]) => {
                 const color = lineColors[line] || '#555';
                 const name = lineName[line] || line;
@@ -7014,13 +7014,13 @@ const MenuManager = {
             }).join('')}
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
                 <div class="stats-pill">
-                    🔥
+                    +
                     <span class="stats-line-badge" style="background:${busiestLineColor};color:${getTextColor(busiestLineColor)};">${busiestLineName}</span>
                     <span>${s.busiestCount} bus</span>
                 </div>
                 ${s.quietestLine ? `
                 <div class="stats-pill">
-                    😴
+                    -
                     <span class="stats-line-badge" style="background:${quietestLineColor};color:${getTextColor(quietestLineColor)};">${quietestLineName}</span>
                     <span>${s.quietestCount} bus</span>
                 </div>` : ''}
@@ -7030,18 +7030,18 @@ const MenuManager = {
         <!-- Mobilité -->
         ${s.movingPercent !== null ? `
         <div class="stats-card" style="animation-delay:0.17s">
-            <div class="stats-card-title">Mobilité</div>
+            <div class="stats-card-title">${t('mobility')}</div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">En mouvement</span>
+                <span class="stats-inline-label">${t('moving')}</span>
                 <span class="stats-inline-value" style="color:#15d85d;">${s.movingCount} <span style="opacity:.4;font-weight:400;">(${s.movingPercent}%)</span></span>
             </div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">À l'arrêt</span>
+                <span class="stats-inline-label">${t('stopped')}</span>
                 <span class="stats-inline-value" style="color:#ff453a;">${s.stoppedCount}</span>
             </div>
             ${s.avgSpeed !== null ? `
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Vitesse moyenne</span>
+                <span class="stats-inline-label">${t('avgspeed')}</span>
                 <span class="stats-inline-value">${s.avgSpeed} km/h</span>
             </div>` : ''}
         </div>` : ''}
@@ -7049,17 +7049,17 @@ const MenuManager = {
         <!-- Fréquentation -->
         ${s.occupancyCount > 0 ? `
         <div class="stats-card" style="animation-delay:0.2s">
-            <div class="stats-card-title">Fréquentation</div>
+            <div class="stats-card-title">${t('occupancy')}</div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Niveau moyen</span>
+                <span class="stats-inline-label">${t('avgoccupancy')}</span>
                 <span class="stats-inline-value">${s.avgOccupancyLabel || '—'}</span>
             </div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Véhicules bondés</span>
+                <span class="stats-inline-label">${t('fullvehicles')}</span>
                 <span class="stats-inline-value" style="color:#ff453a;">${s.fullCount}</span>
             </div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Véhicules vides</span>
+                <span class="stats-inline-label">${t('emptyvehicles')}</span>
                 <span class="stats-inline-value" style="color:#15d85d;">${s.emptyCount}</span>
             </div>
         </div>` : ''}
@@ -7067,7 +7067,7 @@ const MenuManager = {
         <!-- Flotte -->
         ${s.totalVehicles > 0 ? `
         <div class="stats-card" style="animation-delay:0.23s">
-            <div class="stats-card-title">Flotte propre</div>
+            <div class="stats-card-title">${t('fleet')}</div>
             <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:10px;">
                 <span style="font-size:28px;font-weight:700;color:#15d85d;letter-spacing:-1px;">${s.greenPercent}%</span>
                 <span style="font-size:11px;opacity:.4;">propre en service</span>
@@ -7084,21 +7084,21 @@ const MenuManager = {
 
         <!-- Votre utilisation -->
         <div class="stats-card" style="animation-delay:0.26s">
-            <div class="stats-card-title">Votre utilisation</div>
+            <div class="stats-card-title">${t('yourusage')}</div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Véhicules consultés</span>
+                <span class="stats-inline-label">${t('vehiclesconsulted')}</span>
                 <span class="stats-inline-value" style="color:#0a84ff;">${s.vehiclesConsulted}</span>
             </div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Record simultané</span>
+                <span class="stats-inline-label">${t('historicmax')}</span>
                 <span class="stats-inline-value">${s.historicMax} véhicules</span>
             </div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Stats consultées</span>
+                <span class="stats-inline-label">${t('statsconsulted')}</span>
                 <span class="stats-inline-value">${s.sessionsCount} fois</span>
             </div>
             <div class="stats-inline-row">
-                <span class="stats-inline-label">Utilisation depuis</span>
+                <span class="stats-inline-label">${t('usagefrom')}</span>
                 <span class="stats-inline-value" style="opacity:.6;">${new Date(s.firstUse).toLocaleDateString('fr-FR')}</span>
             </div>
         </div>
