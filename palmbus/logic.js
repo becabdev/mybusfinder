@@ -6381,7 +6381,12 @@ const MenuManager = {
                     <path d="M7 16L11 10L15 13L20 7" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>`;
             if (titleEl) titleEl.innerHTML = `<div>${t("network")}</div><div style="font-size:12px;opacity:.8;">${Object.keys(this.busesByLineAndDestination).length} ${t('lines')} • ${this._countTotalVehicles()} ${t('vehicles')}</div>`;
-
+            const topBar = document.getElementById('menu-top-bar');
+            if (topBar) {
+                topBar.classList.remove('topbar-anim-expand', 'topbar-anim-shrink');
+                void topBar.offsetWidth;
+                topBar.classList.add('topbar-anim-shrink');
+            }
         } else {
             this._refreshStatsView();
             statsView.style.display = 'block';
@@ -6410,6 +6415,12 @@ const MenuManager = {
                     <path d="M19 13H15C13.8954 13 13 13.8954 13 15V19C13 20.1046 13.8954 21 15 21H19C20.1046 21 21 20.1046 21 19V15C21 13.8954 20.1046 13 19 13Z" stroke="white" stroke-width="2"/>
                 </svg>`;
             if (titleEl) titleEl.innerHTML = `<div>Statistiques</div>`;
+            const topBar = document.getElementById('menu-top-bar');
+            if (topBar) {
+                topBar.classList.remove('topbar-anim-expand', 'topbar-anim-shrink');
+                void topBar.offsetWidth;
+                topBar.classList.add('topbar-anim-expand');
+            }
         }
     },
 
@@ -6424,9 +6435,9 @@ const MenuManager = {
     _computeNetworkStats() {
         const now = Date.now() / 1000;
 
+        // Compteurs de base
         let totalVehicles = 0;
         let totalLines = Object.keys(this.busesByLineAndDestination).length;
-        let totalDestinations = 0;
         const lineVehicleCounts = {};
         const destinationSet = new Set();
 
@@ -6438,7 +6449,6 @@ const MenuManager = {
                 totalVehicles += buses.length;
             });
             lineVehicleCounts[line] = lineCount;
-            totalDestinations++;
         });
 
         // Ligne la plus chargée
@@ -6447,13 +6457,20 @@ const MenuManager = {
             if (count > busiestCount) { busiestCount = count; busiestLine = line; }
         });
 
-        // Calcul du retard moyen réseau
+        // Ligne la moins chargée (au moins 1 véhicule)
+        let quietestLine = null, quietestCount = Infinity;
+        Object.entries(lineVehicleCounts).forEach(([line, count]) => {
+            if (count > 0 && count < quietestCount) { quietestCount = count; quietestLine = line; }
+        });
+
+        // Calcul retard moyen + distrib
         let delaySum = 0, delayCount = 0;
         let onTimeCount = 0, lateCount = 0, earlyCount = 0;
+        let maxDelay = 0, maxDelayLine = null;
+        let delayBuckets = { '-5': 0, '-2': 0, '0': 0, '2': 0, '5': 0, '10': 0, '10+': 0 };
 
         markerPool.active.forEach((marker) => {
             const tripId = marker.vehicleData?.trip?.tripId;
-            const stopId = (marker.vehicleData?.stopId || '').replace('0:', '');
             const nextStops = tripUpdates[tripId]?.nextStops || [];
 
             nextStops.slice(0, 3).forEach(stop => {
@@ -6465,6 +6482,18 @@ const MenuManager = {
                     if (Math.abs(mins) <= 1) onTimeCount++;
                     else if (mins > 1) lateCount++;
                     else earlyCount++;
+
+                    if (mins > maxDelay) {
+                        maxDelay = mins;
+                        maxDelayLine = marker.line;
+                    }
+
+                    if (mins < -5) delayBuckets['-5']++;
+                    else if (mins < -2) delayBuckets['-2']++;
+                    else if (mins <= 2) delayBuckets['0']++;
+                    else if (mins <= 5) delayBuckets['2']++;
+                    else if (mins <= 10) delayBuckets['5']++;
+                    else delayBuckets['10+']++;
                 }
             });
         });
@@ -6473,48 +6502,99 @@ const MenuManager = {
         const avgDelayMinutes = avgDelaySeconds / 60;
         const onTimePercent = delayCount > 0 ? Math.round((onTimeCount / delayCount) * 100) : null;
 
-        // Véhicules électriques / hybrides / GNV
+        // Véhicules par type
         let elecCount = 0, hybridCount = 0, gnvCount = 0;
+        let usbCount = 0, acCount = 0;
         markerPool.active.forEach((marker) => {
-            const vehicleLabel = marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id;
-            if (!vehicleLabel) return;
-            const id = String(vehicleLabel);
+            const id = String(marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id || '');
+            if (!id) return;
             if (vehicleTypes['elec']?.has(id)) elecCount++;
             if (vehicleTypes['hybrid']?.has(id)) hybridCount++;
             if (vehicleTypes['gnv']?.has(id)) gnvCount++;
+            if (vehicleTypes['usb']?.has(id)) usbCount++;
+            if (vehicleTypes['clim']?.has(id)) acCount++;
         });
         const greenCount = elecCount + hybridCount + gnvCount;
         const greenPercent = totalVehicles > 0 ? Math.round((greenCount / totalVehicles) * 100) : 0;
 
-        // Stats de session stockées
-        const sessionKey = 'mbf_session_stats';
-        let sessionStats = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+        // Vitesse moyenne estimée (depuis les données position)
+        let speedSum = 0, speedCount = 0, stoppedCount = 0, movingCount = 0;
+        markerPool.active.forEach((marker) => {
+            const speed = marker.vehicleData?.position?.speed;
+            if (speed !== undefined && speed !== null) {
+                speedSum += speed;
+                speedCount++;
+                if (speed < 2) stoppedCount++;
+                else movingCount++;
+            }
+        });
+        const avgSpeed = speedCount > 0 ? (speedSum / speedCount).toFixed(1) : null;
+        const movingPercent = totalVehicles > 0 ? Math.round((movingCount / totalVehicles) * 100) : null;
+
+        // Occupancy globale
+        let occupancySum = 0, occupancyCount = 0;
+        let fullCount = 0, emptyCount = 0;
+        markerPool.active.forEach((marker) => {
+            const occ = marker.vehicleData?.occupancyStatus;
+            if (occ !== null && occ !== undefined) {
+                occupancySum += occ;
+                occupancyCount++;
+                if (occ >= 5) fullCount++;
+                if (occ <= 1) emptyCount++;
+            }
+        });
+        const avgOccupancy = occupancyCount > 0 ? occupancySum / occupancyCount : null;
+        const occupancyLabels = ['Vide', 'Peu chargé', 'Places dispo', 'Debout', 'Bondé', 'Plein', 'N/A'];
+        const avgOccupancyLabel = avgOccupancy !== null ? occupancyLabels[Math.min(Math.round(avgOccupancy), 6)] : null;
+
+        // Destinations uniques
+        const uniqueDestinations = destinationSet.size;
+
+        // Stats personnelles
         const firstUse = localStorage.getItem('mbf_first_use') || new Date().toISOString();
         if (!localStorage.getItem('mbf_first_use')) localStorage.setItem('mbf_first_use', firstUse);
-
-        // Compteur de véhicules consultés (popup ouverts)
         const vehiclesConsulted = parseInt(localStorage.getItem('mbf_vehicles_consulted') || '0', 10);
         const linesConsulted = parseInt(localStorage.getItem('mbf_lines_consulted') || '0', 10);
-
-        // Calculer le max historique de véhicules simultanés
-        const currentTotal = totalVehicles;
-        const historicMax = Math.max(parseInt(localStorage.getItem('mbf_max_vehicles') || '0', 10), currentTotal);
+        const historicMax = Math.max(parseInt(localStorage.getItem('mbf_max_vehicles') || '0', 10), totalVehicles);
         localStorage.setItem('mbf_max_vehicles', historicMax.toString());
+        const daysSinceFirst = Math.floor((Date.now() - new Date(firstUse).getTime()) / (1000 * 60 * 60 * 24));
 
-        // Heure de pointe estimée (plus de véhicules = heure de pointe)
+        // Sessions (incrémente à chaque ouverture du menu stats)
+        const sessionsCount = parseInt(localStorage.getItem('mbf_stats_opened') || '0', 10);
+
+        // Heure de pointe
         const hour = new Date().getHours();
         const isPeakHour = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);
 
-        // Jours depuis première utilisation
-        const daysSinceFirst = Math.floor((Date.now() - new Date(firstUse).getTime()) / (1000 * 60 * 60 * 24));
+        // Score de santé réseau (0-100)
+        let healthScore = 100;
+        if (onTimePercent !== null) healthScore = Math.round(onTimePercent * 0.6 + (movingPercent ?? 50) * 0.2 + Math.min(greenPercent, 100) * 0.2);
+        const healthColor = healthScore >= 80 ? '#15d85d' : healthScore >= 60 ? '#db6a18' : '#b31313';
+        const healthLabel = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Correct' : 'Dégradé';
+
+        // Tendance retard (comparaison avec dernière valeur stockée)
+        const lastAvgDelay = parseFloat(localStorage.getItem('mbf_last_avg_delay') || '0');
+        const delayTrend = avgDelayMinutes - lastAvgDelay;
+        localStorage.setItem('mbf_last_avg_delay', avgDelayMinutes.toFixed(2));
+        const delayTrendLabel = Math.abs(delayTrend) < 0.3 ? 'stable'
+            : delayTrend > 0 ? `+${delayTrend.toFixed(1)} min` : `${delayTrend.toFixed(1)} min`;
+        const delayTrendColor = Math.abs(delayTrend) < 0.3 ? '#aaa'
+            : delayTrend > 0 ? '#b31313' : '#15d85d';
 
         return {
-            totalVehicles, totalLines, totalDestinations: destinationSet.size,
-            busiestLine, busiestCount,
-            avgDelayMinutes, avgDelaySeconds, onTimePercent, onTimeCount, lateCount, earlyCount, delayCount,
-            elecCount, hybridCount, gnvCount, greenCount, greenPercent,
-            vehiclesConsulted, linesConsulted,
-            historicMax, isPeakHour, daysSinceFirst, firstUse,
+            totalVehicles, totalLines, uniqueDestinations,
+            busiestLine, busiestCount, quietestLine, quietestCount,
+            avgDelayMinutes, avgDelaySeconds, onTimePercent,
+            onTimeCount, lateCount, earlyCount, delayCount,
+            maxDelay, maxDelayLine, delayBuckets,
+            delayTrend, delayTrendLabel, delayTrendColor,
+            elecCount, hybridCount, gnvCount, usbCount, acCount,
+            greenCount, greenPercent,
+            avgSpeed, movingPercent, stoppedCount, movingCount,
+            avgOccupancy, avgOccupancyLabel, fullCount, emptyCount, occupancyCount,
+            vehiclesConsulted, linesConsulted, historicMax,
+            daysSinceFirst, firstUse, sessionsCount,
+            isPeakHour, healthScore, healthColor, healthLabel,
             lineVehicleCounts
         };
     },
@@ -6586,228 +6666,338 @@ const MenuManager = {
         const statsView = document.getElementById('menu-stats-view');
         if (!statsView) return;
 
+        // Incrémenter le compteur d'ouvertures
+        const sessionsCount = parseInt(localStorage.getItem('mbf_stats_opened') || '0', 10);
+        localStorage.setItem('mbf_stats_opened', (sessionsCount + 1).toString());
+
         const s = this._computeNetworkStats();
 
-        // Couleur pour retard moyen
         const delayColor = Math.abs(s.avgDelayMinutes) <= 1 ? '#15d85d'
             : s.avgDelayMinutes > 5 ? '#b31313'
             : s.avgDelayMinutes > 1 ? '#db6a18' : '#1a5ecc';
 
-        const delayLabel = Math.abs(s.avgDelayMinutes) <= 1 ? 'À l\'heure'
-            : s.avgDelayMinutes > 0
-                ? `+${s.avgDelayMinutes.toFixed(1)} min`
-                : `${s.avgDelayMinutes.toFixed(1)} min`;
+        const delayLabel = s.delayCount === 0 ? '—'
+            : Math.abs(s.avgDelayMinutes) <= 1 ? 'À l\'heure'
+            : s.avgDelayMinutes > 0 ? `+${s.avgDelayMinutes.toFixed(1)} min`
+            : `${s.avgDelayMinutes.toFixed(1)} min`;
 
-        const delayEmoji = Math.abs(s.avgDelayMinutes) <= 1 ? '✅'
-            : s.avgDelayMinutes > 5 ? '🔴' : '🟠';
+        const peakBadge = s.isPeakHour
+            ? `<span style="background:#ff6b3522;border:1px solid #ff6b3566;color:#ff9966;padding:2px 10px;border-radius:20px;font-size:11px;">📈 Heure de pointe</span>`
+            : `<span style="background:#15d85d22;border:1px solid #15d85d44;color:#15d85d;padding:2px 10px;border-radius:20px;font-size:11px;">🟢 Trafic normal</span>`;
 
-        const busiestLineName = s.busiestLine ? (lineName[s.busiestLine] || s.busiestLine) : '—';
-        const busiestLineColor = s.busiestLine ? (lineColors[s.busiestLine] || '#555') : '#555';
-
-        // Barre de ponctualité
         const onTimePct = s.onTimePercent ?? 0;
         const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
         const earlyPct = s.delayCount > 0 ? Math.round((s.earlyCount / s.delayCount) * 100) : 0;
 
-        // Top 3 lignes les plus chargées
+        // Top 3 lignes
         const topLines = Object.entries(s.lineVehicleCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3);
+            .sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-        const topLinesHTML = topLines.map(([line, count], i) => {
+        const topLinesHTML = topLines.map(([line, count]) => {
             const color = lineColors[line] || '#555';
             const name = lineName[line] || line;
             const width = topLines[0][1] > 0 ? Math.round((count / topLines[0][1]) * 100) : 0;
             return `
-                <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-                    <div style="
-                        background:${color};
-                        color:white;
-                        padding:3px 10px;
-                        border-radius:8px;
-                        font-weight:600;
-                        font-size:13px;
-                        min-width:38px;
-                        text-align:center;
-                    ">${name}</div>
-                    <div style="flex:1; background:rgba(255,255,255,0.1); border-radius:6px; height:8px; overflow:hidden;">
-                        <div style="width:${width}%; height:100%; background:${color}; border-radius:6px; transition:width 0.8s ease;"></div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div style="background:${color};color:${getTextColor(color)};padding:3px 10px;border-radius:8px;font-weight:600;font-size:13px;min-width:38px;text-align:center;">${name}</div>
+                    <div style="flex:1;background:rgba(255,255,255,0.1);border-radius:6px;height:8px;overflow:hidden;">
+                        <div style="width:${width}%;height:100%;background:${color};border-radius:6px;transition:width 0.8s ease;"></div>
                     </div>
-                    <div style="font-size:12px; opacity:0.75; min-width:24px; text-align:right;">${count}</div>
+                    <div style="font-size:12px;opacity:0.75;min-width:24px;text-align:right;">${count}</div>
                 </div>`;
         }).join('');
 
-        // Compo flotte
-        const fleetHTML = [
+        // Distribution retards
+        const bucketMax = Math.max(...Object.values(s.delayBuckets), 1);
+        const bucketLabels = { '-5': '< -5min', '-2': '-5 à -2', '0': '±2min', '2': '2 à 5', '5': '5 à 10', '10+': '> 10min' };
+        const bucketColors = { '-5': '#1a5ecc', '-2': '#4a90d9', '0': '#15d85d', '2': '#f5a623', '5': '#e05c2a', '10+': '#b31313' };
+        const distributionHTML = s.delayCount > 0 ? Object.entries(s.delayBuckets).map(([key, val]) => {
+            const pct = Math.round((val / bucketMax) * 100);
+            return `
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <div style="font-size:10px;opacity:.6;color:white;">${val}</div>
+                    <div style="width:100%;background:rgba(255,255,255,.08);border-radius:4px;height:50px;display:flex;align-items:flex-end;overflow:hidden;">
+                        <div style="width:100%;height:${pct}%;background:${bucketColors[key]};border-radius:4px 4px 0 0;transition:height 0.8s ease;"></div>
+                    </div>
+                    <div style="font-size:9px;opacity:.5;color:white;text-align:center;line-height:1.2;">${bucketLabels[key]}</div>
+                </div>`;
+        }).join('') : '';
+
+        // Flotte
+        const fleetItems = [
             { label: 'Élec.', count: s.elecCount, color: '#15d85d', emoji: '⚡' },
             { label: 'Hybride', count: s.hybridCount, color: '#1a5ecc', emoji: '🔋' },
             { label: 'GNV', count: s.gnvCount, color: '#db6a18', emoji: '🌿' },
-        ].filter(f => f.count > 0).map(f => `
-            <div style="
-                flex:1; background:${f.color}22; border:1px solid ${f.color}44;
-                border-radius:12px; padding:10px 8px; text-align:center;
-            ">
-                <div style="font-size:18px;">${f.emoji}</div>
-                <div style="font-size:18px; font-weight:700; color:white;">${f.count}</div>
-                <div style="font-size:10px; opacity:0.7;">${f.label}</div>
-            </div>`).join('') || `<div style="opacity:0.5; font-size:13px; padding:8px 0;">Données non disponibles</div>`;
+            { label: 'USB', count: s.usbCount, color: '#a855f7', emoji: '🔌' },
+            { label: 'Clim.', count: s.acCount, color: '#38bdf8', emoji: '❄️' },
+        ].filter(f => f.count > 0);
 
-        const peakBadge = s.isPeakHour
-            ? `<span style="background:#ff6b3522; border:1px solid #ff6b3566; color:#ff9966; padding:2px 10px; border-radius:20px; font-size:11px;">📈 Heure de pointe</span>`
-            : `<span style="background:#15d85d22; border:1px solid #15d85d44; color:#15d85d; padding:2px 10px; border-radius:20px; font-size:11px;">🟢 Trafic normal</span>`;
+        const fleetHTML = fleetItems.length > 0 ? fleetItems.map(f => `
+            <div style="flex:1;min-width:60px;background:${f.color}22;border:1px solid ${f.color}44;border-radius:12px;padding:10px 8px;text-align:center;">
+                <div style="font-size:18px;">${f.emoji}</div>
+                <div style="font-size:18px;font-weight:700;color:white;">${f.count}</div>
+                <div style="font-size:10px;opacity:.7;">${f.label}</div>
+            </div>`).join('')
+            : `<div style="opacity:.5;font-size:13px;padding:8px 0;">Données indisponibles</div>`;
+
+        // Score santé réseau — arc
+        const arcAngle = (s.healthScore / 100) * 180;
+        const r = 38, cx = 50, cy = 50;
+        const toRad = a => (a - 180) * Math.PI / 180;
+        const x1 = cx + r * Math.cos(toRad(0)), y1 = cy + r * Math.sin(toRad(0));
+        const x2 = cx + r * Math.cos(toRad(arcAngle)), y2 = cy + r * Math.sin(toRad(arcAngle));
+        const largeArc = arcAngle > 180 ? 1 : 0;
+
+        const busiestLineName = s.busiestLine ? (lineName[s.busiestLine] || s.busiestLine) : '—';
+        const busiestLineColor = s.busiestLine ? (lineColors[s.busiestLine] || '#555') : '#555';
+        const quietestLineName = s.quietestLine ? (lineName[s.quietestLine] || s.quietestLine) : '—';
+        const quietestLineColor = s.quietestLine ? (lineColors[s.quietestLine] || '#555') : '#555';
+        const maxDelayLineName = s.maxDelayLine ? (lineName[s.maxDelayLine] || s.maxDelayLine) : '—';
+        const maxDelayLineColor = s.maxDelayLine ? (lineColors[s.maxDelayLine] || '#555') : '#555';
 
         const daysSinceFirstLabel = s.daysSinceFirst === 0 ? "Aujourd'hui"
             : s.daysSinceFirst === 1 ? 'Hier'
-            : `Il y a ${s.daysSinceFirst} jours`;
+            : `${s.daysSinceFirst} jours`;
 
         statsView.innerHTML = `
-            <style>
-                .stats-card {
-                    background: rgba(0,0,0,0.35);
-                    border-radius: 16px;
-                    padding: 14px 16px;
-                    margin-bottom: 10px;
-                    backdrop-filter: blur(10px);
-                    -webkit-backdrop-filter: blur(10px);
-                    border: 1px solid rgba(255,255,255,0.07);
-                    color: white;
-                    font-family: 'League Spartan', sans-serif;
-                    animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
-                }
-                .stats-card-title {
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    letter-spacing: 1px;
-                    opacity: 0.55;
-                    margin-bottom: 8px;
-                    font-weight: 600;
-                }
-                .stats-kpi-row {
-                    display: flex;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                }
-                .stats-kpi {
-                    flex: 1;
-                    background: rgba(255,255,255,0.06);
-                    border-radius: 12px;
-                    padding: 12px 10px;
-                    text-align: center;
-                    border: 1px solid rgba(255,255,255,0.08);
-                }
-                .stats-kpi-value {
-                    font-size: 26px;
-                    font-weight: 700;
-                    line-height: 1.1;
-                }
-                .stats-kpi-label {
-                    font-size: 10px;
-                    opacity: 0.6;
-                    margin-top: 2px;
-                }
-                .stats-ponctualite-bar {
-                    height: 10px;
-                    border-radius: 6px;
-                    overflow: hidden;
-                    display: flex;
-                    background: rgba(255,255,255,0.08);
-                    margin: 8px 0 4px;
-                }
-            </style>
+        <style>
+            .stats-card {
+                background: rgba(0,0,0,0.35);
+                border-radius: 16px;
+                padding: 14px 16px;
+                margin-bottom: 10px;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(255,255,255,0.07);
+                color: white;
+                font-family: 'League Spartan', sans-serif;
+                animation: scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+            }
+            .stats-card-title {
+                font-size: 11px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                opacity: 0.55;
+                margin-bottom: 10px;
+                font-weight: 600;
+            }
+            .stats-kpi-row { display:flex; gap:10px; margin-bottom:10px; }
+            .stats-kpi {
+                flex:1; background:rgba(255,255,255,0.06);
+                border-radius:12px; padding:12px 10px;
+                text-align:center; border:1px solid rgba(255,255,255,0.08);
+            }
+            .stats-kpi-value { font-size:26px; font-weight:700; line-height:1.1; }
+            .stats-kpi-label { font-size:10px; opacity:.6; margin-top:2px; }
+            .stats-pill {
+                display:inline-flex; align-items:center; gap:5px;
+                background:rgba(255,255,255,0.08); border-radius:20px;
+                padding:4px 10px; font-size:12px; color:white;
+            }
+        </style>
 
-            <!-- KPIs principaux -->
-            <div class="stats-kpi-row" style="animation-delay:0s">
-                <div class="stats-kpi">
-                    <div class="stats-kpi-value">${s.totalVehicles}</div>
-                    <div class="stats-kpi-label">🚌 En service</div>
-                </div>
-                <div class="stats-kpi">
-                    <div class="stats-kpi-value">${s.totalLines}</div>
-                    <div class="stats-kpi-label">🗺️ Lignes</div>
-                </div>
-                <div class="stats-kpi">
-                    <div class="stats-kpi-value" style="color:${delayColor};">${s.delayCount > 0 ? delayLabel : '—'}</div>
-                    <div class="stats-kpi-label">⏱ Retard moy.</div>
+        <!-- Score santé réseau -->
+        <div class="stats-card" style="animation-delay:0s">
+            <div class="stats-card-title">Santé du réseau</div>
+            <div style="display:flex;align-items:center;gap:16px;">
+                <svg width="100" height="60" viewBox="0 0 100 60">
+                    <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M 12 50 A 38 38 0 ${largeArc} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${s.healthColor}" stroke-width="8" stroke-linecap="round" style="transition:all 1s ease;"/>
+                    <text x="50" y="48" text-anchor="middle" fill="white" font-size="16" font-weight="700" font-family="League Spartan">${s.healthScore}</text>
+                </svg>
+                <div>
+                    <div style="font-size:22px;font-weight:700;color:${s.healthColor};">${s.healthLabel}</div>
+                    <div style="font-size:12px;opacity:.6;margin-top:2px;">Score sur 100</div>
+                    <div style="margin-top:8px;">${peakBadge}</div>
                 </div>
             </div>
+        </div>
 
-            <!-- Ponctualité -->
-            ${s.delayCount > 0 ? `
-            <div class="stats-card" style="animation-delay:0.05s">
-                <div class="stats-card-title">Ponctualité réseau</div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <div style="font-size:22px; font-weight:700; color:${delayColor};">${onTimePct}% <span style="font-size:13px;font-weight:400;opacity:.7;">à l'heure</span></div>
-                    ${peakBadge}
-                </div>
-                <div class="stats-ponctualite-bar">
-                    <div style="width:${onTimePct}%; background:#15d85d; transition:width 1s ease;"></div>
-                    <div style="width:${earlyPct}%; background:#1a5ecc; transition:width 1s ease;"></div>
-                    <div style="width:${latePct}%; background:${latePct > 20 ? '#b31313' : '#db6a18'}; transition:width 1s ease;"></div>
-                </div>
-                <div style="display:flex; gap:12px; font-size:11px; opacity:0.7; margin-top:4px;">
-                    <span>🟢 À l'heure ${onTimePct}%</span>
-                    <span>🔵 Avance ${earlyPct}%</span>
-                    <span>🔴 Retard ${latePct}%</span>
+        <!-- KPIs principaux -->
+        <div class="stats-kpi-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
+            <div class="stats-kpi">
+                <div class="stats-kpi-value">${s.totalVehicles}</div>
+                <div class="stats-kpi-label">🚌 En service</div>
+            </div>
+            <div class="stats-kpi">
+                <div class="stats-kpi-value">${s.totalLines}</div>
+                <div class="stats-kpi-label">🗺️ Lignes</div>
+            </div>
+            <div class="stats-kpi">
+                <div class="stats-kpi-value">${s.uniqueDestinations}</div>
+                <div class="stats-kpi-label">📍 Destinations</div>
+            </div>
+        </div>
+
+        <!-- Retard moyen + tendance -->
+        <div class="stats-kpi-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.08s both">
+            <div class="stats-kpi">
+                <div class="stats-kpi-value" style="color:${delayColor};">${delayLabel}</div>
+                <div class="stats-kpi-label">⏱ Retard moyen</div>
+            </div>
+            <div class="stats-kpi">
+                <div class="stats-kpi-value" style="color:${s.delayTrendColor};font-size:18px;">${s.delayTrendLabel}</div>
+                <div class="stats-kpi-label">📉 Tendance</div>
+            </div>
+            ${s.avgSpeed !== null ? `
+            <div class="stats-kpi">
+                <div class="stats-kpi-value">${s.avgSpeed}<span style="font-size:13px;font-weight:400;"> km/h</span></div>
+                <div class="stats-kpi-label">🏎 Vitesse moy.</div>
+            </div>` : ''}
+        </div>
+
+        <!-- Ponctualité -->
+        ${s.delayCount > 0 ? `
+        <div class="stats-card" style="animation-delay:0.1s">
+            <div class="stats-card-title">Ponctualité réseau</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div style="font-size:22px;font-weight:700;color:${delayColor};">${onTimePct}% <span style="font-size:13px;font-weight:400;opacity:.7;">à l'heure</span></div>
+                <div style="font-size:12px;opacity:.6;">${s.delayCount} mesures</div>
+            </div>
+            <div style="height:10px;border-radius:6px;overflow:hidden;display:flex;background:rgba(255,255,255,.08);margin-bottom:6px;">
+                <div style="width:${onTimePct}%;background:#15d85d;transition:width 1s ease;"></div>
+                <div style="width:${earlyPct}%;background:#1a5ecc;transition:width 1s ease;"></div>
+                <div style="width:${latePct}%;background:${latePct > 20 ? '#b31313' : '#db6a18'};transition:width 1s ease;"></div>
+            </div>
+            <div style="display:flex;gap:12px;font-size:11px;opacity:.7;flex-wrap:wrap;">
+                <span>🟢 À l'heure ${onTimePct}%</span>
+                <span>🔵 Avance ${earlyPct}%</span>
+                <span>🔴 Retard ${latePct}%</span>
+            </div>
+            ${s.maxDelay > 2 ? `
+            <div style="margin-top:10px;padding:8px 10px;background:rgba(179,19,19,.15);border-radius:10px;border:1px solid rgba(179,19,19,.3);display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:12px;opacity:.8;">Retard max détecté</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="background:${maxDelayLineColor};color:${getTextColor(maxDelayLineColor)};padding:2px 8px;border-radius:6px;font-size:12px;font-weight:600;">${maxDelayLineName}</div>
+                    <span style="color:#ff6b6b;font-weight:700;">+${s.maxDelay.toFixed(1)} min</span>
                 </div>
             </div>` : ''}
+        </div>` : ''}
 
-            <!-- Lignes les plus chargées -->
-            ${topLines.length > 0 ? `
-            <div class="stats-card" style="animation-delay:0.1s">
-                <div class="stats-card-title">Lignes les plus chargées</div>
-                ${topLinesHTML}
-            </div>` : ''}
+        <!-- Distribution des retards -->
+        ${s.delayCount > 0 ? `
+        <div class="stats-card" style="animation-delay:0.13s">
+            <div class="stats-card-title">Distribution des retards</div>
+            <div style="display:flex;gap:4px;align-items:flex-end;height:80px;">
+                ${distributionHTML}
+            </div>
+        </div>` : ''}
 
-            <!-- Flotte verte -->
-            ${s.totalVehicles > 0 ? `
-            <div class="stats-card" style="animation-delay:0.15s">
-                <div class="stats-card-title">Composition de la flotte</div>
-                <div style="display:flex; align-items:baseline; gap:6px; margin-bottom:10px;">
-                    <span style="font-size:26px; font-weight:700; color:#15d85d;">${s.greenPercent}%</span>
-                    <span style="font-size:12px; opacity:.7;">de véhicules propres en service</span>
+        <!-- Lignes les plus chargées -->
+        ${topLines.length > 0 ? `
+        <div class="stats-card" style="animation-delay:0.16s">
+            <div class="stats-card-title">Répartition des véhicules</div>
+            ${topLinesHTML}
+            <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+                <div class="stats-pill">
+                    🔥 Plus chargée :
+                    <span style="background:${busiestLineColor};color:${getTextColor(busiestLineColor)};padding:1px 8px;border-radius:6px;font-weight:700;font-size:11px;">${busiestLineName}</span>
+                    <span style="opacity:.7;">${s.busiestCount} bus</span>
                 </div>
-                <div style="display:flex; gap:8px;">
-                    ${fleetHTML}
-                </div>
-            </div>` : ''}
+                ${s.quietestLine ? `
+                <div class="stats-pill">
+                    😴 Moins chargée :
+                    <span style="background:${quietestLineColor};color:${getTextColor(quietestLineColor)};padding:1px 8px;border-radius:6px;font-weight:700;font-size:11px;">${quietestLineName}</span>
+                    <span style="opacity:.7;">${s.quietestCount} bus</span>
+                </div>` : ''}
+            </div>
+        </div>` : ''}
 
-            <!-- Statistiques personnelles -->
-            <div class="stats-card" style="animation-delay:0.2s">
-                <div class="stats-card-title">Votre utilisation</div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <div style="flex:1; min-width:100px; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:center;">
-                        <div style="font-size:22px; font-weight:700;">🚌 ${s.vehiclesConsulted}</div>
-                        <div style="font-size:10px; opacity:.6; margin-top:2px;">Véhicules consultés</div>
-                    </div>
-                    <div style="flex:1; min-width:100px; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:center;">
-                        <div style="font-size:22px; font-weight:700;">📈 ${s.historicMax}</div>
-                        <div style="font-size:10px; opacity:.6; margin-top:2px;">Record simultané</div>
-                    </div>
-                    <div style="flex:1; min-width:100px; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px; text-align:center;">
-                        <div style="font-size:22px; font-weight:700;">🗓️ ${s.daysSinceFirst}</div>
-                        <div style="font-size:10px; opacity:.6; margin-top:2px;">Jours d'utilisation</div>
-                    </div>
+        <!-- Mobilité & vitesse -->
+        ${s.movingPercent !== null ? `
+        <div class="stats-card" style="animation-delay:0.19s">
+            <div class="stats-card-title">Mobilité instantanée</div>
+            <div style="display:flex;gap:10px;">
+                <div class="stats-kpi" style="flex:1;">
+                    <div class="stats-kpi-value" style="color:#15d85d;">${s.movingPercent}%</div>
+                    <div class="stats-kpi-label">🟢 En mouvement</div>
                 </div>
-                <div style="margin-top:8px; font-size:11px; opacity:.45; text-align:right;">
-                    Première utilisation : ${new Date(s.firstUse).toLocaleDateString('fr-FR')}
+                <div class="stats-kpi" style="flex:1;">
+                    <div class="stats-kpi-value">${s.stoppedCount}</div>
+                    <div class="stats-kpi-label">🔴 À l'arrêt</div>
+                </div>
+                ${s.avgSpeed !== null ? `
+                <div class="stats-kpi" style="flex:1;">
+                    <div class="stats-kpi-value">${s.avgSpeed}</div>
+                    <div class="stats-kpi-label">km/h moy.</div>
+                </div>` : ''}
+            </div>
+        </div>` : ''}
+
+        <!-- Fréquentation -->
+        ${s.occupancyCount > 0 ? `
+        <div class="stats-card" style="animation-delay:0.22s">
+            <div class="stats-card-title">Fréquentation réseau</div>
+            <div style="display:flex;gap:10px;">
+                <div class="stats-kpi" style="flex:2;">
+                    <div class="stats-kpi-value" style="font-size:18px;">${s.avgOccupancyLabel || '—'}</div>
+                    <div class="stats-kpi-label">Niveau moyen</div>
+                </div>
+                <div class="stats-kpi" style="flex:1;">
+                    <div class="stats-kpi-value" style="color:#b31313;">${s.fullCount}</div>
+                    <div class="stats-kpi-label">🔴 Pleins</div>
+                </div>
+                <div class="stats-kpi" style="flex:1;">
+                    <div class="stats-kpi-value" style="color:#15d85d;">${s.emptyCount}</div>
+                    <div class="stats-kpi-label">🟢 Vides</div>
                 </div>
             </div>
+        </div>` : ''}
 
-            <!-- Refresh -->
-            <div style="text-align:center; margin-top:6px;">
-                <div onclick="MenuManager._refreshStatsView()" style="
-                    display:inline-flex; align-items:center; gap:6px;
-                    background:rgba(255,255,255,0.08); border-radius:20px;
-                    padding:7px 16px; cursor:pointer; font-size:12px; color:white;
-                    opacity:0.7; transition:opacity 0.2s;
-                " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"/>
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                    </svg>
-                    Actualiser
+        <!-- Flotte -->
+        ${s.totalVehicles > 0 ? `
+        <div class="stats-card" style="animation-delay:0.25s">
+            <div class="stats-card-title">Composition de la flotte</div>
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px;">
+                <span style="font-size:26px;font-weight:700;color:#15d85d;">${s.greenPercent}%</span>
+                <span style="font-size:12px;opacity:.7;">de véhicules propres en service</span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${fleetHTML}
+            </div>
+        </div>` : ''}
+
+        <!-- Statistiques personnelles -->
+        <div class="stats-card" style="animation-delay:0.28s">
+            <div class="stats-card-title">Votre utilisation</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">🚌 ${s.vehiclesConsulted}</div>
+                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Véhicules consultés</div>
+                </div>
+                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">📈 ${s.historicMax}</div>
+                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Record simultané</div>
+                </div>
+                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">🗓️ ${daysSinceFirstLabel}</div>
+                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Depuis 1ère utilisation</div>
+                </div>
+                <div style="flex:1;min-width:80px;background:rgba(255,255,255,.06);border-radius:10px;padding:10px;text-align:center;">
+                    <div style="font-size:20px;font-weight:700;">👁️ ${s.sessionsCount}</div>
+                    <div style="font-size:10px;opacity:.6;margin-top:2px;">Stats consultées</div>
                 </div>
             </div>
+            <div style="font-size:11px;opacity:.4;text-align:right;">
+                Depuis le ${new Date(s.firstUse).toLocaleDateString('fr-FR')}
+            </div>
+        </div>
+
+        <!-- Actualiser -->
+        <div style="text-align:center;margin-top:6px;">
+            <div onclick="MenuManager._refreshStatsView()" style="
+                display:inline-flex;align-items:center;gap:6px;
+                background:rgba(255,255,255,.08);border-radius:20px;
+                padding:7px 16px;cursor:pointer;font-size:12px;color:white;
+                opacity:.7;transition:opacity 0.2s;
+            " onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                Actualiser
+            </div>
+        </div>
         `;
     }
 };
@@ -7135,6 +7325,26 @@ async function cleanup(menu, button) {
 
 const animationStyle = document.createElement('style');
 animationStyle.textContent = `
+    @keyframes topBarExpand {
+        0%   { filter: blur(4px); transform: scale(0.96); opacity: 0.6; }
+        60%  { filter: blur(1px); transform: scale(1.01); opacity: 1; }
+        100% { filter: blur(0px); transform: scale(1);    opacity: 1; }
+    }
+
+    @keyframes topBarShrink {
+        0%   { filter: blur(4px); transform: scale(1.04); opacity: 0.6; }
+        60%  { filter: blur(1px); transform: scale(0.99); opacity: 1; }
+        100% { filter: blur(0px); transform: scale(1);    opacity: 1; }
+    }
+
+    .topbar-anim-expand {
+        animation: topBarExpand 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    .topbar-anim-shrink {
+        animation: topBarShrink 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
     .linesection {
         transition: transform 0.2s cubic-bezier(0.25, 1.5, 0.5, 1), box-shadow 0.2s cubic-bezier(0.25, 1.5, 0.5, 1);
     }
