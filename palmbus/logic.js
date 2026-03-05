@@ -5054,6 +5054,7 @@ const MenuManager = {
         
         // Barre de recherche
         this._createSearchBar();
+        this._createStatsPanel();
         
         // Spacer
         const spacer = document.createElement('div');
@@ -5229,6 +5230,373 @@ const MenuManager = {
         searchContainer.appendChild(this.searchResults);
         
         this.container.appendChild(searchContainer);
+    },
+
+    _createStatsPanel() {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'stats-panel';
+        wrapper.style.cssText = `
+            padding: 0 16px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        `;
+
+        let totalVehicles = 0;
+        let delaySum = 0;
+        let delayCount = 0;
+        let onTimeCount = 0;
+        let lateCount = 0;
+        let earlyCount = 0;
+        let activeLines = new Set();
+        const lineVehicleCounts = {};
+
+        markerPool.active.forEach((marker) => {
+            totalVehicles++;
+            const line = marker.line;
+            if (line) {
+                activeLines.add(line);
+                lineVehicleCounts[line] = (lineVehicleCounts[line] || 0) + 1;
+            }
+
+            const tripId = marker.vehicleData?.trip?.tripId;
+            const nextStops = tripUpdates[tripId]?.nextStops || [];
+
+            if (nextStops.length > 0 && window.stopTimesReady && window.staticStopTimes) {
+                const firstStop = nextStops[0];
+                const stopId = firstStop.stopId;
+                const tripStops = window.staticStopTimes?.[tripId];
+                if (tripStops) {
+                    const cleanStop = stopId.replace('0:', '').trim();
+                    const staticStop = tripStops[cleanStop] || tripStops['0:' + cleanStop];
+                    if (staticStop) {
+                        const timeStr = staticStop.a || staticStop.d;
+                        if (timeStr) {
+                            const parts = timeStr.split(':').map(Number);
+                            const staticSecs = parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0);
+                            const rtTime = firstStop.arrivalTime || firstStop.departureTime;
+                            if (rtTime) {
+                                let rtSecs;
+                                if (typeof rtTime === 'number' && rtTime > 86400) {
+                                    const d = new Date(rtTime * 1000);
+                                    rtSecs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+                                } else if (typeof rtTime === 'string' && rtTime.includes(':')) {
+                                    const p = rtTime.split(':').map(Number);
+                                    rtSecs = p[0] * 3600 + p[1] * 60 + (p[2] || 0);
+                                }
+                                if (rtSecs !== undefined) {
+                                    const delayMin = Math.round((rtSecs - staticSecs) / 60);
+                                    delaySum += delayMin;
+                                    delayCount++;
+                                    if (Math.abs(delayMin) <= 1) onTimeCount++;
+                                    else if (delayMin > 1) lateCount++;
+                                    else earlyCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const avgDelay = delayCount > 0 ? Math.round(delaySum / delayCount) : null;
+
+        // Busiest line
+        let busiestLine = null;
+        let busiestCount = 0;
+        Object.entries(lineVehicleCounts).forEach(([line, count]) => {
+            if (count > busiestCount) { busiestCount = count; busiestLine = line; }
+        });
+
+        // Stats persistantes (localStorage)
+        const consultedKey = 'mbf_vehicles_consulted';
+        const sessionKey   = 'mbf_session_vehicles';
+        const firstUseKey  = 'mbf_first_use_date';
+        const refreshKey   = 'mbf_refresh_count';
+
+        let totalConsulted = parseInt(localStorage.getItem(consultedKey) || '0');
+        let sessionVehicles = JSON.parse(sessionStorage.getItem(sessionKey) || '[]');
+        let firstUseDate = localStorage.getItem(firstUseKey);
+        if (!firstUseDate) {
+            firstUseDate = new Date().toLocaleDateString('fr-FR');
+            localStorage.setItem(firstUseKey, firstUseDate);
+        }
+        let refreshCount = parseInt(localStorage.getItem(refreshKey) || '0') + 1;
+        localStorage.setItem(refreshKey, refreshCount);
+
+        // Ecouter les ouvertures de popup pour incrémenter le compteur
+        if (!window._statsPopupListenerAdded) {
+            window._statsPopupListenerAdded = true;
+            document.addEventListener('click', (e) => {
+                const popup = e.target.closest('.popup-container');
+                if (popup) {
+                    const vid = popup.dataset.vehicleId;
+                    if (vid && !sessionVehicles.includes(vid)) {
+                        sessionVehicles.push(vid);
+                        sessionStorage.setItem(sessionKey, JSON.stringify(sessionVehicles));
+                        totalConsulted++;
+                        localStorage.setItem(consultedKey, totalConsulted);
+                    }
+                }
+            });
+        }
+
+        const onTimePct = delayCount > 0 ? Math.round((onTimeCount / delayCount) * 100) : null;
+
+        const makeRow = (cards) => {
+            const row = document.createElement('div');
+            row.style.cssText = `display: flex; gap: 8px;`;
+            cards.forEach(c => row.appendChild(c));
+            return row;
+        };
+
+        const makeCard = ({
+            icon, title, value, sub, color = 'rgba(255,255,255,0.08)',
+            accent = 'white', flex = 1, badge = null, progress = null
+        }) => {
+            const card = document.createElement('div');
+            card.style.cssText = `
+                flex: ${flex};
+                background: ${color};
+                border-radius: 14px;
+                padding: 12px 14px;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                position: relative;
+                overflow: hidden;
+            `;
+
+            // Glow décoratif
+            const glow = document.createElement('div');
+            glow.style.cssText = `
+                position: absolute;
+                width: 60px; height: 60px;
+                border-radius: 50%;
+                background: ${accent};
+                opacity: 0.06;
+                top: -15px; right: -15px;
+                pointer-events: none;
+            `;
+            card.appendChild(glow);
+
+            const iconEl = document.createElement('div');
+            iconEl.style.cssText = `font-size: 18px; line-height: 1;`;
+            iconEl.textContent = icon;
+
+            const titleEl = document.createElement('div');
+            titleEl.style.cssText = `font-size: 10px; color: rgba(255,255,255,0.55); font-weight: 500; letter-spacing: 0.3px; text-transform: uppercase;`;
+            titleEl.textContent = title;
+
+            const valueEl = document.createElement('div');
+            valueEl.style.cssText = `font-size: 22px; font-weight: 700; color: ${accent}; line-height: 1.1;`;
+            valueEl.textContent = value;
+
+            card.appendChild(iconEl);
+            card.appendChild(titleEl);
+            card.appendChild(valueEl);
+
+            if (badge) {
+                const badgeEl = document.createElement('div');
+                badgeEl.style.cssText = `
+                    font-size: 10px;
+                    background: rgba(255,255,255,0.12);
+                    border-radius: 6px;
+                    padding: 2px 6px;
+                    color: rgba(255,255,255,0.7);
+                    width: fit-content;
+                `;
+                badgeEl.textContent = badge;
+                card.appendChild(badgeEl);
+            }
+
+            if (sub) {
+                const subEl = document.createElement('div');
+                subEl.style.cssText = `font-size: 11px; color: rgba(255,255,255,0.5);`;
+                subEl.textContent = sub;
+                card.appendChild(subEl);
+            }
+
+            if (progress !== null) {
+                const trackEl = document.createElement('div');
+                trackEl.style.cssText = `
+                    height: 4px;
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 4px;
+                    overflow: hidden;
+                    margin-top: 4px;
+                `;
+                const fillEl = document.createElement('div');
+                fillEl.style.cssText = `
+                    height: 100%;
+                    width: 0%;
+                    background: ${accent};
+                    border-radius: 4px;
+                    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+                `;
+                trackEl.appendChild(fillEl);
+                card.appendChild(trackEl);
+                setTimeout(() => { fillEl.style.width = Math.min(100, progress) + '%'; }, 100);
+            }
+
+            return card;
+        };
+
+        const sectionTitle = document.createElement('div');
+        sectionTitle.style.cssText = `
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 2px 0;
+        `;
+        sectionTitle.textContent = t('stats') || 'Statistiques réseau';
+        wrapper.appendChild(sectionTitle);
+
+        wrapper.appendChild(makeRow([
+            makeCard({
+                icon: '🚌',
+                title: t('vehicles_in_service') || 'Véhicules en service',
+                value: totalVehicles,
+                sub: `${activeLines.size} ${t('lines') || 'lignes'}`,
+                color: 'rgba(0,122,255,0.18)',
+                accent: '#4da6ff',
+                flex: 1
+            }),
+            makeCard({
+                icon: '⏱️',
+                title: t('avg_delay') || 'Retard moyen',
+                value: avgDelay === null ? '—'
+                    : avgDelay > 0 ? `+${avgDelay} min`
+                    : avgDelay < 0 ? `${avgDelay} min`
+                    : '✓ À l\'heure',
+                color: avgDelay === null ? 'rgba(255,255,255,0.08)'
+                    : avgDelay > 3 ? 'rgba(255,59,48,0.18)'
+                    : avgDelay < -1 ? 'rgba(10,132,255,0.18)'
+                    : 'rgba(52,199,89,0.18)',
+                accent: avgDelay === null ? 'white'
+                    : avgDelay > 3 ? '#ff6b6b'
+                    : avgDelay < -1 ? '#4da6ff'
+                    : '#34c759',
+                flex: 1,
+                badge: delayCount > 0 ? `sur ${delayCount} bus` : null
+            })
+        ]));
+
+        if (delayCount > 0) {
+            const punctCard = document.createElement('div');
+            punctCard.style.cssText = `
+                background: rgba(255,255,255,0.06);
+                border-radius: 14px;
+                padding: 12px 14px;
+                border: 1px solid rgba(255,255,255,0.08);
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            `;
+
+            const punctHeader = document.createElement('div');
+            punctHeader.style.cssText = `display: flex; align-items: center; justify-content: space-between;`;
+            punctHeader.innerHTML = `
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:16px;">📊</span>
+                    <span style="font-size:10px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">${t('punctuality') || 'Ponctualité'}</span>
+                </div>
+                <span style="font-size:18px;font-weight:700;color:${onTimePct >= 70 ? '#34c759' : onTimePct >= 50 ? '#ff9f0a' : '#ff6b6b'};">${onTimePct}%</span>
+            `;
+            punctCard.appendChild(punctHeader);
+
+            // Barre segmentée
+            const barRow = document.createElement('div');
+            barRow.style.cssText = `display: flex; height: 6px; border-radius: 6px; overflow: hidden; gap: 2px;`;
+
+            const segments = [
+                { count: onTimeCount, color: '#34c759' },
+                { count: earlyCount,  color: '#4da6ff' },
+                { count: lateCount,   color: '#ff6b6b' }
+            ];
+            segments.forEach(({ count, color }) => {
+                const seg = document.createElement('div');
+                const pct = Math.round((count / delayCount) * 100);
+                seg.style.cssText = `flex: ${pct}; background: ${color}; border-radius: 4px; transition: flex 0.8s ease;`;
+                barRow.appendChild(seg);
+            });
+            punctCard.appendChild(barRow);
+
+            const legendRow = document.createElement('div');
+            legendRow.style.cssText = `display: flex; gap: 12px;`;
+            [
+                { label: t('on_time') || 'À l\'heure', count: onTimeCount, color: '#34c759' },
+                { label: t('early')   || 'En avance',  count: earlyCount,  color: '#4da6ff' },
+                { label: t('late')    || 'En retard',   count: lateCount,   color: '#ff6b6b' }
+            ].forEach(({ label, count, color }) => {
+                const dot = document.createElement('div');
+                dot.style.cssText = `display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.6);`;
+                dot.innerHTML = `<div style="width:6px;height:6px;border-radius:50%;background:${color};"></div>${count} ${label}`;
+                legendRow.appendChild(dot);
+            });
+            punctCard.appendChild(legendRow);
+            wrapper.appendChild(punctCard);
+        }
+
+        wrapper.appendChild(makeRow([
+            busiestLine ? makeCard({
+                icon: '🔥',
+                title: t('busiest_line') || 'Ligne la + chargée',
+                value: `Ligne ${lineName[busiestLine] || busiestLine}`,
+                sub: `${busiestCount} ${t('vehicles') || 'véhicules'}`,
+                color: `${lineColors[busiestLine] || '#333'}44`,
+                accent: lineColors[busiestLine] || 'white',
+                flex: 1,
+                progress: Math.round((busiestCount / totalVehicles) * 100)
+            }) : makeCard({
+                icon: '🔥',
+                title: t('busiest_line') || 'Ligne la + chargée',
+                value: '—',
+                flex: 1
+            }),
+            makeCard({
+                icon: '👁️',
+                title: t('vehicles_viewed') || 'Bus consultés',
+                value: totalConsulted,
+                sub: `depuis ${firstUseDate}`,
+                color: 'rgba(175,82,222,0.18)',
+                accent: '#bf5af2',
+                flex: 1,
+                badge: sessionVehicles.length > 0 ? `${sessionVehicles.length} aujourd'hui` : null
+            })
+        ]));
+
+        wrapper.appendChild(makeRow([
+            makeCard({
+                icon: '🔄',
+                title: t('refreshes') || 'Actualisations',
+                value: refreshCount,
+                sub: t('since_opening') || 'depuis ouverture',
+                color: 'rgba(255,159,10,0.15)',
+                accent: '#ff9f0a',
+                flex: 1
+            }),
+            makeCard({
+                icon: '📡',
+                title: t('data_source') || 'Données temps réel',
+                value: `${Object.keys(tripUpdates).length}`,
+                sub: t('trips_tracked') || 'trips suivis',
+                color: 'rgba(52,199,89,0.12)',
+                accent: '#34c759',
+                flex: 1
+            })
+        ]));
+
+        const sep = document.createElement('div');
+        sep.style.cssText = `height: 1px; background: rgba(255,255,255,0.06); margin: 2px 0 4px;`;
+        wrapper.appendChild(sep);
+
+        this.container.appendChild(wrapper);
     },
         
     _buildBusIndex() {
@@ -6343,6 +6711,18 @@ function updateMenu() {
         MenuManager.generateInitialStructure(busesByLineAndDestination);
     } else {
         MenuManager.updateData(busesByLineAndDestination);
+    }
+
+    const oldPanel = document.getElementById('stats-panel');
+    if (oldPanel) oldPanel.remove();
+    this._createStatsPanel();
+    const searchContainer = document.getElementById('search-container');
+    const spacer = document.getElementById('menu-spacer');
+    if (searchContainer && spacer) {
+        this.container.insertBefore(
+            document.getElementById('stats-panel'),
+            spacer
+        );
     }
 }
 
