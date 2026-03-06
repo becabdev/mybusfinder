@@ -6367,7 +6367,7 @@ const MenuManager = {
                 mainContent.style.opacity = '0';
                 mainContent.style.transform = 'translateX(-30px)';
                 setTimeout(() => {
-                    mainContent.style.transition = 'opacity 0.35s ease, transform 0.35s cubic-bezier(.98,0,.03,.99)';
+                    mainContent.style.transition = 'opacity 0.35s ease, transform 0.35s cubic-bezier(0,.45,.18,1)';
                     mainContent.style.opacity = '1';
                     mainContent.style.transform = 'translateX(0)';
                 }, 20);
@@ -6569,8 +6569,8 @@ const MenuManager = {
         // Score de santé réseau (0-100)
         let healthScore = 100;
         if (onTimePercent !== null) healthScore = Math.round(onTimePercent * 0.6 + (movingPercent ?? 50) * 0.2 + Math.min(greenPercent, 100) * 0.2);
-        const healthColor = healthScore >= 80 ? '#a1d1b3' : healthScore >= 60 ? '#d1ac91' : '#c69090';
-        const healthLabel = healthScore >= 60 ? t('excellent') : healthScore >= 60 ? t('correct') : t('degraded');
+        const healthColor = healthScore >= 60 ? '#40e981' : healthScore >= 40 ? '#b0e57c' : '#c69090';
+        const healthLabel = healthScore >= 60 ? t('excellent') : healthScore >= 40 ? t('correct') : t('degraded');
 
         // Tendance retard (comparaison avec dernière valeur stockée)
         const lastAvgDelay = parseFloat(localStorage.getItem('mbf_last_avg_delay') || '0');
