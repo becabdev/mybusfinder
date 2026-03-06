@@ -6367,7 +6367,7 @@ const MenuManager = {
                 mainContent.style.opacity = '0';
                 mainContent.style.transform = 'translateX(-30px)';
                 setTimeout(() => {
-                    mainContent.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                    mainContent.style.transition = 'opacity 0.35s ease, transform 0.35s cubic-bezier(0,.45,.18,1)';
                     mainContent.style.opacity = '1';
                     mainContent.style.transform = 'translateX(0)';
                 }, 20);
@@ -6393,13 +6393,13 @@ const MenuManager = {
             statsView.style.opacity = '0';
             statsView.style.transform = 'translateX(30px)';
             setTimeout(() => {
-                statsView.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+                statsView.style.transition = 'opacity 0.35s ease, transform 0.35s cubic-bezier(.98,0,.03,.99)';
                 statsView.style.opacity = '1';
                 statsView.style.transform = 'translateX(0)';
             }, 20);
 
             if (mainContent) {
-                mainContent.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                mainContent.style.transition = 'opacity 0.2s ease, transform 0.2s cubic-bezier(.98,0,.03,.99)';
                 mainContent.style.opacity = '0';
                 mainContent.style.transform = 'translateX(-30px)';
                 setTimeout(() => { mainContent.style.display = 'none'; }, 200);
@@ -6569,8 +6569,8 @@ const MenuManager = {
         // Score de santé réseau (0-100)
         let healthScore = 100;
         if (onTimePercent !== null) healthScore = Math.round(onTimePercent * 0.6 + (movingPercent ?? 50) * 0.2 + Math.min(greenPercent, 100) * 0.2);
-        const healthColor = healthScore >= 80 ? '#a1d1b3' : healthScore >= 60 ? '#d1ac91' : '#c69090';
-        const healthLabel = healthScore >= 80 ? t('excellent') : healthScore >= 60 ? t('correct') : t('degraded');
+        const healthColor = healthScore >= 60 ? '#40e981' : healthScore >= 40 ? '#b0e57c' : '#c69090';
+        const healthLabel = healthScore >= 60 ? t('excellent') : healthScore >= 40 ? t('correct') : t('degraded');
 
         // Tendance retard (comparaison avec dernière valeur stockée)
         const lastAvgDelay = parseFloat(localStorage.getItem('mbf_last_avg_delay') || '0');
@@ -6683,8 +6683,8 @@ const MenuManager = {
             : `${Math.round(s.avgDelayMinutes)} min`;
 
         const peakBadge = s.isPeakHour
-            ? `<span style="font-size:10px;opacity:.7;color:#ff9f0a;">${t('peak_hour')}</span>`
-            : `<span style="font-size:10px;opacity:.7;color:#15d85d;">${t('normal_traffic')}</span>`;
+            ? `<span style="font-size:19px;opacity:.7;color:#ff9f0a;">${t('peak_hour')}</span>`
+            : `<span style="font-size:19px;opacity:.7;color:#15d85d;">${t('normal_traffic')}</span>`;
 
         const onTimePct = s.onTimePercent ?? 0;
         const latePct = s.delayCount > 0 ? Math.round((s.lateCount / s.delayCount) * 100) : 0;
@@ -6734,9 +6734,6 @@ const MenuManager = {
                     const heightPx = Math.max(val > 0 ? Math.round(pct * 0.6) : 0, val > 0 ? 6 : 0);
                     return `
                     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;">
-                        <div style="font-size:11px;font-weight:600;color:${val > 0 ? bucketColors[key] : 'rgba(255,255,255,0.2)'};">
-                            ${val > 0 ? val : '·'}
-                        </div>
                         <div style="
                             width:100%;
                             height:${heightPx}px;
@@ -6841,7 +6838,7 @@ const MenuManager = {
                 letter-spacing: -0.5px;
             }
             .stats-tile-label {
-                font-size: 10px;
+                font-size: 13px;
                 color: rgba(255,255,255,0.5);
                 margin-top: 3px;
                 white-space: nowrap;
@@ -7107,7 +7104,7 @@ const MenuManager = {
         <div style="text-align:center;margin-top:4px;margin-bottom:4px;">
             <div onclick="MenuManager._refreshStatsView()" style="
                 display:inline-flex;align-items:center;gap:6px;
-                background:rgba(255,255,255,0.06);
+                background:rgba(0, 0, 0, 0.6);
                 border:1px solid rgba(255,255,255,0.08);
                 border-radius:20px;padding:7px 18px;
                 cursor:pointer;font-size:12px;
