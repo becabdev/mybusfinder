@@ -1647,52 +1647,19 @@ function showUpdatePopupPourHoraires() {
     window.open('schedule.html', '_blank');
 }
 
-
-function showUpdatePopup(link) {
+function showUpdatePopupLocalBus(link) {
     const popup = document.getElementById('update-popup');
+    const boutonFermer = document.getElementById('close-popup');
+    boutonFermer.style.display = 'none';
     const iframe = document.getElementById('webview-frame');
     const currentLang = i18n.currentLang;
     const hasParams = link.includes('?');
     const langParam = `lang=${currentLang}`;
     popup.classList.remove('closepop');
-    
-    const loadingContainer = document.createElement('div');
-    loadingContainer.id = 'iframe-loading-container';
-    loadingContainer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(255, 255, 255, 0);
-        z-index: 10;
-    `;
-    
-    const spinnerElement = document.createElement('span');
-    spinnerElement.id = 'iframe-win-spinner';
-    spinnerElement.style.cssText = `
-        font-family: 'SegoeUIBoot';
-        font-size: 2rem;
-        color: ${window.colorbkg};
-    `;
-    
 
-    
-    loadingContainer.appendChild(spinnerElement);
-    loadingContainer.style.display = 'none';
 
     const popupContent = document.querySelector('.popup-content');
     popupContent.style.position = 'relative';
-    popupContent.appendChild(loadingContainer);
-    
-    if (globalStopSpinner) {
-        globalStopSpinner();
-    }
-    globalStopSpinner = startWindowsSpinnerAnimation("iframe-win-spinner");
     
     if (hasParams) {
         iframe.src = `${link}&${langParam}`;
@@ -1700,14 +1667,10 @@ function showUpdatePopup(link) {
         iframe.src = `${link}?${langParam}`;
     }
     
-
     
-    setupMessageListener(loadingContainer);
     
     popup.style.display = 'flex'; 
     const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-    const menubotom = document.getElementById('menubottom');
 
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
@@ -1722,29 +1685,44 @@ function showUpdatePopup(link) {
     }, { once: true });
 }
 
-function setupMessageListener(loadingContainer) {
-    window.addEventListener('message', function(event) {
 
-        try {
-            const data = event.data;
-            
-            if (data && typeof data === 'object') {
-                if (data.action === 'showSpinner') {
-                    loadingContainer.style.display = 'flex';
-                    if (data.message) {
-                        const loadingText = loadingContainer.querySelector('div');
-                        if (loadingText) loadingText.textContent = data.message;
-                    }
-                } 
-                else if (data.action === 'hideSpinner') {
-                    loadingContainer.style.display = 'none';
-                }
-            }
-        } catch (e) {
-            console.error("Erreur lors du traitement du message:", e);
+function showUpdatePopup(link) {
+    const popup = document.getElementById('update-popup');
+    const boutonFermer = document.getElementById('close-popup');
+    boutonFermer.style.display = 'fixed';
+    const iframe = document.getElementById('webview-frame');
+    const currentLang = i18n.currentLang;
+    const hasParams = link.includes('?');
+    const langParam = `lang=${currentLang}`;
+    popup.classList.remove('closepop');
+    
+
+    const popupContent = document.querySelector('.popup-content');
+    popupContent.style.position = 'relative';
+    
+    if (hasParams) {
+        iframe.src = `${link}&${langParam}`;
+    } else {
+        iframe.src = `${link}?${langParam}`;
+    }
+        
+    popup.style.display = 'flex'; 
+    const menubottom1 = document.getElementById('menubtm');
+
+    menubottom1.classList.remove('slide-downb');
+    menubottom1.classList.add('slide-upb');
+    if (selectedLine) {
+        resetMapView();            
+    }
+
+    menubottom1.addEventListener('transitionend', () => {
+        if (menubottom1.classList.contains('slide-up')) {
+            menubottom1.style.display = 'none';
         }
-    });
+    }, { once: true });
 }
+
+
 
 function startWindowsSpinnerAnimation(elementId, interval = 30) {
     const frames = [
@@ -1870,8 +1848,6 @@ function closeUpdatePopup() {
     const popup = document.getElementById('update-popup');
     const popup1 = document.getElementById('time-popup');
     const iframe = document.getElementById('webview-frame');
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
     hideLanguageSwitcher();
 
     
@@ -1894,40 +1870,6 @@ function closeUpdatePopup() {
         popup1.style.display = 'none'; 
     }, 300);
 
-
-    
-    const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-
-    const map = document.getElementById('map');
-    menu.classList.add('hidden');
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
-
-    if (!isMenuShowed) {
-        menubottom1.style.display = 'flex';
-        
-        setTimeout(() => {
-            menubottom1.classList.remove('slide-upb');
-            menubottom1.classList.add('slide-downb');
-        }, 10);
-    }
 }
 
 
@@ -5798,7 +5740,7 @@ const MenuManager = {
     
     _createLineSection(line) {
         const lineNameText = lineName[line] || t("unknown_line");
-        const lineColor = lineColors[line] || '#000000';
+        const lineColor = lineColors[line] || '#000000e6';
         const textColor = getTextColor(lineColor);
         
         const lineSection = document.createElement('div');
@@ -5806,7 +5748,7 @@ const MenuManager = {
         lineSection.classList.add('linesection', 'ripple-container');
         
         lineSection.style.cssText = `
-            background-color: ${lineColor} !important;
+            background-color: ${lineColor}e6 !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
@@ -5816,6 +5758,7 @@ const MenuManager = {
             overflow: hidden;
             transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         `;
 
         
@@ -6078,7 +6021,50 @@ const MenuManager = {
         
         busItem.appendChild(backgroundContainer);
         busItem.appendChild(frontContent);
+        try {
         
+        const navBtn = document.createElement('button');
+        const color = lineColors[bus.line] || '#ffffff';
+        const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+        const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+        const strokeColor = luminance > 0.5 ? '#000000' : '#ffffff';
+        navBtn.style.cssText = `
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.18);
+            border: none;
+            border-radius: 50%;
+            width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+            transition: background 0.2s, transform 0.15s;
+            backdrop-filter: blur(6px);
+        `;
+        navBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="${strokeColor}" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            </svg>`;
+        navBtn.title = "Naviguer vers ce véhicule";
+        navBtn.addEventListener('mousedown', e => e.stopPropagation());
+        navBtn.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
+        navBtn.onclick = (e) => {
+            e.stopPropagation();
+            safeVibrate([30, 40, 30], true);
+            soundsUX('MBF_SelectedVehicle_DoorOpen');
+            openVehicleNavigation(bus.parkNumber, bus.vehicle);
+        };
+
+        frontContent.style.paddingRight = '42px'; 
+        busItem.appendChild(navBtn);
+        } catch(e) {
+            console.warn('NavBtn error:', e);
+        }
+
         busItem.onclick = (event) => {
             event.stopPropagation();
             safeVibrate([50, 300, 50, 30, 50], true);
@@ -8834,6 +8820,13 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
             if (markerPool.has(id)) {
                 const marker = markerPool.get(id);
                 animateMarker(marker, [latitude, longitude]);
+
+                if (navVehicleId === id) {
+                    const payload = { type: 'vehicleNavUpdate', lat: latitude, lon: longitude };
+                    const iframe = document.getElementById('webview-frame');
+                    if (iframe?.contentWindow) iframe.contentWindow.postMessage(payload, '*');
+                    if (navWindow && !navWindow.closed) navWindow.postMessage(payload, '*');
+                }
                 
                 if (marker.minimalPopup) {
                     createOrUpdateMinimalTooltip(id, true);
@@ -10630,6 +10623,77 @@ function startFetchUpdates() {
 
     scheduleFetch();
 }
+
+let navWindow = null;
+let navVehicleId = null;
+let navIntervalId = null;
+
+function openVehicleNavigation(vehicleId, marker) {
+    const latlng  = marker.getLatLng();
+    const line    = marker.line || '';
+    const color   = (lineColors[line] || '#1DB954').replace('#', '');
+    const label   = String(marker.vehicleData?.vehicle?.label || marker.vehicleData?.vehicle?.id || vehicleId);
+    const lineLbl = lineName[line] || line;
+
+    const params = new URLSearchParams({
+        lat:          latlng.lat,
+        lon:          latlng.lng,
+        lineName:     lineLbl,
+        vehicleLabel: label,
+        lineColor:    encodeURIComponent('#' + color)
+    });
+
+    const navUrl = `../navigate.html?${params.toString()}`;
+
+    if (typeof showUpdatePopupLocalBus === 'function') {
+        showUpdatePopupLocalBus(navUrl);
+        navVehicleId = vehicleId;
+        _startNavPositionBroadcast(vehicleId);
+        return;
+    }
+
+    navWindow = window.open(navUrl, 'mbf_nav',
+        'width=400,height=750,location=no,menubar=no,toolbar=no');
+    navVehicleId = vehicleId;
+    _startNavPositionBroadcast(vehicleId);
+}
+
+function _startNavPositionBroadcast(vehicleId) {
+    if (navIntervalId) clearInterval(navIntervalId);
+
+    navIntervalId = setInterval(() => {
+        const marker = markerPool.get(vehicleId);
+        if (!marker) return;
+
+        const latlng = marker.getLatLng();
+        const payload = { type: 'vehicleNavUpdate', lat: latlng.lat, lon: latlng.lng };
+
+        // iframe dans showUpdatePopup
+        const iframe = document.getElementById('webview-frame');
+        if (iframe?.contentWindow) {
+            iframe.contentWindow.postMessage(payload, '*');
+        }
+        // fenêtre standalone
+        if (navWindow && !navWindow.closed) {
+            navWindow.postMessage(payload, '*');
+        }
+        // si les deux sont fermes, arreter
+        if ((!iframe || iframe.src === '') && (!navWindow || navWindow.closed)) {
+            clearInterval(navIntervalId);
+            navIntervalId = null;
+        }
+    }, 2000); 
+}
+
+window.addEventListener('message', e => {
+    if (e.data?.type === 'closeNav') {
+        if (navIntervalId) { clearInterval(navIntervalId); navIntervalId = null; }
+        navVehicleId = null;
+        if (typeof closeUpdatePopup === 'function') closeUpdatePopup();
+        if (navWindow && !navWindow.closed) navWindow.close();
+        navWindow = null;
+    }
+});
 
 
 async function main() {
