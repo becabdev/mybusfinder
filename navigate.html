@@ -274,12 +274,16 @@
     <div id="arrow-wrapper">
       <svg id="arrow-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path id="arrow-path"
-          d="M50 8 L82 72 L50 56 L18 72 Z"
+          d="M12 17V7M12 7L8 11M12 7L16 11" 
+          stroke-linecap="round"
+          stroke-linejoin="round"
           fill="white"
-          stroke="none"
+          stroke="#ffffff" 
+          stroke-width="2"
           style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25))"
         />
       </svg>
+
       <div id="arrived-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#1DB954" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
@@ -288,22 +292,12 @@
     </div>
   </div>
 
-  <div id="accuracy-bar">
-    <span id="accuracy-label">Précision GPS</span>
-    <div id="accuracy-track"><div id="accuracy-fill" style="width:0%"></div></div>
-    <span id="accuracy-value" style="font-size:12px;opacity:0.6;min-width:36px;text-align:right;">—</span>
-  </div>
-
   <div id="distance-block">
     <div id="distance-value">
       <span id="dist-num">—</span>
       <span id="distance-unit">m</span>
     </div>
     <div id="distance-label">devant vous</div>
-    <div id="status-pill">
-      <div class="pill-dot"></div>
-      <span id="status-text">Calcul en cours…</span>
-    </div>
   </div>
 
   <div id="buttons">
@@ -398,9 +392,6 @@ const dot           = document.getElementById('dot');
 const distNum       = document.getElementById('dist-num');
 const distUnit      = document.getElementById('distance-unit');
 const distLabel     = document.getElementById('distance-label');
-const statusText    = document.getElementById('status-text');
-const accuracyFill  = document.getElementById('accuracy-fill');
-const accuracyValue = document.getElementById('accuracy-value');
 const vehicleName   = document.getElementById('vehicle-name');
 const lineBadge     = document.getElementById('line-badge');
 const arrivedOverlay = document.getElementById('arrived-overlay');
@@ -476,7 +467,7 @@ function applyTheme(hexColor) {
   const darken = (v) => Math.max(0, Math.floor(v * 0.82));
   const dark = `rgb(${darken(r)},${darken(g)},${darken(b)})`;
   bgGradient.style.background = `radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.2) 0%, transparent 65%), ${hexColor}`;
-  document.documentElement.style.setProperty('--bg', hexColor);
+  document.documentElement.style.setProperty('--bg', hexColor + "70");
 
   const isLight = luminance(hexColor) > 0.4;
   document.documentElement.style.setProperty('--fg', isLight ? '#1a1a1a' : '#ffffff');
@@ -552,11 +543,6 @@ function update() {
 
   setArrowAngle(relAngle);
 
-  if (dist < 50)       statusText.textContent = 'Très proche !';
-  else if (dist < 150) statusText.textContent = 'Vous approchez…';
-  else if (dist < 400) statusText.textContent = 'Continuez tout droit';
-  else                 statusText.textContent = 'Suivez la direction';
-
   if (state.lastBeepDistance == null || Math.abs(state.lastBeepDistance - dist) > 10) {
     if (dist < 20 && (state.lastBeepDistance == null || state.lastBeepDistance >= 20)) {
       playSound('beep20'); vibrate([80, 40, 80]);
@@ -578,7 +564,6 @@ function triggerArrived() {
   arrivedIcon.style.display = 'flex';
 
   distLabel.textContent = 'vous êtes arrivé(e) !';
-  statusText.textContent = 'Véhicule trouvé 🎉';
   distNum.textContent = '0';
   distUnit.textContent = 'm';
 
@@ -603,8 +588,6 @@ function startGPS() {
 
       const acc = pos.coords.accuracy;
       const pct = Math.max(0, Math.min(100, Math.round((1 - (acc-5)/95) * 100)));
-      accuracyFill.style.width = pct + '%';
-      accuracyValue.textContent = Math.round(acc) + 'm';
 
       gpsError.style.display = 'none';
       update();

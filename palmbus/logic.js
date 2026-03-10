@@ -1647,52 +1647,63 @@ function showUpdatePopupPourHoraires() {
     window.open('schedule.html', '_blank');
 }
 
+function showUpdatePopupLocalBus(link) {
+    const popup = document.getElementById('update-popup');
+    const boutonFermer = popup.querySelector('.close-btn');
+    boutonFermer.display = 'none';
+    const iframe = document.getElementById('webview-frame');
+    const currentLang = i18n.currentLang;
+    const hasParams = link.includes('?');
+    const langParam = `lang=${currentLang}`;
+    popup.classList.remove('closepop');
+
+
+    const popupContent = document.querySelector('.popup-content');
+    popupContent.style.position = 'relative';
+    popupContent.appendChild(loadingContainer);
+    
+    if (hasParams) {
+        iframe.src = `${link}&${langParam}`;
+    } else {
+        iframe.src = `${link}?${langParam}`;
+    }
+    
+    
+    setupMessageListener(loadingContainer);
+    
+    popup.style.display = 'flex'; 
+    const menubottom1 = document.getElementById('menubtm');
+    const menu = document.getElementById('menu');
+    const menubotom = document.getElementById('menubottom');
+
+    menubottom1.classList.remove('slide-downb');
+    menubottom1.classList.add('slide-upb');
+    if (selectedLine) {
+        resetMapView();            
+    }
+
+    menubottom1.addEventListener('transitionend', () => {
+        if (menubottom1.classList.contains('slide-up')) {
+            menubottom1.style.display = 'none';
+        }
+    }, { once: true });
+}
+
 
 function showUpdatePopup(link) {
     const popup = document.getElementById('update-popup');
+    const boutonFermer = popup.querySelector('.close-btn');
+    boutonFermer.display = 'fixed';
     const iframe = document.getElementById('webview-frame');
     const currentLang = i18n.currentLang;
     const hasParams = link.includes('?');
     const langParam = `lang=${currentLang}`;
     popup.classList.remove('closepop');
     
-    const loadingContainer = document.createElement('div');
-    loadingContainer.id = 'iframe-loading-container';
-    loadingContainer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        background-color: rgba(255, 255, 255, 0);
-        z-index: 10;
-    `;
-    
-    const spinnerElement = document.createElement('span');
-    spinnerElement.id = 'iframe-win-spinner';
-    spinnerElement.style.cssText = `
-        font-family: 'SegoeUIBoot';
-        font-size: 2rem;
-        color: ${window.colorbkg};
-    `;
-    
-
-    
-    loadingContainer.appendChild(spinnerElement);
-    loadingContainer.style.display = 'none';
 
     const popupContent = document.querySelector('.popup-content');
     popupContent.style.position = 'relative';
     popupContent.appendChild(loadingContainer);
-    
-    if (globalStopSpinner) {
-        globalStopSpinner();
-    }
-    globalStopSpinner = startWindowsSpinnerAnimation("iframe-win-spinner");
     
     if (hasParams) {
         iframe.src = `${link}&${langParam}`;
@@ -1895,12 +1906,6 @@ function closeUpdatePopup() {
     }, 300);
 
 
-    
-    const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-
-    const map = document.getElementById('map');
-    menu.classList.add('hidden');
     if (localStorage.getItem('transparency') === 'true') {
         const map = document.getElementById('map');
         map.classList.remove('hiddennotransition');
@@ -1914,20 +1919,8 @@ function closeUpdatePopup() {
         map.classList.remove('hiddennotransition');
         map.classList.remove('appearnotransition');
     }
-    menu.addEventListener('animationend', function onAnimationEnd(event) {
-        if (event.animationName === 'slideInBounceInv' && menu.classList.contains('hidden')) { 
-            menu.style.display = 'none';
-        }
-    });
 
-    if (!isMenuShowed) {
-        menubottom1.style.display = 'flex';
-        
-        setTimeout(() => {
-            menubottom1.classList.remove('slide-upb');
-            menubottom1.classList.add('slide-downb');
-        }, 10);
-    }
+
 }
 
 
@@ -10703,8 +10696,8 @@ function openVehicleNavigation(vehicleId, marker) {
 
     const navUrl = `../navigate.html?${params.toString()}`;
 
-    if (typeof showUpdatePopup === 'function') {
-        showUpdatePopup(navUrl);
+    if (typeof showUpdatePopupLocalBus === 'function') {
+        showUpdatePopupLocalBus(navUrl);
         navVehicleId = vehicleId;
         _startNavPositionBroadcast(vehicleId);
         return;
