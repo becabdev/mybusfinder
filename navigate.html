@@ -26,6 +26,7 @@
     user-select: none;
   }
 
+  /* ── Background ── */
   #bg-gradient {
     position: fixed; inset: 0;
     background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.18) 0%, transparent 65%),
@@ -34,6 +35,7 @@
     z-index: 0;
   }
 
+  /* ── Ripple pulse behind arrow ── */
   #pulse-ring {
     position: absolute;
     left: 50%; top: 50%;
@@ -57,6 +59,7 @@
     100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
   }
 
+  /* ── Layout ── */
   #wrapper {
     position: relative; z-index: 1;
     display: flex; flex-direction: column;
@@ -64,6 +67,7 @@
     padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 0);
   }
 
+  /* ── Header ── */
   #header {
     padding: 18px 24px 0;
     flex-shrink: 0;
@@ -91,12 +95,14 @@
     font-weight: 600;
   }
 
+  /* ── Arrow zone ── */
   #arrow-zone {
     flex: 1;
     display: flex; align-items: center; justify-content: center;
     position: relative;
   }
 
+  /* dot = vehicle position indicator */
   #dot {
     position: absolute;
     top: 18%;
@@ -107,6 +113,7 @@
     transition: top 0.6s ease;
   }
 
+  /* ── Arrow SVG ── */
   #arrow-wrapper {
     display: flex; align-items: center; justify-content: center;
     width: 180px; height: 180px;
@@ -119,6 +126,7 @@
     width: 140px; height: 140px;
   }
 
+  /* Arrived state */
   #arrived-icon {
     display: none;
     width: 90px; height: 90px;
@@ -134,6 +142,7 @@
   }
   #arrived-icon svg { width: 48px; height: 48px; }
 
+  /* ── Distance block ── */
   #distance-block {
     padding: 0 28px 12px;
     flex-shrink: 0;
@@ -158,6 +167,7 @@
     margin-top: 2px;
   }
 
+  /* ── Status pill ── */
   #status-pill {
     display: inline-flex; align-items: center; gap: 7px;
     margin-top: 10px;
@@ -178,6 +188,7 @@
     50% { opacity: 0.3; }
   }
 
+  /* ── Buttons ── */
   #buttons {
     display: flex; justify-content: space-between; align-items: center;
     padding: 16px 28px 20px;
@@ -197,6 +208,7 @@
   .nav-btn:active { transform: scale(0.92); background: rgba(0,0,0,0.3); }
   .nav-btn svg { width: 22px; height: 22px; stroke: white; fill: none; }
 
+  /* accuracy bar */
   #accuracy-bar {
     padding: 0 28px 8px;
     flex-shrink: 0;
@@ -214,6 +226,7 @@
     transition: width 0.6s ease;
   }
 
+  /* ── Arrived overlay ── */
   #arrived-overlay {
     display: none; position: fixed; inset: 0; z-index: 50;
     background: rgba(0,0,0,0.55);
@@ -240,6 +253,7 @@
     border: none; cursor: pointer;
   }
 
+  /* ── GPS Error ── */
   #gps-error {
     display: none;
     position: fixed; inset: 0; z-index: 60;
@@ -272,6 +286,7 @@
     <div id="pulse-ring"></div>
     <div id="dot"></div>
     <div id="arrow-wrapper">
+      <!-- Arrow -->
       <svg id="arrow-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path id="arrow-path"
           d="M50 8 L82 72 L50 56 L18 72 Z"
@@ -280,6 +295,7 @@
           style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25))"
         />
       </svg>
+      <!-- Arrived checkmark (hidden by default) -->
       <div id="arrived-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#1DB954" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
@@ -324,6 +340,7 @@
   </div>
 </div>
 
+<!-- Arrived overlay -->
 <div id="arrived-overlay">
   <div class="big-check">
     <svg viewBox="0 0 24 24" fill="none" stroke="#1DB954" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:42px;height:42px">
@@ -335,6 +352,7 @@
   <button id="arrived-dismiss">Fermer</button>
 </div>
 
+<!-- GPS Error -->
 <div id="gps-error">
   <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round">
     <path d="M12 2a10 10 0 1 0 10 10"/>
@@ -347,6 +365,9 @@
 </div>
 
 <script>
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
 const state = {
   vehicleLat: null,
   vehicleLon: null,
@@ -364,6 +385,9 @@ const state = {
   compassAvailable: false,
 };
 
+// ─────────────────────────────────────────────
+// ELEMENTS
+// ─────────────────────────────────────────────
 const bgGradient    = document.getElementById('bg-gradient');
 const arrowWrapper  = document.getElementById('arrow-wrapper');
 const arrowSvg      = document.getElementById('arrow-svg');
@@ -480,12 +504,11 @@ let animRafId = null;
 
 function animateArrow() {
   let diff = targetArrowAngle - currentArrowAngle;
-  // Wrap shortest path
   while (diff >  180) diff -= 360;
   while (diff < -180) diff += 360;
 
-  if (Math.abs(diff) > 0.3) {
-    currentArrowAngle += diff * 0.12;
+  if (Math.abs(diff) > 0.2) {
+    currentArrowAngle += diff * 0.25; // plus réactif
     arrowWrapper.style.transform = `rotate(${currentArrowAngle}deg)`;
     animRafId = requestAnimationFrame(animateArrow);
   } else {
@@ -501,7 +524,7 @@ function setArrowAngle(angleDeg) {
 }
 
 // ─────────────────────────────────────────────
-// DOT POSITION (represents how far the vehicle is : closer = lower)
+// DOT POSITION (represents how far the vehicle is — closer = lower)
 // ─────────────────────────────────────────────
 function updateDot(distanceM) {
   // Range: 500m → top 12%, 0m → top 50%
@@ -531,11 +554,13 @@ function update() {
 
   updateDot(dist);
 
+  // ── Arrived? ──
   if (dist < 15 && !state.arrived) {
     triggerArrived();
     return;
   }
 
+  // ── Direction label ──
   if (relAngle > 337.5 || relAngle <= 22.5)       distLabel.textContent = 'devant vous';
   else if (relAngle <= 67.5)                        distLabel.textContent = 'avant droite';
   else if (relAngle <= 112.5)                       distLabel.textContent = 'à droite';
@@ -547,11 +572,13 @@ function update() {
 
   setArrowAngle(relAngle);
 
+  // ── Status text ──
   if (dist < 50)       statusText.textContent = 'Très proche !';
   else if (dist < 150) statusText.textContent = 'Vous approchez…';
   else if (dist < 400) statusText.textContent = 'Continuez tout droit';
   else                 statusText.textContent = 'Suivez la direction';
 
+  // ── Proximity beeps ──
   if (state.lastBeepDistance == null || Math.abs(state.lastBeepDistance - dist) > 10) {
     if (dist < 20 && (state.lastBeepDistance == null || state.lastBeepDistance >= 20)) {
       playSound('beep20'); vibrate([80, 40, 80]);
@@ -600,7 +627,7 @@ function startGPS() {
         state.userBearing = pos.coords.heading;
       }
 
-      // accuracy bar : 100% = 5m, 0% = 100m
+      // accuracy bar — 100% = 5m, 0% = 100m
       const acc = pos.coords.accuracy;
       const pct = Math.max(0, Math.min(100, Math.round((1 - (acc-5)/95) * 100)));
       accuracyFill.style.width = pct + '%';
@@ -631,30 +658,57 @@ function startGPS() {
 }
 
 function listenOrientation() {
-  window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-  window.addEventListener('deviceorientation', handleOrientation, true);
+  // Préférer deviceorientationabsolute (Android Chrome), fallback deviceorientation
+  let usingAbsolute = false;
+
+  window.addEventListener('deviceorientationabsolute', e => {
+    usingAbsolute = true;
+    handleOrientation(e, true);
+  }, true);
+
+  window.addEventListener('deviceorientation', e => {
+    // Ne pas doubler si on a déjà l'absolu
+    if (usingAbsolute) return;
+    handleOrientation(e, !!e.webkitCompassHeading);
+  }, true);
+
   state.compassAvailable = true;
 }
 
 let lastOrientationUpdate = 0;
-function handleOrientation(e) {
+let smoothedHeading = null;
+
+function handleOrientation(e, isAbsolute) {
   const now = Date.now();
-  if (now - lastOrientationUpdate < 100) return; // throttle to 10fps
+  if (now - lastOrientationUpdate < 50) return; // 20fps max
   lastOrientationUpdate = now;
 
   let heading = null;
-  if (e.absolute && e.alpha != null) {
-    heading = (360 - e.alpha + 360) % 360;
-  } else if (e.webkitCompassHeading != null) {
+
+  if (e.webkitCompassHeading != null) {
+    // iOS — déjà compensé pour l'inclinaison
     heading = e.webkitCompassHeading;
+  } else if (isAbsolute && e.alpha != null) {
+    // Android absolu
+    heading = (360 - e.alpha + 360) % 360;
   } else if (e.alpha != null) {
     heading = (360 - e.alpha + 360) % 360;
   }
 
-  if (heading != null) {
-    state.userBearing = heading;
-    update();
+  if (heading == null) return;
+
+  // Lissage exponentiel pour éviter les sauts
+  if (smoothedHeading == null) {
+    smoothedHeading = heading;
+  } else {
+    let diff = heading - smoothedHeading;
+    while (diff >  180) diff -= 360;
+    while (diff < -180) diff += 360;
+    smoothedHeading = (smoothedHeading + diff * 0.3 + 360) % 360;
   }
+
+  state.userBearing = smoothedHeading;
+  update();
 }
 
 function showGPSError() {
@@ -679,7 +733,6 @@ window.addEventListener('message', e => {
 
     if (d.lineColor) applyTheme(d.lineColor);
 
-    // reset arrived if vehicle has moved
     if (state.arrived && state.lastDistance > 20) {
       state.arrived = false;
       arrowSvg.style.display = '';
@@ -693,6 +746,9 @@ window.addEventListener('message', e => {
   if (d.type === 'vehicleNavUpdate') {
     state.vehicleLat = d.lat;
     state.vehicleLon = d.lon;
+    // Clignote le pill-dot pour confirmer réception
+    const dot = document.querySelector('.pill-dot');
+    if (dot) { dot.style.background = '#fff'; setTimeout(() => dot.style.background = '#7fff7f', 200); }
     update();
   }
 });
@@ -706,6 +762,7 @@ document.getElementById('btn-close').addEventListener('click', () => {
   if (state.watchId) navigator.geolocation.clearWatch(state.watchId);
   window.parent?.postMessage({ type: 'closeNav' }, '*');
   window.close();
+  // Fallback if not in iframe
   setTimeout(() => history.back(), 200);
 });
 
