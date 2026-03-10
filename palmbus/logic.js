@@ -1649,7 +1649,7 @@ function showUpdatePopupPourHoraires() {
 
 function showUpdatePopupLocalBus(link) {
     const popup = document.getElementById('update-popup');
-    const boutonFermer = popup.querySelector('.close-btn');
+    const boutonFermer = document.getElementById('close-popup');
     boutonFermer.display = 'none';
     const iframe = document.getElementById('webview-frame');
     const currentLang = i18n.currentLang;
@@ -1848,8 +1848,6 @@ function closeUpdatePopup() {
     const popup = document.getElementById('update-popup');
     const popup1 = document.getElementById('time-popup');
     const iframe = document.getElementById('webview-frame');
-    const mapp = document.getElementById('map');
-    mapp.style.opacity = '1';
     hideLanguageSwitcher();
 
     
@@ -1871,22 +1869,6 @@ function closeUpdatePopup() {
         popup.style.display = 'none'; 
         popup1.style.display = 'none'; 
     }, 300);
-
-
-    if (localStorage.getItem('transparency') === 'true') {
-        const map = document.getElementById('map');
-        map.classList.remove('hiddennotransition');
-        map.classList.add('appearnotransition');
-        map.classList.remove('hidden');
-        map.classList.remove('appear');
-    } else {
-        const map = document.getElementById('map');
-        map.classList.remove('hidden');
-        map.classList.add('appear');
-        map.classList.remove('hiddennotransition');
-        map.classList.remove('appearnotransition');
-    }
-
 
 }
 

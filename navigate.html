@@ -272,7 +272,7 @@
     <div id="pulse-ring"></div>
     <div id="dot"></div>
     <div id="arrow-wrapper">
-      <svg id="arrow-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg id="arrow-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path id="arrow-path"
           d="M12 17V7M12 7L8 11M12 7L16 11" 
           stroke-linecap="round"
@@ -466,7 +466,7 @@ function applyTheme(hexColor) {
   const { r, g, b } = hexToRgb(hexColor);
   const darken = (v) => Math.max(0, Math.floor(v * 0.82));
   const dark = `rgb(${darken(r)},${darken(g)},${darken(b)})`;
-  bgGradient.style.background = `radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.2) 0%, transparent 65%), ${hexColor}`;
+  bgGradient.style.background = `radial-gradient(ellipse at 50% 25%, rgba(255,255,255,0.2) 0%, transparent 65%), ${hexColor + "70"}`;
   document.documentElement.style.setProperty('--bg', hexColor + "70");
 
   const isLight = luminance(hexColor) > 0.4;
