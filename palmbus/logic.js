@@ -1650,7 +1650,7 @@ function showUpdatePopupPourHoraires() {
 function showUpdatePopupLocalBus(link) {
     const popup = document.getElementById('update-popup');
     const boutonFermer = document.getElementById('close-popup');
-    boutonFermer.display = 'none';
+    boutonFermer.style.display = 'none';
     const iframe = document.getElementById('webview-frame');
     const currentLang = i18n.currentLang;
     const hasParams = link.includes('?');
@@ -1688,8 +1688,8 @@ function showUpdatePopupLocalBus(link) {
 
 function showUpdatePopup(link) {
     const popup = document.getElementById('update-popup');
-    const boutonFermer = popup.querySelector('.close-btn');
-    boutonFermer.display = 'fixed';
+    const boutonFermer = document.getElementById('close-popup');
+    boutonFermer.style.display = 'fixed';
     const iframe = document.getElementById('webview-frame');
     const currentLang = i18n.currentLang;
     const hasParams = link.includes('?');
