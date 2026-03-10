@@ -6079,6 +6079,7 @@ const MenuManager = {
         
         busItem.appendChild(backgroundContainer);
         busItem.appendChild(frontContent);
+        try {
         
         const navBtn = document.createElement('button');
         navBtn.style.cssText = `
@@ -6114,6 +6115,9 @@ const MenuManager = {
 
         frontContent.style.paddingRight = '42px'; 
         busItem.appendChild(navBtn);
+        } catch(e) {
+            console.warn('NavBtn error:', e);
+        }
 
         busItem.onclick = (event) => {
             event.stopPropagation();
