@@ -5798,7 +5798,7 @@ const MenuManager = {
     
     _createLineSection(line) {
         const lineNameText = lineName[line] || t("unknown_line");
-        const lineColor = lineColors[line] || '#000000';
+        const lineColor = lineColors[line] || '#000000e6';
         const textColor = getTextColor(lineColor);
         
         const lineSection = document.createElement('div');
@@ -5806,7 +5806,7 @@ const MenuManager = {
         lineSection.classList.add('linesection', 'ripple-container');
         
         lineSection.style.cssText = `
-            background-color: ${lineColor} !important;
+            background-color: ${lineColor}e6 !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
@@ -5816,6 +5816,7 @@ const MenuManager = {
             overflow: hidden;
             transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         `;
 
         
@@ -6078,7 +6079,23 @@ const MenuManager = {
         
         busItem.appendChild(backgroundContainer);
         busItem.appendChild(frontContent);
-        
+
+        const trackBtn = document.createElement('button');
+        trackBtn.className = 'vehicle-tracker-btn ripple-container';
+        trackBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            </svg>
+            Guider
+        `;
+        trackBtn.onclick = (e) => {
+            e.stopPropagation();
+            soundsUX('MBF_Menu_VehicleSelect');
+            safeVibrate([30, 20, 30], true);
+            openVehicleTrackerSheet(bus.parkNumber);
+        };
+        frontContent.appendChild(trackBtn);
+
         busItem.onclick = (event) => {
             event.stopPropagation();
             safeVibrate([50, 300, 50, 30, 50], true);
@@ -7445,8 +7462,542 @@ async function cleanup(menu, button) {
     isAnimating = false;
 }
 
+function createVehicleTrackerSheet() {
+    if (document.getElementById('vehicle-tracker-sheet')) return;
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'tracker-sheet-backdrop';
+    document.body.appendChild(backdrop);
+
+    const sheet = document.createElement('div');
+    sheet.id = 'vehicle-tracker-sheet';
+    sheet.innerHTML = `
+        <div class="tracker-handle"></div>
+
+        <div style="padding: 4px 24px 0; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <div style="font-size:18px; font-weight:600; opacity:0.95;" id="tracker-title">Guidage véhicule</div>
+                <div style="font-size:12px; opacity:0.45; margin-top:2px;" id="tracker-subtitle">Recherche…</div>
+            </div>
+            <div id="tracker-line-badge-header" style="padding:4px 12px; border-radius:10px; font-weight:700; font-size:14px;"></div>
+        </div>
+
+        <div class="tracker-compass-ring">
+            <div class="ring-outer"></div>
+            <div class="ring-pulse"></div>
+            <div class="ring-inner"></div>
+            <div class="tracker-cardinal N">N</div>
+            <div class="tracker-cardinal S">S</div>
+            <div class="tracker-cardinal E">E</div>
+            <div class="tracker-cardinal W">O</div>
+            <div class="compass-center">
+                <div class="tracker-arrow-wrap" id="tracker-arrow-wrap">
+                    <svg class="tracker-arrow-svg" width="56" height="56" viewBox="0 0 56 56" fill="none">
+                        <defs>
+                            <linearGradient id="arrowGrad" x1="28" y1="0" x2="28" y2="56" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#4fc3f7"/>
+                                <stop offset="100%" stop-color="#0a84ff"/>
+                            </linearGradient>
+                        </defs>
+                        <!-- Corps de la flèche -->
+                        <path d="M28 4 L40 46 L28 38 L16 46 Z" fill="url(#arrowGrad)" opacity="0.95"/>
+                        <!-- Reflet -->
+                        <path d="M28 4 L34 25 L28 22 Z" fill="white" opacity="0.25"/>
+                        <!-- Point arrière -->
+                        <ellipse cx="28" cy="38" rx="5" ry="4" fill="rgba(0,0,0,0.3)"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="tracker-distance-badge">
+            <span class="tracker-distance-value" id="tracker-dist-value">—</span><span class="tracker-distance-unit" id="tracker-dist-unit">m</span>
+        </div>
+
+        <div class="tracker-meta">
+            <div class="tracker-meta-chip" id="tracker-speed-chip">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span id="tracker-speed-text">—</span>
+            </div>
+            <div class="tracker-meta-chip" id="tracker-status-chip">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span id="tracker-status-text">—</span>
+            </div>
+        </div>
+
+        <div style="height:1px; background:rgba(255,255,255,0.06); margin:16px 24px 0;"></div>
+
+        <button class="tracker-close-btn" id="tracker-close-btn">Arrêter le guidage</button>
+    `;
+    document.body.appendChild(sheet);
+
+    let startY = 0;
+    sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+    sheet.addEventListener('touchend', e => {
+        if (e.changedTouches[0].clientY - startY > 60) closeVehicleTrackerSheet();
+    }, { passive: true });
+
+    document.getElementById('tracker-close-btn').addEventListener('click', closeVehicleTrackerSheet);
+    backdrop.addEventListener('click', closeVehicleTrackerSheet);
+}
+
+let _trackerState = {
+    watchId: null,
+    rafId: null,
+    targetMarkerId: null,
+    lastDistance: null,
+    lastBearing: null,
+    lastSoundDistance: null,
+    deviceBearing: 0
+};
+
+function openVehicleTrackerSheet(markerId) {
+    createVehicleTrackerSheet();
+
+    const marker = markerPool.get(markerId);
+    if (!marker) {
+        toastBottomRight.error('Véhicule introuvable sur la carte.');
+        return;
+    }
+
+    _trackerState.targetMarkerId = markerId;
+
+    const lineColor = lineColors[marker.line] || '#0a84ff';
+    const lineTxt   = getTextColor(lineColor);
+    const lineLabel = lineName[marker.line] || marker.line;
+    const dest      = marker.destination || '—';
+
+    document.getElementById('tracker-title').textContent    = `Ligne ${lineLabel}`;
+    document.getElementById('tracker-subtitle').textContent = `➜ ${dest}`;
+
+    const headerBadge = document.getElementById('tracker-line-badge-header');
+    headerBadge.textContent         = lineLabel;
+    headerBadge.style.background    = lineColor;
+    headerBadge.style.color         = lineTxt;
+
+    const sheet   = document.getElementById('vehicle-tracker-sheet');
+    const backdrop = document.getElementById('tracker-sheet-backdrop');
+    sheet.style.display   = 'block';
+    backdrop.style.display = 'block';
+    sheet.classList.remove('closing');
+    sheet.classList.add('open');
+    backdrop.style.opacity = '1';
+
+    soundsUX('MBF_Popup');
+    safeVibrate([40, 30, 40], true);
+
+    _startTracking();
+}
+
+function closeVehicleTrackerSheet() {
+    _stopTracking();
+
+    const sheet    = document.getElementById('vehicle-tracker-sheet');
+    const backdrop = document.getElementById('tracker-sheet-backdrop');
+    if (!sheet) return;
+
+    sheet.classList.remove('open');
+    sheet.classList.add('closing');
+    backdrop.style.opacity = '0';
+
+    soundsUX('MBF_VehicleClose');
+    safeVibrate([30], true);
+
+    setTimeout(() => {
+        sheet.style.display    = 'none';
+        backdrop.style.display = 'none';
+        sheet.classList.remove('closing');
+    }, 380);
+}
+
+function _startTracking() {
+    _stopTracking(); // reset si déjà actif
+
+    // orientation du terminal (boussole)
+    const _onOrientation = (e) => {
+        // ios : webkitCompassHeading, android : alpha (à inverser)
+        if (e.webkitCompassHeading !== undefined) {
+            _trackerState.deviceBearing = e.webkitCompassHeading;
+        } else if (e.alpha !== null) {
+            _trackerState.deviceBearing = 360 - e.alpha;
+        }
+    };
+
+    if (typeof DeviceOrientationEvent !== 'undefined') {
+        // ios 13+ nécessite une permission
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+                .then(perm => {
+                    if (perm === 'granted') {
+                        window.addEventListener('deviceorientation', _onOrientation, true);
+                    }
+                })
+                .catch(() => {});
+        } else {
+            window.addEventListener('deviceorientation', _onOrientation, true);
+        }
+    }
+    _trackerState._onOrientation = _onOrientation;
+
+    // GPS
+    if (!navigator.geolocation) {
+        toastBottomRight.error('Géoloc non disponible.');
+        return;
+    }
+
+    _trackerState.watchId = navigator.geolocation.watchPosition(
+        (pos) => _onTrackerGPS(pos),
+        (err) => console.warn('Tracker GPS err', err),
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
+    );
+
+    // boucle RAF pour animer l'arrow fluidement
+    _trackerLoop();
+}
+
+function _stopTracking() {
+    if (_trackerState.watchId !== null) {
+        navigator.geolocation.clearWatch(_trackerState.watchId);
+        _trackerState.watchId = null;
+    }
+    if (_trackerState.rafId) {
+        cancelAnimationFrame(_trackerState.rafId);
+        _trackerState.rafId = null;
+    }
+    if (_trackerState._onOrientation) {
+        window.removeEventListener('deviceorientation', _trackerState._onOrientation, true);
+        _trackerState._onOrientation = null;
+    }
+    _trackerState.targetMarkerId  = null;
+    _trackerState.lastSoundDistance = null;
+}
+
+function _onTrackerGPS(pos) {
+    const markerId = _trackerState.targetMarkerId;
+    if (!markerId) return;
+
+    const marker = markerPool.get(markerId);
+    if (!marker) return;
+
+    const userLat  = pos.coords.latitude;
+    const userLng  = pos.coords.longitude;
+    const tgtLatLng = marker.getLatLng();
+
+    const dist   = _haversineMeters(userLat, userLng, tgtLatLng.lat, tgtLatLng.lng);
+    const bearing = _bearingDeg(userLat, userLng, tgtLatLng.lat, tgtLatLng.lng);
+
+    _trackerState.lastDistance = dist;
+    _trackerState.lastBearing  = bearing;
+
+    // Distance display
+    const distEl = document.getElementById('tracker-dist-value');
+    const unitEl = document.getElementById('tracker-dist-unit');
+    if (distEl && unitEl) {
+        if (dist < 1000) {
+            distEl.textContent = Math.round(dist);
+            unitEl.textContent = 'm';
+        } else {
+            distEl.textContent = (dist / 1000).toFixed(2);
+            unitEl.textContent = 'km';
+        }
+    }
+
+    // Vitesse
+    const speedEl = document.getElementById('tracker-speed-text');
+    if (speedEl) {
+        const spd = pos.coords.speed;
+        speedEl.textContent = spd !== null ? `${Math.round(spd * 3.6)} km/h` : 'Arrêté';
+    }
+
+    // Status véhicule
+    const statusEl = document.getElementById('tracker-status-text');
+    if (statusEl) {
+        const vspd = marker.vehicleData?.position?.speed;
+        statusEl.textContent = (vspd !== undefined && vspd !== null)
+            ? (vspd < 1 ? 'À l\'arrêt' : `${Math.round(vspd)} km/h`)
+            : '—';
+    }
+
+    _playProximitySounds(dist);
+}
+
+function _trackerLoop() {
+    const markerId = _trackerState.targetMarkerId;
+    const arrowWrap = document.getElementById('tracker-arrow-wrap');
+
+    if (!arrowWrap || !markerId) return;
+
+    //angle = direction vers le véhicule/orientation du device
+    const bearing       = _trackerState.lastBearing ?? 0;
+    const deviceBearing = _trackerState.deviceBearing ?? 0;
+    const angle         = (bearing - deviceBearing + 360) % 360;
+
+    arrowWrap.style.transform = `rotate(${angle}deg)`;
+
+    _trackerState.rafId = requestAnimationFrame(_trackerLoop);
+}
+
+function _playProximitySounds(distanceMeters) {
+    const last = _trackerState.lastSoundDistance;
+
+    // Seuils en metres : je joue un son à chaque franchissement
+    const thresholds = [
+        { dist: 500, sound: 'MBF_Far' },
+        { dist: 200, sound: 'MBF_Near' },
+        { dist: 100, sound: 'MBF_Medium' },
+        { dist:  50, sound: 'MBF_Close' },
+    ];
+
+    for (const t of thresholds) {
+        if (last !== null && last > t.dist && distanceMeters <= t.dist) {
+            soundsUX(t.sound);
+            safeVibrate([50, 40, 50], true);
+            break;
+        }
+    }
+
+    _trackerState.lastSoundDistance = distanceMeters;
+}
+
+// --- Maths géo ---
+
+function _haversineMeters(lat1, lng1, lat2, lng2) {
+    const R  = 6371000;
+    const p1 = lat1 * Math.PI / 180;
+    const p2 = lat2 * Math.PI / 180;
+    const dp = (lat2 - lat1) * Math.PI / 180;
+    const dl = (lng2 - lng1) * Math.PI / 180;
+    const a  = Math.sin(dp/2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function _bearingDeg(lat1, lng1, lat2, lng2) {
+    const p1 = lat1 * Math.PI / 180;
+    const p2 = lat2 * Math.PI / 180;
+    const dl = (lng2 - lng1) * Math.PI / 180;
+    const y  = Math.sin(dl) * Math.cos(p2);
+    const x  = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 const animationStyle = document.createElement('style');
 animationStyle.textContent = `
+    @keyframes radarPulse {
+        0%   { transform: scale(0.8); opacity: 0.9; }
+        50%  { transform: scale(1.15); opacity: 0.4; }
+        100% { transform: scale(0.8); opacity: 0.9; }
+    }
+
+    @keyframes arrowBounce {
+        0%, 100% { transform: translateY(0) rotate(var(--arrow-angle)); }
+        50%       { transform: translateY(-6px) rotate(var(--arrow-angle)); }
+    }
+
+    @keyframes sheetSlideUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    @keyframes sheetSlideDown {
+        from { transform: translateY(0);    opacity: 1; }
+        to   { transform: translateY(100%); opacity: 0; }
+    }
+
+    .vehicle-tracker-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(0, 122, 255, 0.18);
+        border: 1.5px solid rgba(0, 122, 255, 0.5);
+        border-radius: 20px;
+        padding: 5px 12px;
+        cursor: pointer;
+        font-family: 'League Spartan', sans-serif;
+        font-size: 13px;
+        color: white;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .vehicle-tracker-btn:active {
+        transform: scale(0.93);
+        background: rgba(0, 122, 255, 0.35);
+    }
+
+    #vehicle-tracker-sheet {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        z-index: 99999999;
+        background: rgba(18, 18, 22, 0.97);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        border-radius: 24px 24px 0 0;
+        padding: 0 0 env(safe-area-inset-bottom, 20px);
+        box-shadow: 0 -8px 40px rgba(0,0,0,0.5);
+        display: none;
+        font-family: 'League Spartan', sans-serif;
+        color: white;
+        touch-action: pan-y;
+        user-select: none;
+    }
+
+    #vehicle-tracker-sheet.open {
+        display: block;
+        animation: sheetSlideUp 0.45s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+
+    #vehicle-tracker-sheet.closing {
+        animation: sheetSlideDown 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    }
+
+    .tracker-handle {
+        width: 36px; height: 5px;
+        background: rgba(255,255,255,0.25);
+        border-radius: 3px;
+        margin: 12px auto 8px;
+    }
+
+    .tracker-compass-ring {
+        position: relative;
+        width: 200px; height: 200px;
+        margin: 10px auto 0;
+    }
+
+    .tracker-compass-ring .ring-outer {
+        position: absolute; inset: 0;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.08);
+        background: radial-gradient(circle at 50% 50%, rgba(0,122,255,0.07), transparent 70%);
+    }
+
+    .tracker-compass-ring .ring-pulse {
+        position: absolute; inset: 16px;
+        border-radius: 50%;
+        border: 1.5px solid rgba(0,122,255,0.3);
+        animation: radarPulse 2.2s ease-in-out infinite;
+    }
+
+    .tracker-compass-ring .ring-inner {
+        position: absolute; inset: 36px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .tracker-compass-ring .compass-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .tracker-arrow-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 72px; height: 72px;
+        transition: transform 0.4s cubic-bezier(0.25, 1.5, 0.5, 1);
+    }
+
+    .tracker-arrow-svg {
+        filter: drop-shadow(0 0 12px rgba(0,122,255,0.8));
+    }
+
+    .tracker-cardinal {
+        position: absolute;
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(255,255,255,0.4);
+        letter-spacing: 0.5px;
+    }
+    .tracker-cardinal.N { top: 6px;  left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.7); }
+    .tracker-cardinal.S { bottom: 6px; left: 50%; transform: translateX(-50%); }
+    .tracker-cardinal.E { right: 8px; top: 50%; transform: translateY(-50%); }
+    .tracker-cardinal.W { left: 8px;  top: 50%; transform: translateY(-50%); }
+
+    .tracker-distance-badge {
+        text-align: center;
+        margin-top: 16px;
+        padding: 0 30px;
+    }
+
+    .tracker-distance-value {
+        font-size: 52px;
+        font-weight: 700;
+        letter-spacing: -2px;
+        line-height: 1;
+        background: linear-gradient(135deg, #fff 0%, #a0c4ff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .tracker-distance-unit {
+        font-size: 18px;
+        font-weight: 500;
+        opacity: 0.5;
+        -webkit-text-fill-color: white;
+        color: white;
+        margin-left: 4px;
+    }
+
+    .tracker-meta {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 12px;
+        padding: 0 24px;
+    }
+
+    .tracker-meta-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.7);
+    }
+
+    .tracker-line-badge-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 14px;
+    }
+
+    .tracker-close-btn {
+        display: block;
+        width: calc(100% - 48px);
+        margin: 18px auto 12px;
+        padding: 14px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 16px;
+        color: white;
+        font-family: 'League Spartan', sans-serif;
+        font-size: 15px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .tracker-close-btn:active { background: rgba(255,255,255,0.15); }
+
+    #tracker-sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 99999998;
+        background: rgba(0,0,0,0.45);
+        display: none;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        transition: opacity 0.3s;
+    }
+
     @keyframes topBarExpand {
         0%   { filter: blur(4px); transform: scale(0.96); opacity: 0.6; }
         60%  { filter: blur(1px); transform: scale(1.01); opacity: 1; }
