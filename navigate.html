@@ -768,13 +768,17 @@ async function requestPermissionsAndStart() {
   }
 
   startGPS();
-
+  localStorage.setItem('mbf_nav_permissions', 'granted');
   document.getElementById('permission-splash').style.display = 'none';
 }
 
 window.addEventListener('load', () => {
   loadParams();
   document.getElementById('btn-grant').addEventListener('click', requestPermissionsAndStart);
+
+  if (localStorage.getItem('mbf_nav_permissions') === 'granted') {
+    requestPermissionsAndStart();
+  }
 });
 </script>
 </body>
