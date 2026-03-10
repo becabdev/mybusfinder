@@ -6082,6 +6082,10 @@ const MenuManager = {
         try {
         
         const navBtn = document.createElement('button');
+        const color = lineColors[bus.line] || '#ffffff';
+        const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+        const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+        const strokeColor = luminance > 0.5 ? '#000000' : '#ffffff';
         navBtn.style.cssText = `
             position: absolute;
             right: 8px;
@@ -6099,7 +6103,7 @@ const MenuManager = {
         `;
         navBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="${lineSection.textColor}" stroke-width="2.2"
+                stroke="${strokeColor}" stroke-width="2.2"
                 stroke-linecap="round" stroke-linejoin="round">
             <polygon points="3 11 22 2 13 21 11 13 3 11"/>
             </svg>`;
