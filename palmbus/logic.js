@@ -1660,7 +1660,6 @@ function showUpdatePopupLocalBus(link) {
 
     const popupContent = document.querySelector('.popup-content');
     popupContent.style.position = 'relative';
-    popupContent.appendChild(loadingContainer);
     
     if (hasParams) {
         iframe.src = `${link}&${langParam}`;
@@ -1669,12 +1668,9 @@ function showUpdatePopupLocalBus(link) {
     }
     
     
-    setupMessageListener(loadingContainer);
     
     popup.style.display = 'flex'; 
     const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-    const menubotom = document.getElementById('menubottom');
 
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
@@ -1703,22 +1699,15 @@ function showUpdatePopup(link) {
 
     const popupContent = document.querySelector('.popup-content');
     popupContent.style.position = 'relative';
-    popupContent.appendChild(loadingContainer);
     
     if (hasParams) {
         iframe.src = `${link}&${langParam}`;
     } else {
         iframe.src = `${link}?${langParam}`;
     }
-    
-
-    
-    setupMessageListener(loadingContainer);
-    
+        
     popup.style.display = 'flex'; 
     const menubottom1 = document.getElementById('menubtm');
-    const menu = document.getElementById('menu');
-    const menubotom = document.getElementById('menubottom');
 
     menubottom1.classList.remove('slide-downb');
     menubottom1.classList.add('slide-upb');
@@ -1733,29 +1722,7 @@ function showUpdatePopup(link) {
     }, { once: true });
 }
 
-function setupMessageListener(loadingContainer) {
-    window.addEventListener('message', function(event) {
 
-        try {
-            const data = event.data;
-            
-            if (data && typeof data === 'object') {
-                if (data.action === 'showSpinner') {
-                    loadingContainer.style.display = 'flex';
-                    if (data.message) {
-                        const loadingText = loadingContainer.querySelector('div');
-                        if (loadingText) loadingText.textContent = data.message;
-                    }
-                } 
-                else if (data.action === 'hideSpinner') {
-                    loadingContainer.style.display = 'none';
-                }
-            }
-        } catch (e) {
-            console.error("Erreur lors du traitement du message:", e);
-        }
-    });
-}
 
 function startWindowsSpinnerAnimation(elementId, interval = 30) {
     const frames = [
