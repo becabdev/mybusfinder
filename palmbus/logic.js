@@ -7554,7 +7554,9 @@ let _trackerState = {
 function openVehicleTrackerSheet(markerId) {
     createVehicleTrackerSheet();
 
-    const marker = markerPool.get(markerId);
+    const markerData = markerPool._markers?.get(markerId) 
+                || [...(markerPool._pool || [])].find(m => m.id === markerId)
+                || markerPool.markers?.[markerId];
     if (!marker) {
         toastBottomRight.error('Véhicule introuvable sur la carte.');
         return;
@@ -7681,7 +7683,9 @@ function _onTrackerGPS(pos) {
 
     const userLat  = pos.coords.latitude;
     const userLng  = pos.coords.longitude;
-    const tgtLatLng = marker.getLatLng();
+    const tgtLatLng = marker.leafletMarker?.getLatLng() 
+               || marker.marker?.getLatLng()
+               || marker.getLatLng();
 
     const dist   = _haversineMeters(userLat, userLng, tgtLatLng.lat, tgtLatLng.lng);
     const bearing = _bearingDeg(userLat, userLng, tgtLatLng.lat, tgtLatLng.lng);
