@@ -26,7 +26,6 @@
     user-select: none;
   }
 
-  /* ── Background ── */
   #bg-gradient {
     position: fixed; inset: 0;
     background: radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.18) 0%, transparent 65%),
@@ -35,7 +34,6 @@
     z-index: 0;
   }
 
-  /* ── Ripple pulse behind arrow ── */
   #pulse-ring {
     position: absolute;
     left: 50%; top: 50%;
@@ -59,7 +57,6 @@
     100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
   }
 
-  /* ── Layout ── */
   #wrapper {
     position: relative; z-index: 1;
     display: flex; flex-direction: column;
@@ -67,7 +64,6 @@
     padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 0);
   }
 
-  /* ── Header ── */
   #header {
     padding: 18px 24px 0;
     flex-shrink: 0;
@@ -95,14 +91,12 @@
     font-weight: 600;
   }
 
-  /* ── Arrow zone ── */
   #arrow-zone {
     flex: 1;
     display: flex; align-items: center; justify-content: center;
     position: relative;
   }
 
-  /* dot = vehicle position indicator */
   #dot {
     position: absolute;
     top: 18%;
@@ -113,7 +107,6 @@
     transition: top 0.6s ease;
   }
 
-  /* ── Arrow SVG ── */
   #arrow-wrapper {
     display: flex; align-items: center; justify-content: center;
     width: 180px; height: 180px;
@@ -126,7 +119,6 @@
     width: 140px; height: 140px;
   }
 
-  /* Arrived state */
   #arrived-icon {
     display: none;
     width: 90px; height: 90px;
@@ -142,7 +134,6 @@
   }
   #arrived-icon svg { width: 48px; height: 48px; }
 
-  /* ── Distance block ── */
   #distance-block {
     padding: 0 28px 12px;
     flex-shrink: 0;
@@ -167,7 +158,6 @@
     margin-top: 2px;
   }
 
-  /* ── Status pill ── */
   #status-pill {
     display: inline-flex; align-items: center; gap: 7px;
     margin-top: 10px;
@@ -188,7 +178,6 @@
     50% { opacity: 0.3; }
   }
 
-  /* ── Buttons ── */
   #buttons {
     display: flex; justify-content: space-between; align-items: center;
     padding: 16px 28px 20px;
@@ -208,7 +197,6 @@
   .nav-btn:active { transform: scale(0.92); background: rgba(0,0,0,0.3); }
   .nav-btn svg { width: 22px; height: 22px; stroke: white; fill: none; }
 
-  /* accuracy bar */
   #accuracy-bar {
     padding: 0 28px 8px;
     flex-shrink: 0;
@@ -226,7 +214,6 @@
     transition: width 0.6s ease;
   }
 
-  /* ── Arrived overlay ── */
   #arrived-overlay {
     display: none; position: fixed; inset: 0; z-index: 50;
     background: rgba(0,0,0,0.55);
@@ -253,7 +240,6 @@
     border: none; cursor: pointer;
   }
 
-  /* ── GPS Error ── */
   #gps-error {
     display: none;
     position: fixed; inset: 0; z-index: 60;
@@ -286,7 +272,6 @@
     <div id="pulse-ring"></div>
     <div id="dot"></div>
     <div id="arrow-wrapper">
-      <!-- Arrow -->
       <svg id="arrow-svg" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path id="arrow-path"
           d="M50 8 L82 72 L50 56 L18 72 Z"
@@ -295,7 +280,6 @@
           style="filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25))"
         />
       </svg>
-      <!-- Arrived checkmark (hidden by default) -->
       <div id="arrived-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="#1DB954" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
@@ -340,7 +324,6 @@
   </div>
 </div>
 
-<!-- Arrived overlay -->
 <div id="arrived-overlay">
   <div class="big-check">
     <svg viewBox="0 0 24 24" fill="none" stroke="#1DB954" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width:42px;height:42px">
@@ -352,7 +335,31 @@
   <button id="arrived-dismiss">Fermer</button>
 </div>
 
-<!-- GPS Error -->
+<div id="permission-splash" style="
+  display:flex; position:fixed; inset:0; z-index:100;
+  background:rgba(0,0,0,0.72); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; padding:32px; text-align:center; color:white;
+">
+  <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:4px;">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+    </svg>
+  </div>
+  <p style="font-size:20px;font-weight:700;line-height:1.2;">Navigation véhicule</p>
+  <p style="font-size:14px;opacity:0.7;max-width:260px;line-height:1.5;">
+    Nous avons besoin de votre <strong style="opacity:1;">position GPS</strong> et de l'<strong style="opacity:1;">orientation</strong> de l'appareil pour vous guider
+  </p>
+  <button id="btn-grant" style="
+    margin-top:8px; padding:14px 36px; border-radius:30px;
+    background:white; color:#111; font-size:16px; font-weight:700;
+    border:none; cursor:pointer; width:100%; max-width:280px;
+  ">Autoriser et démarrer</button>
+  <p id="permission-error" style="font-size:12px;color:#ff6b6b;display:none;margin-top:4px;">
+    Permission refusée. Vérifiez les réglages de votre navigateur.
+  </p>
+</div>
+
 <div id="gps-error">
   <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round">
     <path d="M12 2a10 10 0 1 0 10 10"/>
@@ -365,15 +372,13 @@
 </div>
 
 <script>
-// ─────────────────────────────────────────────
 // STATE
-// ─────────────────────────────────────────────
 const state = {
   vehicleLat: null,
   vehicleLon: null,
   userLat: null,
   userLon: null,
-  userBearing: null,   // degrees from north, 0–360
+  userBearing: null,
   lineName: '',
   lineColor: '#1DB954',
   vehicleLabel: '',
@@ -385,9 +390,6 @@ const state = {
   compassAvailable: false,
 };
 
-// ─────────────────────────────────────────────
-// ELEMENTS
-// ─────────────────────────────────────────────
 const bgGradient    = document.getElementById('bg-gradient');
 const arrowWrapper  = document.getElementById('arrow-wrapper');
 const arrowSvg      = document.getElementById('arrow-svg');
@@ -405,9 +407,7 @@ const arrivedOverlay = document.getElementById('arrived-overlay');
 const arrivedVehicleName = document.getElementById('arrived-vehicle-name');
 const gpsError      = document.getElementById('gps-error');
 
-// ─────────────────────────────────────────────
 // UTILS
-// ─────────────────────────────────────────────
 function toRad(d) { return d * Math.PI / 180; }
 function toDeg(r) { return r * 180 / Math.PI; }
 
@@ -445,15 +445,11 @@ function luminance(hex) {
   return 0.2126*norm[0]+0.7152*norm[1]+0.0722*norm[2];
 }
 
-// ─────────────────────────────────────────────
 // SOUNDS
-// ─────────────────────────────────────────────
 const SOUNDS = {
-  close:   '../soundsUX/MBF_SelectedVehicle_DoorClose.wav',
-  open:    '../soundsUX/MBF_SelectedVehicle_DoorOpen.wav',
-  arrive:  '../soundsUX/MBF_Success.wav',
-  beep50:  '../soundsUX/MBF_NotificationInfo.wav',
-  beep20:  '../soundsUX/MBF_Popup.wav',
+  arrive:  '../soundsUX/MBF_Arrive.wav',
+  beep50:  '../soundsUX/MBF_50.wav',
+  beep20:  '../soundsUX/MBF_20.wav',
   error:   '../soundsUX/MBF_NotificationError.wav',
 };
 
@@ -466,21 +462,16 @@ function playSound(key) {
   } catch(e) {}
 }
 
-// ─────────────────────────────────────────────
 // HAPTICS
-// ─────────────────────────────────────────────
 function vibrate(pattern) {
   try { navigator.vibrate && navigator.vibrate(pattern); } catch(e) {}
 }
 
-// ─────────────────────────────────────────────
 // THEMING
-// ─────────────────────────────────────────────
 function applyTheme(hexColor) {
   if (!hexColor || hexColor === '#ffffff' || hexColor === '#FFFFFF') hexColor = '#1DB954';
   state.lineColor = hexColor;
 
-  // Darken slightly for richer bg
   const { r, g, b } = hexToRgb(hexColor);
   const darken = (v) => Math.max(0, Math.floor(v * 0.82));
   const dark = `rgb(${darken(r)},${darken(g)},${darken(b)})`;
@@ -495,9 +486,7 @@ function applyTheme(hexColor) {
   lineBadge.style.background = 'rgba(0,0,0,0.22)';
 }
 
-// ─────────────────────────────────────────────
 // ARROW UPDATE
-// ─────────────────────────────────────────────
 let currentArrowAngle = 0;
 let targetArrowAngle  = 0;
 let animRafId = null;
@@ -508,7 +497,7 @@ function animateArrow() {
   while (diff < -180) diff += 360;
 
   if (Math.abs(diff) > 0.2) {
-    currentArrowAngle += diff * 0.25; // plus réactif
+    currentArrowAngle += diff * 0.25; 
     arrowWrapper.style.transform = `rotate(${currentArrowAngle}deg)`;
     animRafId = requestAnimationFrame(animateArrow);
   } else {
@@ -523,19 +512,13 @@ function setArrowAngle(angleDeg) {
   animRafId = requestAnimationFrame(animateArrow);
 }
 
-// ─────────────────────────────────────────────
-// DOT POSITION (represents how far the vehicle is — closer = lower)
-// ─────────────────────────────────────────────
 function updateDot(distanceM) {
-  // Range: 500m → top 12%, 0m → top 50%
   const clamp = Math.min(Math.max(distanceM, 0), 500);
   const pct   = 12 + (1 - clamp/500) * 38;
   dot.style.top = pct + '%';
 }
 
-// ─────────────────────────────────────────────
 // MAIN UPDATE
-// ─────────────────────────────────────────────
 function update() {
   const { vehicleLat, vehicleLon, userLat, userLon, userBearing } = state;
   if (vehicleLat == null || userLat == null) return;
@@ -543,7 +526,6 @@ function update() {
   const dist = haversineDistance(userLat, userLon, vehicleLat, vehicleLon);
   const bearingToVehicle = bearingTo(userLat, userLon, vehicleLat, vehicleLon);
 
-  // Arrow = bearing to vehicle minus user's heading (so arrow is relative to user)
   const relAngle = userBearing != null
     ? ((bearingToVehicle - userBearing + 360) % 360)
     : bearingToVehicle;
@@ -554,13 +536,11 @@ function update() {
 
   updateDot(dist);
 
-  // ── Arrived? ──
   if (dist < 15 && !state.arrived) {
     triggerArrived();
     return;
   }
 
-  // ── Direction label ──
   if (relAngle > 337.5 || relAngle <= 22.5)       distLabel.textContent = 'devant vous';
   else if (relAngle <= 67.5)                        distLabel.textContent = 'avant droite';
   else if (relAngle <= 112.5)                       distLabel.textContent = 'à droite';
@@ -572,13 +552,11 @@ function update() {
 
   setArrowAngle(relAngle);
 
-  // ── Status text ──
   if (dist < 50)       statusText.textContent = 'Très proche !';
   else if (dist < 150) statusText.textContent = 'Vous approchez…';
   else if (dist < 400) statusText.textContent = 'Continuez tout droit';
   else                 statusText.textContent = 'Suivez la direction';
 
-  // ── Proximity beeps ──
   if (state.lastBeepDistance == null || Math.abs(state.lastBeepDistance - dist) > 10) {
     if (dist < 20 && (state.lastBeepDistance == null || state.lastBeepDistance >= 20)) {
       playSound('beep20'); vibrate([80, 40, 80]);
@@ -591,9 +569,7 @@ function update() {
   state.lastDistance = dist;
 }
 
-// ─────────────────────────────────────────────
 // ARRIVED
-// ─────────────────────────────────────────────
 function triggerArrived() {
   if (state.arrived) return;
   state.arrived = true;
@@ -613,9 +589,7 @@ function triggerArrived() {
   vibrate([100, 50, 100, 50, 200]);
 }
 
-// ─────────────────────────────────────────────
 // GPS WATCH
-// ─────────────────────────────────────────────
 function startGPS() {
   if (!navigator.geolocation) { showGPSError(); return; }
 
@@ -627,7 +601,6 @@ function startGPS() {
         state.userBearing = pos.coords.heading;
       }
 
-      // accuracy bar — 100% = 5m, 0% = 100m
       const acc = pos.coords.accuracy;
       const pct = Math.max(0, Math.min(100, Math.round((1 - (acc-5)/95) * 100)));
       accuracyFill.style.width = pct + '%';
@@ -644,21 +617,9 @@ function startGPS() {
     { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
   );
 
-  // Device orientation for bearing (when available)
-  if (typeof DeviceOrientationEvent !== 'undefined') {
-    // iOS 13+ needs permission
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission().then(r => {
-        if (r === 'granted') listenOrientation();
-      }).catch(() => {});
-    } else {
-      listenOrientation();
-    }
-  }
 }
 
 function listenOrientation() {
-  // Préférer deviceorientationabsolute (Android Chrome), fallback deviceorientation
   let usingAbsolute = false;
 
   window.addEventListener('deviceorientationabsolute', e => {
@@ -667,7 +628,6 @@ function listenOrientation() {
   }, true);
 
   window.addEventListener('deviceorientation', e => {
-    // Ne pas doubler si on a déjà l'absolu
     if (usingAbsolute) return;
     handleOrientation(e, !!e.webkitCompassHeading);
   }, true);
@@ -680,13 +640,13 @@ let smoothedHeading = null;
 
 function handleOrientation(e, isAbsolute) {
   const now = Date.now();
-  if (now - lastOrientationUpdate < 50) return; // 20fps max
+  if (now - lastOrientationUpdate < 50) return; 
   lastOrientationUpdate = now;
 
   let heading = null;
 
   if (e.webkitCompassHeading != null) {
-    // iOS — déjà compensé pour l'inclinaison
+    // ios déja compensé pour l'inclinaison
     heading = e.webkitCompassHeading;
   } else if (isAbsolute && e.alpha != null) {
     // Android absolu
@@ -697,7 +657,6 @@ function handleOrientation(e, isAbsolute) {
 
   if (heading == null) return;
 
-  // Lissage exponentiel pour éviter les sauts
   if (smoothedHeading == null) {
     smoothedHeading = heading;
   } else {
@@ -715,9 +674,7 @@ function showGPSError() {
   gpsError.style.display = 'flex';
 }
 
-// ─────────────────────────────────────────────
 // MESSAGE FROM PARENT
-// ─────────────────────────────────────────────
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d || typeof d !== 'object') return;
@@ -746,18 +703,14 @@ window.addEventListener('message', e => {
   if (d.type === 'vehicleNavUpdate') {
     state.vehicleLat = d.lat;
     state.vehicleLon = d.lon;
-    // Clignote le pill-dot pour confirmer réception
     const dot = document.querySelector('.pill-dot');
     if (dot) { dot.style.background = '#fff'; setTimeout(() => dot.style.background = '#7fff7f', 200); }
     update();
   }
 });
 
-// ─────────────────────────────────────────────
 // BUTTONS
-// ─────────────────────────────────────────────
 document.getElementById('btn-close').addEventListener('click', () => {
-  playSound('close');
   vibrate([30]);
   if (state.watchId) navigator.geolocation.clearWatch(state.watchId);
   window.parent?.postMessage({ type: 'closeNav' }, '*');
@@ -783,13 +736,11 @@ document.getElementById('btn-sound').addEventListener('click', () => {
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>`;
     icon.style.opacity = '1';
-    playSound('open');
   }
 });
 
 document.getElementById('arrived-dismiss').addEventListener('click', () => {
   arrivedOverlay.style.display = 'none';
-  playSound('close');
   vibrate([30]);
   window.parent?.postMessage({ type: 'closeNav' }, '*');
 });
@@ -800,14 +751,8 @@ document.getElementById('gps-retry').addEventListener('click', () => {
   startGPS();
 });
 
-// ─────────────────────────────────────────────
 // INIT
-// ─────────────────────────────────────────────
-window.addEventListener('load', () => {
-  playSound('open');
-  startGPS();
-
-  // Check if opened with URL params (direct open)
+function loadParams() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('lat') && params.get('lon')) {
     state.vehicleLat   = parseFloat(params.get('lat'));
@@ -815,11 +760,38 @@ window.addEventListener('load', () => {
     state.lineName     = params.get('lineName') || '';
     state.vehicleLabel = params.get('vehicleLabel') || '';
     const color        = params.get('lineColor');
-
     vehicleName.textContent = `Bus ${state.vehicleLabel}`;
     lineBadge.textContent   = `Ligne ${state.lineName || '—'}`;
     if (color) applyTheme(decodeURIComponent(color));
   }
+}
+
+async function requestPermissionsAndStart() {
+  const btn = document.getElementById('btn-grant');
+  const errMsg = document.getElementById('permission-error');
+  btn.disabled = true;
+  btn.textContent = 'Chargement…';
+  errMsg.style.display = 'none';
+
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res === 'granted') listenOrientation();
+    } catch(e) {
+    }
+  } else {
+    listenOrientation();
+  }
+
+  startGPS();
+
+  document.getElementById('permission-splash').style.display = 'none';
+}
+
+window.addEventListener('load', () => {
+  loadParams();
+  document.getElementById('btn-grant').addEventListener('click', requestPermissionsAndStart);
 });
 </script>
 </body>
