@@ -7554,7 +7554,7 @@ let _trackerState = {
 function openVehicleTrackerSheet(markerId) {
     createVehicleTrackerSheet();
 
-    const markerData = markerPool._markers?.get(markerId) 
+    const marker = markerPool._markers?.get(markerId) 
                 || [...(markerPool._pool || [])].find(m => m.id === markerId)
                 || markerPool.markers?.[markerId];
     if (!marker) {
