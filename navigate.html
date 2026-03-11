@@ -768,16 +768,23 @@ async function requestPermissionsAndStart() {
   }
 
   startGPS();
-  localStorage.setItem('mbf_nav_permissions', 'granted');
+localStorage.setItem('mbf_nav_permissions', 'granted');
   document.getElementById('permission-splash').style.display = 'none';
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   loadParams();
   document.getElementById('btn-grant').addEventListener('click', requestPermissionsAndStart);
 
-  if (localStorage.getItem('mbf_nav_permissions') === 'granted') {
-    requestPermissionsAndStart();
+  try {
+    const geo = await navigator.permissions.query({ name: 'geolocation' });
+    const orient = await navigator.permissions.query({ name: 'accelerometer' });
+    if (geo.state === 'granted' && orient.state === 'granted') {
+      requestPermissionsAndStart();
+      return;
+    }
+  } catch(e) {
+    
   }
 });
 </script>
