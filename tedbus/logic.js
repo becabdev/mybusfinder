@@ -6024,10 +6024,6 @@ const MenuManager = {
         try {
         
         const navBtn = document.createElement('button');
-        const color = lineColors[bus.line] || '#ffffff';
-        const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
-        const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
-        const strokeColor = luminance > 0.5 ? '#000000' : '#ffffff';
         navBtn.style.cssText = `
             position: absolute;
             right: 8px;
@@ -6045,7 +6041,7 @@ const MenuManager = {
         `;
         navBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="${strokeColor}" stroke-width="2.2"
+                stroke="#ffffff" stroke-width="2.2"
                 stroke-linecap="round" stroke-linejoin="round">
             <polygon points="3 11 22 2 13 21 11 13 3 11"/>
             </svg>`;
@@ -8419,6 +8415,12 @@ async function fetchVehiclePositions() {
                                     <path d="M5.5 15C3.84315 15 2.5 16.3431 2.5 18C2.5 19.6569 3.84315 21 5.5 21C7.15685 21 8.5 19.6569 8.5 18" />
                                     <path d="M18.5 21C16.8431 21 15.5 19.6569 15.5 18C15.5 16.3431 16.8431 15 18.5 15C20.1569 15 21.5 16.3431 21.5 18" />
                                     <path d="M20 13C20 10.6106 18.9525 8.46589 17.2916 7M4 13C4 10.6106 5.04752 8.46589 6.70838 7M10 20.748C10.6392 20.9125 11.3094 21 12 21C12.6906 21 13.3608 20.9125 14 20.748" />
+                                </svg>
+                            </button>
+
+                            <button onclick="openVehicleNavigation('${id}', markerPool.get('${id}'))" title="Naviguer" class="share-button" style="right: 48px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${textColor}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="3 11 22 2 13 21 11 13 3 11"/>
                                 </svg>
                             </button>
 
