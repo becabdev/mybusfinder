@@ -244,7 +244,7 @@
         }, 1000);
     });
 
-    VERSION_NAME = '3.4.1';
+    VERSION_NAME = '3.5.0 - Tokyo';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
