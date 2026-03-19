@@ -7744,6 +7744,7 @@ let _showTimeLeft = true;
 let _timeToggleAnimating = false;
 
 function initTimeToggle() {
+    if (_timeToggleInterval) return;
     _timeToggleInterval = setInterval(() => {
         if (_timeToggleAnimating) return;
         _timeToggleAnimating = true;
