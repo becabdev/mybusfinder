@@ -7693,13 +7693,57 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     return rtSecs - staticSecs;
 }
 
+
+const TooltipManager = {
+    pool: [],
+    maxPoolSize: 50,
+    active: new Map(),
+    
+    acquire() {
+        let tooltip = this.pool.pop();
+        if (!tooltip) {
+            tooltip = L.tooltip({
+                permanent: true,
+                direction: 'center',
+                className: 'minimal-tooltip-container',
+                offset: [0, 0],
+                opacity: 1
+            });
+        }
+        return tooltip;
+    },
+    
+    release(tooltip) {
+        if (!tooltip) return;
+        
+        if (tooltip._container) {
+            const handlers = tooltip._container._eventHandlers;
+            if (handlers) {
+                handlers.forEach(handler => {
+                    tooltip._container.removeEventListener(handler.event, handler.fn);
+                });
+            }
+        }
+        
+        if (this.pool.length < this.maxPoolSize) {
+            this.pool.push(tooltip);
+        }
+    },
+    
+    clear() {
+        this.active.forEach((tooltip) => {
+            map.removeLayer(tooltip);
+        });
+        this.active.clear();
+        this.pool = [];
+    }
+};
+
 let _timeToggleInterval = null;
 let _showTimeLeft = true;
 let _timeToggleAnimating = false;
 
 function initTimeToggle() {
-    if (_timeToggleInterval) return;
-
     _timeToggleInterval = setInterval(() => {
         if (_timeToggleAnimating) return;
         _timeToggleAnimating = true;
