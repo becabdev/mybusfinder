@@ -8008,92 +8008,6 @@ function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
     }
 }
 
-function refreshOpenPopups() {
-    markerPool.active.forEach((marker, id) => {
-        if (!marker.isPopupOpen()) return;
-
-        const vehicle = marker.vehicleData;
-        if (!vehicle) return;
-
-        const line       = marker.line;
-        const tripId     = vehicle.trip?.tripId || 'Inconnu';
-        const stopIdRaw  = vehicle.stopId || 'Inconnu';
-        const stopId     = stopIdRaw.replace("0:", "");
-        const nextStops  = tripUpdates[tripId]?.nextStops || [];
-
-        let currentStopIndex = nextStops.findIndex(
-            s => s.stopId.replace("0:", "") === stopId
-        );
-
-        let filteredStops = [];
-        if (currentStopIndex !== -1) {
-            filteredStops = nextStops.slice(currentStopIndex)
-                .filter(s => s.delay === null || s.delay >= -60);
-        } else {
-            filteredStops = nextStops.filter(s => s.delay === null || s.delay > 0);
-        }
-
-        filteredStops = filteredStops.map(stop => ({
-            ...stop,
-            computedDelay: computeDelaySeconds(
-                tripId, stop.stopId, stop.arrivalTime || stop.departureTime
-            )
-        }));
-
-        const firstStop     = filteredStops.length > 0 ? filteredStops[0] : null;
-        const delayMinutes  = (firstStop?.computedDelay != null && window.stopTimesReady)
-            ? Math.round(firstStop.computedDelay / 60)
-            : null;
-
-        const iconClock = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-
-        const delayBadgeHTML = (delayMinutes !== null && filteredStops.length > 0) ? (() => {
-            let icon, label, color;
-            if (Math.abs(delayMinutes) <= 1) {
-                icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-                label = t("ontime");
-                color = "#15d85d";
-            } else if (delayMinutes < -1) {
-                icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
-                label = `${Math.abs(delayMinutes)} ${t("min")} ${t("early")}`;
-                color = "#1a5ecc";
-            } else {
-                icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-                label = `${delayMinutes} ${t("min")} ${t("late")}`;
-                color = delayMinutes > 5 ? "#b31313" : "#db6a18";
-            }
-            return `<span>
-                <span class="stops-icon-badge" style="border: 2px solid ${color}44;">
-                    <span style="display:flex; align-items:center;">${icon}</span>
-                    <span class="stops-badge-label">${label}</span>
-                </span>
-            </span>`;
-        })() : "";
-
-        const popup = marker.getPopup();
-        if (!popup) return;
-
-        const node = popup._contentNode;
-        if (!node) return;
-
-        const headerEl = node.querySelector(`#popup-header-${id}`);
-        if (!headerEl) return;
-
-        const existingBadge = headerEl.querySelector('.stops-icon-badge[style*="border"]');
-        if (delayBadgeHTML) {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = delayBadgeHTML;
-            const newBadge = tmp.firstElementChild;
-
-            if (existingBadge) {
-                existingBadge.parentElement.replaceChild(newBadge, existingBadge);
-            } else {
-                const iconsRow = headerEl.querySelector('.stops-icons-row');
-                if (iconsRow) iconsRow.prepend(newBadge);
-            }
-        }
-    });
-}
 
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
@@ -8129,7 +8043,58 @@ async function fetchVehiclePositions() {
                 Object.assign(window.staticStopTimes, json);
                 window.stopTimesReady   = true;
                 window.stopTimesLoading = false;
-                refreshOpenPopups();
+
+                // Régénérer les popups ouvertes maintenant que les stop_times sont prêts
+                markerPool.active.forEach((marker, id) => {
+                    if (!marker.isPopupOpen()) return;
+                    const vd       = marker.vehicleData;
+                    if (!vd) return;
+                    const tripId   = vd.trip?.tripId;
+                    const line     = marker.line;
+                    const stopId   = (vd.stopId || '').replace('0:', '');
+                    const nextStops = tripUpdates[tripId]?.nextStops || [];
+
+                    let filtered = nextStops.filter(s => s.delay === null || s.delay >= -60);
+                    filtered = filtered.map(s => ({
+                        ...s,
+                        computedDelay: computeDelaySeconds(tripId, s.stopId, s.arrivalTime || s.departureTime)
+                    }));
+
+                    const firstStop    = filtered[0] || null;
+                    const delayMinutes = firstStop?.computedDelay != null
+                        ? Math.round(firstStop.computedDelay / 60) : null;
+
+                    const iconClock = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+
+                    const delayBadgeHTML = (delayMinutes !== null && filtered.length > 0) ? (() => {
+                        let icon, label, color;
+                        if (Math.abs(delayMinutes) <= 1) {
+                            icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+                            label = t('ontime');
+                            color = '#15d85d';
+                        } else if (delayMinutes < -1) {
+                            icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
+                            label = `${Math.abs(delayMinutes)} ${t('min')} ${t('early')}`;
+                            color = '#1a5ecc';
+                        } else {
+                            icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+                            label = `${delayMinutes} ${t('min')} ${t('late')}`;
+                            color = delayMinutes > 5 ? '#b31313' : '#db6a18';
+                        }
+                        return `<span><span class="stops-icon-badge" style="border: 2px solid ${color}44;">
+                            <span style="display:flex;align-items:center;">${icon}</span>
+                            <span class="stops-badge-label">${label}</span>
+                        </span></span>`;
+                    })() : '';
+
+                    const headerEl = marker.getPopup()?._contentNode?.querySelector(`#popup-header-${id}`);
+                    if (headerEl && delayBadgeHTML) {
+                        const existing = headerEl.querySelector('.stops-icon-badge');
+                        if (existing) existing.closest('span')?.replaceWith(
+                            document.createRange().createContextualFragment(delayBadgeHTML)
+                        );
+                    }
+                });
             })
             .catch(err => {
                 console.warn('Erreur stop times:', err);
