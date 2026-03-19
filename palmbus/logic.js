@@ -8716,7 +8716,7 @@ async function fetchVehiclePositions() {
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}-${nextStopsHTML.substring(0, 50)}`;
 
-                    if (window.stopTimesReady && contentCache.get(cacheKey)) {
+                    if (contentCache.get(cacheKey)) {
                         return contentCache.get(cacheKey);
                     }
 
@@ -8774,9 +8774,7 @@ async function fetchVehiclePositions() {
                         </div>
                     `;
 
-                    if (window.stopTimesReady) {
-                        contentCache.set(cacheKey, popupContent);
-                    }
+                    contentCache.set(cacheKey, popupContent);
                     return popupContent;
                 }
 
@@ -8939,13 +8937,15 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                 const hasChanges = (
                     marker.line !== line ||
                     marker.destination !== lastStopName ||
-                    marker._lastNextStopsHTML !== nextStopsHTML
+                    marker._lastNextStopsHTML !== nextStopsHTML ||
+                    marker._lastStopsHeaderText !== stopsHeaderText
                 );
 
                 if (hasChanges) {
                     marker.vehicleData = vehicle;
                     marker.destination = lastStopName;
                     marker._lastNextStopsHTML = nextStopsHTML;
+                    marker._lastStopsHeaderText = stopsHeaderText;
 
                     if (marker.line !== line) {
                         marker.line = line;
