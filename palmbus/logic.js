@@ -7693,6 +7693,114 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     return rtSecs - staticSecs;
 }
 
+let _timeToggleInterval = null;
+let _showTimeLeft = true;
+let _timeToggleAnimating = false;
+
+function initTimeToggle() {
+    if (_timeToggleInterval) return;
+
+    _timeToggleInterval = setInterval(() => {
+        if (_timeToggleAnimating) return;
+        _timeToggleAnimating = true;
+
+        const timeDisplays = document.querySelectorAll('.time-display');
+        const indicators   = document.querySelectorAll('.time-indicator');
+
+        timeDisplays.forEach(d => d.classList.add('fade-out'));
+        indicators.forEach(i => {
+            i.classList.add('animate');
+            setTimeout(() => i.classList.remove('animate'), 600);
+        });
+
+        setTimeout(() => {
+            _showTimeLeft = !_showTimeLeft;
+            timeDisplays.forEach(d => {
+                d.textContent = _showTimeLeft
+                    ? d.getAttribute('data-time-left')
+                    : d.getAttribute('data-departure-time');
+                d.classList.remove('fade-out');
+            });
+            _timeToggleAnimating = false;
+        }, 350);
+
+    }, 4000);
+}
+
+function destroyTimeToggle() {
+    if (_timeToggleInterval) {
+        clearInterval(_timeToggleInterval);
+        _timeToggleInterval = null;
+    }
+}
+
+const MinimalPopupAnimationManager = {
+    rafId: null,
+    schedule(callback) {
+        this.cancel();
+        this.rafId = requestAnimationFrame(callback);
+    },
+    cancel() {
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+    },
+    cleanup() { this.cancel(); }
+};
+
+function updateMinimalPopupsGlobal() {
+    MinimalPopupAnimationManager.schedule(() => {
+        if (!window.mapInstance) return;
+        const currentZoom = window.mapInstance.getZoom();
+        const showMinimal = currentZoom >= 17 && currentZoom < 20;
+        if (!showMinimal) {
+            markerPool.active.forEach((marker, id) => {
+                if (marker) createOrUpdateMinimalTooltip(id, false);
+            });
+            return;
+        }
+        const bounds = window.mapInstance.getBounds();
+        markerPool.active.forEach((marker, markerId) => {
+            if (!marker) return;
+            const markerLatLng = marker.getLatLng();
+            const isInBounds = bounds.contains(markerLatLng);
+            const shouldShow = !marker.isPopupOpen() && isInBounds;
+            if (shouldShow) {
+                createOrUpdateMinimalTooltip(markerId, true);
+                if (marker.minimalPopup) marker.minimalPopup.setLatLng(markerLatLng);
+            } else {
+                createOrUpdateMinimalTooltip(markerId, false);
+            }
+        });
+    });
+}
+
+const mapEventHandlers = {
+    _attached: false,
+    _handlers: [],
+    attach(mapInstance) {
+        if (this._attached) return;
+        const onZoom = debounce(() => updateMinimalPopupsGlobal(), 10);
+        const onMove = debounce(() => updateMinimalPopupsGlobal(), 30);
+        mapInstance.on('zoomend', onZoom);
+        mapInstance.on('moveend', onMove);
+        this._handlers.push(
+            { event: 'zoomend', fn: onZoom },
+            { event: 'moveend', fn: onMove }
+        );
+        this._attached = true;
+    },
+    cleanup() {
+        if (!window.mapInstance) return;
+        this._handlers.forEach(({ event, fn }) => {
+            window.mapInstance.off(event, fn);
+        });
+        this._handlers = [];
+        this._attached = false;
+    }
+};
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -8086,54 +8194,7 @@ async function fetchVehiclePositions() {
                     </div>
                 `;
 
-                if (!window.toggleTimeDisplay) {
-                    window.isAnimating = false;
-                    window.showTimeLeft = true;
-                    
-                    window.toggleTimeDisplay = function() {
-                        if (window.isAnimating) return;
-                        
-                        window.isAnimating = true;
-                        
-                        const timeDisplays = document.querySelectorAll('.time-display');
-                        const indicators = document.querySelectorAll('.time-indicator');
-                        
-                        timeDisplays.forEach(display => {
-                            display.classList.add('fade-out');
-                        });
-                        
-                        indicators.forEach(indicator => {
-                            indicator.classList.add('animate');
-                            
-                            setTimeout(() => {
-                                indicator.classList.remove('animate');
-                            }, 600);
-                        });
-                        
-                        setTimeout(() => {
-                            window.showTimeLeft = !window.showTimeLeft;
-                            
-                            timeDisplays.forEach(display => {
-                                const timeLeft = display.getAttribute('data-time-left');
-                                const departureTime = display.getAttribute('data-departure-time');
-                                display.textContent = window.showTimeLeft ? timeLeft : departureTime;
-                            });
-                            
-                            timeDisplays.forEach(display => {
-                                display.classList.remove('fade-out');
-                            });
-                            
-                            setTimeout(() => {
-                                window.isAnimating = false;
-                            }, 350);
-                        }, 350);
-                    };
-
-                    if (window.timeToggleInterval) {
-                        clearInterval(window.timeToggleInterval);
-                    }
-                    window.timeToggleInterval = setInterval(window.toggleTimeDisplay, 4000);
-                }
+                initTimeToggle();
 
                 const delayInfo = tripUpdates[tripId] ? tripUpdates[tripId].stopUpdates.find(update => update.stopId === stopId) : null;
 
@@ -8379,10 +8440,6 @@ async function fetchVehiclePositions() {
                     document.head.appendChild(styles);
                 }
 
-                const contentCache = new Map();
-                const colorCache = new Map();
-                const textColorCache = new Map();
-
                 const tooltipPool = [];
                 let maxPoolSize = 50;
 
@@ -8397,15 +8454,12 @@ async function fetchVehiclePositions() {
                 }
 
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-                    const nextStopsHash = nextStopsHTML ? nextStopsHTML.substring(0, 100) : '';
-                    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}`;
-                    
-                    if (contentCache.has(cacheKey)) {
+                    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}-${nextStopsHTML.substring(0, 50)}`;
+
+                    if (contentCache.get(cacheKey)) {
                         return contentCache.get(cacheKey);
                     }
-                    
 
-                    // nouvelle version
                     const popupContent = `
                         <div class="popup-container" data-vehicle-id="${id}" style="box-shadow: 0px 0px 20px 0px ${backgroundColor}9c; background-color: ${backgroundColor}9c; color: ${textColor};">
                             
@@ -8428,27 +8482,19 @@ async function fetchVehiclePositions() {
                                 <div class="light-beam beam1"></div>
                                 <div class="light-beam beam2"></div>
                                 <div class="light-beam beam3"></div>
-
-                                <!-- Texte principal -->
                                 <div class="vehicle-main-content">
                                     <p class="line-title">${t("line")} ${lineName[line] || t("unknownarrival")}</p>
                                     <p class="vehicle-direction" id="popup-direction-${id}">➜ ${lastStopName}</p>
                                     <div>
-                                        <div class="vehicle-brand-container">
-                                            ${vehicleBrandHtml}
-                                        </div>
+                                        <div class="vehicle-brand-container">${vehicleBrandHtml}</div>
                                         <div class="vehicle-options-container">
                                             <div class="options-scroll-area">
-                                                <!-- Contenu défilant horizontalement -->
                                                 <div class="options custom-scrollbar">
-                                                    <!-- Numéro de parc -->
                                                     <span class="parc-badge">
-                                                        <svg class="parc-icon" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path> <path d="M20 13H16M4 13H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M15.5 16H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M7 16H8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4.5 5H8.25M19.5 5H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path> </g></svg>
+                                                        <svg class="parc-icon" width="17" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M10 2.00879C7.52043 2.04466 6.11466 2.22859 5.17157 3.17167C4 4.34324 4 6.22886 4 10.0001V12.0001C4 15.7713 4 17.657 5.17157 18.8285C6.34315 20.0001 8.22876 20.0001 12 20.0001C15.7712 20.0001 17.6569 20.0001 18.8284 18.8285C20 17.657 20 15.7713 20 12.0001V10.0001C20 6.22886 20 4.34324 18.8284 3.17167C17.8853 2.22859 16.4796 2.04466 14 2.00879" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path> <path d="M20 13H16M4 13H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M15.5 16H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M7 16H8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M6 19.5V21C6 21.5523 6.44772 22 7 22H8.5C9.05228 22 9.5 21.5523 9.5 21V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M18 19.5V21C18 21.5523 17.5523 22 17 22H15.5C14.9477 22 14.5 21.5523 14.5 21V20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M20 9H21C21.5523 9 22 9.44772 22 10V11C22 11.3148 21.8518 11.6111 21.6 11.8L20 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4 9H3C2.44772 9 2 9.44772 2 10V11C2 11.3148 2.14819 11.6111 2.4 11.8L4 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> <path d="M4.5 5H8.25M19.5 5H12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path> </g></svg>
                                                         <span class="parc-number">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc")).toString().padStart(3, '0')}</span>
                                                         <span class="parc-number-hidden">${(vehicle.vehicle.label || vehicle.vehicle.id || t("unknownparc"))}</span>
                                                     </span>
-                                                    
-                                                    <!-- Badges des options du véhicule -->
                                                     ${vehicleOptionsBadges}
                                                 </div>
                                             </div>
@@ -8462,18 +8508,12 @@ async function fetchVehiclePositions() {
                                 <ul>
                                     <div id="popup-stops-${id}" class="nextStopsContent next-stops-content">
                                         ${nextStopsHTML}
-                                    </div>   
-                                </div>
+                                    </div>
+                                </ul>
                             </div>
                         </div>
                     `;
-                    
-                    // limite la taille cache
-                    if (contentCache.size > 50) {
-                        const keysToDelete = Array.from(contentCache.keys()).slice(0, 25);
-                        keysToDelete.forEach(key => contentCache.delete(key));
-                    }
-                    
+
                     contentCache.set(cacheKey, popupContent);
                     return popupContent;
                 }
@@ -8890,7 +8930,7 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                     }
                 }
                 
-                updateMinimalPopups();
+                updateMinimalPopupsGlobal();
                 
             } else {
                 const marker = markerPool.acquire(id, latitude, longitude, line, bearing);
@@ -8927,7 +8967,7 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                         if (popupElement) {
                             popupElement.classList.remove('show');
                             popupElement.classList.add('hide');
-                            setTimeout(() => updateMinimalPopups(), 10);
+                            setTimeout(() => updateMinimalPopupsGlobal(), 10);
                         }
                     }
                 }, id);
@@ -8938,13 +8978,8 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                     }
                 }, id);
                 
-                updateMinimalPopups();
+                updateMinimalPopupsGlobal();
             }
-
-
-            map.on('zoomend', debounce(updateMinimalPopups, 10));
-            map.on('moveend', debounce(updateMinimalPopups, 30));
-
         }
 });
 
@@ -10703,6 +10738,7 @@ async function main() {
         initWorker();
         await initializeGTFS();
         gtfsInitialized = true;
+        mapEventHandlers.attach(window.mapInstance);
         
         await Promise.all([
             fetchTripUpdates().catch(console.error),
@@ -10757,70 +10793,63 @@ async function main() {
 
 // ==================== NETTOYAGE GLOBAL ====================
 window.addEventListener('beforeunload', () => {
-    console.log('Nettoyage global...');
-    
     MinimalPopupAnimationManager.cleanup();
     mapEventHandlers.cleanup();
-    
-    if (markerPool) markerPool.clear();
-    if (eventManager) eventManager.clear();
+    destroyTimeToggle();
+
+    if (markerPool)     markerPool.clear();
+    if (eventManager)   eventManager.clear();
     if (TooltipManager) TooltipManager.clear();
-    if (StyleManager) StyleManager.clearAll();
+    if (StyleManager)   StyleManager.clearAll();
     if (AnimationManager) AnimationManager.cancelAll();
-    
+
     if (workerInstance) {
         workerInstance.terminate();
         workerInstance = null;
     }
-    
+
     if (fetchTimerId) {
         clearTimeout(fetchTimerId);
         fetchTimerId = null;
     }
-    
-    if (contentCache) contentCache.clear();
-    if (colorCache) colorCache.clear();
-    if (textColorCache) textColorCache.clear();
-    if (TextColorUtils) TextColorUtils.clearCache();
-    
-    if (map) {
-        map.remove();
-        map = null;
+
+    if (navIntervalId) {
+        clearInterval(navIntervalId);
+        navIntervalId = null;
     }
-    
-    console.log('Nettoyage terminé');
+
+    contentCache.clear();
+    colorCache.clear();
+    textColorCache.clear();
+    TextColorUtils.clearCache();
+
+    if (window.mapInstance) {
+        window.mapInstance.remove();
+        window.mapInstance = null;
+    }
 });
+
 
 setInterval(() => {
     if (TextColorUtils && TextColorUtils.cache.size > 50) {
         const keysToDelete = Array.from(TextColorUtils.cache.keys()).slice(0, 25);
         keysToDelete.forEach(key => TextColorUtils.cache.delete(key));
     }
-    
     StyleCleanupManager.cleanup();
-    
-    if (window.gc) {
-        window.gc();
-    }
-}, 60000); 
+}, 60000);
 
 if (performance && performance.memory) {
     setInterval(() => {
         const memory = performance.memory;
-        const usedMB = (memory.usedJSHeapSize / 1048576).toFixed(2);
-        const totalMB = (memory.totalJSHeapSize / 1048576).toFixed(2);
-        const limitMB = (memory.jsHeapSizeLimit / 1048576).toFixed(2);
-        
-        console.log(`Memory: ${usedMB}MB / ${totalMB}MB (limit: ${limitMB}MB)`);
-        
         if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
-            if (TextColorUtils) TextColorUtils.cache.clear();
-            if (contentCache) contentCache.clear();
-            if (colorCache) colorCache.clear();
-            if (textColorCache) textColorCache.clear();
+            TextColorUtils.cache.clear();
+            contentCache.clear();
+            colorCache.clear();
+            textColorCache.clear();
         }
-    }, 60000); 
+    }, 60000);
 }
+
 // ==================== FIN NETTOYAGE GLOBAL ====================
 
 main().catch(error => {
