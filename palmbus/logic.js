@@ -8043,58 +8043,7 @@ async function fetchVehiclePositions() {
                 Object.assign(window.staticStopTimes, json);
                 window.stopTimesReady   = true;
                 window.stopTimesLoading = false;
-
-                // Régénérer les popups ouvertes maintenant que les stop_times sont prêts
-                markerPool.active.forEach((marker, id) => {
-                    if (!marker.isPopupOpen()) return;
-                    const vd       = marker.vehicleData;
-                    if (!vd) return;
-                    const tripId   = vd.trip?.tripId;
-                    const line     = marker.line;
-                    const stopId   = (vd.stopId || '').replace('0:', '');
-                    const nextStops = tripUpdates[tripId]?.nextStops || [];
-
-                    let filtered = nextStops.filter(s => s.delay === null || s.delay >= -60);
-                    filtered = filtered.map(s => ({
-                        ...s,
-                        computedDelay: computeDelaySeconds(tripId, s.stopId, s.arrivalTime || s.departureTime)
-                    }));
-
-                    const firstStop    = filtered[0] || null;
-                    const delayMinutes = firstStop?.computedDelay != null
-                        ? Math.round(firstStop.computedDelay / 60) : null;
-
-                    const iconClock = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-
-                    const delayBadgeHTML = (delayMinutes !== null && filtered.length > 0) ? (() => {
-                        let icon, label, color;
-                        if (Math.abs(delayMinutes) <= 1) {
-                            icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-                            label = t('ontime');
-                            color = '#15d85d';
-                        } else if (delayMinutes < -1) {
-                            icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`;
-                            label = `${Math.abs(delayMinutes)} ${t('min')} ${t('early')}`;
-                            color = '#1a5ecc';
-                        } else {
-                            icon  = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
-                            label = `${delayMinutes} ${t('min')} ${t('late')}`;
-                            color = delayMinutes > 5 ? '#b31313' : '#db6a18';
-                        }
-                        return `<span><span class="stops-icon-badge" style="border: 2px solid ${color}44;">
-                            <span style="display:flex;align-items:center;">${icon}</span>
-                            <span class="stops-badge-label">${label}</span>
-                        </span></span>`;
-                    })() : '';
-
-                    const headerEl = marker.getPopup()?._contentNode?.querySelector(`#popup-header-${id}`);
-                    if (headerEl && delayBadgeHTML) {
-                        const existing = headerEl.querySelector('.stops-icon-badge');
-                        if (existing) existing.closest('span')?.replaceWith(
-                            document.createRange().createContextualFragment(delayBadgeHTML)
-                        );
-                    }
-                });
+                fetchVehiclePositions().catch(console.error);
             })
             .catch(err => {
                 console.warn('Erreur stop times:', err);
@@ -8812,40 +8761,41 @@ async function fetchVehiclePositions() {
                 }
 
 
-                function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
-                    if (!marker.isPopupOpen()) return false;
+function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
+    if (!marker.isPopupOpen()) return false;
 
-                    const popupNode = marker.getPopup()._contentNode;
-                    if (!popupNode) return false;
+    const popupNode = marker.getPopup()._contentNode;
+    if (!popupNode) return false;
 
-                    let updated = false;
+    let updated = false;
 
-                    if (lastStopName !== undefined) {
-                        const dirEl = popupNode.querySelector(`#popup-direction-${id}`);
-                        if (dirEl && dirEl.textContent !== `➜ ${lastStopName}`) {
-                            dirEl.textContent = `➜ ${lastStopName}`;
-                            updated = true;
-                        }
-                    }
+    if (lastStopName !== undefined) {
+        const dirEl = popupNode.querySelector(`#popup-direction-${id}`);
+        if (dirEl && dirEl.textContent !== `➜ ${lastStopName}`) {
+            dirEl.textContent = `➜ ${lastStopName}`;
+            updated = true;
+        }
+    }
 
-                    if (stopsHeaderText !== undefined) {
-                        const headerEl = popupNode.querySelector(`#popup-header-${id}`);
-                        if (headerEl) {
-                            headerEl.innerHTML = stopsHeaderText;
-                            updated = true;
-                        }
-                    }
+    if (stopsHeaderText !== undefined) {
+        const headerEl = popupNode.querySelector(`#popup-header-${id}`);
+        if (headerEl && headerEl.innerHTML !== stopsHeaderText) {
+            headerEl.innerHTML = stopsHeaderText;
+            updated = true;
+        }
+    }
 
-                    if (nextStopsHTML !== undefined) {
-                        const stopsEl = popupNode.querySelector(`#popup-stops-${id}`);
-                        if (stopsEl) {
-                            stopsEl.innerHTML = nextStopsHTML;
-                            updated = true;
-                        }
-                    }
+    if (nextStopsHTML !== undefined) {
+        const stopsEl = popupNode.querySelector(`#popup-stops-${id}`);
+        if (stopsEl && stopsEl.innerHTML !== nextStopsHTML) {
+            stopsEl.innerHTML = nextStopsHTML;
+            updated = true;
+        }
+    }
 
-                    return updated;
-                }
+    return updated;
+}
+
 
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
