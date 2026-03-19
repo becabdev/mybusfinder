@@ -8043,7 +8043,6 @@ async function fetchVehiclePositions() {
                 Object.assign(window.staticStopTimes, json);
                 window.stopTimesReady   = true;
                 window.stopTimesLoading = false;
-                fetchVehiclePositions().catch(console.error);
             })
             .catch(err => {
                 console.warn('Erreur stop times:', err);
@@ -8663,7 +8662,7 @@ async function fetchVehiclePositions() {
                 }
 
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
-                    const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}-${nextStopsHTML.substring(0, 50)}`;
+                    const cacheKey = `${id}-${line}-${nextStopsHTML.substring(0, 80)}`;
 
                     if (contentCache.get(cacheKey)) {
                         return contentCache.get(cacheKey);
@@ -8761,41 +8760,40 @@ async function fetchVehiclePositions() {
                 }
 
 
-function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
-    if (!marker.isPopupOpen()) return false;
+                function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
+                    if (!marker.isPopupOpen()) return false;
 
-    const popupNode = marker.getPopup()._contentNode;
-    if (!popupNode) return false;
+                    const popupNode = marker.getPopup()._contentNode;
+                    if (!popupNode) return false;
 
-    let updated = false;
+                    let updated = false;
 
-    if (lastStopName !== undefined) {
-        const dirEl = popupNode.querySelector(`#popup-direction-${id}`);
-        if (dirEl && dirEl.textContent !== `➜ ${lastStopName}`) {
-            dirEl.textContent = `➜ ${lastStopName}`;
-            updated = true;
-        }
-    }
+                    if (lastStopName !== undefined) {
+                        const dirEl = popupNode.querySelector(`#popup-direction-${id}`);
+                        if (dirEl && dirEl.textContent !== `➜ ${lastStopName}`) {
+                            dirEl.textContent = `➜ ${lastStopName}`;
+                            updated = true;
+                        }
+                    }
 
-    if (stopsHeaderText !== undefined) {
-        const headerEl = popupNode.querySelector(`#popup-header-${id}`);
-        if (headerEl && headerEl.innerHTML !== stopsHeaderText) {
-            headerEl.innerHTML = stopsHeaderText;
-            updated = true;
-        }
-    }
+                    if (stopsHeaderText !== undefined) {
+                        const headerEl = popupNode.querySelector(`#popup-header-${id}`);
+                        if (headerEl) {
+                            headerEl.innerHTML = stopsHeaderText;
+                            updated = true;
+                        }
+                    }
 
-    if (nextStopsHTML !== undefined) {
-        const stopsEl = popupNode.querySelector(`#popup-stops-${id}`);
-        if (stopsEl && stopsEl.innerHTML !== nextStopsHTML) {
-            stopsEl.innerHTML = nextStopsHTML;
-            updated = true;
-        }
-    }
+                    if (nextStopsHTML !== undefined) {
+                        const stopsEl = popupNode.querySelector(`#popup-stops-${id}`);
+                        if (stopsEl) {
+                            stopsEl.innerHTML = nextStopsHTML;
+                            updated = true;
+                        }
+                    }
 
-    return updated;
-}
-
+                    return updated;
+                }
 
                 function updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const popup = marker.getPopup();
@@ -8916,6 +8914,9 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                     if (marker.isPopupOpen()) {
                         patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText });
                     } else {
+                        const cacheKey = `${id}-${line}-${nextStopsHTML.substring(0, 80)}`;
+                        contentCache.cache.delete(cacheKey);
+
                         const newContent = generatePopupContent(
                             vehicle, line, lastStopName, nextStopsHTML,
                             vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
