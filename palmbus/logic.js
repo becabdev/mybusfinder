@@ -10653,23 +10653,22 @@ let fetchTimerId = null;
 function startFetchUpdates() {
     if (fetchTimerId) return;
 
-    function scheduleFetch() {
-        Promise.all([
-            fetchTripUpdates().catch(err => {
+    async function scheduleFetch() {
+        try {
+            await fetchTripUpdates().catch(err => {
                 FetchManager.onError();
-                return null;
-            }),
-            fetchVehiclePositions().catch(err => {
+            });
+
+            await fetchVehiclePositions().catch(err => {
                 FetchManager.onError();
-                return null;
-            })
-        ]).then(() => {
+            });
+
             FetchManager.onSuccess();
-        }).catch(error => {
+        } catch (error) {
             console.warn('Erreur lors des mises à jour', error);
-        }).finally(() => {
+        } finally {
             fetchTimerId = setTimeout(scheduleFetch, FetchManager.getInterval());
-        });
+        }
     }
 
     scheduleFetch();
@@ -10754,13 +10753,15 @@ async function main() {
         gtfsInitialized = true;
         mapEventHandlers.attach(window.mapInstance);
         
+        await fetchTripUpdates().catch(console.error);
+
         await Promise.all([
-            fetchTripUpdates().catch(console.error),
             fetchVehiclePositions(),
             loadGeoJsonLines(),
             modeSombre(),
             hideLoadingScreen()
         ]);
+
         loadGeoJsonLines();
         startFetchUpdates();
 
