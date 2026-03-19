@@ -8716,7 +8716,7 @@ async function fetchVehiclePositions() {
                 function generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id) {
                     const cacheKey = `${id}-${line}-${stopsHeaderText.substring(0, 20)}-${nextStopsHTML.substring(0, 50)}`;
 
-                    if (contentCache.get(cacheKey)) {
+                    if (window.stopTimesReady && contentCache.get(cacheKey)) {
                         return contentCache.get(cacheKey);
                     }
 
@@ -8774,7 +8774,9 @@ async function fetchVehiclePositions() {
                         </div>
                     `;
 
-                    contentCache.set(cacheKey, popupContent);
+                    if (window.stopTimesReady) {
+                        contentCache.set(cacheKey, popupContent);
+                    }
                     return popupContent;
                 }
 
