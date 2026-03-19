@@ -7752,6 +7752,11 @@ function initTimeToggle() {
         const timeDisplays = document.querySelectorAll('.time-display');
         const indicators   = document.querySelectorAll('.time-indicator');
 
+        if (timeDisplays.length === 0) {
+            _timeToggleAnimating = false;
+            return;
+        }
+
         timeDisplays.forEach(d => d.classList.add('fade-out'));
         indicators.forEach(i => {
             i.classList.add('animate');
@@ -7761,9 +7766,10 @@ function initTimeToggle() {
         setTimeout(() => {
             _showTimeLeft = !_showTimeLeft;
             timeDisplays.forEach(d => {
-                d.textContent = _showTimeLeft
+                const val = _showTimeLeft
                     ? d.getAttribute('data-time-left')
                     : d.getAttribute('data-departure-time');
+                if (val) d.textContent = val;
                 d.classList.remove('fade-out');
             });
             _timeToggleAnimating = false;
