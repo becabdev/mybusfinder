@@ -8030,24 +8030,23 @@ async function fetchVehiclePositions() {
 
         if (missingTripIds.length > 0 && !window.stopTimesLoading) {
             window.stopTimesLoading = true;
-            
+
             const baseUrl = new URL('proxy-cors/proxy_gtfs.php', window.location.href).href;
-            
-            fetch(`${baseUrl}?action=stop_times_by_trips`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `trip_ids=${missingTripIds.join(',')}`
-            })
-            .then(r => r.json())
-            .then(json => {
+
+            try {
+                const r = await fetch(`${baseUrl}?action=stop_times_by_trips`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `trip_ids=${missingTripIds.join(',')}`
+                });
+                const json = await r.json();
                 Object.assign(window.staticStopTimes, json);
                 window.stopTimesReady   = true;
                 window.stopTimesLoading = false;
-            })
-            .catch(err => {
+            } catch (err) {
                 console.warn('Erreur stop times:', err);
                 window.stopTimesLoading = false;
-            });
+            }
         }
 
             data.entity.forEach(entity => {
