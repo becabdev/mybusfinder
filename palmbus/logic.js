@@ -7801,6 +7801,163 @@ const mapEventHandlers = {
     }
 };
 
+function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
+    const marker = markerPool.get(markerId);
+    if (!marker) return;
+    
+    // Safari : Vérifier le support des tooltips
+    if (typeof L.tooltip !== 'function') {
+        console.warn('Tooltips non supportés');
+        return;
+    }
+    
+    if (shouldShow && !marker.isPopupOpen()) {
+        if (!marker.minimalPopup) {
+            const minimalTooltip = TooltipManager.acquire();
+            
+            const color = lineColors[marker.line] || '#000000';
+            const textColor = TextColorUtils.getOptimal(color);
+            
+            const minimalContent = `
+                <div class="minimal-popup minimal-popup-appear" style="
+                    position: relative;
+                    font-family: 'League Spartan', sans-serif;
+                    font-size: 11px;
+                    color: ${textColor};
+                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
+                    -webkit-backdrop-filter: blur(12px);
+                    backdrop-filter: blur(12px);
+                    border-radius: 12px;
+                    padding: 6px 10px;
+                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
+                    min-width: 80px;
+                    max-width: 140px;
+                    cursor: pointer;
+                    border: 1px solid ${color}60;
+                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    -webkit-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    transform: translateY(0);
+                    -webkit-transform: translateY(0) translateZ(0);
+                ">
+                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                        <div style="
+                            background: rgba(255,255,255,0.2);
+                            border-radius: 6px;
+                            padding: 2px 6px;
+                            font-weight: 600;
+                            font-size: 10px;
+                            line-height: 1.2;
+                        ">
+                            ${lineName[marker.line] || t("unknownline")}
+                        </div>
+                        <div style="
+                            background: rgba(0,0,0,0.3);
+                            border-radius: 4px;
+                            padding: 1px 4px;
+                            font-size: 9px;
+                            font-weight: 500;
+                        ">
+                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
+                        </div>
+                    </div>
+                    <div style="
+                        font-size: 9px; 
+                        opacity: 0.85; 
+                        margin-top: 2px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        font-weight: 400;
+                    ">
+                        ➜ ${marker.destination || t("unknowndestination")}
+                    </div>
+                </div>
+            `;
+
+            try {
+                minimalTooltip
+                    .setLatLng(marker.getLatLng())
+                    .setContent(minimalContent)
+                    .addTo(map);
+
+                setTimeout(() => {
+                    if (minimalTooltip._container) {
+                        const clickHandler = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const m = markerPool.get(markerId);
+                            if (m) m.openPopup();
+                        };
+                        
+                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
+                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
+                        
+                        if (!minimalTooltip._container._eventHandlers) {
+                            minimalTooltip._container._eventHandlers = [];
+                        }
+                        minimalTooltip._container._eventHandlers.push({
+                            event: 'mousedown',
+                            fn: clickHandler
+                        });
+                    }
+                }, 10); 
+                
+                marker.minimalPopup = minimalTooltip;
+                TooltipManager.active.set(markerId, minimalTooltip);
+                window.minimalTooltipStates[markerId] = 'visible';
+            } catch (error) {
+                console.error('Erreur création tooltip Safari', error);
+                TooltipManager.release(minimalTooltip);
+            }
+        }
+    } else if (!shouldShow && marker.minimalPopup) {
+        const tooltipContainer = marker.minimalPopup._container;
+        if (tooltipContainer) {
+            const popupElement = tooltipContainer.querySelector('.minimal-popup');
+            if (popupElement) {
+                popupElement.classList.remove('minimal-popup-appear');
+                popupElement.classList.add('minimal-popup-disappear');
+                
+                setTimeout(() => {
+                    const tooltipToRemove = marker.minimalPopup;
+                    marker.minimalPopup = null;
+                    delete window.minimalTooltipStates[markerId];
+                    
+                    if (tooltipToRemove) {
+                        if (tooltipToRemove._container && tooltipToRemove._container._eventHandlers) {
+                            tooltipToRemove._container._eventHandlers.forEach(handler => {
+                                tooltipToRemove._container.removeEventListener(handler.event, handler.fn);
+                            });
+                            delete tooltipToRemove._container._eventHandlers;
+                        }
+                        
+                        try {
+                            map.removeLayer(tooltipToRemove);
+                            TooltipManager.release(tooltipToRemove);
+                            TooltipManager.active.delete(markerId);
+                        } catch (error) {
+                            console.error('Erreur suppression tooltip', error);
+                        }
+                    }
+                }, 20);
+            }
+        } else {
+            const tooltipToRemove = marker.minimalPopup;
+            marker.minimalPopup = null;
+            delete window.minimalTooltipStates[markerId];
+            
+            try {
+                map.removeLayer(tooltipToRemove);
+                TooltipManager.release(tooltipToRemove);
+                TooltipManager.active.delete(markerId);
+            } catch (error) {
+                console.error('Erreur suppression tooltip Safari:', error);
+            }
+        }
+    }
+}
+
+
 async function fetchVehiclePositions() {
     if (!gtfsInitialized) {
         return;
@@ -8551,207 +8708,6 @@ async function fetchVehiclePositions() {
                     tooltip.animationFrame = requestAnimationFrame(animate);
                 }
 
-
-const TooltipManager = {
-    pool: [],
-    maxPoolSize: 50,
-    active: new Map(),
-    
-    acquire() {
-        let tooltip = this.pool.pop();
-        if (!tooltip) {
-            tooltip = L.tooltip({
-                permanent: true,
-                direction: 'center',
-                className: 'minimal-tooltip-container',
-                offset: [0, 0],
-                opacity: 1
-            });
-        }
-        return tooltip;
-    },
-    
-    release(tooltip) {
-        if (!tooltip) return;
-        
-        if (tooltip._container) {
-            const handlers = tooltip._container._eventHandlers;
-            if (handlers) {
-                handlers.forEach(handler => {
-                    tooltip._container.removeEventListener(handler.event, handler.fn);
-                });
-            }
-        }
-        
-        if (this.pool.length < this.maxPoolSize) {
-            this.pool.push(tooltip);
-        }
-    },
-    
-    clear() {
-        this.active.forEach((tooltip) => {
-            map.removeLayer(tooltip);
-        });
-        this.active.clear();
-        this.pool = [];
-    }
-};
-
-function createOrUpdateMinimalTooltip(markerId, shouldShow = true) {
-    const marker = markerPool.get(markerId);
-    if (!marker) return;
-    
-    // Safari : Vérifier le support des tooltips
-    if (typeof L.tooltip !== 'function') {
-        console.warn('Tooltips non supportés');
-        return;
-    }
-    
-    if (shouldShow && !marker.isPopupOpen()) {
-        if (!marker.minimalPopup) {
-            const minimalTooltip = TooltipManager.acquire();
-            
-            const color = lineColors[marker.line] || '#000000';
-            const textColor = TextColorUtils.getOptimal(color);
-            
-            const minimalContent = `
-                <div class="minimal-popup minimal-popup-appear" style="
-                    position: relative;
-                    font-family: 'League Spartan', sans-serif;
-                    font-size: 11px;
-                    color: ${textColor};
-                    background: linear-gradient(135deg, ${color}f0, ${color}d0);
-                    -webkit-backdrop-filter: blur(12px);
-                    backdrop-filter: blur(12px);
-                    border-radius: 12px;
-                    padding: 6px 10px;
-                    box-shadow: 0 4px 16px -2px ${color}80, 0 2px 8px -2px ${color}40;
-                    min-width: 80px;
-                    max-width: 140px;
-                    cursor: pointer;
-                    border: 1px solid ${color}60;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    -webkit-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    transform: translateY(0);
-                    -webkit-transform: translateY(0) translateZ(0);
-                ">
-                    <div style="display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                        <div style="
-                            background: rgba(255,255,255,0.2);
-                            border-radius: 6px;
-                            padding: 2px 6px;
-                            font-weight: 600;
-                            font-size: 10px;
-                            line-height: 1.2;
-                        ">
-                            ${lineName[marker.line] || t("unknownline")}
-                        </div>
-                        <div style="
-                            background: rgba(0,0,0,0.3);
-                            border-radius: 4px;
-                            padding: 1px 4px;
-                            font-size: 9px;
-                            font-weight: 500;
-                        ">
-                            ${((marker.vehicleData && (marker.vehicleData.vehicle.label || marker.vehicleData.vehicle.id)) || (marker.vehicle && (marker.vehicle.label || marker.vehicle.id)) || t("unknownparc")).toString().padStart(3, '0')}
-                        </div>
-                    </div>
-                    <div style="
-                        font-size: 9px; 
-                        opacity: 0.85; 
-                        margin-top: 2px;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                        font-weight: 400;
-                    ">
-                        ➜ ${marker.destination || t("unknowndestination")}
-                    </div>
-                </div>
-            `;
-
-            try {
-                minimalTooltip
-                    .setLatLng(marker.getLatLng())
-                    .setContent(minimalContent)
-                    .addTo(map);
-
-                setTimeout(() => {
-                    if (minimalTooltip._container) {
-                        const clickHandler = function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const m = markerPool.get(markerId);
-                            if (m) m.openPopup();
-                        };
-                        
-                        minimalTooltip._container.addEventListener('mousedown', clickHandler);
-                        minimalTooltip._container.addEventListener('touchstart', clickHandler, { passive: false });
-                        
-                        if (!minimalTooltip._container._eventHandlers) {
-                            minimalTooltip._container._eventHandlers = [];
-                        }
-                        minimalTooltip._container._eventHandlers.push({
-                            event: 'mousedown',
-                            fn: clickHandler
-                        });
-                    }
-                }, 10); 
-                
-                marker.minimalPopup = minimalTooltip;
-                TooltipManager.active.set(markerId, minimalTooltip);
-                window.minimalTooltipStates[markerId] = 'visible';
-            } catch (error) {
-                console.error('Erreur création tooltip Safari', error);
-                TooltipManager.release(minimalTooltip);
-            }
-        }
-    } else if (!shouldShow && marker.minimalPopup) {
-        const tooltipContainer = marker.minimalPopup._container;
-        if (tooltipContainer) {
-            const popupElement = tooltipContainer.querySelector('.minimal-popup');
-            if (popupElement) {
-                popupElement.classList.remove('minimal-popup-appear');
-                popupElement.classList.add('minimal-popup-disappear');
-                
-                setTimeout(() => {
-                    const tooltipToRemove = marker.minimalPopup;
-                    marker.minimalPopup = null;
-                    delete window.minimalTooltipStates[markerId];
-                    
-                    if (tooltipToRemove) {
-                        if (tooltipToRemove._container && tooltipToRemove._container._eventHandlers) {
-                            tooltipToRemove._container._eventHandlers.forEach(handler => {
-                                tooltipToRemove._container.removeEventListener(handler.event, handler.fn);
-                            });
-                            delete tooltipToRemove._container._eventHandlers;
-                        }
-                        
-                        try {
-                            map.removeLayer(tooltipToRemove);
-                            TooltipManager.release(tooltipToRemove);
-                            TooltipManager.active.delete(markerId);
-                        } catch (error) {
-                            console.error('Erreur suppression tooltip', error);
-                        }
-                    }
-                }, 20);
-            }
-        } else {
-            const tooltipToRemove = marker.minimalPopup;
-            marker.minimalPopup = null;
-            delete window.minimalTooltipStates[markerId];
-            
-            try {
-                map.removeLayer(tooltipToRemove);
-                TooltipManager.release(tooltipToRemove);
-                TooltipManager.active.delete(markerId);
-            } catch (error) {
-                console.error('Erreur suppression tooltip Safari:', error);
-            }
-        }
-    }
-}
 
 function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText } = {}) {
     if (!marker.isPopupOpen()) return false;
