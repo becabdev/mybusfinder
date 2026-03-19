@@ -8915,8 +8915,15 @@ function patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeade
                     if (marker.isPopupOpen()) {
                         patchPopupContent(marker, id, { lastStopName, nextStopsHTML, stopsHeaderText });
                     } else {
-                        updatePopupContent(marker, vehicle, line, lastStopName, nextStopsHTML,
-                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
+                        const newContent = generatePopupContent(
+                            vehicle, line, lastStopName, nextStopsHTML,
+                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
+                            backgroundColor, textColor, id
+                        );
+                        const popup = marker.getPopup();
+                        if (popup) {
+                            popup.setContent(newContent);
+                        }
                     }
                 }
                 
