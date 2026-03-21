@@ -8951,22 +8951,29 @@ async function fetchVehiclePositions() {
                 if (!selectedLine || selectedLine === line) {
                     marker.addTo(map);
                 }
-                
-                marker.once('click', function onFirstClick() {
-                    if (!marker.getPopup()) {
-                        const popupContent = generatePopupContent(
-                            vehicle, line, lastStopName, nextStopsHTML,
-                            vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
-                            backgroundColor, textColor, id
-                        );
-                        marker.bindPopup(popupContent).openPopup();
-                    }
-                });
-                
+
+                const popupPlaceholder = L.popup().setContent('<div style="padding:10px;color:white;font-family:League Spartan;">⏳ Chargement...</div>');
+                marker.bindPopup(popupPlaceholder);
+
                 eventManager.on(marker, 'popupopen', function(e) {
                     if (marker.minimalPopup) {
                         createOrUpdateMinimalTooltip(id, false);
                     }
+
+                    const popup = marker.getPopup();
+                    if (popup && !marker._popupGenerated) {
+                        marker._popupGenerated = true;
+                        requestAnimationFrame(() => {
+                            const popupContent = generatePopupContent(
+                                vehicle, line, lastStopName, nextStopsHTML,
+                                vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
+                                backgroundColor, textColor, id
+                            );
+                            popup.setContent(popupContent);
+                            popup.update();
+                        });
+                    }
+
                     if (e.popup && e.popup._contentNode) {
                         const popupElement = e.popup._contentNode.parentElement;
                         if (popupElement) {
