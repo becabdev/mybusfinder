@@ -4993,22 +4993,23 @@ const MenuManager = {
         this.busesByLineAndDestination = busesByLineAndDestination;
         this.container.innerHTML = '';
         
-        // Top bar avec recherche
         this._createTopBar();
-        
-        // Barre de recherche
         this._createSearchBar();
         
-        // Spacer
         const spacer = document.createElement('div');
         spacer.style.height = '15px';
         spacer.id = 'menu-spacer';
         this.container.appendChild(spacer);
         
-        const sortedLines = this._getSortedLines();
-        const fragment = document.createDocumentFragment();
+        this._insertLinesInBatches(this._getSortedLines(), busesByLineAndDestination);
+    },
+
+    _insertLinesInBatches(sortedLines, busesByLineAndDestination, index = 0) {
+        const BATCH_SIZE = 5;
+        const end = Math.min(index + BATCH_SIZE, sortedLines.length);
         
-        sortedLines.forEach(line => {
+        for (let i = index; i < end; i++) {
+            const line = sortedLines[i];
             const lineSection = this._createLineSection(line);
             this.sections.set(line, lineSection);
             
@@ -5017,12 +5018,17 @@ const MenuManager = {
                 this._addDestinationToSection(lineSection, line, destination, destinations[destination]);
             });
             
-            fragment.appendChild(lineSection.element);
-        });
+            this.container.appendChild(lineSection.element);
+        }
         
-        this.container.appendChild(fragment);
-        this._updateStatistics();
-        this._buildBusIndex();
+        if (end < sortedLines.length) {
+            requestAnimationFrame(() => {
+                this._insertLinesInBatches(sortedLines, busesByLineAndDestination, end);
+            });
+        } else {
+            this._updateStatistics();
+            this._buildBusIndex();
+        }
     },
     
     _createSearchBar() {
@@ -5181,15 +5187,9 @@ const MenuManager = {
         Object.entries(this.busesByLineAndDestination).forEach(([line, destinations]) => {
             Object.entries(destinations).forEach(([destination, buses]) => {
                 buses.forEach(bus => {
-                    const vehicleLabel = bus.vehicleData?.vehicle?.label || 
-                                    bus.vehicleData?.vehicle?.id || 
-                                    "inconnu";
-                    
-                    const tripId = bus.vehicleData?.trip?.tripId;
-                    const stops = tripUpdates[tripId]?.nextStops || [];
-                    const stopNames = stops.map(stop => 
-                        stopNameMap[stop.stopId] || stop.stopId
-                    ).join(' ');
+                    const vehicleLabel = bus.vehicleData?.vehicle?.label
+                        || bus.vehicleData?.vehicle?.id
+                        || "inconnu";
                     
                     this.allBuses.push({
                         line,
@@ -5197,9 +5197,7 @@ const MenuManager = {
                         vehicleLabel,
                         parkNumber: bus.parkNumber,
                         bus,
-                        stops: stops, 
-                        stopNames: stopNames, 
-                        searchText: `${line} ${destination} ${vehicleLabel} ${stopNames}`.toLowerCase()
+                        searchText: `${line} ${destination} ${vehicleLabel}`.toLowerCase()
                     });
                 });
             });
@@ -5257,40 +5255,34 @@ const MenuManager = {
         if (item.destination.toLowerCase() === query) score += 80;
         if (item.vehicleLabel.toLowerCase() === query) score += 90;
         
-        if (item.stops) {
-            const exactStopMatch = item.stops.some(stop => {
-                const stopName = (stopNameMap[stop.stopId] || stop.stopId).toLowerCase();
-                return stopName === query;
-            });
-            if (exactStopMatch) score += 85;
-        }
-        
         if (item.line.toLowerCase().startsWith(query)) score += 50;
         if (item.destination.toLowerCase().startsWith(query)) score += 40;
         if (item.vehicleLabel.toLowerCase().startsWith(query)) score += 45;
         
-        if (item.stops) {
-            const startsWithStopMatch = item.stops.some(stop => {
-                const stopName = (stopNameMap[stop.stopId] || stop.stopId).toLowerCase();
-                return stopName.startsWith(query);
-            });
-            if (startsWithStopMatch) score += 42;
-        }
-        
         if (item.line.toLowerCase().includes(query)) score += 30;
         if (item.destination.toLowerCase().includes(query)) score += 25;
         if (item.vehicleLabel.toLowerCase().includes(query)) score += 28;
-        if (item.stopNames && item.stopNames.toLowerCase().includes(query)) score += 27;
         
         if (this._fuzzyMatch(item.line, query)) score += 15;
         if (this._fuzzyMatch(item.destination, query)) score += 12;
         if (this._fuzzyMatch(item.vehicleLabel, query)) score += 13;
         
+        if (score > 0) {
+            const tripId = item.bus.vehicleData?.trip?.tripId;
+            const stops = tripUpdates[tripId]?.nextStops || [];
+            const stopNames = stops.map(s => stopNameMap[s.stopId] || s.stopId).join(' ');
+            
+            if (stopNames.toLowerCase() === query) score += 85;
+            else if (stopNames.toLowerCase().startsWith(query)) score += 42;
+            else if (stopNames.toLowerCase().includes(query)) score += 27;
+            
+            if (this._fuzzyMatch(stopNames, query)) score += 10;
+        }
+        
         const matchCount = [
             item.line.toLowerCase().includes(query),
             item.destination.toLowerCase().includes(query),
-            item.vehicleLabel.toLowerCase().includes(query),
-            item.stopNames && item.stopNames.toLowerCase().includes(query)
+            item.vehicleLabel.toLowerCase().includes(query)
         ].filter(Boolean).length;
         
         if (matchCount > 1) score += 20 * matchCount;
@@ -5617,12 +5609,14 @@ const MenuManager = {
         
         this.busesByLineAndDestination = busesByLineAndDestination;
         this._updateStatistics();
-        this._buildBusIndex();
         
-        // Re-appliquer la recherche si active
-        if (this.isSearchActive && this.searchInput) {
-            this._performSearch(this.searchInput.value);
-        }
+        const idleCallback = window.requestIdleCallback || ((cb) => setTimeout(cb, 50));
+        idleCallback(() => {
+            this._buildBusIndex();
+            if (this.isSearchActive && this.searchInput) {
+                this._performSearch(this.searchInput.value);
+            }
+        });
     },
     
     _createTopBar() {
@@ -8952,21 +8946,34 @@ async function fetchVehiclePositions() {
                 marker.line = line;
                 marker.vehicleData = vehicle;
                 marker.destination = lastStopName;
+                marker._lastNextStopsHTML = nextStopsHTML;
                 
                 if (!selectedLine || selectedLine === line) {
                     marker.addTo(map);
                 }
-                
-                const popupContent = generatePopupContent(vehicle, line, lastStopName, nextStopsHTML, 
-                    vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText, backgroundColor, textColor, id);
-                marker.bindPopup(popupContent);
-                marker._lastNextStopsHTML = nextStopsHTML;
-                
-                eventManager.on(marker, 'popupopen', function (e) {
+
+                const popupPlaceholder = L.popup().setContent('<div style="padding:10px;color:white;font-family:League Spartan;">⏳ Chargement...</div>');
+                marker.bindPopup(popupPlaceholder);
+
+                eventManager.on(marker, 'popupopen', function(e) {
                     if (marker.minimalPopup) {
                         createOrUpdateMinimalTooltip(id, false);
                     }
-                    
+
+                    const popup = marker.getPopup();
+                    if (popup && !marker._popupGenerated) {
+                        marker._popupGenerated = true;
+                        requestAnimationFrame(() => {
+                            const popupContent = generatePopupContent(
+                                vehicle, line, lastStopName, nextStopsHTML,
+                                vehicleOptionsBadges, vehicleBrandHtml, stopsHeaderText,
+                                backgroundColor, textColor, id
+                            );
+                            popup.setContent(popupContent);
+                            popup.update();
+                        });
+                    }
+
                     if (e.popup && e.popup._contentNode) {
                         const popupElement = e.popup._contentNode.parentElement;
                         if (popupElement) {
@@ -8976,7 +8983,7 @@ async function fetchVehiclePositions() {
                     }
                 }, id);
 
-                eventManager.on(marker, 'popupclose', function (e) {
+                eventManager.on(marker, 'popupclose', function(e) {
                     if (e.popup && e.popup._contentNode) {
                         const popupElement = e.popup._contentNode.parentElement;
                         if (popupElement) {
