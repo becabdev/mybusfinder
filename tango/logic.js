@@ -5900,7 +5900,7 @@ const MenuManager = {
     _createBusItem(bus, lineColor, textColor) {
         const marker = bus.vehicle;
         const tripId = marker.vehicleData?.trip?.tripId;
-        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') || '';
         
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
@@ -6145,7 +6145,6 @@ const MenuManager = {
             container.dataset.open = open;
             arrow.style.transform  = open ? 'rotate(90deg)' : 'rotate(0deg)';
             list.style.maxHeight   = open ? `${list.scrollHeight + 20}px` : '0';
-            toggle.style.background = open ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.12)';
         };
 
         if (open) {
@@ -6250,7 +6249,7 @@ const MenuManager = {
                 // Re-évalue si le statut a changé
                 const { nextStopInfo } = this._getBusInfo(
                     bus.vehicle, bus.vehicleData?.trip?.tripId,
-                    bus.vehicleData?.stopId?.replace("0:", "") || ''
+                    bus.vehicleData?.stopId?.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') || ''
                 );
                 busItem.dataset.unavailable = (nextStopInfo === t("unavailabletrip")) ? 'true' : 'false';
             } else {
@@ -6278,7 +6277,7 @@ const MenuManager = {
     _updateBusItem(busItem, bus) {
         const marker = bus.vehicle;
         const tripId = marker.vehicleData?.trip?.tripId;
-        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') || '';
         
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
@@ -6295,7 +6294,7 @@ const MenuManager = {
         const line = marker.line;
         
         let currentStopIndex = nextStops.findIndex(stop => 
-            stop.stopId.replace("0:", "") === stopId
+            stop.stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') === stopId
         );
         
         let filteredStops = [];
@@ -7759,7 +7758,7 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     const tripStops = window.staticStopTimes[tripId];
     if (!tripStops) return null;
 
-    const cleanStopId = stopId.replace("0:", "").trim();
+    const cleanStopId = stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '').trim();
     
     const staticStop = tripStops[cleanStopId] 
         || tripStops["0:" + cleanStopId]
@@ -8173,7 +8172,7 @@ async function fetchVehiclePositions() {
 
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
-                let stopId = stopIdun.replace("0:", "");
+                let stopId = stopIdun.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '');
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
                 const occupancyStatus = vehicle?.occupancyStatus ?? null;
@@ -8214,10 +8213,10 @@ async function fetchVehiclePositions() {
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
                 const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied';
-                let lastStopName = lastStopNameun.replace("0:", "");
+                let lastStopName = lastStopNameun.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '');
                 
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
-                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId.replace("0:", ""));
+                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') === stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, ''));
                 const now = Math.floor(Date.now() / 1000);
 
                 let filteredStops = [];
@@ -8255,7 +8254,7 @@ async function fetchVehiclePositions() {
                     // le terminus de depart = premier arrêt du trip (stop_sequence la plus basse)
                     // les stops sont indexés par stopId , y faut trouver le premier
                     // On compare avec le stopId actuel du vehicule
-                    const cleanCurrentStopId = stopId.replace("0:", "").trim();
+                    const cleanCurrentStopId = stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '').trim();
                     
                     // vérifier si le stopId actuel est le premier arrêt
                     // en cherchant l'heure de départ la plus tot dans le trip
@@ -8271,7 +8270,7 @@ async function fetchVehiclePositions() {
                         
                         if (earliestTime === null || secs < earliestTime) {
                             earliestTime = secs;
-                            earliestStopId = sid.replace("0:", "").trim();
+                            earliestStopId = sid.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '').trim();
                         }
                     }
                     
