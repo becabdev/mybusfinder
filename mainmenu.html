@@ -100,12 +100,10 @@
             50% { opacity: 0.8; transform: scale(1.05); }
         }
 
-        /* Empêcher le zoom lors du double tap */
         input, textarea, select {
             font-size: 16px;
         }
 
-        /* ===== HEADER LIQUID GLASS ===== */
         .header {
             position: sticky;
             top: 0;
@@ -653,7 +651,6 @@
     </style>
 </head>
 <body>
-    <!-- Header Liquid Glass -->
     <header class="header" id="header">
         <div class="header-content">
             <div class="logo-section">
@@ -664,9 +661,7 @@
         </div>
     </header>
 
-    <!-- Main Container -->
     <main class="main-container">
-        <!-- Carousel Section -->
         <section class="carousel-section">
             <div class="carousel">
                 <div class="carousel-track">
@@ -680,15 +675,9 @@
                         <img src="../ads/4.jpg" alt="Pub 4" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3YzNhZWQ7c3RvcC1vcGFjaXR5OjEiIC8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojOGI1Y2Y2O3N0b3Atb3BhY2l0eToxIiAvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZykiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkludGVyLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkFubm9uY2UgNDwvdGV4dD48L3N2Zz4='">
                     </div>
                 </div>
-                <div class="carousel-indicators">
-                    <div class="carousel-dot active" onclick="goToSlide(0)"></div>
-                    <div class="carousel-dot" onclick="goToSlide(1)"></div>
-                    <div class="carousel-dot" onclick="goToSlide(2)"></div>
-                </div>
             </div>
         </section>
 
-        <!-- Features Grid -->
         <section class="features-section">
             <div id="bus" class="feature-card">
                 <div class="feature-icon">🚌</div>
@@ -715,7 +704,6 @@
             </div>
         </section>
 
-        <!-- Quick Links -->
         <section class="quick-links">
             <h2 class="section-title" data-i18n="quick_links">Accès rapide</h2>
             <div class="links-grid">
@@ -736,7 +724,6 @@
     </main>
 
     <script>
-        // ===== EMPÊCHER LE DOUBLE TAP ZOOM =====
         let lastTouchEnd = 0;
         document.addEventListener('touchend', function (event) {
             const now = (new Date()).getTime();
@@ -746,7 +733,6 @@
             lastTouchEnd = now;
         }, false);
 
-        // ===== HEADER SCROLL EFFECT =====
         let lastScrollTop = 0;
         const header = document.getElementById('header');
         
@@ -762,7 +748,6 @@
             lastScrollTop = scrollTop;
         }, { passive: true });
 
-        // ===== CAROUSEL LIQUID GLASS =====
         let currentSlide = 0;
         const totalSlides = 3;
         let autoPlayInterval;
@@ -808,7 +793,6 @@
             startAutoPlay();
         }
 
-        // Swipe tactile pour carousel
         let startX = 0;
         let endX = 0;
         const carousel = document.querySelector('.carousel');
@@ -834,7 +818,6 @@
             }
         });
 
-        // Navigation au clavier
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') {
                 changeSlide(-1);
@@ -843,7 +826,6 @@
             }
         });
 
-        // ===== SYSTÈME I18N =====
         const i18n = {
             translations: {},
             currentLang: 'fr',
@@ -964,7 +946,6 @@
             });
         }
 
-        // ===== INITIALISATION =====
         document.addEventListener('DOMContentLoaded', async () => {
             await i18n.init();
             await waitForTranslations();
@@ -974,9 +955,7 @@
             startAutoPlay();
         });
 
-        // ===== EVENT HANDLERS =====
         function initEventHandlers() {
-            // Feature cards
             document.getElementById('bus').onclick = () => {
                 window.parent.postMessage({ type: 'openmap' }, '*');
             };
@@ -993,7 +972,6 @@
                 window.parent.postMessage({ type: 'boutique' }, '*');
             };
             
-            // Quick links
             document.getElementById('settings').onclick = () => {
                 window.parent.postMessage({ type: 'settings' }, '*');
             };
@@ -1003,7 +981,6 @@
             };
         }
 
-        // ===== EMPÊCHER LE MENU CONTEXTUEL SUR LES ÉLÉMENTS INTERACTIFS =====
         document.addEventListener('contextmenu', (e) => {
             if (e.target.closest('.feature-card') || 
                 e.target.closest('.link-card') || 
@@ -1012,7 +989,6 @@
             }
         });
 
-        // ===== RESIZE HANDLER =====
         window.addEventListener('resize', () => {
             updateCarousel();
         });
