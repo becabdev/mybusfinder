@@ -362,6 +362,7 @@
 "moving": "قيد الحركة",
 "stopped": "متوقف",
 "mobility": "التنقل",
+"unavailabletrip_count": "خارج الخدمة / بدون بيانات",
 
   "early": "مبكر",
   "late": "متأخر",

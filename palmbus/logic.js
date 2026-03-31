@@ -6095,15 +6095,12 @@ const MenuManager = {
             align-items: center;
             gap: 8px;
             cursor: pointer;
-            padding: 6px 10px;
+            padding: 6px 16px;
             margin-top: 4px;
             border-radius: 8px;
-            background: rgba(0,0,0,0.12);
             transition: background 0.2s;
             user-select: none;
         `;
-        toggle.onmouseover = () => toggle.style.background = 'rgba(0,0,0,0.22)';
-        toggle.onmouseout  = () => toggle.style.background = 'rgba(0,0,0,0.12)';
 
         const arrow = document.createElement('span');
         arrow.textContent = '▶';

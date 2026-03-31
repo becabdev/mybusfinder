@@ -371,6 +371,7 @@
     "moving": "En mouvement",
     "stopped": "Arrêté",
     "mobility": "Mobilité",
+    "unavailabletrip_count": "hors service / sans données",
 
     "langversion": "1.0.8"
   }
