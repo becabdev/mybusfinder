@@ -8772,7 +8772,6 @@ async function fetchVehiclePositions() {
                     const parc = vehicle?.vehicle?.label || vehicle?.vehicle?.id || t("unknownparc");
 
                     parc
-                    .toString()
                     .replace("TCAR:Vehicle::", "")
                     .replace(":LOC", "")
                     .padStart(3, '0');
