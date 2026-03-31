@@ -6103,7 +6103,7 @@ const MenuManager = {
         `;
 
         const arrow = document.createElement('span');
-        arrow.textContent = '▶';
+        arrow.textContent = '>';
         arrow.style.cssText = `
             font-size: 10px;
             color: ${lineSection.textColor};
