@@ -5005,7 +5005,7 @@ const MenuManager = {
     },
 
     _insertLinesInBatches(sortedLines, busesByLineAndDestination, index = 0) {
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 3;
         const end = Math.min(index + BATCH_SIZE, sortedLines.length);
         
         for (let i = index; i < end; i++) {
@@ -5533,60 +5533,53 @@ const MenuManager = {
     },
     
     _showAllSections() {
-        this.sections.forEach((section, index) => {
+        this.sections.forEach((section) => {
             section.element.style.display = '';
-            section.element.style.opacity = '0';
-            section.element.style.transform = 'translateY(20px)';
-            
-            // Animation échelonnée
-            setTimeout(() => {
-                section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                section.element.style.opacity = '1';
-                section.element.style.transform = 'translateY(0)';
-            }, index * 50);
+            section.element.style.opacity = '1';
+            section.element.style.transform = '';
+            section.element.style.transition = '';
         });
     },
 
     _hideAllSections() {
-        this.sections.forEach((section, index) => {
-            section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-            section.element.style.opacity = '0';
-            section.element.style.transform = 'translateY(-10px)';
-            
-            setTimeout(() => {
-                section.element.style.display = 'none';
-            }, 200);
+        this.sections.forEach((section) => {
+            section.element.style.display = 'none';
+            section.element.style.opacity = '';
+            section.element.style.transform = '';
         });
     },
 
     _filterSections(resultsByLine) {
         let visibleIndex = 0;
-        
+        const MAX_ANIMATED = 8; // Au-delà, pas d'animation
+
         this.sections.forEach((section, line) => {
             if (resultsByLine.has(line)) {
                 section.element.style.display = '';
-                section.element.style.opacity = '0';
-                section.element.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                if (visibleIndex < MAX_ANIMATED) {
+                    section.element.style.opacity = '0';
+                    section.element.style.transform = 'translateY(20px)';
+                    const idx = visibleIndex;
+                    setTimeout(() => {
+                        section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        section.element.style.opacity = '1';
+                        section.element.style.transform = 'translateY(0)';
+                    }, idx * 50);
+                } else {
                     section.element.style.opacity = '1';
-                    section.element.style.transform = 'translateY(0)';
-                }, visibleIndex * 50);
-                
+                    section.element.style.transform = '';
+                    section.element.style.transition = '';
+                }
                 visibleIndex++;
             } else {
-                section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-                section.element.style.opacity = '0';
-                section.element.style.transform = 'translateY(-10px)';
-                
-                setTimeout(() => {
-                    section.element.style.display = 'none';
-                }, 200);
+                section.element.style.display = 'none';
+                section.element.style.opacity = '';
+                section.element.style.transform = '';
+                section.element.style.transition = '';
             }
         });
     },
-    
+
     updateData(busesByLineAndDestination) {
         if (!this.isInitialized) return;
         
@@ -5742,7 +5735,7 @@ const MenuManager = {
         lineSection.classList.add('linesection', 'ripple-container');
         
         lineSection.style.cssText = `
-            background-color: ${lineColor}e6 !important;
+            background-color: ${lineColor}f0 !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
@@ -5752,7 +5745,6 @@ const MenuManager = {
             overflow: hidden;
             transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
         `;
 
         
@@ -6031,7 +6023,6 @@ const MenuManager = {
             cursor: pointer;
             z-index: 2;
             transition: background 0.2s, transform 0.15s;
-            backdrop-filter: blur(6px);
         `;
         navBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
