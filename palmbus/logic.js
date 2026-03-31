@@ -5807,6 +5807,11 @@ const MenuManager = {
         lineSection.appendChild(lineTitle);
         lineSection.appendChild(favoriteButton);
         lineSection.appendChild(destinationsContainer);
+
+        const unavailableContainer = document.createElement('div');
+        unavailableContainer.className = 'unavailable-container';
+        unavailableContainer.style.cssText = `position: relative; z-index: 1;`;
+        lineSection.appendChild(unavailableContainer);
         
         lineSection.onmouseover = () => {
             lineSection.style.transform = 'scale(0.99)';
@@ -5839,6 +5844,7 @@ const MenuManager = {
         return {
             element: lineSection,
             destinationsContainer: destinationsContainer,
+            unavailableContainer: unavailableContainer,
             destinations: new Map(),
             lineColor: lineColor,
             textColor: textColor
@@ -5879,8 +5885,13 @@ const MenuManager = {
         buses.forEach(bus => {
             const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
             destData.buses.set(bus.parkNumber, busItem);
-            busesContainer.appendChild(busItem);
+            const isUnavailable = busItem.dataset.unavailable === 'true';
+            if (!isUnavailable) {
+                busesContainer.appendChild(busItem);
+            }
         });
+
+        this._rebuildUnavailableSection(lineSection, line);
         
         lineSection.destinations.set(destination, destData);
         lineSection.destinationsContainer.appendChild(destinationSection);
@@ -5894,6 +5905,8 @@ const MenuManager = {
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
         const busItem = document.createElement('div');
+        const isUnavailable = nextStopInfo === t("unavailabletrip");
+        busItem.dataset.unavailable = isUnavailable ? 'true' : 'false';
         busItem.className = 'bus-item ripple-container menu-item';
         busItem.dataset.busId = bus.parkNumber;
         busItem.style.cssText = `
@@ -6058,6 +6071,88 @@ const MenuManager = {
         
         return busItem;
     },
+
+    _rebuildUnavailableSection(lineSection, line) {
+        const container = lineSection.unavailableContainer;
+        container.innerHTML = '';
+
+        // collecte tous les bus indisponibles ttes destinations confondues
+        const unavailableBuses = [];
+        lineSection.destinations.forEach((destData, destination) => {
+            destData.buses.forEach((busItem, parkNumber) => {
+                if (busItem.dataset.unavailable === 'true') {
+                    unavailableBuses.push({ busItem, destination });
+                }
+            });
+        });
+
+        if (unavailableBuses.length === 0) return;
+
+        // btn toggle
+        const toggle = document.createElement('div');
+        toggle.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 10px;
+            margin-top: 4px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.12);
+            transition: background 0.2s;
+            user-select: none;
+        `;
+        toggle.onmouseover = () => toggle.style.background = 'rgba(0,0,0,0.22)';
+        toggle.onmouseout  = () => toggle.style.background = 'rgba(0,0,0,0.12)';
+
+        const arrow = document.createElement('span');
+        arrow.textContent = '▶';
+        arrow.style.cssText = `
+            font-size: 10px;
+            color: ${lineSection.textColor};
+            opacity: 0.6;
+            transition: transform 0.25s ease;
+            display: inline-block;
+        `;
+
+        const label = document.createElement('span');
+        label.style.cssText = `
+            font-size: 14px;
+            color: ${lineSection.textColor};
+            opacity: 0.65;
+        `;
+        label.textContent = `${unavailableBuses.length} ${t('unavailabletrip_count') || 'hors service / sans données'}`;
+
+        toggle.appendChild(arrow);
+        toggle.appendChild(label);
+
+        // liste pliable
+        const list = document.createElement('div');
+        list.style.cssText = `
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+            padding-left: 10px;
+        `;
+
+        unavailableBuses.forEach(({ busItem, destination }) => {
+            busItem.style.opacity = '0.55';
+            busItem.style.filter  = 'saturate(0.4)';
+            list.appendChild(busItem);
+        });
+
+        let open = false;
+        toggle.onclick = (e) => {
+            e.stopPropagation();
+            open = !open;
+            arrow.style.transform  = open ? 'rotate(90deg)' : 'rotate(0deg)';
+            list.style.maxHeight   = open ? `${list.scrollHeight + 20}px` : '0';
+            toggle.style.background = open ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.12)';
+        };
+
+        container.appendChild(toggle);
+        container.appendChild(list);
+    },
     
     _updateLine(line, destinations) {
         const lineSection = this.sections.get(line);
@@ -6136,13 +6231,23 @@ const MenuManager = {
         
         buses.forEach(bus => {
             if (destSection.buses.has(bus.parkNumber)) {
-                this._updateBusItem(destSection.buses.get(bus.parkNumber), bus);
+                const busItem = destSection.buses.get(bus.parkNumber);
+                this._updateBusItem(busItem, bus);
+                // Re-évalue si le statut a changé
+                const { nextStopInfo } = this._getBusInfo(
+                    bus.vehicle, bus.vehicleData?.trip?.tripId,
+                    bus.vehicleData?.stopId?.replace("0:", "") || ''
+                );
+                busItem.dataset.unavailable = (nextStopInfo === t("unavailabletrip")) ? 'true' : 'false';
             } else {
                 const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
                 destSection.buses.set(bus.parkNumber, busItem);
-                destSection.busesContainer.appendChild(busItem);
+                const isUnavailable = busItem.dataset.unavailable === 'true';
+                if (!isUnavailable) destSection.busesContainer.appendChild(busItem);
             }
         });
+
+        this._rebuildUnavailableSection(lineSection, line);
     },
     
     _removeDestination(line, destination) {
@@ -6862,7 +6967,6 @@ const MenuManager = {
             }
         </style>
 
-        <!-- Score santé + KPI en une seule ligne -->
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0s both">
             <div style="
                 flex:1.2;
@@ -6892,11 +6996,11 @@ const MenuManager = {
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
                 <div class="stats-tile">
                     <div class="stats-tile-value">${s.totalVehicles}</div>
-                    <div class="stats-tile-label">🚌 ${t('vehicles')}</div>
+                    <div class="stats-tile-label">${t('vehicles')}</div>
                 </div>
                 <div class="stats-tile">
                     <div class="stats-tile-value">${s.totalLines}</div>
-                    <div class="stats-tile-label">🗺️ ${t('lines')}</div>
+                    <div class="stats-tile-label">${t('lines')}</div>
                 </div>
             </div>
         </div>
@@ -6905,16 +7009,16 @@ const MenuManager = {
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
             <div class="stats-tile">
                 <div class="stats-tile-value" style="color:${delayColor};">${delayLabel}</div>
-                <div class="stats-tile-label">⏰ ${t('avgdelay')}</div>
+                <div class="stats-tile-label">${t('avgdelay')}</div>
             </div>
             <div class="stats-tile">
                 <div class="stats-tile-value">${s.uniqueDestinations}</div>
-                <div class="stats-tile-label">📍 ${t('destinations')}</div>
+                <div class="stats-tile-label">${t('destinations')}</div>
             </div>
             ${s.avgSpeed !== null ? `
             <div class="stats-tile">
                 <div class="stats-tile-value">${Math.round(s.avgSpeed)}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
-                <div class="stats-tile-label">🚄 ${t('avgspeed')}</div>
+                <div class="stats-tile-label">${t('avgspeed')}</div>
             </div>` : ''}
         </div>
 
