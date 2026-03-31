@@ -5005,7 +5005,7 @@ const MenuManager = {
     },
 
     _insertLinesInBatches(sortedLines, busesByLineAndDestination, index = 0) {
-        const BATCH_SIZE = 5;
+        const BATCH_SIZE = 3;
         const end = Math.min(index + BATCH_SIZE, sortedLines.length);
         
         for (let i = index; i < end; i++) {
@@ -5533,60 +5533,53 @@ const MenuManager = {
     },
     
     _showAllSections() {
-        this.sections.forEach((section, index) => {
+        this.sections.forEach((section) => {
             section.element.style.display = '';
-            section.element.style.opacity = '0';
-            section.element.style.transform = 'translateY(20px)';
-            
-            // Animation échelonnée
-            setTimeout(() => {
-                section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                section.element.style.opacity = '1';
-                section.element.style.transform = 'translateY(0)';
-            }, index * 50);
+            section.element.style.opacity = '1';
+            section.element.style.transform = '';
+            section.element.style.transition = '';
         });
     },
 
     _hideAllSections() {
-        this.sections.forEach((section, index) => {
-            section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-            section.element.style.opacity = '0';
-            section.element.style.transform = 'translateY(-10px)';
-            
-            setTimeout(() => {
-                section.element.style.display = 'none';
-            }, 200);
+        this.sections.forEach((section) => {
+            section.element.style.display = 'none';
+            section.element.style.opacity = '';
+            section.element.style.transform = '';
         });
     },
 
     _filterSections(resultsByLine) {
         let visibleIndex = 0;
-        
+        const MAX_ANIMATED = 8; // Au-delà, pas d'animation
+
         this.sections.forEach((section, line) => {
             if (resultsByLine.has(line)) {
                 section.element.style.display = '';
-                section.element.style.opacity = '0';
-                section.element.style.transform = 'translateY(20px)';
-                
-                setTimeout(() => {
-                    section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                if (visibleIndex < MAX_ANIMATED) {
+                    section.element.style.opacity = '0';
+                    section.element.style.transform = 'translateY(20px)';
+                    const idx = visibleIndex;
+                    setTimeout(() => {
+                        section.element.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        section.element.style.opacity = '1';
+                        section.element.style.transform = 'translateY(0)';
+                    }, idx * 50);
+                } else {
                     section.element.style.opacity = '1';
-                    section.element.style.transform = 'translateY(0)';
-                }, visibleIndex * 50);
-                
+                    section.element.style.transform = '';
+                    section.element.style.transition = '';
+                }
                 visibleIndex++;
             } else {
-                section.element.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-                section.element.style.opacity = '0';
-                section.element.style.transform = 'translateY(-10px)';
-                
-                setTimeout(() => {
-                    section.element.style.display = 'none';
-                }, 200);
+                section.element.style.display = 'none';
+                section.element.style.opacity = '';
+                section.element.style.transform = '';
+                section.element.style.transition = '';
             }
         });
     },
-    
+
     updateData(busesByLineAndDestination) {
         if (!this.isInitialized) return;
         
@@ -5742,7 +5735,7 @@ const MenuManager = {
         lineSection.classList.add('linesection', 'ripple-container');
         
         lineSection.style.cssText = `
-            background-color: ${lineColor}e6 !important;
+            background-color: ${lineColor}f0 !important;
             margin-bottom: 10px;
             margin-left: 10px;
             margin-right: 10px;
@@ -5752,7 +5745,6 @@ const MenuManager = {
             overflow: hidden;
             transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
             box-shadow: 0 0px 20px 3px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
         `;
 
         
@@ -5815,6 +5807,11 @@ const MenuManager = {
         lineSection.appendChild(lineTitle);
         lineSection.appendChild(favoriteButton);
         lineSection.appendChild(destinationsContainer);
+
+        const unavailableContainer = document.createElement('div');
+        unavailableContainer.className = 'unavailable-container';
+        unavailableContainer.style.cssText = `position: relative; z-index: 1;`;
+        lineSection.appendChild(unavailableContainer);
         
         lineSection.onmouseover = () => {
             lineSection.style.transform = 'scale(0.99)';
@@ -5847,6 +5844,7 @@ const MenuManager = {
         return {
             element: lineSection,
             destinationsContainer: destinationsContainer,
+            unavailableContainer: unavailableContainer,
             destinations: new Map(),
             lineColor: lineColor,
             textColor: textColor
@@ -5887,8 +5885,13 @@ const MenuManager = {
         buses.forEach(bus => {
             const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
             destData.buses.set(bus.parkNumber, busItem);
-            busesContainer.appendChild(busItem);
+            const isUnavailable = busItem.dataset.unavailable === 'true';
+            if (!isUnavailable) {
+                busesContainer.appendChild(busItem);
+            }
         });
+
+        this._rebuildUnavailableSection(lineSection, line);
         
         lineSection.destinations.set(destination, destData);
         lineSection.destinationsContainer.appendChild(destinationSection);
@@ -5897,11 +5900,13 @@ const MenuManager = {
     _createBusItem(bus, lineColor, textColor) {
         const marker = bus.vehicle;
         const tripId = marker.vehicleData?.trip?.tripId;
-        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') || '';
         
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
         const busItem = document.createElement('div');
+        const isUnavailable = nextStopInfo === t("unavailabletrip");
+        busItem.dataset.unavailable = isUnavailable ? 'true' : 'false';
         busItem.className = 'bus-item ripple-container menu-item';
         busItem.dataset.busId = bus.parkNumber;
         busItem.style.cssText = `
@@ -6031,7 +6036,6 @@ const MenuManager = {
             cursor: pointer;
             z-index: 2;
             transition: background 0.2s, transform 0.15s;
-            backdrop-filter: blur(6px);
         `;
         navBtn.innerHTML = `
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -6066,6 +6070,101 @@ const MenuManager = {
         };
         
         return busItem;
+    },
+
+    _rebuildUnavailableSection(lineSection, line) {
+        const container = lineSection.unavailableContainer;
+        container.innerHTML = '';
+
+        // collecte tous les bus indisponibles ttes destinations confondues
+        const unavailableBuses = [];
+        lineSection.destinations.forEach((destData, destination) => {
+            destData.buses.forEach((busItem, parkNumber) => {
+                if (busItem.dataset.unavailable === 'true') {
+                    unavailableBuses.push({ busItem, destination });
+                }
+            });
+        });
+
+        if (unavailableBuses.length === 0) return;
+
+        // btn toggle
+        const toggle = document.createElement('div');
+        toggle.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 16px;
+            margin-top: 4px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            user-select: none;
+        `;
+
+        const arrow = document.createElement('span');
+        arrow.textContent = '▶';
+        arrow.style.cssText = `
+            font-size: 10px;
+            color: ${lineSection.textColor};
+            opacity: 0.6;
+            transition: transform 0.25s ease;
+            display: inline-block;
+        `;
+
+        const label = document.createElement('span');
+        label.style.cssText = `
+            font-size: 14px;
+            color: ${lineSection.textColor};
+            opacity: 0.65;
+        `;
+        label.textContent = `${unavailableBuses.length} ${t('unavailabletrip_count') || 'hors service / sans données'}`;
+
+        toggle.appendChild(arrow);
+        toggle.appendChild(label);
+
+        // liste pliable
+        const list = document.createElement('div');
+        list.style.cssText = `
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+            padding-left: 10px;
+        `;
+
+        unavailableBuses.forEach(({ busItem, destination }) => {
+            busItem.style.opacity = '0.55';
+            busItem.style.filter  = 'saturate(0.4)';
+            list.appendChild(busItem);
+        });
+
+        let open = container.dataset.open === 'true';
+        toggle.onclick = (e) => {
+            e.stopPropagation();
+            open = !open;
+            container.dataset.open = open;
+            arrow.style.transform  = open ? 'rotate(90deg)' : 'rotate(0deg)';
+            list.style.maxHeight   = open ? `${list.scrollHeight + 20}px` : '0';
+        };
+
+        if (open) {
+            arrow.style.transform   = 'rotate(90deg)';
+            list.style.transition   = 'none';
+            list.style.maxHeight    = '9999px';
+            toggle.style.background = 'rgba(0,0,0,0.2)';
+            requestAnimationFrame(() => {
+                list.style.transition = 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)';
+            });
+        }
+
+        lineSection.destinations.forEach((destData) => {
+            const hasAvailable = Array.from(destData.buses.values())
+                .some(item => item.dataset.unavailable !== 'true');
+            destData.element.style.display = hasAvailable ? '' : 'none';
+        });
+
+        container.appendChild(toggle);
+        container.appendChild(list);
     },
     
     _updateLine(line, destinations) {
@@ -6145,13 +6244,23 @@ const MenuManager = {
         
         buses.forEach(bus => {
             if (destSection.buses.has(bus.parkNumber)) {
-                this._updateBusItem(destSection.buses.get(bus.parkNumber), bus);
+                const busItem = destSection.buses.get(bus.parkNumber);
+                this._updateBusItem(busItem, bus);
+                // Re-évalue si le statut a changé
+                const { nextStopInfo } = this._getBusInfo(
+                    bus.vehicle, bus.vehicleData?.trip?.tripId,
+                    bus.vehicleData?.stopId?.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') || ''
+                );
+                busItem.dataset.unavailable = (nextStopInfo === t("unavailabletrip")) ? 'true' : 'false';
             } else {
                 const busItem = this._createBusItem(bus, lineSection.lineColor, lineSection.textColor);
                 destSection.buses.set(bus.parkNumber, busItem);
-                destSection.busesContainer.appendChild(busItem);
+                const isUnavailable = busItem.dataset.unavailable === 'true';
+                if (!isUnavailable) destSection.busesContainer.appendChild(busItem);
             }
         });
+
+        this._rebuildUnavailableSection(lineSection, line);
     },
     
     _removeDestination(line, destination) {
@@ -6168,7 +6277,7 @@ const MenuManager = {
     _updateBusItem(busItem, bus) {
         const marker = bus.vehicle;
         const tripId = marker.vehicleData?.trip?.tripId;
-        const stopId = marker.vehicleData?.stopId?.replace("0:", "") || '';
+        const stopId = marker.vehicleData?.stopId?.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') || '';
         
         const { nextStopInfo, terminusInfo } = this._getBusInfo(marker, tripId, stopId);
         
@@ -6185,7 +6294,7 @@ const MenuManager = {
         const line = marker.line;
         
         let currentStopIndex = nextStops.findIndex(stop => 
-            stop.stopId.replace("0:", "") === stopId
+            stop.stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') === stopId
         );
         
         let filteredStops = [];
@@ -6871,7 +6980,6 @@ const MenuManager = {
             }
         </style>
 
-        <!-- Score santé + KPI en une seule ligne -->
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0s both">
             <div style="
                 flex:1.2;
@@ -6901,11 +7009,11 @@ const MenuManager = {
             <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
                 <div class="stats-tile">
                     <div class="stats-tile-value">${s.totalVehicles}</div>
-                    <div class="stats-tile-label">🚌 ${t('vehicles')}</div>
+                    <div class="stats-tile-label">${t('vehicles')}</div>
                 </div>
                 <div class="stats-tile">
                     <div class="stats-tile-value">${s.totalLines}</div>
-                    <div class="stats-tile-label">🗺️ ${t('lines')}</div>
+                    <div class="stats-tile-label">${t('lines')}</div>
                 </div>
             </div>
         </div>
@@ -6914,16 +7022,16 @@ const MenuManager = {
         <div class="stats-row" style="animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.05s both">
             <div class="stats-tile">
                 <div class="stats-tile-value" style="color:${delayColor};">${delayLabel}</div>
-                <div class="stats-tile-label">⏰ ${t('avgdelay')}</div>
+                <div class="stats-tile-label">${t('avgdelay')}</div>
             </div>
             <div class="stats-tile">
                 <div class="stats-tile-value">${s.uniqueDestinations}</div>
-                <div class="stats-tile-label">📍 ${t('destinations')}</div>
+                <div class="stats-tile-label">${t('destinations')}</div>
             </div>
             ${s.avgSpeed !== null ? `
             <div class="stats-tile">
                 <div class="stats-tile-value">${Math.round(s.avgSpeed)}<span style="font-size:12px;font-weight:400;opacity:.6;"> km/h</span></div>
-                <div class="stats-tile-label">🚄 ${t('avgspeed')}</div>
+                <div class="stats-tile-label">${t('avgspeed')}</div>
             </div>` : ''}
         </div>
 
@@ -7650,7 +7758,7 @@ function computeDelaySeconds(tripId, stopId, rtArrivalTime) {
     const tripStops = window.staticStopTimes[tripId];
     if (!tripStops) return null;
 
-    const cleanStopId = stopId.replace("0:", "").trim();
+    const cleanStopId = stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '').trim();
     
     const staticStop = tripStops[cleanStopId] 
         || tripStops["0:" + cleanStopId]
@@ -8064,7 +8172,7 @@ async function fetchVehiclePositions() {
 
 
                 const stopIdun = vehicle.stopId || 'Inconnu';
-                let stopId = stopIdun.replace("0:", "");
+                let stopId = stopIdun.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '');
                 const latitude = vehicle.position.latitude;
                 const longitude = vehicle.position.longitude;
                 const occupancyStatus = vehicle?.occupancyStatus ?? null;
@@ -8105,10 +8213,10 @@ async function fetchVehiclePositions() {
 
                 const lastStopId = tripUpdates[tripId] ? tripUpdates[tripId].lastStopId : 'Inconnu';
                 const lastStopNameun = stopNameMap[lastStopId] || 'Haut-le-Pied';
-                let lastStopName = lastStopNameun.replace("0:", "");
+                let lastStopName = lastStopNameun.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '');
                 
                 const nextStops = tripUpdates[tripId]?.nextStops || [];
-                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "") === stopId.replace("0:", ""));
+                let currentStopIndex = nextStops.findIndex(stop => stop.stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '') === stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, ''));
                 const now = Math.floor(Date.now() / 1000);
 
                 let filteredStops = [];
@@ -8146,7 +8254,7 @@ async function fetchVehiclePositions() {
                     // le terminus de depart = premier arrêt du trip (stop_sequence la plus basse)
                     // les stops sont indexés par stopId , y faut trouver le premier
                     // On compare avec le stopId actuel du vehicule
-                    const cleanCurrentStopId = stopId.replace("0:", "").trim();
+                    const cleanCurrentStopId = stopId.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '').trim();
                     
                     // vérifier si le stopId actuel est le premier arrêt
                     // en cherchant l'heure de départ la plus tot dans le trip
@@ -8162,7 +8270,7 @@ async function fetchVehiclePositions() {
                         
                         if (earliestTime === null || secs < earliestTime) {
                             earliestTime = secs;
-                            earliestStopId = sid.replace("0:", "").trim();
+                            earliestStopId = sid.replace("0:", "").replace("TCAR:Vehicle::", "").replace(":LOC", "").replace(/\s/g, '').trim();
                         }
                     }
                     

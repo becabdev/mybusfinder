@@ -367,6 +367,8 @@
 "stopped": "Stopped",
 "mobility": "Mobility",
 
+"unavailabletrip_count": "out of service / no data",
+
     "early": "early",
     "late": "late",
     "scheduled": "Scheduled service",
