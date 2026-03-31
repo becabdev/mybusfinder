@@ -6141,14 +6141,31 @@ const MenuManager = {
             list.appendChild(busItem);
         });
 
-        let open = false;
+        let open = container.dataset.open === 'true';
         toggle.onclick = (e) => {
             e.stopPropagation();
             open = !open;
+            container.dataset.open = open;
             arrow.style.transform  = open ? 'rotate(90deg)' : 'rotate(0deg)';
             list.style.maxHeight   = open ? `${list.scrollHeight + 20}px` : '0';
             toggle.style.background = open ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.12)';
         };
+
+        if (open) {
+            arrow.style.transform   = 'rotate(90deg)';
+            list.style.transition   = 'none';
+            list.style.maxHeight    = '9999px';
+            toggle.style.background = 'rgba(0,0,0,0.2)';
+            requestAnimationFrame(() => {
+                list.style.transition = 'max-height 0.35s cubic-bezier(0.4,0,0.2,1)';
+            });
+        }
+
+        lineSection.destinations.forEach((destData) => {
+            const hasAvailable = Array.from(destData.buses.values())
+                .some(item => item.dataset.unavailable !== 'true');
+            destData.element.style.display = hasAvailable ? '' : 'none';
+        });
 
         container.appendChild(toggle);
         container.appendChild(list);
