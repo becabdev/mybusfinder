@@ -2322,11 +2322,11 @@ const ProgressOverlay = {
         transform: translateX(-50%) translateY(-40px);
         z-index: 9999999;
         width: 90%;
-        background: rgba(30, 30, 30, 0.75);
+        background: rgba(30, 30, 30, 0);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.03);
         padding: 16px 200px;
         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI', sans-serif;
         opacity: 0;
