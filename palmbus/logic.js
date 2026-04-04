@@ -1152,12 +1152,14 @@ async function initMap() {
     const storageKey = `mapPosition_${location.pathname}`;
     const savedPosition = JSON.parse(localStorage.getItem(storageKey) || "null");
 
-    window.mapInstance = L.map('map', {
-        zoomControl: false
-    }).setView(
-        savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
-        savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
-    );
+    if (L) { 
+        window.mapInstance = L.map('map', {
+            zoomControl: false
+        }).setView(
+            savedPosition && savedPosition.center ? savedPosition.center : defaultCoords,
+            savedPosition && savedPosition.zoom ? savedPosition.zoom : defaultZoom
+        );
+    } 
 
     mapInstance.on("moveend", () => {
         const center = mapInstance.getCenter();
