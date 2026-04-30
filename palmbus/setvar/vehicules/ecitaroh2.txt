@@ -1,5 +1,5 @@
 Mercedes-Benz eCitaro "Gelenk Fuel Cell Hydrogen"
-src/thumbnail/ecitarofc.png
+src/thumbnail/gx337liniumfwH2.png
 isElec=true
 isHybrid=true
 isGnv=false
