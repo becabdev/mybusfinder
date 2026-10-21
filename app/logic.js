@@ -12235,6 +12235,7 @@ async function main() {
 
         await loadGeoJsonLines();
         loadBusStopMarkers();
+        startReportsListener();
         startFetchUpdates();
         console.log('UID ', window.MBF_Auth.currentUid);
         console.log('is logged in? ', window.MBF_Auth.isLoggedIn);
@@ -12266,7 +12267,6 @@ async function main() {
         soundsUX('MBF_NotificationError');
     }
 }
-
 
 // ==================== NETTOYAGE GLOBAL ====================
 window.addEventListener('beforeunload', () => {
@@ -12394,6 +12394,9 @@ function _safe(fn) {
 }
 
 function _resetNetworkScopedState() {
+    _safe(() => stopReportsListener());
+    _safe(() => closeReportModal());
+
     // Settings caches
     globalSettings = {};
     settingsCache = null;
@@ -15762,13 +15765,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         BottomSheet.init();
         _wireBottomSheetButtons();
+        _injectReportButton();
         _refreshBottomSheetGreeting();
         _refreshBottomSheetFavorites(true);
 
         if (localStorage.getItem('nepasafficheraccueil') === 'true') {
             BottomSheet.collapse();
         } else {
-            // Slight delay so the loading screen can fade out first
             setTimeout(() => BottomSheet.expand(), 350);
         }
     } catch (e) {
@@ -15945,3 +15948,828 @@ window.softSwitchNetwork = softSwitchNetwork;
 
     waitReady();
 })();
+
+// Vive l'ia qui m'a pondu ce code en 30 secondes lol
+// j'espère que ça marche du premier coup j'ai pas envie de tout revoir à la main
+
+const REPORT_TTL_MS = 2 * 60 * 60 * 1000;      // 2h après le dernier like
+const REPORT_COOLDOWN_MS = 60 * 1000;          // 1 signalement / minute / utilisateur
+const REPORT_DUPLICATE_RADIUS_M = 150;         // en dessous : on confirme au lieu de dupliquer
+const REPORT_NOTE_MAX = 200;
+
+const REPORT_TYPES = [
+    { id: 'delay',      emoji: '⏱️', color: '#ff9f0a', fr: 'Retard' },
+    { id: 'breakdown',  emoji: '🔧', color: '#ff453a', fr: 'Véhicule en panne' },
+    { id: 'crowded',    emoji: '👥', color: '#0a84ff', fr: 'Véhicule bondé' },
+    { id: 'accident',   emoji: '🚧', color: '#ff453a', fr: 'Accident / blocage' },
+    { id: 'detour',     emoji: '↪️', color: '#ff9f0a', fr: 'Déviation' },
+    { id: 'cancelled',  emoji: '🚫', color: '#8e8e93', fr: 'Passage supprimé' },
+    { id: 'incident',   emoji: '⚠️', color: '#ff375f', fr: 'Incident voyageur' },
+    { id: 'other',      emoji: '💬', color: '#636366', fr: 'Autre' }
+];
+
+window._reports = window._reports || new Map();   // id -> { data, marker }
+window._reportsLayer = null;
+window._reportsUnsub = null;
+window._reportsSweepTimer = null;
+
+function _rptT(key, fallback) {
+    try {
+        const v = t(key);
+        return (v && v !== key) ? v : fallback;
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function _escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function _reportTypeInfo(id) {
+    const info = REPORT_TYPES.find(r => r.id === id) || REPORT_TYPES[REPORT_TYPES.length - 1];
+    return { ...info, label: _rptT('report_type_' + info.id, info.fr) };
+}
+
+function _reportsDb() {
+    if (!window.firebase || !firebase.apps || !firebase.apps.length || !firebase.firestore) return null;
+    return firebase.firestore();
+}
+
+function _reportTimeAgo(ms) {
+    const diffMin = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (diffMin < 1) return _rptT('report_just_now', 'à l\'instant');
+    if (diffMin < 60) return `${_rptT('report_ago', 'il y a')} ${diffMin} min`;
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    return `${_rptT('report_ago', 'il y a')} ${h} h${m ? ' ' + String(m).padStart(2, '0') : ''}`;
+}
+
+function containsForbiddenReportContent(text) {
+    if (!text) return false;
+
+    const leet = { '0': 'o', '1': 'l', '3': 'e', '4': 'a', '5': 's', '@': 'a', '$': 's' };
+
+    const compact = text
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[01345@$]/g, ch => leet[ch])
+        .replace(/[^a-z]/g, '');
+
+    const forbidden = [
+        'control',        // contrôle, contrôleur, controllore, controle...
+        'kontrol',
+        'verificateur',
+        'verificationdestitres',
+        'ticketcheck',
+        'ticketinspector'
+    ];
+
+    return forbidden.some(word => compact.includes(word));
+}
+
+function _injectReportWarnStyles() {
+    if (document.getElementById('rpt-warn-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'rpt-warn-styles';
+    style.textContent = `
+        .rpt-warn {
+            display: none; align-items: flex-start; gap: 10px;
+            background: rgba(255,69,58,0.18); border: 1px solid rgba(255,69,58,0.55);
+            border-radius: 14px; padding: 10px 12px; margin-bottom: 12px;
+            font-size: 13px; line-height: 1.35;
+            animation: rptPop 0.45s cubic-bezier(0.25,1.5,0.5,1);
+        }
+        .rpt-warn.visible { display: flex; }
+        .rpt-warn-ico { font-size: 18px; flex-shrink: 0; }
+        #rpt-note.rpt-note-forbidden { border-color: #ff453a !important; }
+        .rpt-btn-primary.rpt-blocked { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.45); }
+    `;
+    document.head.appendChild(style);
+}
+
+function _requireLoginForReport() {
+    safeVibrate?.([30, 40, 30], true);
+    showFluentPopup({
+        title: _rptT('report_login_title', 'Connexion requise'),
+        message: _rptT('report_login_msg', 'Connecte-toi pour signaler un problème ou confirmer un signalement. Cela évite les abus.'),
+        buttons: {
+            primary: _rptT('login_title', 'Se connecter'),
+            primaryAction: () => {
+                fluentPopupManager.close();
+                setTimeout(() => {
+                    if (typeof MyBusFinderWelcome !== 'undefined' && MyBusFinderWelcome.open) {
+                        MyBusFinderWelcome.open();
+                    }
+                }, 350);
+            },
+            secondary: _rptT('cancel', 'Annuler'),
+            secondaryAction: () => fluentPopupManager.close()
+        }
+    });
+}
+
+function _getReportPosition() {
+    return new Promise((resolve, reject) => {
+        if (locationMarker) {
+            const ll = locationMarker.getLatLng();
+            resolve({
+                lat: ll.lat,
+                lng: ll.lng,
+                accuracy: locationCircle ? locationCircle.getRadius() : 0
+            });
+            return;
+        }
+        if (!navigator.geolocation) {
+            reject(new Error('geolocation_unsupported'));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy || 0
+            }),
+            (err) => reject(err),
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+    });
+}
+
+function _findNearestVehicleForReport(latlng, maxMeters = 80) {
+    let best = null;
+    let bestDist = maxMeters;
+    markerPool.active.forEach((m, id) => {
+        const d = latlng.distanceTo(m.getLatLng());
+        if (d < bestDist) {
+            bestDist = d;
+            best = {
+                routeId: m.line && m.line !== 'Inconnu' ? m.line : null,
+                label: String(m.vehicleData?.vehicle?.label || m.vehicleData?.vehicle?.id || id)
+                    .replace('TCAR:Vehicle::', '').replace(':LOC', '')
+            };
+        }
+    });
+    return best;
+}
+
+function _reportIcon(info, likeCount, remainingRatio) {
+    const opacity = (0.6 + 0.4 * Math.max(0, Math.min(1, remainingRatio))).toFixed(2);
+    return L.divIcon({
+        className: '',
+        iconSize: [38, 38],
+        iconAnchor: [19, 19],
+        popupAnchor: [0, -18],
+        html: `
+            <div class="rpt-pin" style="--rpt-color:${info.color}; opacity:${opacity};">
+                ${info.emoji}
+                ${likeCount > 1 ? `<span class="rpt-badge">${likeCount}</span>` : ''}
+            </div>`
+    });
+}
+
+function _reportPopupHtml(id, d) {
+    const info = _reportTypeInfo(d.type);
+    const uid = window.MBF_Auth?.currentUid;
+    const liked = !!uid && (d.likedBy || []).includes(uid);
+    const mine = !!uid && d.uid === uid;
+    const createdMs = d.createdAt?.toMillis?.() || Date.now();
+    const remainingMin = Math.max(0, Math.round(((d.expiresAt?.toMillis?.() || Date.now()) - Date.now()) / 60000));
+
+    let lineBadge = '';
+    if (d.routeId) {
+        const color = lineColors[d.routeId] || '#444';
+        lineBadge = `<span class="rpt-line-badge" style="background:${color};color:${getTextColor(color)};">
+            ${_escapeHtml(lineName[d.routeId] || d.routeId)}</span>`;
+    }
+
+    const noteHtml = d.note
+        ? `<div class="rpt-popup-note">« ${_escapeHtml(d.note)} »</div>`
+        : '';
+
+    return `
+        <div class="rpt-popup">
+            <div class="rpt-popup-head">
+                <span class="rpt-popup-emoji" style="background:${info.color};">${info.emoji}</span>
+                <div style="flex:1; min-width:0;">
+                    <div class="rpt-popup-title">${_escapeHtml(info.label)} ${lineBadge}</div>
+                    <div class="rpt-popup-sub">${_reportTimeAgo(createdMs)}${d.vehicleLabel ? ' · ' + _escapeHtml(d.vehicleLabel) : ''}</div>
+                </div>
+            </div>
+            ${noteHtml}
+            <div class="rpt-popup-actions">
+                <button class="rpt-like-btn ${liked ? 'liked' : ''}" onclick="toggleReportLike('${id}')">
+                    ${liked ? '✓ ' + _rptT('report_confirmed', 'Confirmé') : '👍 ' + _rptT('report_still_there', 'Toujours là')}
+                    <span class="rpt-like-count">${d.likeCount || 0}</span>
+                </button>
+                ${mine ? `<button class="rpt-del-btn" onclick="deleteReport('${id}')" title="${_rptT('delete', 'Supprimer')}">🗑️</button>` : ''}
+            </div>
+            <div class="rpt-popup-expire">${_rptT('report_expires_in', 'Disparaît dans')} ~${remainingMin} min ${_rptT('report_without_like', 'sans confirmation')}</div>
+        </div>`;
+}
+
+function _removeReportMarker(id) {
+    const entry = window._reports.get(id);
+    if (!entry) return;
+    try {
+        if (entry.marker) {
+            entry.marker.closePopup();
+            if (window._reportsLayer) window._reportsLayer.removeLayer(entry.marker);
+        }
+    } catch (_) {}
+    window._reports.delete(id);
+}
+
+function _upsertReportMarker(id, d) {
+    if (!window._reportsLayer || !window.mapInstance) return;
+    if (typeof d.lat !== 'number' || typeof d.lng !== 'number') return;
+
+    const info = _reportTypeInfo(d.type);
+    const remainingRatio = ((d.expiresAt?.toMillis?.() || 0) - Date.now()) / REPORT_TTL_MS;
+    const icon = _reportIcon(info, d.likeCount || 0, remainingRatio);
+
+    const existing = window._reports.get(id);
+    if (existing && existing.marker) {
+        existing.data = d;
+        existing.marker.setIcon(icon);
+        existing.marker.setLatLng([d.lat, d.lng]);
+        existing.marker.setPopupContent(_reportPopupHtml(id, d));
+        return;
+    }
+
+    const marker = L.marker([d.lat, d.lng], {
+        icon,
+        pane: 'reportsPane',
+        riseOnHover: true
+    });
+    marker.bindPopup(_reportPopupHtml(id, d), {
+        closeButton: false,
+        className: 'rpt-leaflet-popup',
+        minWidth: 220,
+        maxWidth: 280
+    });
+    marker.on('popupopen', () => {
+        const entry = window._reports.get(id);
+        if (entry) marker.setPopupContent(_reportPopupHtml(id, entry.data));
+        safeVibrate?.([30]);
+        soundsUX('MBF_VehicleOpen');
+    });
+    window._reportsLayer.addLayer(marker);
+    window._reports.set(id, { data: d, marker });
+}
+
+function stopReportsListener() {
+    if (window._reportsUnsub) {
+        try { window._reportsUnsub(); } catch (_) {}
+        window._reportsUnsub = null;
+    }
+    if (window._reportsSweepTimer) {
+        clearInterval(window._reportsSweepTimer);
+        window._reportsSweepTimer = null;
+    }
+    try {
+        if (window._reportsLayer) {
+            window._reportsLayer.clearLayers();
+            if (window.mapInstance && window.mapInstance.hasLayer(window._reportsLayer)) {
+                window.mapInstance.removeLayer(window._reportsLayer);
+            }
+        }
+    } catch (_) {}
+    window._reportsLayer = null;
+    window._reports.clear();
+}
+
+function startReportsListener(attempt = 0) {
+    stopReportsListener();
+
+    const db = _reportsDb();
+    if (!db || !window.mapInstance) {
+        if (attempt < 20) setTimeout(() => startReportsListener(attempt + 1), 500);
+        return;
+    }
+
+    const m = window.mapInstance;
+    if (!m.getPane('reportsPane')) {
+        m.createPane('reportsPane');
+        m.getPane('reportsPane').style.zIndex = 610;
+    }
+    window._reportsLayer = L.layerGroup().addTo(m);
+
+    const net = window.ACTIVE_NETWORK;
+
+    window._reportsUnsub = db.collection('reports')
+        .where('expiresAt', '>', firebase.firestore.Timestamp.now())
+        .onSnapshot(
+            (snap) => {
+                if (net !== window.ACTIVE_NETWORK) return;
+                snap.docChanges().forEach(change => {
+                    const id = change.doc.id;
+                    const d = change.doc.data();
+                    const expired = !d.expiresAt || d.expiresAt.toMillis() <= Date.now();
+                    const allowedType = REPORT_TYPES.some(r => r.id === d.type);
+                    const forbidden = containsForbiddenReportContent(d.note);
+
+                    if (change.type === 'removed' || d.network !== net || expired || !allowedType || forbidden) {
+                        _removeReportMarker(id);
+                        return;
+                    }
+                    _upsertReportMarker(id, d);
+                });
+            },
+            (err) => console.warn('[Reports] onSnapshot échoué', err)
+        );
+
+    window._reportsSweepTimer = setInterval(() => {
+        const now = Date.now();
+        window._reports.forEach((entry, id) => {
+            const exp = entry.data.expiresAt?.toMillis?.() || 0;
+            if (exp <= now) {
+                _removeReportMarker(id);
+            } else {
+                _upsertReportMarker(id, entry.data);
+            }
+        });
+    }, 30000);
+}
+
+async function toggleReportLike(reportId) {
+    const uid = window.MBF_Auth?.currentUid;
+    if (!uid) { _requireLoginForReport(); return false; }
+
+    const db = _reportsDb();
+    if (!db) return false;
+
+    const ref = db.collection('reports').doc(reportId);
+    const FV = firebase.firestore.FieldValue;
+    const TS = firebase.firestore.Timestamp;
+
+    try {
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(ref);
+            if (!snap.exists) throw new Error('report_gone');
+            const d = snap.data();
+            const alreadyLiked = (d.likedBy || []).includes(uid);
+
+            if (alreadyLiked) {
+                tx.update(ref, {
+                    likedBy: FV.arrayRemove(uid),
+                    likeCount: Math.max(0, (d.likeCount || 1) - 1)
+                });
+            } else {
+                tx.update(ref, {
+                    likedBy: FV.arrayUnion(uid),
+                    likeCount: (d.likeCount || 0) + 1,
+                    lastLikeAt: TS.now(),
+                    expiresAt: TS.fromMillis(Date.now() + REPORT_TTL_MS)
+                });
+            }
+        });
+        safeVibrate?.([30], true);
+        soundsUX('MBF_SettingOn');
+        return true;
+    } catch (err) {
+        console.warn('[Reports] like échoué', err);
+        toastBottomRight?.error?.(_rptT('report_like_error', 'Impossible de confirmer ce signalement.'));
+        soundsUX('MBF_NotificationError');
+        return false;
+    }
+}
+window.toggleReportLike = toggleReportLike;
+
+async function deleteReport(reportId) {
+    const uid = window.MBF_Auth?.currentUid;
+    const entry = window._reports.get(reportId);
+    if (!uid || !entry || entry.data.uid !== uid) return;
+    try {
+        await _reportsDb().collection('reports').doc(reportId).delete();
+        _removeReportMarker(reportId);
+        safeVibrate?.([30, 40, 30], true);
+        toastBottomRight?.success?.(_rptT('report_deleted', 'Signalement supprimé.'));
+    } catch (err) {
+        console.warn('[Reports] suppression échouée', err);
+        toastBottomRight?.error?.(_rptT('report_delete_error', 'Suppression impossible.'));
+    }
+}
+window.deleteReport = deleteReport;
+
+async function submitReport({ type, note, position }) {
+    const uid = window.MBF_Auth?.currentUid;
+    if (!uid) { _requireLoginForReport(); return { ok: false }; }
+
+    if (!REPORT_TYPES.some(r => r.id === type)) return { ok: false };
+    
+    if (containsForbiddenReportContent(note)) {
+        toastBottomRight?.error?.(_rptT('report_forbidden_toast', 'Le signalement de contrôleurs n\'est pas autorisé.'));
+        soundsUX('MBF_NotificationError');
+        return { ok: false };
+    }
+
+    const db = _reportsDb();
+    if (!db) {
+        toastBottomRight?.error?.(_rptT('report_unavailable', 'Service de signalement indisponible.'));
+        return { ok: false };
+    }
+
+    const last = parseInt(localStorage.getItem('mbf_last_report_at') || '0', 10);
+    if (Date.now() - last < REPORT_COOLDOWN_MS) {
+        const wait = Math.ceil((REPORT_COOLDOWN_MS - (Date.now() - last)) / 1000);
+        toastBottomRight?.info?.(`${_rptT('report_wait', 'Patiente encore')} ${wait} s`);
+        return { ok: false };
+    }
+
+    const cleanNote = String(note || '').trim().slice(0, REPORT_NOTE_MAX);
+    const here = L.latLng(position.lat, position.lng);
+
+    for (const [id, entry] of window._reports) {
+        const d = entry.data;
+        if (d.type !== type) continue;
+        if ((d.expiresAt?.toMillis?.() || 0) <= Date.now()) continue;
+        if (L.latLng(d.lat, d.lng).distanceTo(here) > REPORT_DUPLICATE_RADIUS_M) continue;
+
+        const alreadyLiked = (d.likedBy || []).includes(uid);
+        if (!alreadyLiked) await toggleReportLike(id);
+        localStorage.setItem('mbf_last_report_at', String(Date.now()));
+        toastBottomRight?.info?.(_rptT('report_already_exists', 'Ce signalement existait déjà : on l\'a confirmé.'));
+        return { ok: true, mode: 'confirmed', id };
+    }
+
+    const TS = firebase.firestore.Timestamp;
+    const now = TS.now();
+    const vehicle = _findNearestVehicleForReport(here, 80);
+
+    const doc = {
+        type,
+        note: cleanNote,
+        lat: position.lat,
+        lng: position.lng,
+        accuracy: Math.round(position.accuracy || 0),
+        network: window.ACTIVE_NETWORK,
+        uid,
+        likedBy: [uid],
+        likeCount: 1,
+        createdAt: now,
+        lastLikeAt: now,
+        expiresAt: TS.fromMillis(now.toMillis() + REPORT_TTL_MS),
+        routeId: vehicle?.routeId || null,
+        vehicleLabel: vehicle?.label || null,
+        appVersion: window.VERSION_NAME || null
+    };
+
+    try {
+        const ref = await db.collection('reports').add(doc);
+        localStorage.setItem('mbf_last_report_at', String(Date.now()));
+        return { ok: true, mode: 'created', id: ref.id };
+    } catch (err) {
+        console.error('[Reports] création échouée', err);
+        toastBottomRight?.error?.(_rptT('report_send_error', 'Envoi impossible, réessaie dans un instant.'));
+        soundsUX('MBF_NotificationError');
+        return { ok: false };
+    }
+}
+
+function closeReportModal() {
+    const overlay = document.getElementById('rpt-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    soundsUX('MBF_SelectedVehicle_DoorClose');
+    setTimeout(() => overlay.remove(), 320);
+}
+
+function openReportModal(presetType = null) {
+    if (document.getElementById('rpt-overlay')) return;
+
+    if (!window.MBF_Auth?.isLoggedIn) {
+        _requireLoginForReport();
+        return;
+    }
+
+    _injectReportStyles();
+    _injectReportWarnStyles();
+    safeVibrate?.([30], true);
+    soundsUX('MBF_Popup');
+
+    const state = {
+        type: REPORT_TYPES.some(r => r.id === presetType) ? presetType : null,
+        position: null,
+        blocked: false,
+        submitting: false
+    };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'rpt-overlay';
+    overlay.className = 'rpt-overlay';
+
+    const typesHtml = REPORT_TYPES.map(r => {
+        const info = _reportTypeInfo(r.id);
+        return `
+            <button type="button" class="rpt-type ripple-container" data-type="${r.id}" style="--rpt-color:${r.color};">
+                <span class="rpt-type-emoji">${r.emoji}</span>
+                <span class="rpt-type-label">${_escapeHtml(info.label)}</span>
+            </button>`;
+    }).join('');
+
+    overlay.innerHTML = `
+        <div class="rpt-modal" role="dialog" aria-modal="true">
+            <div class="rpt-grabber"></div>
+            <h2 class="rpt-title">${_rptT('report_title', 'Signaler un problème')}</h2>
+            <div class="rpt-geo" id="rpt-geo">📍 ${_rptT('report_locating', 'Localisation en cours...')}</div>
+
+            <div class="rpt-grid" id="rpt-grid">${typesHtml}</div>
+
+            <div class="rpt-warn" id="rpt-warn" role="alert">
+                <span class="rpt-warn-ico">🚫</span>
+                <span>${_rptT('report_forbidden_msg', 'Le signalement de contrôleurs est interdit en France et n\'est pas autorisé sur My Bus Finder. Retire ces mots de ta note pour pouvoir envoyer.')}</span>
+            </div>
+
+            <div class="rpt-note-wrap">
+                <textarea id="rpt-note" maxlength="${REPORT_NOTE_MAX}" rows="3"
+                    placeholder="${_rptT('report_note_placeholder', 'Ajouter une note (facultatif) : ligne, arrêt, détails...')}"></textarea>
+                <span class="rpt-count" id="rpt-count">0/${REPORT_NOTE_MAX}</span>
+            </div>
+
+            <div class="rpt-actions">
+                <button type="button" class="rpt-btn rpt-btn-secondary" id="rpt-cancel">${_rptT('cancel', 'Annuler')}</button>
+                <button type="button" class="rpt-btn rpt-btn-primary" id="rpt-submit">${_rptT('report_send', 'Envoyer')}</button>
+            </div>
+        </div>`;
+
+    document.body.appendChild(overlay);
+
+    const grid = overlay.querySelector('#rpt-grid');
+    const noteEl = overlay.querySelector('#rpt-note');
+    const countEl = overlay.querySelector('#rpt-count');
+    const warnEl = overlay.querySelector('#rpt-warn');
+    const geoEl = overlay.querySelector('#rpt-geo');
+    const submitBtn = overlay.querySelector('#rpt-submit');
+
+    function selectType(id) {
+        state.type = id;
+        grid.querySelectorAll('.rpt-type').forEach(b => {
+            b.classList.toggle('selected', b.dataset.type === id);
+        });
+    }
+
+    function applyBlockState(isBlocked) {
+        const wasBlocked = state.blocked;
+        state.blocked = isBlocked;
+        warnEl.classList.toggle('visible', isBlocked);
+        noteEl.classList.toggle('rpt-note-forbidden', isBlocked);
+        submitBtn.classList.toggle('rpt-blocked', isBlocked);
+        if (isBlocked && !wasBlocked) {
+            safeVibrate?.([60, 40, 60], true);
+            soundsUX('MBF_NotificationError');
+        }
+    }
+
+    if (state.type) selectType(state.type);
+
+    grid.addEventListener('click', (e) => {
+        const btn = e.target.closest('.rpt-type');
+        if (!btn) return;
+        safeVibrate?.([20], true);
+        soundsUX('MBF_SettingOn');
+        selectType(btn.dataset.type);
+    });
+
+    noteEl.addEventListener('input', () => {
+        countEl.textContent = `${noteEl.value.length}/${REPORT_NOTE_MAX}`;
+        applyBlockState(containsForbiddenReportContent(noteEl.value));
+    });
+
+    overlay.querySelector('#rpt-cancel').addEventListener('click', closeReportModal);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeReportModal();
+    });
+
+    submitBtn.addEventListener('click', async () => {
+        if (state.submitting) return;
+
+        // Contrôle final au moment de l'envoi
+        if (containsForbiddenReportContent(noteEl.value)) {
+            applyBlockState(true);
+            warnEl.classList.remove('visible');
+            void warnEl.offsetWidth;
+            warnEl.classList.add('visible');
+            return;
+        }
+
+        if (!state.type) {
+            grid.classList.remove('rpt-shake');
+            void grid.offsetWidth;
+            grid.classList.add('rpt-shake');
+            safeVibrate?.([40, 30, 40], true);
+            toastBottomRight?.info?.(_rptT('report_choose_type', 'Choisis d\'abord un type de signalement.'));
+            return;
+        }
+        if (!state.position) {
+            toastBottomRight?.info?.(_rptT('report_no_position', 'Position indisponible : active la géolocalisation.'));
+            return;
+        }
+
+        state.submitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = '...';
+
+        const res = await submitReport({
+            type: state.type,
+            note: noteEl.value,
+            position: state.position
+        });
+
+        state.submitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = _rptT('report_send', 'Envoyer');
+
+        if (res.ok) {
+            safeVibrate?.([30, 40, 30], true);
+            soundsUX('MBF_Success');
+            if (res.mode === 'created') {
+                toastBottomRight?.success?.(_rptT('report_thanks', 'Merci ! Ton signalement est en ligne.'));
+            }
+            closeReportModal();
+            if (typeof BottomSheet !== 'undefined') BottomSheet.collapse();
+            smoothFlyTo([state.position.lat, state.position.lng], Math.max(window.mapInstance.getZoom(), 16));
+        }
+    });
+
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    _getReportPosition()
+        .then(pos => {
+            state.position = pos;
+            const acc = pos.accuracy ? ` (±${Math.round(pos.accuracy)} m)` : '';
+            geoEl.textContent = `📍 ${_rptT('report_position_ok', 'Position détectée')}${acc}`;
+            geoEl.classList.add('ok');
+        })
+        .catch(() => {
+            geoEl.textContent = `⚠️ ${_rptT('report_position_ko', 'Position indisponible : active la géolocalisation')}`;
+            geoEl.classList.add('ko');
+        });
+}
+
+window.openReportModal = openReportModal;
+window.closeReportModal = closeReportModal;
+
+function _injectReportButton() {
+    if (document.getElementById('bs-report-section')) return;
+
+    const fav = document.getElementById('bs-favorites-section');
+    const host = fav ? fav.parentNode : document.getElementById('bs-content');
+    if (!host) return;
+
+    _injectReportStyles();
+
+    const section = document.createElement('div');
+    section.id = 'bs-report-section';
+    section.innerHTML = `
+        <button type="button" class="rpt-open-btn ripple-container" id="bs-report-btn">
+            <span class="rpt-open-ico">🚨</span>
+            <span style="flex:1; text-align:left;">
+                ${_rptT('report_open_btn', 'Signaler un problème')}
+                <small>${_rptT('report_open_sub', 'Retard, panne, contrôleurs...')}</small>
+            </span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>`;
+
+    host.insertBefore(section, fav || host.firstChild);
+
+    const btn = section.querySelector('#bs-report-btn');
+    btn.addEventListener('pointerdown', e => e.stopPropagation());
+    btn.addEventListener('click', () => openReportModal());
+}
+
+function _injectReportStyles() {
+    if (document.getElementById('rpt-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'rpt-styles';
+    style.textContent = `
+        #bs-report-section { margin: 0 18px 12px; }
+        #bottom-sheet[data-stop-view="true"] #bs-report-section { display: none; }
+
+        .rpt-open-btn {
+            width: 100%; display: flex; align-items: center; gap: 12px;
+            padding: 11px 14px; border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 18px; background: rgba(255,255,255,0.1); color: #fff;
+            font-family: 'League Spartan', sans-serif; font-size: 16px; font-weight: 600;
+            cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s ease;
+        }
+        .rpt-open-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.18); }
+        .rpt-open-btn small { display: block; font-size: 11px; font-weight: 400; opacity: 0.6; margin-top: 1px; }
+        .rpt-open-ico {
+            width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+            background: linear-gradient(135deg, #ff9f0a, #ff453a);
+            display: flex; align-items: center; justify-content: center; font-size: 19px;
+        }
+
+        .rpt-overlay {
+            position: fixed; inset: 0; z-index: 99999999990;
+            background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            display: flex; align-items: flex-end; justify-content: center;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .rpt-overlay.visible { opacity: 1; }
+        .rpt-modal {
+            width: 100%; max-width: 520px; max-height: 92%; overflow-y: auto;
+            background: rgba(30,30,32,0.92); color: #fff;
+            border-radius: 26px 26px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+            font-family: 'League Spartan', sans-serif;
+            transform: translateY(100%); transition: transform 0.55s cubic-bezier(0.25,1.5,0.5,1);
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.4);
+        }
+        .rpt-overlay.visible .rpt-modal { transform: translateY(0); }
+        .rpt-grabber { width: 40px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); margin: 0 auto 12px; }
+        .rpt-title { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+        .rpt-geo { font-size: 12px; opacity: 0.6; margin-bottom: 12px; }
+        .rpt-geo.ok { color: #40e981; opacity: 0.9; }
+        .rpt-geo.ko { color: #ff6b5e; opacity: 1; }
+
+        .rpt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+        .rpt-type {
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            padding: 12px 6px; border-radius: 16px; cursor: pointer; color: #fff;
+            background: rgba(255,255,255,0.08); border: 2px solid transparent;
+            font-family: inherit; transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s, border-color 0.2s;
+        }
+        .rpt-type:active { transform: scale(0.94); }
+        .rpt-type.selected { background: color-mix(in srgb, var(--rpt-color) 30%, transparent); border-color: var(--rpt-color); transform: scale(1.03); }
+        .rpt-type-emoji { font-size: 24px; line-height: 1; }
+        .rpt-type-label { font-size: 12px; text-align: center; line-height: 1.15; }
+
+        .rpt-shake { animation: rptShake 0.4s ease; }
+        @keyframes rptShake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+
+        .rpt-hint {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            background: rgba(175,82,222,0.2); border: 1px solid rgba(175,82,222,0.5);
+            border-radius: 14px; padding: 9px 12px; margin-bottom: 12px; font-size: 13px;
+            animation: rptPop 0.45s cubic-bezier(0.25,1.5,0.5,1);
+        }
+        .rpt-hint button { background: rgba(255,255,255,0.15); border: none; color: #fff; border-radius: 10px; padding: 5px 10px; font-family: inherit; cursor: pointer; flex-shrink: 0; }
+
+        .rpt-note-wrap { position: relative; margin-bottom: 14px; }
+        #rpt-note {
+            width: 100%; box-sizing: border-box; resize: none; padding: 12px 12px 22px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 14px; color: #fff; font-family: inherit; font-size: 15px; outline: none;
+        }
+        #rpt-note:focus { border-color: rgba(255,255,255,0.4); }
+        #rpt-note::placeholder { color: rgba(255,255,255,0.45); }
+        .rpt-count { position: absolute; right: 12px; bottom: 8px; font-size: 11px; opacity: 0.45; }
+
+        .rpt-actions { display: flex; gap: 10px; }
+        .rpt-btn { flex: 1; padding: 13px; border: none; border-radius: 16px; font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), opacity 0.2s; }
+        .rpt-btn:active { transform: scale(0.96); }
+        .rpt-btn:disabled { opacity: 0.5; }
+        .rpt-btn-secondary { background: rgba(255,255,255,0.12); color: #fff; }
+        .rpt-btn-primary { background: linear-gradient(135deg, #ff9f0a, #ff453a); color: #fff; flex: 1.5; }
+
+        .rpt-pin {
+            position: relative; width: 36px; height: 36px; border-radius: 50%;
+            background: var(--rpt-color); border: 3px solid #fff; font-size: 17px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.35); animation: rptPop 0.5s cubic-bezier(0.25,1.5,0.5,1);
+        }
+        .rpt-badge {
+            position: absolute; top: -7px; right: -7px; min-width: 18px; height: 18px; padding: 0 4px;
+            box-sizing: border-box; border-radius: 9px; background: #fff; color: #111;
+            font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+            font-family: 'League Spartan', sans-serif;
+        }
+        @keyframes rptPop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+        .rpt-leaflet-popup .leaflet-popup-content-wrapper {
+            background: rgba(28,28,30,0.9); color: #fff; border-radius: 18px;
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+        }
+        .rpt-leaflet-popup .leaflet-popup-content { margin: 12px 14px; font-family: 'League Spartan', sans-serif; }
+        .rpt-leaflet-popup .leaflet-popup-tip { background: rgba(28,28,30,0.9); }
+        .rpt-popup-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .rpt-popup-emoji { width: 36px; height: 36px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+        .rpt-popup-title { font-size: 16px; font-weight: 700; line-height: 1.2; }
+        .rpt-popup-sub { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+        .rpt-line-badge { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; margin-left: 4px; vertical-align: middle; }
+        .rpt-popup-note { font-size: 13px; opacity: 0.85; background: rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; word-break: break-word; }
+        .rpt-popup-actions { display: flex; gap: 8px; }
+        .rpt-like-btn {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 9px 12px; border: none; border-radius: 12px; cursor: pointer; color: #fff;
+            background: rgba(255,255,255,0.14); font-family: inherit; font-size: 14px; font-weight: 600;
+            transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s;
+        }
+        .rpt-like-btn:active { transform: scale(0.95); }
+        .rpt-like-btn.liked { background: #1fa855; }
+        .rpt-like-count { background: rgba(0,0,0,0.25); border-radius: 8px; padding: 1px 7px; font-size: 12px; }
+        .rpt-del-btn { border: none; border-radius: 12px; padding: 0 12px; background: rgba(255,69,58,0.25); cursor: pointer; font-size: 15px; }
+        .rpt-popup-expire { font-size: 10.5px; opacity: 0.4; margin-top: 8px; text-align: center; }
+    `;
+    document.head.appendChild(style);
+}
+// ==================== FIN SIGNALEMENTS COMMUNAUTAIRES ====================
