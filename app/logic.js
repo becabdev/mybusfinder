@@ -16030,6 +16030,7 @@ function containsForbiddenReportContent(text) {
         'ticke',
         'akh',
         'shmi',
+        'flic',
     ];
 
     return forbidden.some(word => compact.includes(word));
