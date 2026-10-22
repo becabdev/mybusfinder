@@ -15951,10 +15951,11 @@ window.softSwitchNetwork = softSwitchNetwork;
 
 // Vive l'ia qui m'a pondu ce code en 30 secondes lol
 // j'espère que ça marche du premier coup j'ai pas envie de tout revoir à la main
+// update du lendemain : ça marche mais j'ai quand meme du revoir des trucs
 
-const REPORT_TTL_MS = 2 * 60 * 60 * 1000;      // 2h après le dernier like
-const REPORT_COOLDOWN_MS = 60 * 1000;          // 1 signalement / minute / utilisateur
-const REPORT_DUPLICATE_RADIUS_M = 150;         // en dessous : on confirme au lieu de dupliquer
+const REPORT_TTL_MS = 2 * 60 * 60 * 1000;
+const REPORT_COOLDOWN_MS = 60 * 1000;
+const REPORT_DUPLICATE_RADIUS_M = 150;
 const REPORT_NOTE_MAX = 200;
 
 const REPORT_TYPES = [
@@ -15968,7 +15969,7 @@ const REPORT_TYPES = [
     { id: 'other',      emoji: '💬', color: '#636366', fr: 'Autre' }
 ];
 
-window._reports = window._reports || new Map();   // id -> { data, marker }
+window._reports = window._reports || new Map();
 window._reportsLayer = null;
 window._reportsUnsub = null;
 window._reportsSweepTimer = null;
@@ -16022,12 +16023,13 @@ function containsForbiddenReportContent(text) {
         .replace(/[^a-z]/g, '');
 
     const forbidden = [
-        'control',        // contrôle, contrôleur, controllore, controle...
+        'control',
         'kontrol',
-        'verificateur',
-        'verificationdestitres',
-        'ticketcheck',
-        'ticketinspector'
+        'verif',
+        'poli',
+        'ticke',
+        'akh',
+        'shmi',
     ];
 
     return forbidden.some(word => compact.includes(word));
@@ -16057,7 +16059,7 @@ function _requireLoginForReport() {
     safeVibrate?.([30, 40, 30], true);
     showFluentPopup({
         title: _rptT('report_login_title', 'Connexion requise'),
-        message: _rptT('report_login_msg', 'Connecte-toi pour signaler un problème ou confirmer un signalement. Cela évite les abus.'),
+        message: _rptT('report_login_msg', 'Connecte-toi pour signaler un problème ou confirmer un signalement'),
         buttons: {
             primary: _rptT('login_title', 'Se connecter'),
             primaryAction: () => {
@@ -16139,7 +16141,6 @@ function _reportPopupHtml(id, d) {
     const liked = !!uid && (d.likedBy || []).includes(uid);
     const mine = !!uid && d.uid === uid;
     const createdMs = d.createdAt?.toMillis?.() || Date.now();
-    const remainingMin = Math.max(0, Math.round(((d.expiresAt?.toMillis?.() || Date.now()) - Date.now()) / 60000));
 
     let lineBadge = '';
     if (d.routeId) {
@@ -16148,17 +16149,28 @@ function _reportPopupHtml(id, d) {
             ${_escapeHtml(lineName[d.routeId] || d.routeId)}</span>`;
     }
 
+    let imageHtml = '';
+    if (d.hasImage) {
+        _injectReportImageStyles();
+        const cached = window._reportImageCache.get(id);
+        if (cached) {
+            imageHtml = `<img class="rpt-popup-img" src="${cached}" alt="" onclick="openReportImage('${id}')">`;
+        } else if (cached === undefined) {
+            imageHtml = `<div class="rpt-popup-img rpt-popup-img-loading"></div>`;
+        }
+    }
+
     const noteHtml = d.note
         ? `<div class="rpt-popup-note">« ${_escapeHtml(d.note)} »</div>`
         : '';
 
     const authorHtml = d.authorName
-        ? `<div style="font-size:12px; opacity:0.7; margin-bottom:8px;">👤 ${_rptT('report_by', 'Signalé par')}
+        ? `<div style="font-size:12px; opacity:0.7; margin-bottom:8px;">👤 ${_rptT('by', 'Par')}
                <b>${_escapeHtml(d.authorName)}</b>${mine ? ' (' + _rptT('report_you', 'toi') + ')' : ''}</div>`
         : '';
 
     return `
-        <div class="rpt-popup" style="padding-top: 14px; padding-bottom: 6px;">
+        <div class="rpt-popup" style="padding-top: 14px; padding-bottom: 14px;">
             <div class="rpt-popup-head">
                 <span class="rpt-popup-emoji">${info.emoji}</span>
                 <div style="flex:1; min-width:0;">
@@ -16166,11 +16178,12 @@ function _reportPopupHtml(id, d) {
                     <div class="rpt-popup-sub">${_reportTimeAgo(createdMs)}${d.vehicleLabel ? ' - ' + _escapeHtml(d.vehicleLabel) : ''}</div>
                 </div>
             </div>
+            ${imageHtml}
             ${authorHtml}
             ${noteHtml}
             <div class="rpt-popup-actions">
                 <button class="rpt-like-btn ${liked ? 'liked' : ''}" onclick="toggleReportLike('${id}')">
-                    ${liked ? '✓ ' + _rptT('report_confirmed', 'Confirmé') : '👍 ' + _rptT('report_still_there', 'Toujours là')}
+                    ${liked ? '✅ ' + _rptT('report_confirmed', 'Toujours là') : '👍 ' + _rptT('report_still_there', 'Toujours là')}
                     <span class="rpt-like-count">${d.likeCount || 0}</span>
                 </button>
                 ${mine ? `<button class="rpt-del-btn" onclick="deleteReport('${id}')" title="${_rptT('delete', 'Supprimer')}">🗑️</button>` : ''}
@@ -16188,6 +16201,8 @@ function _removeReportMarker(id) {
         }
     } catch (_) {}
     window._reports.delete(id);
+    window._reportImageCache.delete(id);
+    window._reportImageLoading.delete(id);
 }
 
 function _upsertReportMarker(id, d) {
@@ -16220,7 +16235,10 @@ function _upsertReportMarker(id, d) {
     });
     marker.on('popupopen', () => {
         const entry = window._reports.get(id);
-        if (entry) marker.setPopupContent(_reportPopupHtml(id, entry.data));
+        if (entry) {
+            marker.setPopupContent(_reportPopupHtml(id, entry.data));
+            _ensureReportImage(id);
+        }
         safeVibrate?.([30]);
         soundsUX('MBF_VehicleOpen');
     });
@@ -16247,6 +16265,8 @@ function stopReportsListener() {
     } catch (_) {}
     window._reportsLayer = null;
     window._reports.clear();
+    window._reportImageCache.clear();
+    window._reportImageLoading.clear();
 }
 
 function startReportsListener(attempt = 0) {
@@ -16310,6 +16330,7 @@ async function toggleReportLike(reportId) {
     if (!db) return false;
 
     const ref = db.collection('reports').doc(reportId);
+    const imgRef = db.collection('reportImages').doc(reportId);
     const FV = firebase.firestore.FieldValue;
     const TS = firebase.firestore.Timestamp;
 
@@ -16320,18 +16341,26 @@ async function toggleReportLike(reportId) {
             const d = snap.data();
             const alreadyLiked = (d.likedBy || []).includes(uid);
 
+            // Toutes les lectures avant les écritures
+            let imgSnap = null;
+            if (!alreadyLiked && d.hasImage) imgSnap = await tx.get(imgRef);
+
             if (alreadyLiked) {
                 tx.update(ref, {
                     likedBy: FV.arrayRemove(uid),
                     likeCount: Math.max(0, (d.likeCount || 1) - 1)
                 });
             } else {
+                const newExpiry = TS.fromMillis(Date.now() + REPORT_TTL_MS);
                 tx.update(ref, {
                     likedBy: FV.arrayUnion(uid),
                     likeCount: (d.likeCount || 0) + 1,
                     lastLikeAt: TS.now(),
-                    expiresAt: TS.fromMillis(Date.now() + REPORT_TTL_MS)
+                    expiresAt: newExpiry
                 });
+                if (imgSnap && imgSnap.exists) {
+                    tx.update(imgRef, { expiresAt: newExpiry });
+                }
             }
         });
         safeVibrate?.([30], true);
@@ -16350,6 +16379,9 @@ async function deleteReport(reportId) {
     const uid = window.MBF_Auth?.currentUid;
     const entry = window._reports.get(reportId);
     if (!uid || !entry || entry.data.uid !== uid) return;
+
+    const hadImage = !!entry.data.hasImage;
+
     try {
         await _reportsDb().collection('reports').doc(reportId).delete();
         _removeReportMarker(reportId);
@@ -16358,11 +16390,20 @@ async function deleteReport(reportId) {
     } catch (err) {
         console.warn('[Reports] suppression échouée', err);
         toastBottomRight?.error?.(_rptT('report_delete_error', 'Suppression impossible.'));
+        return;
+    }
+
+    if (hadImage) {
+        try {
+            await _reportsDb().collection('reportImages').doc(reportId).delete();
+        } catch (err) {
+            console.warn('[Reports] suppression photo ignorée', err);
+        }
     }
 }
 window.deleteReport = deleteReport;
 
-async function submitReport({ type, note, position }) {
+async function submitReport({ type, note, position, imageB64 = null }) {
     const uid = window.MBF_Auth?.currentUid;
     if (!uid) { _requireLoginForReport(); return { ok: false }; }
 
@@ -16371,6 +16412,13 @@ async function submitReport({ type, note, position }) {
     if (containsForbiddenReportContent(note)) {
         toastBottomRight?.error?.(_rptT('report_forbidden_toast', 'Le signalement de contrôleurs n\'est pas autorisé.'));
         soundsUX('MBF_NotificationError');
+        return { ok: false };
+    }
+
+    if (imageB64 && (typeof imageB64 !== 'string'
+        || imageB64.length > REPORT_IMAGE_MAX_B64
+        || !/^[A-Za-z0-9+/]+={0,2}$/.test(imageB64))) {
+        toastBottomRight?.error?.(_rptT('report_photo_error', 'Photo invalide.'));
         return { ok: false };
     }
 
@@ -16390,17 +16438,19 @@ async function submitReport({ type, note, position }) {
     const cleanNote = String(note || '').trim().slice(0, REPORT_NOTE_MAX);
     const here = L.latLng(position.lat, position.lng);
 
-    for (const [id, entry] of window._reports) {
-        const d = entry.data;
-        if (d.type !== type) continue;
-        if ((d.expiresAt?.toMillis?.() || 0) <= Date.now()) continue;
-        if (L.latLng(d.lat, d.lng).distanceTo(here) > REPORT_DUPLICATE_RADIUS_M) continue;
+    if (!imageB64) {
+        for (const [id, entry] of window._reports) {
+            const d = entry.data;
+            if (d.type !== type) continue;
+            if ((d.expiresAt?.toMillis?.() || 0) <= Date.now()) continue;
+            if (L.latLng(d.lat, d.lng).distanceTo(here) > REPORT_DUPLICATE_RADIUS_M) continue;
 
-        const alreadyLiked = (d.likedBy || []).includes(uid);
-        if (!alreadyLiked) await toggleReportLike(id);
-        localStorage.setItem('mbf_last_report_at', String(Date.now()));
-        toastBottomRight?.info?.(_rptT('report_already_exists', 'Ce signalement existait déjà : on l\'a confirmé.'));
-        return { ok: true, mode: 'confirmed', id };
+            const alreadyLiked = (d.likedBy || []).includes(uid);
+            if (!alreadyLiked) await toggleReportLike(id);
+            localStorage.setItem('mbf_last_report_at', String(Date.now()));
+            toastBottomRight?.info?.(_rptT('report_already_exists', 'Ce signalement existait déjà.'));
+            return { ok: true, mode: 'confirmed', id };
+        }
     }
 
     const TS = firebase.firestore.Timestamp;
@@ -16423,19 +16473,38 @@ async function submitReport({ type, note, position }) {
         expiresAt: TS.fromMillis(now.toMillis() + REPORT_TTL_MS),
         routeId: vehicle?.routeId || null,
         vehicleLabel: vehicle?.label || null,
+        hasImage: !!imageB64,
         appVersion: window.VERSION_NAME || null
     };
 
+    let ref;
     try {
-        const ref = await db.collection('reports').add(doc);
+        ref = await db.collection('reports').add(doc);
         localStorage.setItem('mbf_last_report_at', String(Date.now()));
-        return { ok: true, mode: 'created', id: ref.id };
     } catch (err) {
         console.error('[Reports] création échouée', err);
         toastBottomRight?.error?.(_rptT('report_send_error', 'Envoi impossible, réessaie dans un instant.'));
         soundsUX('MBF_NotificationError');
         return { ok: false };
     }
+
+    let imageOk = true;
+    if (imageB64) {
+        try {
+            await db.collection('reportImages').doc(ref.id).set({
+                b64: imageB64,
+                uid,
+                createdAt: now,
+                expiresAt: doc.expiresAt
+            });
+        } catch (imgErr) {
+            console.warn('[Reports] envoi photo échoué', imgErr);
+            imageOk = false;
+            toastBottomRight?.info?.(_rptT('report_photo_failed', 'Signalement envoyé, mais la photo n\'a pas pu l\'être.'));
+        }
+    }
+
+    return { ok: true, mode: 'created', id: ref.id, imageOk };
 }
 
 function closeReportModal() {
@@ -16456,6 +16525,7 @@ function openReportModal(presetType = null) {
 
     _injectReportStyles();
     _injectReportWarnStyles();
+    _injectReportImageStyles();
     safeVibrate?.([30], true);
     soundsUX('MBF_Popup');
 
@@ -16463,7 +16533,9 @@ function openReportModal(presetType = null) {
         type: REPORT_TYPES.some(r => r.id === presetType) ? presetType : null,
         position: null,
         blocked: false,
-        submitting: false
+        submitting: false,
+        image: null,
+        processingImage: false
     };
 
     const overlay = document.createElement('div');
@@ -16488,14 +16560,24 @@ function openReportModal(presetType = null) {
 
             <div class="rpt-warn" id="rpt-warn" role="alert">
                 <span class="rpt-warn-ico">🚫</span>
-                <span>${_rptT('report_forbidden_msg', 'Le signalement de contrôleurs est interdit en France et n\'est pas autorisé sur My Bus Finder. Retire ces mots de ta note pour pouvoir envoyer.')}</span>
+                <span>${_rptT('report_forbidden_msg', 'Le signalement de contrôleurs est interdit en France et n\'est pas autorisé sur My Bus Finder. Pour rappel, un tel signalement vous fait encourir 3750€ d\'amende et 2 mois de prison.')}</span>
             </div>
 
             <div class="rpt-note-wrap">
                 <textarea id="rpt-note" maxlength="${REPORT_NOTE_MAX}" rows="3"
-                    placeholder="${_rptT('report_note_placeholder', 'Ajouter une note (facultatif) : ligne, arrêt, détails...')}"></textarea>
+                    placeholder="${_rptT('report_note_placeholder', 'Ajouter une note (facultatif) : ligne, arrêt, véhicule, détails...')}"></textarea>
                 <span class="rpt-count" id="rpt-count">0/${REPORT_NOTE_MAX}</span>
             </div>
+
+            <div class="rpt-photo-row">
+                <button type="button" class="rpt-photo-btn" id="rpt-photo-btn"></button>
+                <div class="rpt-photo-preview" id="rpt-photo-preview">
+                    <img id="rpt-photo-img" alt="">
+                    <button type="button" class="rpt-photo-remove" id="rpt-photo-remove" aria-label="${_rptT('delete', 'Supprimer')}">✕</button>
+                </div>
+                <input type="file" id="rpt-photo-input" accept="image/*" hidden>
+            </div>
+            <div class="rpt-photo-hint">${_rptT('report_photo_hint', 'Pas de visages, de plaques d\'immatriculation ni de contrôleurs sur la photo.')}</div>
 
             <div class="rpt-actions">
                 <button type="button" class="rpt-btn rpt-btn-secondary" id="rpt-cancel">${_rptT('cancel', 'Annuler')}</button>
@@ -16510,6 +16592,12 @@ function openReportModal(presetType = null) {
     const countEl = overlay.querySelector('#rpt-count');
     const warnEl = overlay.querySelector('#rpt-warn');
     const submitBtn = overlay.querySelector('#rpt-submit');
+
+    const photoBtn = overlay.querySelector('#rpt-photo-btn');
+    const photoInput = overlay.querySelector('#rpt-photo-input');
+    const photoPreview = overlay.querySelector('#rpt-photo-preview');
+    const photoImg = overlay.querySelector('#rpt-photo-img');
+    const photoRemove = overlay.querySelector('#rpt-photo-remove');
 
     function selectType(id) {
         state.type = id;
@@ -16530,6 +16618,21 @@ function openReportModal(presetType = null) {
         }
     }
 
+    function refreshPhotoUi() {
+        if (state.image) {
+            photoImg.src = state.image.dataUrl;
+            photoPreview.style.display = 'block';
+            photoBtn.textContent = '🔄 ' + _rptT('report_change_photo', 'Changer la photo');
+        } else {
+            photoImg.removeAttribute('src');
+            photoPreview.style.display = 'none';
+            photoBtn.textContent = '📷 ' + _rptT('report_add_photo', 'Ajouter une photo');
+            photoInput.value = '';
+        }
+    }
+
+    refreshPhotoUi();
+
     if (state.type) selectType(state.type);
 
     grid.addEventListener('click', (e) => {
@@ -16545,15 +16648,49 @@ function openReportModal(presetType = null) {
         applyBlockState(containsForbiddenReportContent(noteEl.value));
     });
 
+    photoBtn.addEventListener('click', () => {
+        if (state.processingImage) return;
+        photoInput.click();
+    });
+
+    photoInput.addEventListener('change', async () => {
+        const file = photoInput.files && photoInput.files[0];
+        if (!file) return;
+
+        state.processingImage = true;
+        photoBtn.disabled = true;
+        photoBtn.textContent = '...';
+
+        try {
+            state.image = await _compressReportImage(file);
+            safeVibrate?.([20], true);
+            soundsUX('MBF_SettingOn');
+        } catch (err) {
+            console.warn('[Reports] image refusée', err);
+            state.image = null;
+            toastBottomRight?.error?.(_rptT('report_photo_error', 'Impossible de traiter cette photo.'));
+            soundsUX('MBF_NotificationError');
+        } finally {
+            state.processingImage = false;
+            photoBtn.disabled = false;
+            refreshPhotoUi();
+        }
+    });
+
+    photoRemove.addEventListener('click', () => {
+        state.image = null;
+        safeVibrate?.([20], true);
+        refreshPhotoUi();
+    });
+
     overlay.querySelector('#rpt-cancel').addEventListener('click', closeReportModal);
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) closeReportModal();
     });
 
     submitBtn.addEventListener('click', async () => {
-        if (state.submitting) return;
+        if (state.submitting || state.processingImage) return;
 
-        // Contrôle final au moment de l'envoi
         if (containsForbiddenReportContent(noteEl.value)) {
             applyBlockState(true);
             warnEl.classList.remove('visible');
@@ -16582,7 +16719,8 @@ function openReportModal(presetType = null) {
         const res = await submitReport({
             type: state.type,
             note: noteEl.value,
-            position: state.position
+            position: state.position,
+            imageB64: state.image ? state.image.b64 : null
         });
 
         state.submitting = false;
@@ -16592,7 +16730,7 @@ function openReportModal(presetType = null) {
         if (res.ok) {
             safeVibrate?.([30, 40, 30], true);
             soundsUX('MBF_Success');
-            if (res.mode === 'created') {
+            if (res.mode === 'created' && res.imageOk !== false) {
                 toastBottomRight?.success?.(_rptT('report_thanks', 'Merci ! Ton signalement est en ligne.'));
             }
             closeReportModal();
@@ -16606,10 +16744,10 @@ function openReportModal(presetType = null) {
     _getReportPosition()
         .then(pos => {
             state.position = pos;
-            const acc = pos.accuracy ? ` (±${Math.round(pos.accuracy)} m)` : '';
         })
         .catch(() => {
-            toastBottomRight?.info?.(_rptT('report_no_position', 'Position indisponible'));});
+            toastBottomRight?.info?.(_rptT('report_no_position', 'Position indisponible'));
+        });
 }
 
 window.openReportModal = openReportModal;
@@ -16724,7 +16862,7 @@ function _injectReportStyles() {
         .rpt-btn:active { transform: scale(0.96); }
         .rpt-btn:disabled { opacity: 0.5; }
         .rpt-btn-secondary { background: rgba(255,255,255,0.12); color: #fff; }
-        .rpt-btn-primary { background: linear-gradient(135deg, #ff9f0a, #ff453a); color: #fff; flex: 1.5; }
+        .rpt-btn-primary { background: #2c376b; color: #fff; flex: 1.5; }
 
         .rpt-pin {
             position: relative; width: 36px; height: 36px; border-radius: 50%;
@@ -16773,4 +16911,182 @@ function _getReportAuthorName() {
     const user = window.MBF_Auth?.currentUser;
     const name = (user?.displayName || '').trim();
     return (name || _rptT('report_anonymous', 'Utilisateur MBF')).slice(0, 40);
+}
+
+
+const REPORT_IMAGE_MAX_DIM = 1024;
+const REPORT_IMAGE_MAX_B64 = 380000;
+const REPORT_IMAGE_PREFIX = 'data:image/jpeg;base64,';
+
+window._reportImageCache = window._reportImageCache || new Map();     // id -> dataUrl | null
+window._reportImageLoading = window._reportImageLoading || new Set();
+
+function _compressReportImage(file) {
+    return new Promise((resolve, reject) => {
+        if (!file || !/^image\//.test(file.type || '')) {
+            reject(new Error('not_an_image'));
+            return;
+        }
+
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+
+        img.onload = () => {
+            try {
+                const scale = Math.min(1, REPORT_IMAGE_MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight));
+                const w = Math.max(1, Math.round(img.naturalWidth * scale));
+                const h = Math.max(1, Math.round(img.naturalHeight * scale));
+
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+
+                let quality = 0.75;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                while ((dataUrl.length - REPORT_IMAGE_PREFIX.length) > REPORT_IMAGE_MAX_B64 && quality > 0.3) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                if ((dataUrl.length - REPORT_IMAGE_PREFIX.length) > REPORT_IMAGE_MAX_B64) {
+                    throw new Error('image_too_large');
+                }
+
+                resolve({ dataUrl, b64: dataUrl.slice(REPORT_IMAGE_PREFIX.length) });
+            } catch (e) {
+                reject(e);
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+
+        img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('image_load_failed'));
+        };
+
+        img.src = objectUrl;
+    });
+}
+
+
+async function _ensureReportImage(id) {
+    const entry = window._reports.get(id);
+    if (!entry || !entry.data.hasImage) return;
+    if (window._reportImageCache.has(id) || window._reportImageLoading.has(id)) return;
+
+    const db = _reportsDb();
+    if (!db) return;
+
+    window._reportImageLoading.add(id);
+
+    try {
+        const createdMs = entry.data.createdAt?.toMillis?.() || 0;
+        let snap = null;
+
+        for (let attempt = 0; attempt < 3; attempt++) {
+            snap = await db.collection('reportImages').doc(id).get();
+            if (snap.exists) break;
+            if (Date.now() - createdMs > 120000) break;
+            await new Promise(r => setTimeout(r, 2500));
+        }
+
+        const b64 = snap && snap.exists ? snap.data().b64 : null;
+
+        const valid = typeof b64 === 'string'
+            && b64.length > 0
+            && b64.length <= 460000
+            && /^[A-Za-z0-9+/]+={0,2}$/.test(b64);
+
+        window._reportImageCache.set(id, valid ? REPORT_IMAGE_PREFIX + b64 : null);
+    } catch (err) {
+        console.warn('[Reports] chargement photo échoué', err);
+        window._reportImageCache.set(id, null);
+    } finally {
+        window._reportImageLoading.delete(id);
+    }
+
+    const current = window._reports.get(id);
+    if (current && current.marker && current.marker.isPopupOpen()) {
+        current.marker.setPopupContent(_reportPopupHtml(id, current.data));
+    }
+}
+
+function openReportImage(id) {
+    const src = window._reportImageCache.get(id);
+    if (!src) return;
+
+    _injectReportImageStyles();
+    safeVibrate?.([20], true);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'rpt-lightbox';
+
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    overlay.appendChild(img);
+
+    overlay.addEventListener('click', () => {
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.remove(), 260);
+    });
+
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+window.openReportImage = openReportImage;
+
+function _injectReportImageStyles() {
+    if (document.getElementById('rpt-image-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'rpt-image-styles';
+    style.textContent = `
+        .rpt-photo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .rpt-photo-btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px;
+            border: 1px solid rgba(255,255,255,0.16); border-radius: 14px;
+            background: rgba(255,255,255,0.08); color: #fff; cursor: pointer;
+            font-family: 'League Spartan', sans-serif; font-size: 14px; font-weight: 600;
+            transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s;
+        }
+        .rpt-photo-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.16); }
+        .rpt-photo-btn:disabled { opacity: 0.5; }
+        .rpt-photo-preview {
+            position: relative; width: 56px; height: 56px; border-radius: 12px;
+            overflow: visible; display: none; flex-shrink: 0;
+            animation: rptPop 0.4s cubic-bezier(0.25,1.5,0.5,1);
+        }
+        .rpt-photo-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; display: block; }
+        .rpt-photo-remove {
+            position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; padding: 0;
+            border: none; border-radius: 50%; background: #ff453a; color: #fff;
+            font-size: 11px; line-height: 22px; cursor: pointer;
+        }
+        .rpt-photo-hint { font-size: 11px; opacity: 0.5; margin-bottom: 14px; line-height: 1.3; }
+
+        .rpt-popup-img {
+            display: block; width: 100%; max-height: 170px; object-fit: cover;
+            border-radius: 12px; margin-bottom: 8px; cursor: zoom-in;
+        }
+        .rpt-popup-img-loading {
+            height: 110px; cursor: default;
+            background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.16), rgba(255,255,255,0.06));
+            background-size: 200% 100%; animation: rptShimmer 1.2s linear infinite;
+        }
+        @keyframes rptShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        .rpt-lightbox {
+            position: fixed; inset: 0; z-index: 99999999995; padding: 16px; box-sizing: border-box;
+            background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.25s ease; cursor: zoom-out;
+        }
+        .rpt-lightbox.visible { opacity: 1; }
+        .rpt-lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 14px; }
+    `;
+    document.head.appendChild(style);
 }
