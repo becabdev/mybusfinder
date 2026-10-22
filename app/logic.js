@@ -537,7 +537,7 @@
         }, 1000);
     });
 
-    VERSION_NAME = '3.7.1';
+    VERSION_NAME = '3.8';
 
     document.addEventListener('gesturestart', function (e) {
     e.preventDefault();
