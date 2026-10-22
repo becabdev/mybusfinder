@@ -16890,7 +16890,7 @@ function _injectReportStyles() {
         @keyframes rptPop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
 
         .rpt-leaflet-popup .leaflet-popup-content-wrapper {
-            background: rgba(28,28,30,0.9); color: #fff; border-radius: 18px;
+            background: rgba(28,28,30,0.7); color: #fff; border-radius: 18px;
             backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
             box-shadow: 0 6px 24px rgba(0,0,0,0.4);
         }
