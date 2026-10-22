@@ -16170,6 +16170,15 @@ function _reportPopupHtml(id, d) {
                <b>${_escapeHtml(d.authorName)}</b>${mine ? ' (' + _rptT('report_you', 'toi') + ')' : ''}</div>`
         : '';
 
+    let abuseHtml = '';
+    if (!mine) {
+        _injectAbuseStyles();
+        const abuseDone = localStorage.getItem('mbf_abuse_' + id) === '1';
+        abuseHtml = abuseDone
+            ? `<div class="rpt-abuse-done">✓ ${_rptT('report_abuse_done', 'Abus signalé')}</div>`
+            : `<button class="rpt-abuse-link" onclick="openAbuseModal('${id}')">🚩 ${_rptT('report_abuse_btn', 'Signaler un abus')}</button>`;
+    }
+
     return `
         <div class="rpt-popup" style="padding-top: 14px; padding-bottom: 14px;">
             <div class="rpt-popup-head">
@@ -16189,6 +16198,7 @@ function _reportPopupHtml(id, d) {
                 </button>
                 ${mine ? `<button class="rpt-del-btn" onclick="deleteReport('${id}')" title="${_rptT('delete', 'Supprimer')}">🗑️</button>` : ''}
             </div>
+            ${abuseHtml}
         </div>`;
 }
 
@@ -16299,8 +16309,9 @@ function startReportsListener(attempt = 0) {
                     const expired = !d.expiresAt || d.expiresAt.toMillis() <= Date.now();
                     const allowedType = REPORT_TYPES.some(r => r.id === d.type);
                     const forbidden = containsForbiddenReportContent(d.note);
+                    const flagged = (d.abuseCount || 0) >= REPORT_ABUSE_HIDE_THRESHOLD;
 
-                    if (change.type === 'removed' || d.network !== net || expired || !allowedType || forbidden) {
+                    if (change.type === 'removed' || d.network !== net || expired || !allowedType || forbidden || flagged) {
                         _removeReportMarker(id);
                         return;
                     }
@@ -17090,3 +17101,255 @@ function _injectReportImageStyles() {
     `;
     document.head.appendChild(style);
 }
+
+const REPORT_ABUSE_HIDE_THRESHOLD = 3;
+const ABUSE_COMMENT_MAX = 300;
+
+const ABUSE_REASONS = [
+    { id: 'controller', emoji: '🎫', fr: 'Signale des contrôleurs ou des agents de sécurité' },
+    { id: 'illegal',    emoji: '⛔', fr: 'Contenu illicite, injurieux ou haineux' },
+    { id: 'photo',      emoji: '📷', fr: 'Photo inappropriée (visage, plaque...)' },
+    { id: 'false',      emoji: '❌', fr: 'Fausse information' },
+    { id: 'spam',       emoji: '🗑️', fr: 'Spam ou hors sujet' },
+    { id: 'other',      emoji: '💬', fr: 'Autre' }
+];
+
+function _injectAbuseStyles() {
+    if (document.getElementById('abuse-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'abuse-styles';
+    style.textContent = `
+        .rpt-abuse-link {
+            display: block; margin: 10px auto 0; padding: 4px 8px;
+            background: none; border: none; cursor: pointer;
+            color: rgba(255,255,255,0.5); font-family: inherit; font-size: 12px;
+            text-decoration: underline;
+        }
+        .rpt-abuse-link:active { opacity: 0.6; }
+        .rpt-abuse-done { margin-top: 10px; text-align: center; font-size: 12px; opacity: 0.5; }
+
+        .abuse-sub { margin: 0 0 12px; font-size: 14px; opacity: 0.7; line-height: 1.3; }
+        .abuse-reasons { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+        .abuse-reason {
+            display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+            padding: 11px 12px; border-radius: 14px; cursor: pointer; color: #fff;
+            background: rgba(255,255,255,0.08); border: 2px solid transparent;
+            font-family: inherit; font-size: 14px;
+            transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s, border-color 0.2s;
+        }
+        .abuse-reason:active { transform: scale(0.97); }
+        .abuse-reason.selected { border-color: #ff453a; background: rgba(255,69,58,0.18); }
+
+        #abuse-comment {
+            width: 100%; box-sizing: border-box; resize: none; padding: 12px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 14px; color: #fff; font-family: inherit; font-size: 14px; outline: none;
+        }
+        #abuse-comment:focus { border-color: rgba(255,255,255,0.4); }
+        #abuse-comment::placeholder { color: rgba(255,255,255,0.45); }
+
+        .abuse-check {
+            display: flex; gap: 10px; align-items: flex-start; margin: 12px 0 6px;
+            font-size: 12.5px; line-height: 1.35; opacity: 0.85; cursor: pointer;
+        }
+        .abuse-check input { margin-top: 2px; flex-shrink: 0; }
+        .abuse-privacy { font-size: 11px; opacity: 0.45; margin-bottom: 14px; line-height: 1.3; }
+        .rpt-btn-primary.abuse-not-ready { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.45); }
+    `;
+    document.head.appendChild(style);
+}
+
+async function submitAbuseReport(reportId, { reason, comment }) {
+    const user = window.MBF_Auth?.currentUser;
+    const uid = window.MBF_Auth?.currentUid;
+    if (!uid || !user) { _requireLoginForReport(); return { ok: false }; }
+
+    const entry = window._reports.get(reportId);
+    if (!entry) return { ok: false };
+    if (entry.data.uid === uid) return { ok: false };
+    if (!ABUSE_REASONS.some(r => r.id === reason)) return { ok: false };
+
+    const db = _reportsDb();
+    if (!db) {
+        toastBottomRight?.error?.(_rptT('report_unavailable', 'Service de signalement indisponible'));
+        return { ok: false };
+    }
+
+    const FV = firebase.firestore.FieldValue;
+    const TS = firebase.firestore.Timestamp;
+
+    const weight = reason === 'controller' ? REPORT_ABUSE_HIDE_THRESHOLD : 1;
+
+    const abuseRef = db.collection('abuseReports').doc(`${reportId}_${uid}`);
+    const reportRef = db.collection('reports').doc(reportId);
+
+    const batch = db.batch();
+    batch.set(abuseRef, {
+        reportId,
+        reporterUid: uid,
+        reporterEmail: String(user.email || '').slice(0, 120),
+        reason,
+        comment: String(comment || '').trim().slice(0, ABUSE_COMMENT_MAX),
+        reportType: entry.data.type || null,
+        network: window.ACTIVE_NETWORK,
+        createdAt: TS.now()
+    });
+    batch.update(reportRef, { abuseCount: FV.increment(weight) });
+
+    try {
+        await batch.commit();
+        localStorage.setItem('mbf_abuse_' + reportId, '1');
+        return { ok: true };
+    } catch (err) {
+        console.warn('[Reports] notification d\'abus échouée', err);
+        return { ok: false, denied: err && err.code === 'permission-denied' };
+    }
+}
+
+function closeAbuseModal() {
+    const overlay = document.getElementById('abuse-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('visible');
+    soundsUX('MBF_SelectedVehicle_DoorClose');
+    setTimeout(() => overlay.remove(), 320);
+}
+
+function openAbuseModal(reportId) {
+    if (document.getElementById('abuse-overlay')) return;
+
+    if (!window.MBF_Auth?.isLoggedIn) {
+        _requireLoginForReport();
+        return;
+    }
+
+    const entry = window._reports.get(reportId);
+    if (!entry) return;
+    if (entry.data.uid === window.MBF_Auth.currentUid) return;
+
+    if (localStorage.getItem('mbf_abuse_' + reportId) === '1') {
+        toastBottomRight?.info?.(_rptT('report_abuse_already', 'Tu as déjà signalé ce contenu.'));
+        return;
+    }
+
+    _injectReportStyles();
+    _injectAbuseStyles();
+    safeVibrate?.([30], true);
+    soundsUX('MBF_Popup');
+
+    const state = { reason: null, submitting: false };
+
+    const overlay = document.createElement('div');
+    overlay.id = 'abuse-overlay';
+    overlay.className = 'rpt-overlay';
+
+    const reasonsHtml = ABUSE_REASONS.map(r => `
+        <button type="button" class="abuse-reason" data-reason="${r.id}">
+            <span>${r.emoji}</span>
+            <span>${_escapeHtml(_rptT('report_abuse_' + r.id, r.fr))}</span>
+        </button>`).join('');
+
+    overlay.innerHTML = `
+        <div class="rpt-modal" role="dialog" aria-modal="true">
+            <div class="rpt-grabber"></div>
+            <h2 class="rpt-title">${_rptT('report_abuse_title', 'Signaler un abus')}</h2>
+            <p class="abuse-sub">${_rptT('report_abuse_sub', 'Pourquoi ce signalement pose t-il problème ?')}</p>
+
+            <div class="abuse-reasons" id="abuse-reasons">${reasonsHtml}</div>
+
+            <textarea id="abuse-comment" maxlength="${ABUSE_COMMENT_MAX}" rows="2"
+                placeholder="${_rptT('report_abuse_comment', 'Précisions (facultatif)')}"></textarea>
+
+            <label class="abuse-check">
+                <input type="checkbox" id="abuse-good-faith">
+                <span>${_rptT('report_abuse_good_faith', 'Je déclare de bonne foi que les informations fournies sont exactes.')}</span>
+            </label>
+            <div class="abuse-privacy">${_rptT('report_abuse_privacy', 'Ta notification est transmise à Becab Development avec l\'adresse e-mail de ton compte BecabConnect.')}</div>
+
+            <div class="rpt-actions">
+                <button type="button" class="rpt-btn rpt-btn-secondary" id="abuse-cancel">${_rptT('cancel', 'Annuler')}</button>
+                <button type="button" class="rpt-btn rpt-btn-primary abuse-not-ready" id="abuse-submit">${_rptT('report_abuse_send', 'Envoyer')}</button>
+            </div>
+        </div>`;
+
+    document.body.appendChild(overlay);
+
+    const reasonsEl = overlay.querySelector('#abuse-reasons');
+    const commentEl = overlay.querySelector('#abuse-comment');
+    const goodFaithEl = overlay.querySelector('#abuse-good-faith');
+    const submitBtn = overlay.querySelector('#abuse-submit');
+
+    function isReady() {
+        return !!state.reason && goodFaithEl.checked;
+    }
+
+    function updateSubmit() {
+        submitBtn.classList.toggle('abuse-not-ready', !isReady());
+    }
+
+    reasonsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.abuse-reason');
+        if (!btn) return;
+        state.reason = btn.dataset.reason;
+        reasonsEl.querySelectorAll('.abuse-reason').forEach(b => {
+            b.classList.toggle('selected', b === btn);
+        });
+        safeVibrate?.([20], true);
+        soundsUX('MBF_SettingOn');
+        updateSubmit();
+    });
+
+    goodFaithEl.addEventListener('change', updateSubmit);
+
+    overlay.querySelector('#abuse-cancel').addEventListener('click', closeAbuseModal);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeAbuseModal();
+    });
+
+    submitBtn.addEventListener('click', async () => {
+        if (state.submitting) return;
+
+        if (!state.reason) {
+            toastBottomRight?.info?.(_rptT('report_abuse_choose', 'Choisis d\'abord un motif.'));
+            return;
+        }
+        if (!goodFaithEl.checked) {
+            toastBottomRight?.info?.(_rptT('report_abuse_check', 'Coche la déclaration de bonne foi pour envoyer.'));
+            return;
+        }
+
+        state.submitting = true;
+        submitBtn.disabled = true;
+        submitBtn.textContent = '...';
+
+        const res = await submitAbuseReport(reportId, {
+            reason: state.reason,
+            comment: commentEl.value
+        });
+
+        state.submitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = _rptT('report_abuse_send', 'Envoyer');
+
+        if (res.ok) {
+            safeVibrate?.([30, 40, 30], true);
+            soundsUX('MBF_Success');
+            toastBottomRight?.success?.(_rptT('report_abuse_thanks', 'Merci, ton signalement a bien été reçu. Nous l\'examinons dans les meilleurs délais.'));
+            closeAbuseModal();
+
+            const current = window._reports.get(reportId);
+            if (current && current.marker && current.marker.isPopupOpen()) {
+                current.marker.setPopupContent(_reportPopupHtml(reportId, current.data));
+            }
+        } else {
+            soundsUX('MBF_NotificationError');
+            toastBottomRight?.error?.(res.denied
+                ? _rptT('report_abuse_denied', 'Envoi refusé : tu as peut-être déjà signalé ce contenu')
+                : _rptT('report_abuse_error', 'Envoi impossible, réessaie dans un instant'));
+        }
+    });
+
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+
+window.openAbuseModal = openAbuseModal;
+window.closeAbuseModal = closeAbuseModal;

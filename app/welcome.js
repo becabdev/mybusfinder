@@ -367,15 +367,15 @@
     }
   `;
 
-  var stepWelcome = `
-    <section class="mbf-step is-active" data-step="0">
-    <img src="src/iphone-screen-welcome.png" alt="MBF Screenshot Welcome" style="width: 100%; max-width: 600px; align-self: anchor-center; height: auto; margin-bottom: 24px;">
-      <div class="mbf-hero">
-        <h1>Le bus arrive à quelle heure ?</h1>
-        <p>Cette question, vous ne la poserez même plus. My Bus Finder redéfinit la façon dont vous naviguez avec les transports en commun. Plus simple, plus rapide, plus efficace.</p>
-      </div>
-    </section>
-  `;
+var stepWelcome = `
+  <section class="mbf-step is-active" data-step="0">
+  <img id="mbf-hero-img" src="src/iphone-screen-welcome.png" alt="MBF Screenshot Welcome" style="width: 100%; max-width: 600px; align-self: anchor-center; height: auto; margin-bottom: 24px;">
+    <div class="mbf-hero">
+      <h1 id="mbf-hero-title">Le bus arrive à quelle heure ?</h1>
+      <p id="mbf-hero-text">Cette question, vous ne la poserez même plus. My Bus Finder redéfinit la façon dont vous naviguez avec les transports en commun. Plus simple, plus rapide, plus efficace.</p>
+    </div>
+  </section>
+`;
 
 
 var stepTerms = `
@@ -387,7 +387,7 @@ var stepTerms = `
 
         <h2>Conditions Générales d'Utilisation</h2>
 
-        <p><strong>Dernière mise à jour : 6 septembre 2026</strong></p>
+        <p><strong>Dernière mise à jour : 22 octobre 2026</strong></p>
 
         <p>
             Bienvenue sur <strong>My Bus Finder</strong>. En utilisant cette application,
@@ -438,6 +438,7 @@ var stepTerms = `
             <li>la position des véhicules en temps réel ;</li>
             <li>les destinations des véhicules ;</li>
             <li>les informations relatives aux perturbations ou au trafic ;</li>
+            <li>des signalements communautaires d'incidents (retard, panne, accident, etc.), publiés par les utilisateurs ;</li>
             <li>des informations techniques ou historiques concernant certains véhicules.</li>
         </ul>
 
@@ -552,6 +553,8 @@ var stepTerms = `
             <li>d'une indisponibilité temporaire de l'application ;</li>
             <li>d'un dysfonctionnement d'un réseau de transport ;</li>
             <li>d'une erreur provenant d'une source de données tierce ;</li>
+            <li>d'un signalement communautaire inexact, périmé, illicite ou publié par un autre utilisateur, dont l'auteur est seul responsable (article 12 bis) ;</li>
+            <li>de l'utilisation que vous faites des signalements ou photos publiés par d'autres utilisateurs ;</li>
             <li>d'une indisponibilité temporaire du service BecabConnect ou de son fournisseur d'hébergement.</li>
         </ul>
 
@@ -575,9 +578,18 @@ var stepTerms = `
         </p>
 
         <p>
-            <strong>Votre position est utilisée uniquement localement sur votre appareil.</strong>
-            My Bus Finder ne stocke pas votre position sur ses serveurs et ne la transmet
-            pas à Becab Development pour les fonctionnalités de géolocalisation.
+            <strong>Votre position n'est pas suivie ni stockée en continu sur nos serveurs.</strong>
+            Pour les fonctionnalités d'information (arrêts à proximité, centrage de la carte),
+            votre position est utilisée uniquement localement sur votre appareil.
+        </p>
+
+        <p>
+            <strong>Exception : les signalements communautaires.</strong>
+            Lorsque vous envoyez un signalement (article 12 bis), la position de votre appareil
+            à cet instant (coordonnées et précision) est transmise à nos serveurs et enregistrée
+            avec le signalement afin de l'afficher sur la carte. Elle est visible par les autres
+            utilisateurs sous la forme d'un point sur la carte et supprimée avec le signalement.
+            Seule la position au moment de l'envoi est enregistrée.
         </p>
 
         <p>
@@ -601,8 +613,21 @@ var stepTerms = `
         <ul>
             <li>votre <strong>nom</strong> et votre <strong>prénom</strong>, notamment afin de personnaliser votre expérience au sein de l'application et des autres services BecabConnect ;</li>
             <li>votre <strong>âge</strong>, à des fins statistiques et d'amélioration du service ;</li>
-            <li>vos identifiants de connexion, favoris, paramètres et préférences, afin de les conserver et de les synchroniser entre vos appareils et les services BecabConnect.</li>
+            <li>vos identifiants de connexion, favoris, paramètres et préférences, afin de les conserver et de les synchroniser entre vos appareils et les services BecabConnect;</li>
+            <li>le contenu de vos <strong>signalements communautaires</strong> : type, note, photo facultative, position au moment de l'envoi, date et heure, confirmations reçues ;</li>
+            <li>le <strong>nom de votre compte BecabConnect</strong>, affiché publiquement avec chacun de vos signalements.</li>
         </ul>
+
+        <p>
+            Les signalements (y compris leur photo et le nom de leur auteur) sont visibles par tous
+            les utilisateurs et supprimés automatiquement environ deux heures après leur publication
+            ou leur dernière confirmation. La suppression effective peut intervenir avec un délai
+            technique. Les métadonnées des photos (dont la position éventuelle) ne sont pas conservées.
+            Vos signalements restent rattachés à votre compte BecabConnect : Becab Development peut
+            conserver les données d'identification nécessaires et les communiquer aux autorités
+            judiciaires sur réquisition, conformément à la loi.
+            Becab Development s'engage à collaborer avec les autorités en cas de signalement d'activité illicite ou de violation des présentes CGU, et à fournir les informations nécessaires pour identifier l'auteur d'un signalement.
+        </p>
 
         <p>
             Ces données sont hébergées et traitées via <strong>Firebase</strong>, service
@@ -802,6 +827,88 @@ var stepTerms = `
             <strong>Des poursuites judiciaires pourront être engagées en cas de violation des droits de Becab Development ou de tiers.</strong>
         </p>
 
+        <h3>12 bis. Signalements communautaires</h3>
+
+        <p>
+            My Bus Finder permet aux utilisateurs connectés de publier des signalements géolocalisés
+            (retard, véhicule en panne, véhicule bondé, accident ou blocage, déviation, passage supprimé,
+            incident voyageur, autre), accompagnés d'une note et d'une photo facultatives, et de confirmer
+            les signalements d'autres utilisateurs (« Toujours là »).
+        </p>
+
+        <p>
+            <strong>Fonctionnement.</strong> Chaque signalement est visible par tous les utilisateurs du
+            réseau concerné, avec le nom du compte BecabConnect de son auteur. Il est supprimé automatiquement
+            environ deux heures après sa publication ou sa dernière confirmation. Son auteur peut le
+            supprimer à tout moment.
+        </p>
+
+        <p><strong>Contenus interdits.</strong> Il est formellement interdit de publier :</p>
+
+        <ul>
+            <li>
+                <strong>toute information visant à signaler, localiser ou annoncer la présence de contrôleurs,
+                d'agents de sécurité ou de tout agent chargé du contrôle des titres de transport</strong>,
+                sous quelque forme que ce soit (note, photo, mot codé, abréviation, émoji, etc.).
+                Un tel signalement est interdit par l'article L2242-10 du Code des transports et puni de
+                deux mois d'emprisonnement et de 3 750 € d'amende ;
+            </li>
+            <li>tout contenu illicite, injurieux, diffamatoire, discriminatoire, haineux, menaçant ou constitutif de harcèlement ;</li>
+            <li>toute photo montrant des personnes identifiables, des plaques d'immatriculation, ou prise ou diffusée sans droit ;</li>
+            <li>toute fausse information volontaire, tout signalement répétitif, abusif ou sans lien avec le transport ;</li>
+            <li>toute donnée personnelle concernant un tiers ;</li>
+            <li>toute publicité ou contenu commercial.</li>
+        </ul>
+
+        <p>
+            <strong>Filtrage automatique.</strong> L'application bloque automatiquement certains termes.
+            Ce filtrage n'est pas infaillible et ne vous dégage pas de votre responsabilité.
+        </p>
+
+        <p>
+            <strong>Responsabilité de l'utilisateur.</strong> Vous êtes seul responsable des contenus que
+            vous publiez. Vous garantissez disposer de tous les droits nécessaires sur ces contenus.
+        </p>
+
+        <p>
+            <strong>Fiabilité.</strong> Les signalements sont déclaratifs. Ils ne sont vérifiés ni par
+            Becab Development, ni par les opérateurs de transport, peuvent être inexacts ou périmés et ne
+            constituent pas une information officielle.
+        </p>
+
+        <p>
+            <strong>Sanctions.</strong> Becab Development peut supprimer sans préavis tout contenu non conforme,
+            suspendre ou supprimer le compte de son auteur, et signaler les faits aux autorités compétentes.
+        </p>
+
+        <h3>12 ter. Modération et signalement d'un contenu illicite</h3>
+
+        <p>
+            Becab Development agit en qualité d'hébergeur des signalements publiés par les utilisateurs.
+            Becab Development n'exerce pas de surveillance générale des contenus, mais retire promptement
+            tout contenu manifestement illicite dont elle a connaissance.
+        </p>
+
+        <p>
+            Toute personne peut notifier un contenu qu'elle estime illicite ou contraire aux présentes CGU,
+            depuis le bouton « Signaler un abus » présent sur chaque signalement ou par e-mail à
+            <a href="mailto:bechir.abidi06@gmail.com">bechir.abidi06@gmail.com</a>, en précisant :
+        </p>
+
+        <ul>
+            <li>les raisons pour lesquelles le contenu est considéré comme illicite ou non conforme ;</li>
+            <li>l'emplacement exact du contenu (type, lieu, date et heure du signalement) ;</li>
+            <li>son nom et son adresse e-mail (sauf exceptions prévues par la loi) ;</li>
+            <li>une déclaration de bonne foi.</li>
+        </ul>
+
+        <p>
+            Becab Development accuse réception de la notification et statue dans les meilleurs délais.
+            Lorsqu'un contenu est retiré ou qu'un compte est restreint, l'auteur en est informé avec les
+            motifs de la décision et peut la contester par e-mail à l'adresse ci-dessus.
+            Toute notification abusive ou de mauvaise foi peut entraîner des sanctions.
+        </p>
+
         <h3>13. Propriété intellectuelle</h3>
 
         <p>
@@ -809,6 +916,12 @@ var stepTerms = `
             ses textes, son code, ses fonctionnalités, son identité visuelle et son
             organisation, sont protégés par les règles applicables en matière de propriété
             intellectuelle.
+        </p>
+
+        <p>
+            Vous conservez vos droits sur les contenus (notes, photos) que vous publiez. En les publiant,
+            vous accordez à Becab Development, à titre gratuit et non exclusif, le droit de les héberger,
+            reproduire et afficher dans My Bus Finder, pour la seule durée de leur publication.
         </p>
 
         <p>
@@ -1129,6 +1242,52 @@ var stepTerms = `
   // etat de l'écran d'auth
   var authMode = "login"; 
 
+  var isLoggedIn = false;
+
+  var WELCOME_TEXTS = {
+    new: {
+      header: "Bienvenue",
+      title: "Le bus arrive à quelle heure ?",
+      text: "Cette question, vous ne la poserez même plus. My Bus Finder redéfinit la façon dont vous naviguez avec les transports en commun. Plus simple, plus rapide, plus efficace."
+    },
+    updated: {
+      header: "Mise à jour",
+      title: "My Bus Finder a été mis à jour",
+      text: "De nouvelles fonctionnalités et des améliorations vous attendent !"
+    }
+  };
+
+  function getLoggedInUser() {
+  return new Promise(function (resolve) {
+    var fb = ensureFirebase();
+    if (!fb) return resolve(null);
+
+    var done = false;
+    var unsubscribe = firebase.auth().onAuthStateChanged(function (user) {
+      if (done) return;
+      done = true;
+      unsubscribe();
+      resolve(user && user.emailVerified ? user : null);
+    });
+
+    setTimeout(function () {
+      if (done) return;
+      done = true;
+      unsubscribe();
+      resolve(null);
+    }, 3000);
+  });
+}
+
+function applyWelcomeMode() {
+  var t = isLoggedIn ? WELCOME_TEXTS.updated : WELCOME_TEXTS.new;
+  HEADER_TITLES[0] = t.header;
+  els.overlay.querySelector("#mbf-hero-title").textContent = t.title;
+  els.overlay.querySelector("#mbf-hero-text").textContent = t.text;
+  // Optionnel : masquer la capture d'écran quand c'est une mise à jour
+  els.overlay.querySelector("#mbf-hero-img").style.display = isLoggedIn ? "none" : "";
+}
+
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     var style = document.createElement("style");
@@ -1178,6 +1337,9 @@ var stepTerms = `
   function bindEvents() {
     els.overlay.querySelector("#mbf-btn-next").addEventListener("click", function () {
       goToStep(1);
+    });
+    els.overlay.querySelector("#mbf-btn-accept").addEventListener("click", function () {
+      goToStep(isLoggedIn ? 3 : 2);
     });
     els.overlay.querySelector("#mbf-btn-back").addEventListener("click", function () {
       goToStep(0);
@@ -1462,20 +1624,25 @@ var stepTerms = `
     current = index;
   }
 
-  function open() {
-    injectStyles();
-    injectMarkup();
-    if (!isInjected) {
-      cacheElements();
-      bindEvents();
-      isInjected = true;
-    }
+function open() {
+  injectStyles();
+  injectMarkup();
+  if (!isInjected) {
+    cacheElements();
+    bindEvents();
+    isInjected = true;
+  }
+
+  getLoggedInUser().then(function (user) {
+    isLoggedIn = !!user;
+    applyWelcomeMode();
     setStepInstant(0);
     els.overlay.style.display = "flex";
     void els.overlay.offsetWidth;
     els.overlay.classList.add("mbf-is-open");
     document.body.style.overflow = "hidden";
-  }
+  });
+}
 
   function close() {
     if (!els.overlay) return;
