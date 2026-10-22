@@ -16158,12 +16158,12 @@ function _reportPopupHtml(id, d) {
         : '';
 
     return `
-        <div class="rpt-popup">
+        <div class="rpt-popup" style="padding-top: 14px; padding-bottom: 6px;">
             <div class="rpt-popup-head">
-                <span class="rpt-popup-emoji" style="background:${info.color};">${info.emoji}</span>
+                <span class="rpt-popup-emoji">${info.emoji}</span>
                 <div style="flex:1; min-width:0;">
                     <div class="rpt-popup-title">${_escapeHtml(info.label)} ${lineBadge}</div>
-                    <div class="rpt-popup-sub">${_reportTimeAgo(createdMs)}${d.vehicleLabel ? ' · ' + _escapeHtml(d.vehicleLabel) : ''}</div>
+                    <div class="rpt-popup-sub">${_reportTimeAgo(createdMs)}${d.vehicleLabel ? ' - ' + _escapeHtml(d.vehicleLabel) : ''}</div>
                 </div>
             </div>
             ${authorHtml}
@@ -16175,7 +16175,6 @@ function _reportPopupHtml(id, d) {
                 </button>
                 ${mine ? `<button class="rpt-del-btn" onclick="deleteReport('${id}')" title="${_rptT('delete', 'Supprimer')}">🗑️</button>` : ''}
             </div>
-            <div class="rpt-popup-expire">${_rptT('report_expires_in', 'Disparaît dans')} ~${remainingMin} min ${_rptT('report_without_like', 'sans confirmation')}</div>
         </div>`;
 }
 
