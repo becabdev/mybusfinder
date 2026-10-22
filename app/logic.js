@@ -16484,7 +16484,6 @@ function openReportModal(presetType = null) {
         <div class="rpt-modal" role="dialog" aria-modal="true">
             <div class="rpt-grabber"></div>
             <h2 class="rpt-title">${_rptT('report_title', 'Signaler un problème')}</h2>
-            <div class="rpt-geo" id="rpt-geo">📍 ${_rptT('report_locating', 'Localisation en cours...')}</div>
 
             <div class="rpt-grid" id="rpt-grid">${typesHtml}</div>
 
@@ -16511,7 +16510,6 @@ function openReportModal(presetType = null) {
     const noteEl = overlay.querySelector('#rpt-note');
     const countEl = overlay.querySelector('#rpt-count');
     const warnEl = overlay.querySelector('#rpt-warn');
-    const geoEl = overlay.querySelector('#rpt-geo');
     const submitBtn = overlay.querySelector('#rpt-submit');
 
     function selectType(id) {
@@ -16610,13 +16608,9 @@ function openReportModal(presetType = null) {
         .then(pos => {
             state.position = pos;
             const acc = pos.accuracy ? ` (±${Math.round(pos.accuracy)} m)` : '';
-            geoEl.textContent = `📍 ${_rptT('report_position_ok', 'Position détectée')}${acc}`;
-            geoEl.classList.add('ok');
         })
         .catch(() => {
-            geoEl.textContent = `⚠️ ${_rptT('report_position_ko', 'Position indisponible : active la géolocalisation')}`;
-            geoEl.classList.add('ko');
-        });
+            toastBottomRight?.info?.(_rptT('report_no_position', 'Position indisponible'));});
 }
 
 window.openReportModal = openReportModal;
@@ -16635,10 +16629,9 @@ function _injectReportButton() {
     section.id = 'bs-report-section';
     section.innerHTML = `
         <button type="button" class="rpt-open-btn ripple-container" id="bs-report-btn">
-            <span class="rpt-open-ico">🚨</span>
             <span style="flex:1; text-align:left;">
                 ${_rptT('report_open_btn', 'Signaler un problème')}
-                <small>${_rptT('report_open_sub', 'Retard, panne, contrôleurs...')}</small>
+                <small>${_rptT('report_open_sub', 'Retard, panne...')}</small>
             </span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)"
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -16656,16 +16649,16 @@ function _injectReportStyles() {
     const style = document.createElement('style');
     style.id = 'rpt-styles';
     style.textContent = `
-        #bs-report-section { margin: 0 18px 12px; }
+        #bs-report-section { margin: 0 36px 0px; }
         #bottom-sheet[data-stop-view="true"] #bs-report-section { display: none; }
 
         .rpt-open-btn {
-            width: 100%; display: flex; align-items: center; gap: 12px;
+            width: 100%; display: flex; gap: 12px;
             padding: 11px 14px; border: 1px solid rgba(255,255,255,0.16);
             border-radius: 18px; background: rgba(255,255,255,0.1); color: #fff;
             font-family: 'League Spartan', sans-serif; font-size: 16px; font-weight: 600;
             cursor: pointer; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s ease;
+            transition: transform 0.2s cubic-bezier(0.25,1.5,0.5,1), background 0.2s ease; margin-left: 2px; margin-right: auto;
         }
         .rpt-open-btn:active { transform: scale(0.97); background: rgba(255,255,255,0.18); }
         .rpt-open-btn small { display: block; font-size: 11px; font-weight: 400; opacity: 0.6; margin-top: 1px; }
@@ -16687,15 +16680,12 @@ function _injectReportStyles() {
             background: rgba(30,30,32,0.92); color: #fff;
             border-radius: 26px 26px 0 0; padding: 10px 18px calc(18px + env(safe-area-inset-bottom, 0px));
             font-family: 'League Spartan', sans-serif;
-            transform: translateY(100%); transition: transform 0.55s cubic-bezier(0.25,1.5,0.5,1);
+            transform: translateY(100%); transition: transform 0.55s cubic-bezier(0,1,0,1);
             box-shadow: 0 -8px 40px rgba(0,0,0,0.4);
         }
         .rpt-overlay.visible .rpt-modal { transform: translateY(0); }
         .rpt-grabber { width: 40px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.25); margin: 0 auto 12px; }
         .rpt-title { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
-        .rpt-geo { font-size: 12px; opacity: 0.6; margin-bottom: 12px; }
-        .rpt-geo.ok { color: #40e981; opacity: 0.9; }
-        .rpt-geo.ko { color: #ff6b5e; opacity: 1; }
 
         .rpt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
         .rpt-type {
@@ -16778,4 +16768,10 @@ function _injectReportStyles() {
         .rpt-popup-expire { font-size: 10.5px; opacity: 0.4; margin-top: 8px; text-align: center; }
     `;
     document.head.appendChild(style);
+}
+
+function _getReportAuthorName() {
+    const user = window.MBF_Auth?.currentUser;
+    const name = (user?.displayName || '').trim();
+    return (name || _rptT('report_anonymous', 'Utilisateur MBF')).slice(0, 40);
 }
