@@ -148,7 +148,6 @@
         padding: 0;
         transform: scale(0.8) translateY(20px);
         opacity: 0;
-        filter: blur(13px);
         transition: transform 0.5s cubic-bezier(0.25, 1.5, 0.5, 1), opacity 0.3s ease-out, filter 0.3s ease-out;
         transform-origin: center bottom;
         will-change: transform;
