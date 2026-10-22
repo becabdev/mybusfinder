@@ -16577,7 +16577,6 @@ function openReportModal(presetType = null) {
                 </div>
                 <input type="file" id="rpt-photo-input" accept="image/*" hidden>
             </div>
-            <div class="rpt-photo-hint">${_rptT('report_photo_hint', 'Pas de visages, de plaques d\'immatriculation ni de contrôleurs sur la photo.')}</div>
 
             <div class="rpt-actions">
                 <button type="button" class="rpt-btn rpt-btn-secondary" id="rpt-cancel">${_rptT('cancel', 'Annuler')}</button>
@@ -16847,7 +16846,7 @@ function _injectReportStyles() {
         }
         .rpt-hint button { background: rgba(255,255,255,0.15); border: none; color: #fff; border-radius: 10px; padding: 5px 10px; font-family: inherit; cursor: pointer; flex-shrink: 0; }
 
-        .rpt-note-wrap { position: relative; margin-bottom: 14px; }
+        .rpt-note-wrap { position: relative; margin-bottom: 4px; }
         #rpt-note {
             width: 100%; box-sizing: border-box; resize: none; padding: 12px 12px 22px;
             background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
@@ -17048,7 +17047,7 @@ function _injectReportImageStyles() {
     style.textContent = `
         .rpt-photo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
         .rpt-photo-btn {
-            display: inline-flex; align-items: center; gap: 6px; padding: 9px 14px;
+            margin-bottom: 18px; align-items: center; gap: 6px; padding: 9px 14px;
             border: 1px solid rgba(255,255,255,0.16); border-radius: 14px;
             background: rgba(255,255,255,0.08); color: #fff; cursor: pointer;
             font-family: 'League Spartan', sans-serif; font-size: 14px; font-weight: 600;
