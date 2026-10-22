@@ -1284,8 +1284,6 @@ function applyWelcomeMode() {
   HEADER_TITLES[0] = t.header;
   els.overlay.querySelector("#mbf-hero-title").textContent = t.title;
   els.overlay.querySelector("#mbf-hero-text").textContent = t.text;
-  // Optionnel : masquer la capture d'écran quand c'est une mise à jour
-  els.overlay.querySelector("#mbf-hero-img").style.display = isLoggedIn ? "none" : "";
 }
 
   function injectStyles() {
@@ -1343,9 +1341,6 @@ function applyWelcomeMode() {
     });
     els.overlay.querySelector("#mbf-btn-back").addEventListener("click", function () {
       goToStep(0);
-    });
-    els.overlay.querySelector("#mbf-btn-accept").addEventListener("click", function () {
-      goToStep(2);
     });
     els.overlay.querySelector("#mbf-btn-auth-back").addEventListener("click", function () {
       goToStep(1);
